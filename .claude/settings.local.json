@@ -30,7 +30,11 @@
       "Bash(grep:*)",
       "Bash(./setup-revenue-radar.sh:*)",
       "Bash(sqlite3:*)",
-      "Bash(__NEW_LINE__ echo \"\")"
+      "Bash(__NEW_LINE__ echo \"\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git ls-files:*)"
     ]
   }
 }
