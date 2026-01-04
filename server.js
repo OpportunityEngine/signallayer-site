@@ -3628,7 +3628,7 @@ app.get('/', (req, res) => {
   });
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log('='.repeat(60));
   console.log(`🚀 AI Sales Backend Server Started`);
   console.log('='.repeat(60));
@@ -3638,6 +3638,12 @@ const server = app.listen(PORT, () => {
   console.log(`💾 Revenue Radar: ${db ? '✅ Active' : '❌ Disabled'}`);
   console.log(`💿 Database Backups: ${config.databaseBackupEnabled ? '✅ Enabled' : '⚠️  Disabled'}`);
   console.log(`🔒 HTTPS: ${config.httpsEnabled ? '✅ Enabled' : '⚠️  Disabled'}`);
+  console.log('='.repeat(60));
+
+  // Ensure default admin user exists on startup
+  const ensureAdmin = require('./scripts/ensure-admin');
+  await ensureAdmin();
+
   console.log('='.repeat(60));
   console.log('Available Endpoints:');
   console.log(`  🔐 Authentication:`);
