@@ -51,10 +51,11 @@ function initDatabase() {
 
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
-    // Seed demo data if database is empty
+    // Seed demo data if database is empty (only in development)
     const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
-    if (userCount.count === 0) {
-      seedDemoData();
+    if (userCount.count === 0 && process.env.NODE_ENV !== 'production') {
+      console.log('⚠️  Skipping demo data seeding - not supported in production (use create-admin.js instead)');
+      // seedDemoData(); // Disabled - demo users don't have passwords
     }
 
     return db;
