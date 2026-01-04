@@ -342,20 +342,18 @@
           localStorage.setItem('refreshToken', data.refreshToken);
           localStorage.setItem('user', JSON.stringify(data.user));
 
-          // Show success
+          // Show success and redirect immediately
           successDiv.textContent = 'Login successful! Redirecting...';
           successDiv.style.display = 'block';
 
-          // Redirect based on role
-          setTimeout(() => {
-            if (data.user.role === 'admin') {
-              window.location.href = '/dashboard/manager-view.html';
-            } else if (data.user.role === 'rep') {
-              window.location.href = '/dashboard/revenue-dashboard.html';
-            } else {
-              window.location.href = '/dashboard/revenue-dashboard.html';
-            }
-          }, 500);
+          // Redirect based on role (immediate)
+          if (data.user.role === 'admin') {
+            window.location.href = '/dashboard/manager-view.html';
+          } else if (data.user.role === 'rep') {
+            window.location.href = '/dashboard/revenue-dashboard.html';
+          } else {
+            window.location.href = '/dashboard/revenue-dashboard.html';
+          }
 
         } else {
           // Show error
