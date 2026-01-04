@@ -338,12 +338,12 @@
 
         if (data.success) {
           // Store tokens
-          localStorage.setItem('accessToken', data.accessToken);
-          localStorage.setItem('refreshToken', data.refreshToken);
-          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('accessToken', data.data.accessToken);
+          localStorage.setItem('refreshToken', data.data.refreshToken);
+          localStorage.setItem('user', JSON.stringify(data.data.user));
 
           // Professional success transition
-          successDiv.textContent = '✓ Welcome back, ' + data.user.name;
+          successDiv.textContent = '✓ Welcome back, ' + data.data.user.name;
           successDiv.style.display = 'block';
 
           // Smooth fade out animation
@@ -354,9 +354,9 @@
 
           // Redirect after smooth animation
           setTimeout(() => {
-            if (data.user.role === 'admin') {
+            if (data.data.user.role === 'admin') {
               window.location.href = '/dashboard/manager-view.html';
-            } else if (data.user.role === 'rep') {
+            } else if (data.data.user.role === 'rep') {
               window.location.href = '/dashboard/revenue-dashboard.html';
             } else {
               window.location.href = '/dashboard/revenue-dashboard.html';
