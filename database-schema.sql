@@ -188,6 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_commissions_user_period ON commissions(user_id, p
 CREATE INDEX IF NOT EXISTS idx_analytics_cache_key ON analytics_cache(cache_key, expires_at);
 CREATE INDEX IF NOT EXISTS idx_ingestion_runs_user ON ingestion_runs(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_leads_run ON leads(source_run_id);
+DROP VIEW IF EXISTS active_spif_leaderboards;
 CREATE VIEW active_spif_leaderboards AS
 SELECT
     s.id as spif_id,
@@ -207,6 +208,7 @@ WHERE s.status = 'active'
     AND ss.rank <= s.top_n_winners
 ORDER BY s.id, ss.rank
 /* active_spif_leaderboards(spif_id,spif_name,spif_type,prize_amount_cents,end_date,user_id,user_name,user_email,current_value,rank) */;
+DROP VIEW IF EXISTS rep_performance;
 CREATE VIEW rep_performance AS
 SELECT
     u.id as user_id,
