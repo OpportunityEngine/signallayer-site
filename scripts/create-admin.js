@@ -96,7 +96,7 @@ async function createAdmin() {
 
     // Insert user
     const result = database.prepare(`
-      INSERT INTO users (email, full_name, password_hash, role, account_name, is_active, created_at, updated_at)
+      INSERT INTO users (email, name, password_hash, role, account_name, is_active, created_at, updated_at)
       VALUES (?, ?, ?, 'admin', ?, 1, datetime('now'), datetime('now'))
     `).run(email, fullName, passwordHash, accountName);
 

@@ -2,9 +2,15 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('rep', 'manager', 'admin')),
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('rep', 'manager', 'admin', 'viewer', 'customer_admin')) DEFAULT 'rep',
+    account_name TEXT,
     team_id INTEGER,
+    is_active INTEGER DEFAULT 1,
+    failed_login_attempts INTEGER DEFAULT 0,
+    locked_until DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_active DATETIME,
     FOREIGN KEY (team_id) REFERENCES teams(id)
 );
