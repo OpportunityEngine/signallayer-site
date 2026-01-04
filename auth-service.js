@@ -791,22 +791,19 @@ class AuthService {
       const database = db.getDatabase();
 
       database.prepare(`
-        INSERT INTO audit_log (
-          user_id, user_email, action, resource_type, resource_id,
-          description, metadata, ip_address, user_agent, success, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO audit_logs (
+          user_id, action, resource_type, resource_id,
+          details, ip_address, user_agent, success, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).run(
         userId,
-        userEmail,
         action,
         resourceType,
         resourceId,
-        description,
-        metadata ? JSON.stringify(metadata) : null,
+        JSON.stringify({ description, metadata, error: errorMessage }),
         ipAddress,
         userAgent,
-        success ? 1 : 0,
-        errorMessage
+        success ? 1 : 0
       );
     } catch (error) {
       console.error('[AUTH] Failed to log audit:', error);
