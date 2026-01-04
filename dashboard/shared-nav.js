@@ -24,7 +24,7 @@ function initializeNavigation() {
       name: 'Manager',
       url: '/dashboard/manager-view.html',
       icon: '📊',
-      roles: ['admin', 'manager']
+      roles: ['admin', 'manager', 'customer_admin']
     },
     vp: {
       name: 'VP',

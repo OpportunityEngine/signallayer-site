@@ -362,9 +362,9 @@
             else if (data.data.user.role === 'manager') {
               window.location.href = '/dashboard/manager-view.html';
             }
-            // Customer Admin (VP/Regional Manager) sees VP dashboard
+            // Customer Admin (VP/Regional Manager) sees Manager dashboard with VP tab
             else if (data.data.user.role === 'customer_admin') {
-              window.location.href = 'http://localhost:5173/dashboard';
+              window.location.href = '/dashboard/manager-view.html';
             }
             // Rep sees rep dashboard
             else if (data.data.user.role === 'rep') {
