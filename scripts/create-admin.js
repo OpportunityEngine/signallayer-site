@@ -94,10 +94,10 @@ async function createAdmin() {
     // Hash password
     const passwordHash = await bcrypt.hash(password, config.bcryptRounds);
 
-    // Insert user
+    // Insert user (admin users are auto-verified)
     const result = database.prepare(`
-      INSERT INTO users (email, name, password_hash, role, account_name, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, 'admin', ?, 1, datetime('now'), datetime('now'))
+      INSERT INTO users (email, name, password_hash, role, account_name, is_active, is_email_verified, created_at, updated_at)
+      VALUES (?, ?, ?, 'admin', ?, 1, 1, datetime('now'), datetime('now'))
     `).run(email, fullName, passwordHash, accountName);
 
     console.log('\n✅ Admin user created successfully!');
