@@ -1093,8 +1093,9 @@ if (config.trustProxy) {
 
 // ===== Serve Static Dashboard Files =====
 // Serve dashboard HTML files and assets from /dashboard directory
-app.use(express.static('dashboard'));
-console.log('✅ Static dashboard files served from /dashboard');
+app.use("/dashboard", express.static(DASHBOARD_DIR));
+app.use(express.static(DASHBOARD_DIR)); // Also serve at root for backward compatibility
+console.log('✅ Static dashboard files served from /dashboard and root');
 
 // ===== Revenue Radar Database & API Integration =====
 const db = require('./database');
@@ -1363,12 +1364,8 @@ if (dashboardRoutes) {
   app.use("/api/dashboard", dashboardRoutes);
 }
 
-if (fs.existsSync(DASHBOARD_DIR)) {
-  app.use("/dashboard", express.static(DASHBOARD_DIR, { index: false }));
-  app.get(["/dashboard", "/dashboard/"], (req, res) => {
-    return res.sendFile(path.join(DASHBOARD_DIR, "index.html"));
-  });
-}
+// Dashboard static files are served earlier in the middleware chain (line ~1096)
+// Removed duplicate static middleware to avoid conflicts
 
 app.get("/api/runs", (req, res) => {
   try {
