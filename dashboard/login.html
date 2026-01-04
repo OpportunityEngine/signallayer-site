@@ -342,18 +342,26 @@
           localStorage.setItem('refreshToken', data.refreshToken);
           localStorage.setItem('user', JSON.stringify(data.user));
 
-          // Show success and redirect immediately
-          successDiv.textContent = 'Login successful! Redirecting...';
+          // Professional success transition
+          successDiv.textContent = '✓ Welcome back, ' + data.user.name;
           successDiv.style.display = 'block';
 
-          // Redirect based on role (immediate)
-          if (data.user.role === 'admin') {
-            window.location.href = '/dashboard/manager-view.html';
-          } else if (data.user.role === 'rep') {
-            window.location.href = '/dashboard/revenue-dashboard.html';
-          } else {
-            window.location.href = '/dashboard/revenue-dashboard.html';
-          }
+          // Smooth fade out animation
+          const loginCard = document.querySelector('.login-card');
+          loginCard.style.transition = 'opacity 0.4s ease-out, transform 0.4s ease-out';
+          loginCard.style.opacity = '0';
+          loginCard.style.transform = 'scale(0.95)';
+
+          // Redirect after smooth animation
+          setTimeout(() => {
+            if (data.user.role === 'admin') {
+              window.location.href = '/dashboard/manager-view.html';
+            } else if (data.user.role === 'rep') {
+              window.location.href = '/dashboard/revenue-dashboard.html';
+            } else {
+              window.location.href = '/dashboard/revenue-dashboard.html';
+            }
+          }, 400);
 
         } else {
           // Show error
