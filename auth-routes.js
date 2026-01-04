@@ -287,7 +287,7 @@ router.get('/me', requireAuth, async (req, res) => {
     const db = require('./database').getDatabase();
 
     const user = db.prepare(`
-      SELECT id, email, full_name, role, account_name,
+      SELECT id, email, name, role, account_name,
              is_active, is_email_verified, last_login_at, created_at
       FROM users
       WHERE id = ?
@@ -305,7 +305,7 @@ router.get('/me', requireAuth, async (req, res) => {
       data: {
         id: user.id,
         email: user.email,
-        fullName: user.full_name,
+        fullName: user.name,
         role: user.role,
         accountName: user.account_name,
         isActive: user.is_active,
@@ -515,7 +515,7 @@ router.get('/users',
       const db = require('./database').getDatabase();
 
       const users = db.prepare(`
-        SELECT id, email, full_name, role, account_name,
+        SELECT id, email, name, role, account_name,
                is_active, is_email_verified, last_login_at, created_at
         FROM users
         ORDER BY created_at DESC
@@ -526,7 +526,7 @@ router.get('/users',
         data: users.map(u => ({
           id: u.id,
           email: u.email,
-          fullName: u.full_name,
+          fullName: u.name,
           role: u.role,
           accountName: u.account_name,
           isActive: u.is_active,
@@ -565,7 +565,7 @@ router.put('/users/:userId',
       const values = [];
 
       if (fullName !== undefined) {
-        updates.push('full_name = ?');
+        updates.push('name = ?');
         values.push(fullName);
       }
 

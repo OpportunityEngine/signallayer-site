@@ -165,7 +165,7 @@ class AuthService {
     // Create user
     const result = database.prepare(`
       INSERT INTO users (
-        email, password_hash, full_name, role, account_name,
+        email, password_hash, name, role, account_name,
         is_active, password_changed_at, created_by
       ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
     `).run(email, passwordHash, fullName, role, accountName, true, createdBy);
@@ -206,7 +206,7 @@ class AuthService {
 
     // Get user
     const user = database.prepare(`
-      SELECT id, email, password_hash, full_name, role, account_name,
+      SELECT id, email, password_hash, name, role, account_name,
              is_active, is_email_verified, failed_login_attempts, locked_until
       FROM users
       WHERE email = ?
@@ -332,7 +332,7 @@ class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        fullName: user.full_name,
+        fullName: user.name,
         role: user.role,
         accountName: user.account_name,
         isEmailVerified: user.is_email_verified
