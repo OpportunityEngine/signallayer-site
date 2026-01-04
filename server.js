@@ -128,6 +128,7 @@ const backupService = require('./backup-service');  // Database backups
 const healthRoutes = require('./health-routes');  // Health monitoring
 const backupRoutes = require('./backup-routes');  // Backup management
 const authRoutes = require('./auth-routes');  // Authentication routes
+const userManagementRoutes = require('./user-management-routes');  // User management
 // --------------------------------------------------------------------
 
 // -------------------- Core app bootstrap --------------------
@@ -1131,6 +1132,10 @@ try {
 // Authentication routes (login, register, password reset, etc.)
 app.use('/auth', authRoutes);
 console.log('✅ Authentication routes registered at /auth');
+
+// User Management routes (admin only - full CRUD)
+app.use('/api/user-management', userManagementRoutes);
+console.log('✅ User management routes registered at /api/user-management');
 
 // Health check routes (public - for load balancers)
 app.use('/health', healthRoutes);
