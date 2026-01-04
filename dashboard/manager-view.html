@@ -1,0 +1,1702 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Revenue Radar – Manager Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 32px 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header with role toggle */
+    .header {
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 900;
+      color: #fbbf24;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                  0 4px 12px rgba(251, 191, 36, 0.25),
+                  0 0 0 2px rgba(251, 191, 36, 0.35),
+                  inset 0 2px 4px rgba(255, 255, 255, 0.1),
+                  inset 0 -2px 4px rgba(0, 0, 0, 0.5);
+      border: 1.5px solid rgba(251, 191, 36, 0.4);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.3px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      margin-bottom: 4px;
+    }
+
+    .header-text .subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .header-text .subtitle .highlight {
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
+    /* Role toggle */
+    .role-toggle {
+      display: flex;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .role-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-btn.active {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      color: #0f172a;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .role-btn:hover:not(.active) {
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+    }
+
+    /* Card styles */
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.12);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                  0 1px 4px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      border-color: rgba(251, 191, 36, 0.35);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4),
+                  0 2px 8px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(251, 191, 36, 0.9);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.5);
+      color: #e2e8f0;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(251, 191, 36, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: #0f172a;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(251, 191, 36, 0.35),
+                  0 2px 6px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    button.primary:hover {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.45),
+                  0 3px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Opportunity Logic Configuration */
+    .logic-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .logic-item {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(251, 191, 36, 0.08);
+      border-radius: 14px;
+      padding: 18px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logic-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .logic-item:hover {
+      border-color: rgba(251, 191, 36, 0.35);
+      transform: translateY(-2px);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .logic-item:hover::before {
+      opacity: 1;
+    }
+
+    .logic-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.5);
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(251, 191, 36, 0.5);
+      background: rgba(15, 23, 42, 0.7);
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    /* SPIFs Table */
+    .spif-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 8px;
+    }
+
+    .spif-table thead th {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(251, 191, 36, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      text-align: left;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.4);
+      border-top: 1px solid rgba(251, 191, 36, 0.12);
+      border-bottom: 1px solid rgba(251, 191, 36, 0.12);
+    }
+
+    .spif-table thead th:first-child {
+      border-left: 1px solid rgba(251, 191, 36, 0.12);
+      border-radius: 10px 0 0 10px;
+    }
+
+    .spif-table thead th:last-child {
+      border-right: 1px solid rgba(251, 191, 36, 0.12);
+      border-radius: 0 10px 10px 0;
+    }
+
+    .spif-table tbody tr {
+      background: rgba(15, 23, 42, 0.3);
+      transition: all 0.2s;
+    }
+
+    .spif-table tbody tr:hover {
+      background: rgba(15, 23, 42, 0.5);
+      transform: translateX(4px);
+    }
+
+    .spif-table tbody td {
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      border-top: 1px solid rgba(148, 163, 184, 0.1);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .spif-table tbody td:first-child {
+      border-left: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 10px 0 0 10px;
+    }
+
+    .spif-table tbody td:last-child {
+      border-right: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 0 10px 10px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .badge.active {
+      background: rgba(120, 255, 190, 0.18);
+      border: 1px solid rgba(120, 255, 190, 0.3);
+      color: rgba(120, 255, 190, 0.95);
+    }
+
+    .badge.gold {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: rgba(251, 191, 36, 0.95);
+    }
+
+    /* Campaign Builder */
+    .campaign-form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.5);
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: rgba(251, 191, 36, 0.5);
+      background: rgba(15, 23, 42, 0.7);
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    /* Campaign list */
+    .campaign-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .campaign-item {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(251, 191, 36, 0.08);
+      border-radius: 14px;
+      padding: 16px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .campaign-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .campaign-item:hover {
+      border-color: rgba(251, 191, 36, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .campaign-item:hover::before {
+      opacity: 1;
+    }
+
+    .campaign-content h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .campaign-content p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .campaign-meta {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    /* Fade in animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card {
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 16px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .role-toggle {
+        width: 100%;
+      }
+
+      .role-btn {
+        flex: 1;
+      }
+
+      .logic-grid,
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header with role toggle -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">$</div>
+        <div class="header-text">
+          <h1>Revenue Radar</h1>
+          <div class="subtitle">Manager Dashboard • <span class="highlight">Team Intelligence</span></div>
+        </div>
+      </div>
+      <div class="role-toggle">
+        <button class="role-btn active">Manager</button>
+        <button class="role-btn" onclick="window.location.href='rep-view.html'">Rep</button>
+      </div>
+    </div>
+
+    <!-- Opportunity Logic Configuration -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Opportunity Logic Configuration</div>
+        <button class="primary" onclick="saveLogicConfig()">Save Changes</button>
+      </div>
+      <div class="logic-grid">
+        <div class="logic-item">
+          <div class="logic-label">Min Contract Value ($)</div>
+          <input type="number" id="minContractValue" value="5000" min="0" step="500">
+        </div>
+        <div class="logic-item">
+          <div class="logic-label">Likelihood Threshold (%)</div>
+          <input type="number" id="likelihoodThreshold" value="60" min="0" max="100">
+        </div>
+        <div class="logic-item">
+          <div class="logic-label">Days Until MLA Expiry</div>
+          <input type="number" id="daysToExpiry" value="90" min="1">
+        </div>
+        <div class="logic-item">
+          <div class="logic-label">Priority Scoring Model</div>
+          <select id="scoringModel">
+            <option value="value">Contract Value</option>
+            <option value="likelihood" selected>Likelihood to Close</option>
+            <option value="urgency">Urgency (Expiry Date)</option>
+            <option value="balanced">Balanced Score</option>
+          </select>
+        </div>
+        <div class="logic-item">
+          <div class="logic-label">Auto-Assign Threshold</div>
+          <input type="number" id="autoAssignThreshold" value="75" min="0" max="100">
+        </div>
+        <div class="logic-item">
+          <div class="logic-label">Notification Frequency</div>
+          <select id="notificationFreq">
+            <option value="realtime">Real-time</option>
+            <option value="daily" selected>Daily Digest</option>
+            <option value="weekly">Weekly Summary</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Excel MLA Upload -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📄 Upload MLA Contract (Excel)</div>
+        <button class="primary" onclick="document.getElementById('mlaExcelFile').click()">📂 Select Excel File</button>
+      </div>
+
+      <div style="background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.15);">
+        <p style="margin: 0 0 16px 0; color: #94a3b8; font-size: 14px;">
+          Upload large Excel MLA contracts (supports .xls and .xlsx). The system will automatically detect SKU and Price columns.
+        </p>
+
+        <input type="file" id="mlaExcelFile" accept=".xls,.xlsx" style="display: none;" onchange="handleExcelFileSelect(event)">
+
+        <div class="logic-grid" style="margin-bottom: 16px;">
+          <div class="logic-item">
+            <div class="logic-label">Contract Number *</div>
+            <input type="text" id="mlaContractNumber" placeholder="e.g., MLA-2024-ACME-001" required>
+          </div>
+          <div class="logic-item">
+            <div class="logic-label">Account Name *</div>
+            <input type="text" id="mlaAccountName" placeholder="e.g., ACME Corporation" required>
+          </div>
+          <div class="logic-item">
+            <div class="logic-label">Vendor Name (optional)</div>
+            <input type="text" id="mlaVendorName" placeholder="e.g., Industrial Supplies Inc">
+          </div>
+        </div>
+
+        <div id="mlaFileInfo" style="background: #0f172a; padding: 12px; border-radius: 4px; border: 1px solid rgba(251, 191, 36, 0.25); margin-bottom: 16px; display: none;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 24px;">📊</span>
+            <div>
+              <div id="mlaFileName" style="font-weight: 600; font-size: 14px; color: #e2e8f0;"></div>
+              <div id="mlaFileSize" style="color: #94a3b8; font-size: 12px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <button id="uploadMlaBtn" onclick="uploadExcelMLA()" class="primary" style="width: 100%;" disabled>
+          Upload & Parse Contract
+        </button>
+
+        <div id="mlaUploadStatus" style="margin-top: 16px; display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Email Invoice Autopilot System -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📧 Email Invoice Autopilot</div>
+        <div style="display: flex; gap: 12px;">
+          <button class="primary" onclick="openAddEmailMonitor()">+ Add Email Monitor</button>
+          <button onclick="refreshEmailMonitors()" style="background: #4b5563; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div style="padding: 24px;">
+        <!-- Service Status -->
+        <div id="emailServiceStatus" style="background: #1e293b; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div id="statusIndicator" style="width: 12px; height: 12px; border-radius: 50%; background: #6b7280;"></div>
+              <div>
+                <div style="font-weight: 600; font-size: 14px;">Service Status</div>
+                <div id="statusText" style="color: #9ca3af; font-size: 13px; margin-top: 2px;">Loading...</div>
+              </div>
+            </div>
+            <div id="activeMonitorsCount" style="font-size: 24px; font-weight: 700; color: #3b82f6;">-</div>
+          </div>
+        </div>
+
+        <!-- Cost Savings Summary (This Month) -->
+        <div id="savingsSummary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+          <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">💰 Autopilot Savings Detected (This Month)</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div>
+              <div id="totalSavings" style="font-size: 32px; font-weight: 800; margin-bottom: 4px;">$0</div>
+              <div style="font-size: 13px; opacity: 0.9;">Total Savings Detected</div>
+            </div>
+            <div>
+              <div id="criticalFindings" style="font-size: 32px; font-weight: 800; margin-bottom: 4px;">0</div>
+              <div style="font-size: 13px; opacity: 0.9;">Critical Findings</div>
+            </div>
+            <div>
+              <div id="invoicesProcessed" style="font-size: 32px; font-weight: 800; margin-bottom: 4px;">0</div>
+              <div style="font-size: 13px; opacity: 0.9;">Invoices Processed</div>
+            </div>
+            <div>
+              <div id="totalOpportunities" style="font-size: 32px; font-weight: 800; margin-bottom: 4px;">0</div>
+              <div style="font-size: 13px; opacity: 0.9;">Opportunities Created</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Email Monitors -->
+        <div style="margin-bottom: 24px;">
+          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Active Email Monitors</h3>
+          <div id="emailMonitorsList" style="display: grid; gap: 12px;">
+            <div style="text-align: center; padding: 40px; color: #6b7280;">
+              No email monitors configured. Click "+ Add Email Monitor" to start.
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Activity Feed -->
+        <div>
+          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">📊 Live Activity Feed</h3>
+          <div id="activityFeed" style="background: #1e293b; border-radius: 8px; max-height: 400px; overflow-y: auto;">
+            <div style="text-align: center; padding: 40px; color: #6b7280;">
+              No recent activity
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Email Monitor Modal (Initially Hidden) -->
+    <div id="addEmailMonitorModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 9999; align-items: center; justify-content: center;">
+      <div style="background: #1e293b; border-radius: 12px; padding: 32px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="margin: 0; font-size: 24px; font-weight: 700;">Add Email Monitor</h2>
+          <button onclick="closeAddEmailMonitor()" style="background: none; border: none; color: #9ca3af; font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
+        </div>
+
+        <div class="logic-grid" style="margin-bottom: 20px;">
+          <div class="logic-item">
+            <div class="logic-label">Account Name *</div>
+            <input type="text" id="newMonitorAccountName" placeholder="e.g., ACME Corporation" required>
+            <small style="display: block; color: #9ca3af; margin-top: 4px;">Your business or client name</small>
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Monitor Name (optional)</div>
+            <input type="text" id="newMonitorName" placeholder="e.g., Main Invoices, Site 1 Billing">
+            <small style="display: block; color: #9ca3af; margin-top: 4px;">Friendly name for this email monitor</small>
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Email Address *</div>
+            <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required>
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Email Password/App Password *</div>
+            <input type="password" id="newMonitorPassword" placeholder="Your email password" required>
+            <small style="display: block; color: #fbbf24; margin-top: 4px;">⚠️ Use an App Password for Gmail (not your main password)</small>
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">IMAP Server</div>
+            <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" value="imap.gmail.com">
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Industry</div>
+            <select id="newMonitorIndustry">
+              <option value="">Select industry...</option>
+              <option value="restaurant">Restaurant</option>
+              <option value="retail">Retail</option>
+              <option value="healthcare">Healthcare</option>
+              <option value="manufacturing">Manufacturing</option>
+              <option value="hospitality">Hospitality</option>
+              <option value="construction">Construction</option>
+              <option value="professional_services">Professional Services</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Customer Type</div>
+            <select id="newMonitorCustomerType">
+              <option value="business">Business (Single Location)</option>
+              <option value="enterprise">Enterprise (Multiple Sites)</option>
+              <option value="accountant_multi_client">Accountant (Managing Multiple Clients)</option>
+            </select>
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Check Interval (minutes)</div>
+            <input type="number" id="newMonitorInterval" value="5" min="1" max="60">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+          <div style="font-weight: 600; margin-bottom: 12px;">Detection Features</div>
+          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+            <input type="checkbox" id="enableCostSavings" checked>
+            <span>Detect Cost Savings Opportunities</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+            <input type="checkbox" id="enableDuplicates" checked>
+            <span>Detect Duplicate Charges</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+            <input type="checkbox" id="enablePriceIncreases" checked>
+            <span>Alert on Price Increases</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="enableContractValidation">
+            <span>Validate Against Contract Pricing (requires MLA)</span>
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button onclick="createEmailMonitor()" class="primary" style="flex: 1;">Create Monitor</button>
+          <button onclick="closeAddEmailMonitor()" style="flex: 1; background: #4b5563; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancel</button>
+        </div>
+
+        <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Rules Engine: SKU Opportunity Rules -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🎯 SKU Opportunity Rules (AI-Powered)</div>
+        <button class="primary" onclick="loadRules()">↻ Refresh Rules</button>
+      </div>
+
+      <!-- Create New Rule Form -->
+      <div style="background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(251, 191, 36, 0.15);">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #fbbf24; font-weight: 700;">Create New Rule</h3>
+
+        <div class="logic-grid">
+          <div class="logic-item">
+            <div class="logic-label">Rule Name *</div>
+            <input type="text" id="ruleName" placeholder="e.g., FR Jacket Compliance Alert" required>
+          </div>
+          <div class="logic-item">
+            <div class="logic-label">Account (optional)</div>
+            <input type="text" id="ruleAccount" placeholder="Leave blank for all accounts">
+          </div>
+          <div class="logic-item">
+            <div class="logic-label">Trigger SKUs (comma-separated)</div>
+            <input type="text" id="ruleTriggers" placeholder="e.g., FR-SHIRT-100, FR-PANTS-200">
+          </div>
+        </div>
+
+        <div class="logic-grid" style="margin-top: 12px;">
+          <div class="logic-item" style="grid-column: 1 / -1;">
+            <div class="logic-label">Condition (when to fire this rule)</div>
+            <div id="conditionsContainer">
+              <div class="condition-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <select class="cond-type" style="flex: 1;">
+                  <option value="invoice_qty">Invoice Qty</option>
+                  <option value="sku_present">SKU Present</option>
+                  <option value="sku_absent">SKU Absent</option>
+                </select>
+                <input type="text" class="cond-sku" placeholder="SKU" style="flex: 1;">
+                <select class="cond-operator" style="flex: 0.5;">
+                  <option value=">">></option>
+                  <option value="<"><</option>
+                  <option value=">=">>=</option>
+                  <option value="<="><=</option>
+                </select>
+                <input type="number" class="cond-value" placeholder="Value" style="flex: 0.5;">
+              </div>
+            </div>
+            <button onclick="addConditionRow()" style="background: #6b7280; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">+ Add Condition</button>
+          </div>
+        </div>
+
+        <div class="logic-grid" style="margin-top: 12px;">
+          <div class="logic-item">
+            <div class="logic-label">Recommended SKU *</div>
+            <input type="text" id="ruleRecommendedSku" placeholder="e.g., FR-JACKET-300" required>
+          </div>
+          <div class="logic-item">
+            <div class="logic-label">Target Qty (optional)</div>
+            <input type="number" id="ruleTargetQty" placeholder="e.g., 10">
+          </div>
+          <div class="logic-item" style="grid-column: 1 / -1;">
+            <div class="logic-label">Talk Track (what rep should say)</div>
+            <textarea id="ruleTalkTrack" placeholder="e.g., I noticed you ordered FR shirts and pants but no FR jacket. OSHA requires full FR coverage..."
+                      style="width: 100%; padding: 8px; border: 1px solid rgba(251, 191, 36, 0.25); background: #0f172a; color: #e2e8f0; border-radius: 4px; font-size: 14px; min-height: 60px;"></textarea>
+          </div>
+        </div>
+
+        <button onclick="createRule()" class="primary" style="margin-top: 16px; width: 100%;">Create Rule</button>
+      </div>
+
+      <!-- Existing Rules List -->
+      <div id="rulesListContainer" style="background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.15);">
+        <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #fbbf24;">Active Rules</h3>
+        <div id="rulesList">
+          <p style="text-align: center; color: #9ca3af; padding: 20px;">Loading rules...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPIFs Management -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Sales Performance Incentive Funds (SPIFs)</div>
+        <button class="primary" onclick="openAddSpif()">+ Add New SPIF</button>
+      </div>
+      <table class="spif-table">
+        <thead>
+          <tr>
+            <th>SPIF Name</th>
+            <th>Product/Category</th>
+            <th>Incentive Amount</th>
+            <th>Active Period</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="spifTableBody">
+          <tr>
+            <td>Q1 Equipment Push</td>
+            <td>Commercial Kitchen Equipment</td>
+            <td>$250 per sale</td>
+            <td>Jan 1 - Mar 31</td>
+            <td><span class="badge active">Active</span></td>
+            <td>
+              <button onclick="editSpif(1)">Edit</button>
+              <button onclick="deleteSpif(1)">Delete</button>
+            </td>
+          </tr>
+          <tr>
+            <td>MLA Upgrade Bonus</td>
+            <td>Master Lease Upgrades</td>
+            <td>2% of contract value</td>
+            <td>Dec 15 - Feb 28</td>
+            <td><span class="badge active">Active</span></td>
+            <td>
+              <button onclick="editSpif(2)">Edit</button>
+              <button onclick="deleteSpif(2)">Delete</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Winter Service Package</td>
+            <td>Maintenance Services</td>
+            <td>$150 per package</td>
+            <td>Nov 1 - Jan 31</td>
+            <td><span class="badge gold">Ending Soon</span></td>
+            <td>
+              <button onclick="editSpif(3)">Edit</button>
+              <button onclick="deleteSpif(3)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Campaign Builder -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Product Campaign Builder</div>
+        <button class="primary" onclick="createCampaign()">Launch Campaign</button>
+      </div>
+      <div class="campaign-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="campaignName">Campaign Name</label>
+            <input type="text" id="campaignName" placeholder="e.g., Spring Equipment Sale">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="campaignProduct">Target Product/Category</label>
+            <input type="text" id="campaignProduct" placeholder="e.g., Commercial Ovens">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="campaignStart">Start Date</label>
+            <input type="text" id="campaignStart" placeholder="MM/DD/YYYY">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="campaignEnd">End Date</label>
+            <input type="text" id="campaignEnd" placeholder="MM/DD/YYYY">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="campaignTarget">Sales Target</label>
+            <input type="number" id="campaignTarget" placeholder="e.g., 50">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="campaignMessage">Campaign Message for Reps</label>
+          <textarea id="campaignMessage" placeholder="Describe the campaign objectives, talking points, and any special promotions..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Campaigns -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Active Campaigns</div>
+      </div>
+      <div class="campaign-list" id="campaignList">
+        <div class="campaign-item">
+          <div class="campaign-content">
+            <h4>Holiday Service Package Push</h4>
+            <p>Promote annual service packages to existing MLA customers</p>
+            <div class="campaign-meta">
+              <span class="badge active">Active</span> •
+              Dec 1, 2025 - Jan 31, 2026 •
+              Target: 75 packages •
+              Progress: 42/75 (56%)
+            </div>
+          </div>
+          <div>
+            <button onclick="editCampaign(1)">Edit</button>
+          </div>
+        </div>
+        <div class="campaign-item">
+          <div class="campaign-content">
+            <h4>New Equipment Financing Q1</h4>
+            <p>Focus on restaurants with aging equipment identified by system</p>
+            <div class="campaign-meta">
+              <span class="badge active">Active</span> •
+              Jan 1, 2026 - Mar 31, 2026 •
+              Target: 100 deals •
+              Progress: 8/100 (8%)
+            </div>
+          </div>
+          <div>
+            <button onclick="editCampaign(2)">Edit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function saveLogicConfig() {
+      const config = {
+        minContractValue: document.getElementById('minContractValue').value,
+        likelihoodThreshold: document.getElementById('likelihoodThreshold').value,
+        daysToExpiry: document.getElementById('daysToExpiry').value,
+        scoringModel: document.getElementById('scoringModel').value,
+        autoAssignThreshold: document.getElementById('autoAssignThreshold').value,
+        notificationFreq: document.getElementById('notificationFreq').value
+      };
+
+      localStorage.setItem('revenue_radar_logic_config', JSON.stringify(config));
+      alert('✓ Opportunity logic configuration saved successfully!');
+    }
+
+    function loadLogicConfig() {
+      try {
+        const saved = localStorage.getItem('revenue_radar_logic_config');
+        if (!saved) return;
+
+        const config = JSON.parse(saved);
+        if (config.minContractValue) document.getElementById('minContractValue').value = config.minContractValue;
+        if (config.likelihoodThreshold) document.getElementById('likelihoodThreshold').value = config.likelihoodThreshold;
+        if (config.daysToExpiry) document.getElementById('daysToExpiry').value = config.daysToExpiry;
+        if (config.scoringModel) document.getElementById('scoringModel').value = config.scoringModel;
+        if (config.autoAssignThreshold) document.getElementById('autoAssignThreshold').value = config.autoAssignThreshold;
+        if (config.notificationFreq) document.getElementById('notificationFreq').value = config.notificationFreq;
+      } catch (e) {
+        console.error('Failed to load config:', e);
+      }
+    }
+
+    function openAddSpif() {
+      alert('SPIF creation modal would open here. Integration with backend pending.');
+    }
+
+    function editSpif(id) {
+      alert(`Edit SPIF ${id} - Integration with backend pending.`);
+    }
+
+    function deleteSpif(id) {
+      if (confirm('Are you sure you want to delete this SPIF?')) {
+        alert(`SPIF ${id} deleted - Integration with backend pending.`);
+      }
+    }
+
+    function createCampaign() {
+      const name = document.getElementById('campaignName').value;
+      const product = document.getElementById('campaignProduct').value;
+      const start = document.getElementById('campaignStart').value;
+      const end = document.getElementById('campaignEnd').value;
+      const target = document.getElementById('campaignTarget').value;
+      const message = document.getElementById('campaignMessage').value;
+
+      if (!name || !product || !start || !end || !target || !message) {
+        alert('Please fill in all campaign fields.');
+        return;
+      }
+
+      alert('✓ Campaign created successfully! Integration with backend pending.');
+
+      // Clear form
+      document.getElementById('campaignName').value = '';
+      document.getElementById('campaignProduct').value = '';
+      document.getElementById('campaignStart').value = '';
+      document.getElementById('campaignEnd').value = '';
+      document.getElementById('campaignTarget').value = '';
+      document.getElementById('campaignMessage').value = '';
+    }
+
+    function editCampaign(id) {
+      alert(`Edit campaign ${id} - Integration with backend pending.`);
+    }
+
+    // ===== EMAIL AUTOPILOT FUNCTIONS =====
+
+    // Auto-load email monitors on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshEmailMonitors();
+      loadEmailServiceStatus();
+      loadDetectedSavings();
+      loadActivityFeed();
+
+      // Auto-refresh every 30 seconds
+      setInterval(() => {
+        loadEmailServiceStatus();
+        loadActivityFeed();
+      }, 30000);
+    });
+
+    async function loadEmailServiceStatus() {
+      try {
+        const response = await fetch('/api/email-service/status');
+        const result = await response.json();
+
+        if (result.success) {
+          const status = result.data;
+          const statusIndicator = document.getElementById('statusIndicator');
+          const statusText = document.getElementById('statusText');
+          const activeMonitorsCount = document.getElementById('activeMonitorsCount');
+
+          if (status.isRunning) {
+            statusIndicator.style.background = '#10b981';
+            statusText.textContent = `Running - Last check: just now`;
+            activeMonitorsCount.textContent = status.activeMonitors;
+          } else {
+            statusIndicator.style.background = '#6b7280';
+            statusText.textContent = 'Service inactive';
+            activeMonitorsCount.textContent = '0';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading service status:', error);
+      }
+    }
+
+    async function refreshEmailMonitors() {
+      try {
+        const response = await fetch('/api/email-monitors');
+        const result = await response.json();
+
+        if (result.success) {
+          const monitors = result.data;
+          const list = document.getElementById('emailMonitorsList');
+
+          if (monitors.length === 0) {
+            list.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">No email monitors configured. Click "+ Add Email Monitor" to start.</div>';
+            return;
+          }
+
+          list.innerHTML = monitors.map(monitor => {
+            const lastCheck = monitor.last_check_at ?
+              new Date(monitor.last_check_at).toLocaleTimeString() : 'Never';
+
+            return `
+              <div style="background: #1e293b; padding: 20px; border-radius: 8px; border-left: 4px solid ${monitor.is_active ? '#10b981' : '#6b7280'};">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                  <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
+                      ${monitor.monitor_name || monitor.account_name}
+                    </div>
+                    <div style="color: #9ca3af; font-size: 13px;">
+                      📧 ${monitor.email_address}
+                      ${monitor.industry ? `| ${monitor.industry}` : ''}
+                      ${monitor.customer_type ? `| ${monitor.customer_type.replace('_', ' ')}` : ''}
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; background: #334155; padding: 8px 12px; border-radius: 6px;">
+                      <input type="checkbox" ${monitor.is_active ? 'checked' : ''}
+                             onchange="toggleEmailMonitor(${monitor.id}, this.checked)">
+                      <span style="font-size: 13px; font-weight: 600;">${monitor.is_active ? 'Active' : 'Paused'}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155;">
+                  <div>
+                    <div style="color: #9ca3af; font-size: 12px;">Invoices Found</div>
+                    <div style="font-weight: 700; font-size: 18px; color: #3b82f6;">${monitor.total_invoices_found || 0}</div>
+                  </div>
+                  <div>
+                    <div style="color: #9ca3af; font-size: 12px;">Opportunities</div>
+                    <div style="font-weight: 700; font-size: 18px; color: #f59e0b;">${monitor.total_opportunities_detected || 0}</div>
+                  </div>
+                  <div>
+                    <div style="color: #9ca3af; font-size: 12px;">Savings Detected</div>
+                    <div style="font-weight: 700; font-size: 18px; color: #10b981;">$${((monitor.total_savings_detected_cents || 0) / 100).toFixed(0)}</div>
+                  </div>
+                  <div>
+                    <div style="color: #9ca3af; font-size: 12px;">Last Check</div>
+                    <div style="font-weight: 600; font-size: 14px;">${lastCheck}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('Error loading monitors:', error);
+      }
+    }
+
+    async function loadDetectedSavings() {
+      try {
+        const response = await fetch('/api/detected-savings?days=30');
+        const result = await response.json();
+
+        if (result.success) {
+          const summary = result.data;
+
+          document.getElementById('totalSavings').textContent =
+            `$${((summary.total_savings_cents || 0) / 100).toLocaleString()}`;
+          document.getElementById('criticalFindings').textContent =
+            summary.critical_count || 0;
+          document.getElementById('invoicesProcessed').textContent =
+            summary.total_findings || 0;
+          document.getElementById('totalOpportunities').textContent =
+            summary.total_findings || 0;
+        }
+      } catch (error) {
+        console.error('Error loading savings:', error);
+      }
+    }
+
+    async function loadActivityFeed() {
+      try {
+        const response = await fetch('/api/email-monitors-activity?limit=20');
+        const result = await response.json();
+
+        if (result.success) {
+          const activities = result.data;
+          const feed = document.getElementById('activityFeed');
+
+          if (activities.length === 0) {
+            feed.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">No recent activity</div>';
+            return;
+          }
+
+          feed.innerHTML = activities.map(activity => {
+            const time = new Date(activity.created_at).toLocaleTimeString();
+            const severityColors = {
+              info: '#3b82f6',
+              warning: '#f59e0b',
+              error: '#ef4444',
+              critical: '#dc2626'
+            };
+            const color = severityColors[activity.severity] || '#6b7280';
+
+            const icons = {
+              monitor_started: '🟢',
+              email_received: '📬',
+              invoice_processed: '✅',
+              savings_detected: '💰',
+              error: '❌',
+              alert_sent: '🔔'
+            };
+            const icon = icons[activity.activity_type] || '📋';
+
+            return `
+              <div style="padding: 12px 16px; border-bottom: 1px solid #334155;">
+                <div style="display: flex; align-items: start; gap: 12px;">
+                  <span style="font-size: 18px;">${icon}</span>
+                  <div style="flex: 1;">
+                    <div style="font-size: 13px; color: #e2e8f0;">${activity.message}</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                      ${time} | ${activity.account_name || 'System'}
+                    </div>
+                  </div>
+                  <div style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; margin-top: 4px;"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('Error loading activity feed:', error);
+      }
+    }
+
+    function openAddEmailMonitor() {
+      document.getElementById('addEmailMonitorModal').style.display = 'flex';
+    }
+
+    function closeAddEmailMonitor() {
+      document.getElementById('addEmailMonitorModal').style.display = 'none';
+      document.getElementById('newMonitorStatus').style.display = 'none';
+    }
+
+    async function createEmailMonitor() {
+      const accountName = document.getElementById('newMonitorAccountName').value.trim();
+      const monitorName = document.getElementById('newMonitorName').value.trim();
+      const emailAddress = document.getElementById('newMonitorEmail').value.trim();
+      const password = document.getElementById('newMonitorPassword').value;
+      const imapHost = document.getElementById('newMonitorImapHost').value.trim();
+      const industry = document.getElementById('newMonitorIndustry').value;
+      const customerType = document.getElementById('newMonitorCustomerType').value;
+      const checkIntervalMinutes = parseInt(document.getElementById('newMonitorInterval').value);
+
+      if (!accountName || !emailAddress || !password) {
+        alert('Please fill in all required fields (Account Name, Email, Password)');
+        return;
+      }
+
+      const statusDiv = document.getElementById('newMonitorStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = '<div style="background: #3b82f6; color: white; padding: 12px; border-radius: 6px;">Creating monitor...</div>';
+
+      try {
+        const response = await fetch('/api/email-monitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountName,
+            monitorName: monitorName || null,
+            emailAddress,
+            password,
+            imapHost,
+            industry,
+            customerType,
+            checkIntervalMinutes,
+            enableCostSavingsDetection: document.getElementById('enableCostSavings').checked,
+            enableDuplicateDetection: document.getElementById('enableDuplicates').checked,
+            enablePriceIncreaseAlerts: document.getElementById('enablePriceIncreases').checked,
+            enableContractValidation: document.getElementById('enableContractValidation').checked
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          statusDiv.innerHTML = `
+            <div style="background: #10b981; color: white; padding: 12px; border-radius: 6px;">
+              <strong>✓ Monitor Created Successfully!</strong><br>
+              Now monitoring: ${emailAddress}
+            </div>
+          `;
+
+          setTimeout(() => {
+            closeAddEmailMonitor();
+            refreshEmailMonitors();
+            loadEmailServiceStatus();
+          }, 2000);
+
+        } else {
+          statusDiv.innerHTML = `
+            <div style="background: #ef4444; color: white; padding: 12px; border-radius: 6px;">
+              <strong>Error:</strong> ${result.error}
+            </div>
+          `;
+        }
+
+      } catch (error) {
+        statusDiv.innerHTML = `
+          <div style="background: #ef4444; color: white; padding: 12px; border-radius: 6px;">
+            <strong>Error:</strong> ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    async function toggleEmailMonitor(monitorId, isActive) {
+      try {
+        const response = await fetch(`/api/email-monitors/${monitorId}/toggle`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isActive })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log(`Monitor ${monitorId} ${isActive ? 'enabled' : 'disabled'}`);
+          setTimeout(() => {
+            refreshEmailMonitors();
+            loadEmailServiceStatus();
+          }, 500);
+        }
+
+      } catch (error) {
+        console.error('Error toggling monitor:', error);
+        alert('Failed to update monitor status');
+      }
+    }
+
+    // ===== EXCEL MLA UPLOAD FUNCTIONS =====
+
+    let selectedExcelFile = null;
+
+    function handleExcelFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      selectedExcelFile = file;
+
+      // Show file info
+      document.getElementById('mlaFileName').textContent = file.name;
+      const sizeKB = (file.size / 1024).toFixed(2);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      document.getElementById('mlaFileSize').textContent =
+        file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+      document.getElementById('mlaFileInfo').style.display = 'block';
+
+      // Enable upload button
+      document.getElementById('uploadMlaBtn').disabled = false;
+    }
+
+    async function uploadExcelMLA() {
+      const contractNumber = document.getElementById('mlaContractNumber').value.trim();
+      const accountName = document.getElementById('mlaAccountName').value.trim();
+      const vendorName = document.getElementById('mlaVendorName').value.trim();
+
+      if (!contractNumber || !accountName) {
+        alert('Contract Number and Account Name are required');
+        return;
+      }
+
+      if (!selectedExcelFile) {
+        alert('Please select an Excel file first');
+        return;
+      }
+
+      const statusDiv = document.getElementById('mlaUploadStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = '<div style="background: #3b82f6; color: white; padding: 12px; border-radius: 4px;">📤 Uploading and parsing Excel file...</div>';
+
+      try {
+        // Convert file to base64
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64String = reader.result.split(',')[1];
+            resolve(base64String);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedExcelFile);
+        });
+
+        // Upload to backend
+        const response = await fetch('/upload-mla-excel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': 'manager@demo.com'
+          },
+          body: JSON.stringify({
+            excelBase64: base64,
+            contractNumber: contractNumber,
+            accountName: accountName,
+            vendorName: vendorName || null
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.ok) {
+          statusDiv.innerHTML = `
+            <div style="background: #10b981; color: white; padding: 12px; border-radius: 4px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">✓ MLA Contract Uploaded Successfully!</div>
+              <div style="font-size: 13px;">
+                <strong>Contract:</strong> ${result.data.contract_number}<br>
+                <strong>Account:</strong> ${result.data.account_name}<br>
+                <strong>Products Loaded:</strong> ${result.data.products_loaded}<br>
+                <strong>Detected Columns:</strong> ${result.data.detected_columns.sku} (SKU), ${result.data.detected_columns.price} (Price)
+              </div>
+              ${result.data.sample_products && result.data.sample_products.length > 0 ? `
+                <div style="margin-top: 8px; font-size: 12px;">
+                  <strong>Sample Products:</strong>
+                  ${result.data.sample_products.map(p =>
+                    `<div>• ${p.sku}: $${(p.priceCents / 100).toFixed(2)}</div>`
+                  ).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+
+          // Clear form
+          document.getElementById('mlaContractNumber').value = '';
+          document.getElementById('mlaAccountName').value = '';
+          document.getElementById('mlaVendorName').value = '';
+          document.getElementById('mlaExcelFile').value = '';
+          document.getElementById('mlaFileInfo').style.display = 'none';
+          document.getElementById('uploadMlaBtn').disabled = true;
+          selectedExcelFile = null;
+
+        } else {
+          statusDiv.innerHTML = `
+            <div style="background: #ef4444; color: white; padding: 12px; border-radius: 4px;">
+              <strong>❌ Upload Failed</strong><br>
+              ${result.error}
+            </div>
+          `;
+        }
+
+      } catch (error) {
+        console.error('Upload error:', error);
+        statusDiv.innerHTML = `
+          <div style="background: #ef4444; color: white; padding: 12px; border-radius: 4px;">
+            <strong>❌ Upload Error</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // ===== RULES ENGINE FUNCTIONS =====
+
+    function addConditionRow() {
+      const container = document.getElementById('conditionsContainer');
+      const row = document.createElement('div');
+      row.className = 'condition-row';
+      row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+      row.innerHTML = `
+        <select class="cond-type" style="flex: 1;">
+          <option value="invoice_qty">Invoice Qty</option>
+          <option value="sku_present">SKU Present</option>
+          <option value="sku_absent">SKU Absent</option>
+        </select>
+        <input type="text" class="cond-sku" placeholder="SKU" style="flex: 1;">
+        <select class="cond-operator" style="flex: 0.5;">
+          <option value=">">></option>
+          <option value="<"><</option>
+          <option value=">=">>=</option>
+          <option value="<="><=</option>
+        </select>
+        <input type="number" class="cond-value" placeholder="Value" style="flex: 0.5;">
+        <button onclick="this.parentElement.remove()" style="background: #ef4444; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
+      `;
+      container.appendChild(row);
+    }
+
+    async function createRule() {
+      const ruleName = document.getElementById('ruleName').value.trim();
+      const ruleAccount = document.getElementById('ruleAccount').value.trim();
+      const ruleTriggers = document.getElementById('ruleTriggers').value.split(',').map(s => s.trim()).filter(Boolean);
+      const ruleRecommendedSku = document.getElementById('ruleRecommendedSku').value.trim();
+      const ruleTargetQty = parseInt(document.getElementById('ruleTargetQty').value) || null;
+      const ruleTalkTrack = document.getElementById('ruleTalkTrack').value.trim();
+
+      if (!ruleName) {
+        alert('Rule name is required');
+        return;
+      }
+
+      if (!ruleRecommendedSku) {
+        alert('Recommended SKU is required');
+        return;
+      }
+
+      // Collect conditions
+      const conditions = [];
+      document.querySelectorAll('#conditionsContainer .condition-row').forEach(row => {
+        const type = row.querySelector('.cond-type').value;
+        const sku = row.querySelector('.cond-sku').value.trim();
+        const operator = row.querySelector('.cond-operator').value;
+        const value = row.querySelector('.cond-value').value;
+
+        if (sku && value) {
+          conditions.push({
+            leftOperandType: type,
+            leftOperandValue: sku,
+            operator: operator,
+            rightValue: value,
+            logic: 'AND'
+          });
+        }
+      });
+
+      const rule = {
+        name: ruleName,
+        accountName: ruleAccount || null,
+        triggers: ruleTriggers,
+        conditions: conditions,
+        actions: [{
+          actionType: 'recommend_sku',
+          recommendedSku: ruleRecommendedSku,
+          recommendedQtyTarget: ruleTargetQty,
+          notesTalkTrack: ruleTalkTrack,
+          autoCreateOpportunity: true
+        }]
+      };
+
+      try {
+        const response = await fetch('/api/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rule)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`✓ Rule "${ruleName}" created successfully!`);
+          // Clear form
+          document.getElementById('ruleName').value = '';
+          document.getElementById('ruleAccount').value = '';
+          document.getElementById('ruleTriggers').value = '';
+          document.getElementById('ruleRecommendedSku').value = '';
+          document.getElementById('ruleTargetQty').value = '';
+          document.getElementById('ruleTalkTrack').value = '';
+          // Reset conditions to 1 row
+          document.getElementById('conditionsContainer').innerHTML = `
+            <div class="condition-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <select class="cond-type" style="flex: 1;">
+                <option value="invoice_qty">Invoice Qty</option>
+                <option value="sku_present">SKU Present</option>
+                <option value="sku_absent">SKU Absent</option>
+              </select>
+              <input type="text" class="cond-sku" placeholder="SKU" style="flex: 1;">
+              <select class="cond-operator" style="flex: 0.5;">
+                <option value=">">></option>
+                <option value="<"><</option>
+                <option value=">=">>=</option>
+                <option value="<="><=</option>
+              </select>
+              <input type="number" class="cond-value" placeholder="Value" style="flex: 0.5;">
+            </div>
+          `;
+          loadRules();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Create rule error:', error);
+        alert('Failed to create rule: ' + error.message);
+      }
+    }
+
+    async function loadRules() {
+      try {
+        const response = await fetch('/api/rules');
+        const result = await response.json();
+
+        if (!result.success) {
+          document.getElementById('rulesList').innerHTML = '<p style="color: #ef4444;">Failed to load rules</p>';
+          return;
+        }
+
+        const rules = result.data;
+
+        if (rules.length === 0) {
+          document.getElementById('rulesList').innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 20px;">No rules created yet. Create your first rule above!</p>';
+          return;
+        }
+
+        document.getElementById('rulesList').innerHTML = rules.map(rule => `
+          <div style="border: 1px solid rgba(251, 191, 36, 0.25); padding: 16px; margin-bottom: 12px; border-radius: 8px; background: #0f172a;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+              <div>
+                <h4 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #e2e8f0;">${rule.name}</h4>
+                <p style="margin: 0; font-size: 13px; color: #94a3b8;">
+                  ${rule.account_name ? `Account: ${rule.account_name}` : 'All Accounts'} |
+                  Triggers: ${rule.triggers.join(', ') || 'Always'} |
+                  Fired: ${rule.times_fired || 0} times
+                </p>
+              </div>
+              <label style="cursor: pointer; color: #e2e8f0;">
+                <input type="checkbox" ${rule.is_active ? 'checked' : ''}
+                       onchange="toggleRule(${rule.id}, this.checked)"
+                       style="margin-right: 4px;">
+                Active
+              </label>
+            </div>
+            ${rule.conditions && rule.conditions.length > 0 ? `
+              <div style="font-size: 12px; color: #94a3b8; margin: 8px 0;">
+                <strong style="color: #fbbf24;">Conditions:</strong> ${rule.conditions.map(c =>
+                  `${c.left_operand_type.replace('_', ' ')} of ${c.left_operand_value} ${c.operator} ${c.right_value}`
+                ).join(' AND ')}
+              </div>
+            ` : ''}
+            ${rule.actions && rule.actions[0] ? `
+              <div style="font-size: 12px; color: #10b981; font-weight: 500; margin-top: 8px;">
+                → Recommends: ${rule.actions[0].recommended_sku}
+                ${rule.actions[0].recommended_qty_target ? ` (Target: ${rule.actions[0].recommended_qty_target})` : ''}
+              </div>
+            ` : ''}
+            ${rule.actions && rule.actions[0]?.notes_talk_track ? `
+              <div style="font-size: 12px; color: #94a3b8; font-style: italic; margin-top: 8px;">
+                <span style="color: #fbbf24;">Talk track:</span> "${rule.actions[0].notes_talk_track}"
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Load rules error:', error);
+        document.getElementById('rulesList').innerHTML = '<p style="color: #ef4444;">Error loading rules</p>';
+      }
+    }
+
+    async function toggleRule(ruleId, isActive) {
+      try {
+        const response = await fetch(`/api/rules/${ruleId}/toggle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isActive })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log(`Rule ${ruleId} ${isActive ? 'activated' : 'deactivated'}`);
+        } else {
+          alert('Failed to toggle rule');
+          loadRules(); // Reload to reset checkbox
+        }
+      } catch (error) {
+        console.error('Toggle rule error:', error);
+        alert('Error toggling rule');
+        loadRules();
+      }
+    }
+
+    // Load saved config on page load
+    loadLogicConfig();
+    loadRules(); // Load rules on page load
+  </script>
+</body>
+</html>

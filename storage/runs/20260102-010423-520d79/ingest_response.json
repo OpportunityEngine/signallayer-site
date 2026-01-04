@@ -1,0 +1,141 @@
+{
+  "ok": true,
+  "run_id": "20260102-010423-520d79",
+  "source_type": "pdf_text",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 773,
+    "raw_text_preview": "\n\nSubtotal$27.97\nTax$1.96\nTip$5.39\nTotal$35.32\n11411 Forest Ave. Clive, IA 50325\nYour Receipt\nJune 28th, 2023\nItemPriceQtyLine Total\nCHIPS & DIPS$5.691$5.69\n  CHIPS AND SALSA-$0.0010.00\nMODELO ESP L$7.591$7.59\nTRIPLE DIPPER$14.691$14.69\n   SW EGGRLLS$0.0010.00\n   BONELESS5 HC$0.0010.00\n   HNY CHIP CRISPERS$0.0010.00\n   1 PLATE$0.0010.00\nPayment$35.32\nPayment\nCredit\nTime: 08:06 PM\nChili's - Clive (10051806)\n\nCheck: 3020190\nTable: 808\nAuth: 040425\nCard: XXXXXXXXXXXX5620\nAID: A0000000041010\nCVM: NO_CVM\nIAD: 0110A04001220000000000000000000000FF\nTSI: E800\nTVR: 0000008000\nAppl Preferred Name: NA\nCryptogram: 333603C1C70CEA9B\n11411 Forest Ave.\nClive, IA 50325\n515-226-1744\nwww.chilis.com\nThanks for using the Presto!\nDid you like the Presto tablet? Learn more at presto.com",
+    "meta": {
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/untitled%20folder/Chili's.pdf",
+        "mime_type": "application/pdf"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_ref/kind",
+        "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "url",
+            "file",
+            "email",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/untitled%20folder/Chili's.pdf",
+      "mime_type": "application/pdf"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": false,
+      "ok": false,
+      "source": "none",
+      "leadCount": 0,
+      "leads": [],
+      "cacheKey": "",
+      "inferredZip": "50325"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-d2d4b83d90a3",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2026-01-02T06:04:23.906Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "d2d4b83d90a3ee3ee3fa2807b45788630c91eeaeec61f15fc61e014ad7972347",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "pdf_text",
+      "captured_at": "2026-01-02T06:04:23.907Z",
+      "parser": {
+        "name": "ingest.pdf_text",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/untitled%20folder/Chili's.pdf",
+        "mime_type": "application/pdf"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

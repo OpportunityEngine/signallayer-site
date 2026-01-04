@@ -1,0 +1,73 @@
+{
+  "httpStatus": 200,
+  "data": {
+    "ok": true,
+    "message": "Backend processed invoice and MLA/opportunity logic.",
+    "account": {
+      "accountNumber": "",
+      "accountName": "Batch Test Account"
+    },
+    "stats": {
+      "totalItems": 11,
+      "frItemsCount": 1,
+      "frWearerCount": 2
+    },
+    "mlaSummary": {
+      "mlaId": "MLA-GEN-DEFAULT",
+      "mlaName": "Standard FR Program",
+      "liner": {
+        "presentOnFormulary": true,
+        "sku": "64356",
+        "description": "FR Insulated Liner",
+        "pricePerWeek": 2.5,
+        "allowedAtLocalLevel": false,
+        "formularyTier": "Extended",
+        "notes": "Extended formulary item; may require approval depending on region."
+      }
+    },
+    "opportunity": {
+      "linerAddOn": {
+        "sku": "64356",
+        "description": "FR Insulated Liner add-on",
+        "frWearerCount": 2,
+        "currentLinerWearers": 0,
+        "missingLiners": 2,
+        "potentialWeeklyRevenue": 5,
+        "commissionEstimate": {
+          "multiplier": 3,
+          "estimatedPayout": 15
+        }
+      },
+      "jacketConversion": {
+        "description": "Convert non-FR jackets to FR jackets",
+        "frUniformQty": 0,
+        "estimatedFrEmployees": 0,
+        "nonFrJacketQty": 0,
+        "frWearersWithNonFrJacket": 0,
+        "exampleJacketPricePerWeek": 3,
+        "potentialWeeklyRevenue": 0,
+        "commissionEstimate": {
+          "multiplier": 3,
+          "estimatedPayout": 0
+        }
+      },
+      "uniformMix": {
+        "frUniformQty": 0,
+        "nonFrUniformQty": 0,
+        "estimatedFrEmployees": 0,
+        "estimatedNonFrEmployees": 0,
+        "conversionRule": "11 uniforms ≈ 1 employee",
+        "notes": "Uniform quantities are derived from shirt + pant pairs. Employee estimates are based on 11 uniforms per employee."
+      }
+    },
+    "version": "v2025-12-18cintas-parser-1",
+    "extracted": {
+      "textLength": 18390,
+      "usedOcr": false,
+      "ocrTextLength": 0,
+      "parserUsed": "cintas",
+      "parsedItemsCount": 11,
+      "sourceLabel": "invoice.pdf"
+    }
+  }
+}

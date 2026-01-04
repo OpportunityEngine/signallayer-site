@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "Bella's Italian Kitchen Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 535-5522",
+      "email": "service@interactiveblue.com",
+      "city": "Boston",
+      "state": "MA",
+      "postalCode": "02101",
+      "score": 65,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "Bella's Italian Kitchen Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 539-6301",
+      "email": "",
+      "city": "Boston",
+      "state": "MA",
+      "postalCode": "02101",
+      "score": 50,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "Bella's Italian Kitchen Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 530-4651",
+      "email": "",
+      "city": "Boston",
+      "state": "MA",
+      "postalCode": "02101",
+      "score": 50,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "bella's italian kitchen|02101",
+    "hit": true
+  },
+  "accountName": "Bella's Italian Kitchen",
+  "postalCode": "02101",
+  "addressHint": "123 Main St, Boston, MA 02101",
+  "run_id": "20260102-200928-5f232a",
+  "storedAt": "2026-01-03T01:11:08.613Z"
+}

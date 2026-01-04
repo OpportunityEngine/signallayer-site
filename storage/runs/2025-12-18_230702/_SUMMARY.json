@@ -1,0 +1,11 @@
+[
+  {
+    "file": "invoice.pdf",
+    "status": "pass-items",
+    "parserUsed": "cintas",
+    "textLength": 18390,
+    "usedOcr": false,
+    "parsedItemsCount": 11,
+    "message": "Backend processed invoice and MLA/opportunity logic."
+  }
+]

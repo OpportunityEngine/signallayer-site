@@ -1,0 +1,191 @@
+{
+  "ok": false,
+  "run_id": "20251229-215245-e9c8bf",
+  "source_type": "chrome",
+  "status": "no_items",
+  "message": "Canonical invoice validation failed",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 56,
+    "raw_text_preview": "OWENS CORNING\n1901 49TH AVE N\nMINNEAPOLIS, MN 55430-3793",
+    "meta": {
+      "source_ref": null
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": null,
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "web_scraper",
+      "leadCount": 3,
+      "leads": [
+        {
+          "contactName": "Owens Corning Main Line",
+          "title": "Main Line",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "376656-2770",
+          "email": "info@bbbwestflorida.org",
+          "city": "MINNEAPOLIS",
+          "state": "MN",
+          "postalCode": "55430",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "Owens Corning Contact 2",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 535-5522",
+          "email": "boglesby@bbbwestflorida.org",
+          "city": "MINNEAPOLIS",
+          "state": "MN",
+          "postalCode": "55430",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "Owens Corning Contact 3",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 539-6301",
+          "email": "teikenberry@bbbwestflorida.org",
+          "city": "MINNEAPOLIS",
+          "state": "MN",
+          "postalCode": "55430",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        }
+      ],
+      "cacheKey": "owens corning|55430",
+      "inferredZip": "55430"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-9f1b9c50321f",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-30T02:53:13.171Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "9f1b9c50321f4f6e5710717c359eb7ff287c7e1d9161b2837bc97a2a00420af0",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Owens Corning",
+        "normalized_name": "owens corning",
+        "addresses": [
+          {
+            "raw": "OWENS CORNING, MINNEAPOLIS, MN 55430-3793",
+            "street": "OWENS CORNING",
+            "city": "MINNEAPOLIS",
+            "state": "MN",
+            "postal": "55430",
+            "country": "US",
+            "confidence": 0.85
+          }
+        ]
+      },
+      "bill_to": null,
+      "ship_to": {
+        "name": "Owens Corning",
+        "normalized_name": "owens corning",
+        "addresses": [
+          {
+            "raw": "OWENS CORNING, MINNEAPOLIS, MN 55430-3793",
+            "street": "OWENS CORNING",
+            "city": "MINNEAPOLIS",
+            "state": "MN",
+            "postal": "55430",
+            "country": "US",
+            "confidence": 0.85
+          }
+        ]
+      }
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "chrome",
+      "captured_at": "2025-12-30T02:53:13.171Z",
+      "parser": {
+        "name": "ingest.chrome",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "unknown",
+        "value": null,
+        "mime_type": null
+      }
+    },
+    "confidence": {
+      "overall": 0.6,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

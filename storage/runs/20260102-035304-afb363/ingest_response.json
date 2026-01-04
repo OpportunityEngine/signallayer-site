@@ -1,0 +1,272 @@
+{
+  "ok": true,
+  "run_id": "20260102-035304-afb363",
+  "source_type": "pdf_text",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 41754,
+    "raw_text_preview": "\n\nREMIT PAYMENT TO:PAY YOUR BILL WITH MYCINTAS\nWWW.CINTAS.COM/MYACCOUNT\nMANAGE | SHOP | PAY\nCINTAS CORP\nP.O. BOX 630921\nCINCINNATI, OH 45263-0921\nCUSTOMER SVC/BILLING \nCINTAS FAX #\n833-711-5953\n815-873-3642\nINVOICE\nSHIP TO:OWENS CORNING\n7000 MCLARIN RD\nFAIRBURN, GA 30213-2879\nBILL TO:OWENS CORNING\n7000 MCLARIN RD\nFAIRBURN, GA 30213-2879\nINVOICE #\nINVOICE DATE\nSERVICE TICKET #\nPURCHASE ORDER #\nCUSTOMER REF #\n4252185149\n12/05/2025\n4252185149\n4517055109\n GA-OWENS CORNING\nSOLD TO #\nPAYER #\nPAYMENT TERMS\nSORT #\nCINTAS ROUTE\n15798725\n15798725\nNET 80 DAYS\n037K0001396\n14 / DAY 5 / STOP 002\nEMP#/LOCK#MATERIALDESCRIPTIONFREQEXCHQTYUNIT PRICELINE TOTALTAX\nX101924X6 XTRAC MAT ONYX01F46.068 24.27N\nX102023X10 XTRAC MAT ONYX01F27.599 15.20N\nX261060\" DUST MOP-01F100.889 8.89N\nX7717WHITE MICROFIBR WIPE-01F1000.198 19.80N\n0001X391CVRL/FR/CARHART/88C12N/NVY/LS - SZ\nPREM-3XLLS\n01F11.005 1.01N\n0001CHARLES SHAW  SUBTOTAL - 1.01\n0002X391CVRL/FR/CARHART/88C12N/NVY/LS - SZ\nPREM-0XLLS\n01F111.005 11.06N\n0002JAMES HANCOCK  SUBTOTAL - 11.06\n0003X270CARGO PANT/CHARCOAL - SZ PREM-0423401F110.436 4.80N\n0003X396WRSHRT/CRHT/RIPSTOP/GREY/LS - SZ\nPREM-4XLLS\n01F110.406 4.47N\n0003X912COVERALL/NAVY TWILL - SZ PREM-056LS01F20.544 1.09N\n0003JASON PALMER  SUBTOTAL - 10.36\n0004X396WRHSHT/CRHRT/RIPSTOP/NAVY/SS-RG00M01F60.300 1.80N\n0004X396WRSHRT/CRHT/RIPSTOP/NAVY/LS-00MLS01F50.300 1.50N\n0004TAMMIE MCLENDON  SUBTOTAL - 3.30\n0005X396WRHSHT/CRHRT/RIPSTOP/NAVY/SS-RG2XL01F110.300 3.30N\n0005JESUS GARCIA  SUBTOTAL - 3.30\n0006X23270PANT/M/CARGO/CANV/STRETCH/NVY-0302801F110.407 4.48N\n0006CRESCENDO GREEN  SUBTOTAL - 4.48\n0007X270CARGO PANTS/NAVY-0363001F110.330 3.63N\n0007TAMEKA JONES BUTLER  SUBTOTAL - 3.63\n0008X396WRSHRT/CRHT/RIPSTOP/NAVY/LS-0XLLS01F110.300 3.30N\n0008MICHELLE BOYD  SUBTOTAL - 3.30\n0009X392FRSHRT/CRHRT5.3INHRNT/NVY/LS - SZ\nPREM-3XLLS\n01F110.707 7.78N\n0009X73478FR/DUNGRE/CRHRTT/INHRNT/NVY-0403201F110.634 6.97N\n0009KENNY BARGE  SUBTOTAL - 14.75\n0010X396WRSHRT/CRHT/RIPSTOP/GREY/LS-0XLLS01F50.300 1.50N\n001…",
+    "meta": {
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/new%20owens%20corning%20invoice.pdf",
+        "mime_type": "application/pdf"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_ref/kind",
+        "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "url",
+            "file",
+            "email",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/new%20owens%20corning%20invoice.pdf",
+      "mime_type": "application/pdf"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "zoominfo",
+      "leadCount": 5,
+      "leads": [
+        {
+          "company": "Owens Welding",
+          "normalizedCompany": "owens welding",
+          "contactName": "Cleveland Owens Welding",
+          "title": "Facility Manager",
+          "department": "Operations",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "706-865-7982",
+          "email": "",
+          "city": "Cleveland",
+          "state": "GA",
+          "postalCode": "30528",
+          "regionalFlag": "Contact listed on 3 postal addresses - likely regional manager",
+          "isRegional": true,
+          "verified": false,
+          "verificationScore": 80,
+          "verificationLevel": "medium",
+          "verificationMethods": "Valid format, area code matches state; Cross-verified at multiple locations",
+          "verifiedBy": "multi-method",
+          "verifiedDate": "2026-01-02T08:16:34.444Z",
+          "confidenceScore": 40,
+          "crossLocationVerified": true,
+          "roleLabel": "⭐ DECISION MAKER",
+          "rolePriority": 2,
+          "roleColor": "orange",
+          "score": 40
+        },
+        {
+          "company": "Owens Corning",
+          "normalizedCompany": "owens corning",
+          "contactName": "Fairburn Owens Corning",
+          "title": "Facility Manager",
+          "department": "Operations",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(770) 964-9811",
+          "email": "",
+          "city": "Fairburn",
+          "state": "GA",
+          "postalCode": "30213",
+          "regionalFlag": "Contact listed on 3 postal addresses - likely regional manager",
+          "isRegional": true,
+          "verified": false,
+          "verificationScore": 30,
+          "verificationLevel": "low",
+          "verificationMethods": "Valid format, area code matches state",
+          "verifiedBy": "multi-method",
+          "verifiedDate": "2026-01-02T08:12:41.930Z",
+          "confidenceScore": 40,
+          "roleLabel": "⭐ DECISION MAKER",
+          "rolePriority": 2,
+          "roleColor": "orange",
+          "score": 40
+        },
+        {
+          "company": "Owens Corning - Asphalt",
+          "normalizedCompany": "owens corning asphalt",
+          "contactName": "Atlanta Owens Corning - Asphalt",
+          "title": "Facility Manager",
+          "department": "Operations",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "404-836-3512",
+          "email": "",
+          "city": "Atlanta",
+          "state": "GA",
+          "postalCode": "30336",
+          "regionalFlag": "Contact listed on 3 postal addresses - likely regional manager",
+          "isRegional": true,
+          "verified": false,
+          "verificationScore": 30,
+          "verificationLevel": "low",
+          "verificationMethods": "Valid format, area code matches state",
+          "verifiedBy": "multi-method",
+          "verifiedDate": "2026-01-02T08:14:06.136Z",
+          "confidenceScore": 40,
+          "roleLabel": "⭐ DECISION MAKER",
+          "rolePriority": 2,
+          "roleColor": "orange",
+          "score": 40
+        },
+        {
+          "contactName": "Owens Welding Contact 2",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(706) 219-4300",
+          "email": "",
+          "company": "Owens Welding",
+          "address": "",
+          "source": "verified_yellow_pages",
+          "confidenceScore": 10,
+          "seniorityLevel": "entry",
+          "verified": true,
+          "verificationScore": 70,
+          "verificationLevel": "medium",
+          "verificationMethods": "Found via yellow_pages",
+          "verifiedBy": "yellow_pages",
+          "verifiedDate": "2026-01-02T08:16:34.444Z",
+          "roleLabel": "Contact",
+          "rolePriority": 6,
+          "roleColor": "gray",
+          "score": 10
+        },
+        {
+          "contactName": "Owens Welding Contact 3",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(706) 219-2706",
+          "email": "",
+          "company": "Owens Welding",
+          "address": "",
+          "source": "verified_yellow_pages",
+          "confidenceScore": 10,
+          "seniorityLevel": "entry",
+          "verified": true,
+          "verificationScore": 70,
+          "verificationLevel": "medium",
+          "verificationMethods": "Found via yellow_pages",
+          "verifiedBy": "yellow_pages",
+          "verifiedDate": "2026-01-02T08:16:34.444Z",
+          "roleLabel": "Contact",
+          "rolePriority": 6,
+          "roleColor": "gray",
+          "score": 10
+        }
+      ],
+      "cacheKey": "owens corning|30528",
+      "inferredZip": "30528"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-ebc4487890b2",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2026-01-02T08:53:04.442Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "ebc4487890b2778ceb05d3b9a2d6cf3384f4aa62ec0033f1d0525b236f6e154a",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "pdf_text",
+      "captured_at": "2026-01-02T08:53:04.443Z",
+      "parser": {
+        "name": "ingest.pdf_text",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/new%20owens%20corning%20invoice.pdf",
+        "mime_type": "application/pdf"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

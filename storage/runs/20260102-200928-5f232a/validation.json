@@ -1,0 +1,21 @@
+{
+  "ok": false,
+  "errors": [
+    {
+      "instancePath": "/provenance/source_type",
+      "schemaPath": "#/properties/provenance/properties/source_type/enum",
+      "keyword": "enum",
+      "params": {
+        "allowedValues": [
+          "chrome",
+          "pdf_text",
+          "pdf_ocr",
+          "upload",
+          "api",
+          "unknown"
+        ]
+      },
+      "message": "must be equal to one of the allowed values"
+    }
+  ]
+}

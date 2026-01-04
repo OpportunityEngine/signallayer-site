@@ -1,0 +1,69 @@
+{
+  "schema_version": "invoice.v1",
+  "doc": {
+    "doc_id": "DOC-d36182049c39",
+    "doc_type": "invoice",
+    "invoice_number": null,
+    "purchase_order": null,
+    "issued_at": "2025-12-31T15:17:30.338Z",
+    "service_period": null,
+    "currency": "USD",
+    "raw_text_hash": null,
+    "tags": []
+  },
+  "parties": {
+    "vendor": {
+      "name": "Unknown Vendor",
+      "normalized_name": "unknown vendor",
+      "addresses": []
+    },
+    "customer": {
+      "name": "Unknown Customer",
+      "normalized_name": "unknown customer",
+      "addresses": []
+    },
+    "bill_to": null,
+    "ship_to": null
+  },
+  "line_items": [],
+  "totals": {
+    "invoice_total": null,
+    "weekly_equivalent_total": null,
+    "notes": []
+  },
+  "signals": [],
+  "opportunities": [],
+  "provenance": {
+    "source_type": "chrome",
+    "captured_at": "2025-12-31T15:17:30.338Z",
+    "parser": {
+      "name": "ingest.chrome",
+      "version": "1.0.0",
+      "warnings": [
+        "No line items found in payload (checked multiple candidate keys)."
+      ]
+    },
+    "source_ref": {
+      "kind": "url",
+      "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+      "mime_type": "text/html"
+    }
+  },
+  "confidence": {
+    "overall": 0.5,
+    "fields": [
+      {
+        "path": "parties.customer.name",
+        "score": 0.3,
+        "method": "unknown",
+        "evidence": []
+      },
+      {
+        "path": "line_items",
+        "score": 0.1,
+        "method": "parsed",
+        "evidence": []
+      }
+    ]
+  }
+}

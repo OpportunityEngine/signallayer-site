@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "source": "zoominfo",
+  "leads": [
+    {
+      "company": "Owens Corning",
+      "normalizedCompany": "owens corning",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "612-522-3671",
+      "email": "",
+      "city": "Minneapolis",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 25
+    }
+  ],
+  "cache": {
+    "key": "owens corning|55430",
+    "hit": true
+  },
+  "accountName": "OWENS CORNING",
+  "postalCode": "55430",
+  "addressHint": "1901 49TH AVE N, MINNEAPOLIS, MN 55430",
+  "run_id": "20251231-171652-89ce7a",
+  "storedAt": "2025-12-31T22:16:53.006Z"
+}

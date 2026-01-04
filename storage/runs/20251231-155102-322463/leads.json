@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "PROFILE PRODUCTS Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(299) 381-7999",
+      "email": "",
+      "city": "MONTICELLO",
+      "state": "GA",
+      "postalCode": "31064",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "PROFILE PRODUCTS Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(404) 766-0875",
+      "email": "",
+      "city": "MONTICELLO",
+      "state": "GA",
+      "postalCode": "31064",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "PROFILE PRODUCTS Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(470) 877-0061",
+      "email": "",
+      "city": "MONTICELLO",
+      "state": "GA",
+      "postalCode": "31064",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "profile products|31064",
+    "hit": true
+  },
+  "accountName": "PROFILE PRODUCTS",
+  "postalCode": "31064",
+  "addressHint": "719 GEORGIA PACIFIC RD, MONTICELLO, GA 31064",
+  "run_id": "20251231-155102-322463",
+  "storedAt": "2025-12-31T20:51:48.183Z"
+}

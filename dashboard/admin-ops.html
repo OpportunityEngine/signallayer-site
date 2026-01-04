@@ -1,0 +1,1300 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin Operations Dashboard - Revenue Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background gradient - matches rep view */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 2px solid rgba(251, 191, 36, 0.35);
+      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.1),
+                  0 1px 3px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .header h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.3px;
+    }
+
+    .header p {
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .header .timestamp {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-pill.healthy {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .status-pill.warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+    }
+
+    .status-pill.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.12);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      border-color: rgba(251, 191, 36, 0.35);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4),
+                  0 2px 8px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(251, 191, 36, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid rgba(251, 191, 36, 0.25);
+    }
+
+    .metric {
+      margin-bottom: 12px;
+    }
+
+    .metric:last-child {
+      margin-bottom: 0;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 2px;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .metric-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .metric-change.positive {
+      color: #10b981;
+    }
+
+    .metric-change.negative {
+      color: #ef4444;
+    }
+
+    .mini-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .mini-metric:last-child {
+      margin-bottom: 0;
+    }
+
+    .mini-metric-label {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .mini-metric-value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(251, 191, 36, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-bottom: 2px solid rgba(251, 191, 36, 0.15);
+    }
+
+    .table td {
+      padding: 8px 10px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.08);
+    }
+
+    .table tr:hover {
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+    }
+
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .alert.warning {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .alert.info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .refresh-btn {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      color: #0f172a;
+      border: 2px solid rgba(251, 191, 36, 0.5);
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3),
+                  0 2px 6px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .refresh-btn:hover {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+      border-color: rgba(251, 191, 36, 0.8);
+      box-shadow: 0 6px 16px rgba(251, 191, 36, 0.4),
+                  0 3px 8px rgba(0, 0, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid rgba(251, 191, 36, 0.25);
+    }
+
+    .section-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.5px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1.5px solid;
+    }
+
+    .badge.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .badge.warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.4);
+    }
+
+    .badge.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .badge.critical {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fee2e2;
+      border-color: rgba(239, 68, 68, 0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .badge.high {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.5);
+    }
+
+    .badge.medium {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .badge.low {
+      background: rgba(100, 116, 139, 0.15);
+      color: #94a3b8;
+      border-color: rgba(100, 116, 139, 0.3);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .error-item {
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      border: 2px solid;
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .error-item:hover {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .error-item.critical {
+      border-color: rgba(239, 68, 68, 0.5);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(15, 19, 32, 0.8) 100%);
+    }
+
+    .error-item.high {
+      border-color: rgba(251, 191, 36, 0.5);
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(15, 19, 32, 0.8) 100%);
+    }
+
+    .error-item.medium {
+      border-color: rgba(59, 130, 246, 0.4);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(15, 19, 32, 0.8) 100%);
+    }
+
+    .error-item.low {
+      border-color: rgba(100, 116, 139, 0.3);
+      background: linear-gradient(135deg, rgba(100, 116, 139, 0.05) 0%, rgba(15, 19, 32, 0.8) 100%);
+    }
+
+    .error-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .error-type {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .error-timestamp {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .error-description {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+      color: #e2e8f0;
+    }
+
+    .error-reason {
+      font-size: 13px;
+      color: #94a3b8;
+      font-style: italic;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .error-context {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .resolve-btn {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      color: #0f172a;
+      border: 2px solid rgba(251, 191, 36, 0.5);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .resolve-btn:hover {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+      border-color: rgba(251, 191, 36, 0.8);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+
+    /* Scrollable containers for sections that can grow */
+    .scrollable-container {
+      max-height: 500px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 8px;
+    }
+
+    .scrollable-container-small {
+      max-height: 350px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 8px;
+    }
+
+    /* Custom scrollbar styling */
+    .scrollable-container::-webkit-scrollbar,
+    .scrollable-container-small::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .scrollable-container::-webkit-scrollbar-track,
+    .scrollable-container-small::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 4px;
+    }
+
+    .scrollable-container::-webkit-scrollbar-thumb,
+    .scrollable-container-small::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      border-radius: 4px;
+      border: 2px solid rgba(15, 23, 42, 0.4);
+    }
+
+    .scrollable-container::-webkit-scrollbar-thumb:hover,
+    .scrollable-container-small::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+    }
+
+    /* Smooth scrolling */
+    .scrollable-container,
+    .scrollable-container-small {
+      scroll-behavior: smooth;
+    }
+
+    /* Sticky table headers within scrollable containers */
+    .scrollable-container thead th,
+    .scrollable-container-small thead th {
+      position: sticky;
+      top: 0;
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.95) 0%, rgba(15, 19, 32, 0.95) 100%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 10;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Fade effect at bottom of scrollable containers */
+    .scrollable-container::after,
+    .scrollable-container-small::after {
+      content: '';
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(to top, rgba(15, 19, 32, 0.9) 0%, transparent 100%);
+      pointer-events: none;
+      display: block;
+      margin-top: -40px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .chart-placeholder {
+      height: 200px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+            <h1>Admin Operations Dashboard</h1>
+            <span style="font-size: 10px; font-weight: 700; color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1.5px solid rgba(239, 68, 68, 0.4); padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px;">INTERNAL ONLY</span>
+          </div>
+          <p>Real-time system health, usage analytics, and performance monitoring</p>
+          <div class="timestamp">
+            <span>Last updated:</span>
+            <span id="lastUpdated">Loading...</span>
+            <span id="systemStatus" class="status-pill healthy">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>
+              All Systems Operational
+            </span>
+          </div>
+        </div>
+        <button class="refresh-btn" onclick="refreshAllData()">
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- API Endpoint Usage (Top Priority) -->
+    <div class="section-header">
+      <h2 class="section-title">API Endpoint Usage</h2>
+    </div>
+    <div class="card">
+      <div class="scrollable-container-small">
+        <table class="table" id="apiEndpointsTable">
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Calls (Clicks)</th>
+              <th>Scans</th>
+              <th>Avg Response Time</th>
+              <th>Error Rate</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="6" class="loading">Loading endpoint stats...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- System Health Overview -->
+    <div class="section-header">
+      <h2 class="section-title">System Health</h2>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Server Status</div>
+        <div class="metric">
+          <div class="metric-value" id="serverUptime">-</div>
+          <div class="metric-label">Uptime</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">CPU Usage</span>
+          <span class="mini-metric-value" id="cpuUsage">-%</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Memory</span>
+          <span class="mini-metric-value" id="memoryUsage">- MB</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Database Health</div>
+        <div class="metric">
+          <div class="metric-value" id="dbSize">-</div>
+          <div class="metric-label">Database Size</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Total Records</span>
+          <span class="mini-metric-value" id="totalRecords">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Active Connections</span>
+          <span class="mini-metric-value" id="dbConnections">1</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Email Autopilot</div>
+        <div class="metric">
+          <div class="metric-value" id="emailMonitorsActive">-</div>
+          <div class="metric-label">Active Monitors</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Emails Processed (24h)</span>
+          <span class="mini-metric-value" id="emailsProcessed24h">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Last Check</span>
+          <span class="mini-metric-value" id="emailLastCheck">-</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">API Performance</div>
+        <div class="metric">
+          <div class="metric-value" id="apiResponseTime">-ms</div>
+          <div class="metric-label">Avg Response Time</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Requests (24h)</span>
+          <span class="mini-metric-value" id="apiRequests24h">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Error Rate</span>
+          <span class="mini-metric-value" id="apiErrorRate">-%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage Analytics -->
+    <div class="section-header">
+      <h2 class="section-title">Usage Analytics</h2>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Total Users</div>
+        <div class="metric">
+          <div class="metric-value" id="totalUsers">-</div>
+          <div class="metric-label">Registered Users</div>
+          <div class="metric-change positive" id="userGrowth">
+            <span>↗</span>
+            <span>+0% this month</span>
+          </div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Sales Reps</span>
+          <span class="mini-metric-value" id="totalReps">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Managers</span>
+          <span class="mini-metric-value" id="totalManagers">-</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Active Users</div>
+        <div class="metric">
+          <div class="metric-value" id="activeUsers24h">-</div>
+          <div class="metric-label">Last 24 Hours</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Last 7 Days</span>
+          <span class="mini-metric-value" id="activeUsers7d">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Last 30 Days</span>
+          <span class="mini-metric-value" id="activeUsers30d">-</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Invoice Processing</div>
+        <div class="metric">
+          <div class="metric-value" id="totalInvoices">-</div>
+          <div class="metric-label">Total Invoices Processed</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">This Month</span>
+          <span class="mini-metric-value" id="invoicesThisMonth">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">Today</span>
+          <span class="mini-metric-value" id="invoicesToday">-</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Opportunities Created</div>
+        <div class="metric">
+          <div class="metric-value" id="totalOpportunities">-</div>
+          <div class="metric-label">Total Opportunities</div>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">From Email Autopilot</span>
+          <span class="mini-metric-value" id="oppsFromEmail">-</span>
+        </div>
+        <div class="mini-metric">
+          <span class="mini-metric-label">From Rules Engine</span>
+          <span class="mini-metric-value" id="oppsFromRules">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Metrics -->
+    <div class="section-header">
+      <h2 class="section-title">Financial Impact</h2>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Total Savings Detected</div>
+        <div class="metric">
+          <div class="metric-value" id="totalSavings">$0</div>
+          <div class="metric-label">Lifetime Savings</div>
+          <div class="metric-change positive">
+            <span>↗</span>
+            <span id="savingsGrowth">+0% this month</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Revenue Opportunities</div>
+        <div class="metric">
+          <div class="metric-value" id="totalRevenue">$0</div>
+          <div class="metric-label">Total Pipeline Value</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Average Deal Size</div>
+        <div class="metric">
+          <div class="metric-value" id="avgDealSize">$0</div>
+          <div class="metric-label">Per Opportunity</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Customer Value</div>
+        <div class="metric">
+          <div class="metric-value" id="avgCustomerValue">$0</div>
+          <div class="metric-label">Avg Annual Value</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Customers -->
+    <div class="section-header">
+      <h2 class="section-title">Top Customers by Usage</h2>
+    </div>
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="scrollable-container-small">
+        <table class="table" id="topCustomersTable">
+          <thead>
+            <tr>
+              <th>Account Name</th>
+              <th>Invoices Processed</th>
+              <th>Opportunities</th>
+              <th>Savings Detected</th>
+              <th>Last Activity</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="6" class="loading">Loading customer data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Error Monitoring (Plain English) -->
+    <div class="section-header">
+      <h2 class="section-title">Error Monitoring</h2>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <div id="errorSummaryBadge"></div>
+        <select id="errorSeverityFilter" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 12px; border-radius: 6px; font-size: 13px;">
+          <option value="">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="errorLogs" class="scrollable-container">
+        <div class="loading">Loading errors...</div>
+      </div>
+    </div>
+
+    <!-- Recent Activity & Alerts -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">System Alerts</div>
+        <div id="systemAlerts" class="scrollable-container-small">
+          <div class="loading">Loading alerts...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent Activity</div>
+        <div id="recentActivity" class="scrollable-container-small">
+          <div class="loading">Loading activity...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Auto-refresh every 30 seconds
+    setInterval(refreshAllData, 30000);
+
+    // Load data on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshAllData();
+    });
+
+    async function refreshAllData() {
+      updateTimestamp();
+      await Promise.all([
+        loadSystemHealth(),
+        loadUsageAnalytics(),
+        loadFinancialMetrics(),
+        loadTopCustomers(),
+        loadErrorMonitoring(),
+        loadSystemAlerts(),
+        loadRecentActivity(),
+        loadAPIEndpoints()
+      ]);
+    }
+
+    function updateTimestamp() {
+      document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+    }
+
+    async function loadSystemHealth() {
+      try {
+        // Server uptime
+        const uptimeResponse = await fetch('/health');
+        const uptimeData = await uptimeResponse.json();
+
+        if (uptimeData.uptime) {
+          const hours = Math.floor(uptimeData.uptime / 3600);
+          const days = Math.floor(hours / 24);
+          document.getElementById('serverUptime').textContent =
+            days > 0 ? `${days}d ${hours % 24}h` : `${hours}h`;
+        }
+
+        // Database size
+        const dbResponse = await fetch('/api/admin/database-stats');
+        if (dbResponse.ok) {
+          const dbData = await dbResponse.json();
+          if (dbData.success) {
+            document.getElementById('dbSize').textContent = dbData.data.size;
+            document.getElementById('totalRecords').textContent = dbData.data.totalRecords.toLocaleString();
+          }
+        }
+
+        // Email autopilot status
+        const emailResponse = await fetch('/api/email-service/status');
+        if (emailResponse.ok) {
+          const emailData = await emailResponse.json();
+          if (emailData.success) {
+            document.getElementById('emailMonitorsActive').textContent = emailData.data.activeMonitors;
+          }
+        }
+
+        // Memory usage
+        if (uptimeData.memory) {
+          document.getElementById('memoryUsage').textContent =
+            `${Math.round(uptimeData.memory.heapUsed / 1024 / 1024)} MB`;
+        }
+
+      } catch (error) {
+        console.error('Error loading system health:', error);
+      }
+    }
+
+    async function loadUsageAnalytics() {
+      try {
+        const response = await fetch('/api/admin/usage-analytics');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (!result.success) return;
+
+        const data = result.data;
+
+        document.getElementById('totalUsers').textContent = data.totalUsers || 0;
+        document.getElementById('totalReps').textContent = data.totalReps || 0;
+        document.getElementById('totalManagers').textContent = data.totalManagers || 0;
+        document.getElementById('activeUsers24h').textContent = data.activeUsers24h || 0;
+        document.getElementById('activeUsers7d').textContent = data.activeUsers7d || 0;
+        document.getElementById('activeUsers30d').textContent = data.activeUsers30d || 0;
+        document.getElementById('totalInvoices').textContent = (data.totalInvoices || 0).toLocaleString();
+        document.getElementById('invoicesThisMonth').textContent = data.invoicesThisMonth || 0;
+        document.getElementById('invoicesToday').textContent = data.invoicesToday || 0;
+        document.getElementById('totalOpportunities').textContent = (data.totalOpportunities || 0).toLocaleString();
+        document.getElementById('oppsFromEmail').textContent = data.oppsFromEmail || 0;
+        document.getElementById('oppsFromRules').textContent = data.oppsFromRules || 0;
+
+      } catch (error) {
+        console.error('Error loading usage analytics:', error);
+      }
+    }
+
+    async function loadFinancialMetrics() {
+      try {
+        const response = await fetch('/api/admin/financial-metrics');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (!result.success) return;
+
+        const data = result.data;
+
+        document.getElementById('totalSavings').textContent =
+          `$${((data.totalSavingsCents || 0) / 100).toLocaleString()}`;
+        document.getElementById('totalRevenue').textContent =
+          `$${((data.totalRevenueCents || 0) / 100).toLocaleString()}`;
+        document.getElementById('avgDealSize').textContent =
+          `$${((data.avgDealSizeCents || 0) / 100).toLocaleString()}`;
+        document.getElementById('avgCustomerValue').textContent =
+          `$${((data.avgCustomerValueCents || 0) / 100).toLocaleString()}`;
+
+      } catch (error) {
+        console.error('Error loading financial metrics:', error);
+      }
+    }
+
+    async function loadTopCustomers() {
+      try {
+        const response = await fetch('/api/admin/top-customers');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (!result.success) return;
+
+        const tbody = document.querySelector('#topCustomersTable tbody');
+
+        if (!result.data || result.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b;">No customer data yet</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = result.data.map(customer => `
+          <tr>
+            <td style="font-weight: 600;">${customer.account_name}</td>
+            <td>${customer.invoices_processed || 0}</td>
+            <td>${customer.opportunities_created || 0}</td>
+            <td style="color: #10b981; font-weight: 600;">$${((customer.savings_cents || 0) / 100).toLocaleString()}</td>
+            <td>${customer.last_activity ? new Date(customer.last_activity).toLocaleDateString() : 'Never'}</td>
+            <td><span class="badge success">Active</span></td>
+          </tr>
+        `).join('');
+
+      } catch (error) {
+        console.error('Error loading top customers:', error);
+      }
+    }
+
+    async function loadSystemAlerts() {
+      try {
+        const response = await fetch('/api/admin/system-alerts');
+        if (!response.ok) {
+          document.getElementById('systemAlerts').innerHTML =
+            '<div class="alert info"><div>No critical alerts</div></div>';
+          return;
+        }
+
+        const result = await response.json();
+        if (!result.success || !result.data || result.data.length === 0) {
+          document.getElementById('systemAlerts').innerHTML =
+            '<div class="alert info"><div><strong>All systems healthy</strong><br>No alerts to display</div></div>';
+          return;
+        }
+
+        const alertsHTML = result.data.map(alert => {
+          return `
+            <div class="alert ${alert.severity}">
+              <div>
+                <strong>${alert.title}</strong><br>
+                <span style="font-size: 13px; color: #94a3b8;">${alert.message}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('systemAlerts').innerHTML = alertsHTML;
+
+      } catch (error) {
+        console.error('Error loading system alerts:', error);
+      }
+    }
+
+    async function loadRecentActivity() {
+      try {
+        const response = await fetch('/api/email-monitors-activity?limit=10');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (!result.success || !result.data || result.data.length === 0) {
+          document.getElementById('recentActivity').innerHTML =
+            '<div style="text-align: center; padding: 20px; color: #64748b;">No recent activity</div>';
+          return;
+        }
+
+        const activityHTML = result.data.map(activity => {
+          const time = new Date(activity.created_at).toLocaleTimeString();
+          return `
+            <div style="padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px;">
+              <div style="color: #e2e8f0;">${activity.message}</div>
+              <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${time}</div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('recentActivity').innerHTML = activityHTML;
+
+      } catch (error) {
+        console.error('Error loading recent activity:', error);
+      }
+    }
+
+    async function loadAPIEndpoints() {
+      // Mock data for now - you can add real API logging later
+      const endpoints = [
+        { path: 'POST /ingest', calls: 47, scans: 47, avgTime: '1.2s', errorRate: '0.5%', status: 'healthy' },
+        { path: 'GET /api/email-monitors', calls: 124, scans: 89, avgTime: '45ms', errorRate: '0%', status: 'healthy' },
+        { path: 'POST /api/email-monitors', calls: 8, scans: 8, avgTime: '320ms', errorRate: '0%', status: 'healthy' },
+        { path: 'GET /api/detected-savings', calls: 56, scans: 42, avgTime: '120ms', errorRate: '0%', status: 'healthy' },
+        { path: 'POST /upload-mla-excel', calls: 3, scans: 3, avgTime: '2.1s', errorRate: '0%', status: 'healthy' }
+      ];
+
+      const tbody = document.querySelector('#apiEndpointsTable tbody');
+      tbody.innerHTML = endpoints.map(ep => `
+        <tr>
+          <td style="font-family: 'Courier New', monospace; font-size: 12px;">${ep.path}</td>
+          <td>${ep.calls}</td>
+          <td>${ep.scans}</td>
+          <td>${ep.avgTime}</td>
+          <td>${ep.errorRate}</td>
+          <td><span class="badge success">${ep.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // =====================================================
+    // ERROR MONITORING FUNCTIONS
+    // =====================================================
+
+    async function loadErrorMonitoring() {
+      try {
+        // Load error summary
+        const summaryResponse = await fetch('/api/admin/errors/summary?hours=24');
+        const summaryData = await summaryResponse.json();
+
+        if (summaryData.success) {
+          updateErrorSummaryBadge(summaryData.data);
+        }
+
+        // Load error logs (filtered by severity if selected)
+        const severity = document.getElementById('errorSeverityFilter').value;
+        const url = severity
+          ? `/api/admin/errors?limit=20&severity=${severity}`
+          : '/api/admin/errors?limit=20';
+
+        const errorsResponse = await fetch(url);
+        const errorsData = await errorsResponse.json();
+
+        if (errorsData.success) {
+          displayErrors(errorsData.data);
+        }
+      } catch (error) {
+        console.error('Failed to load error monitoring:', error);
+        document.getElementById('errorLogs').innerHTML = `
+          <div class="alert error">
+            <div>
+              <strong>Failed to load error logs</strong>
+              <div style="font-size: 13px; margin-top: 4px; color: #94a3b8;">${error.message}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function updateErrorSummaryBadge(summary) {
+      const badge = document.getElementById('errorSummaryBadge');
+
+      if (summary.critical_count > 0) {
+        badge.innerHTML = `<span class="badge critical">${summary.critical_count} CRITICAL</span>`;
+      } else if (summary.high_count > 0) {
+        badge.innerHTML = `<span class="badge high">${summary.high_count} HIGH</span>`;
+      } else if (summary.medium_count > 0) {
+        badge.innerHTML = `<span class="badge medium">${summary.medium_count} Medium</span>`;
+      } else if (summary.low_count > 0) {
+        badge.innerHTML = `<span class="badge low">${summary.low_count} Low</span>`;
+      } else {
+        badge.innerHTML = `<span class="badge success">No Errors (24h)</span>`;
+      }
+    }
+
+    function displayErrors(errors) {
+      const container = document.getElementById('errorLogs');
+
+      if (!errors || errors.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: #10b981;">
+            <div style="font-size: 14px; font-weight: 600;">No Errors Detected</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Your system is running smoothly!</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = errors.map(error => {
+        const timeAgo = formatTimeAgo(new Date(error.created_at));
+        const statusBadge = error.status === 'resolved'
+          ? '<span class="badge success">Resolved</span>'
+          : '';
+
+        return `
+          <div class="error-item ${error.severity}" data-error-id="${error.id}">
+            <div class="error-header">
+              <div>
+                <span class="error-type">${error.error_type}</span>
+                <span class="badge ${error.severity}" style="margin-left: 8px;">${error.severity}</span>
+                ${statusBadge}
+              </div>
+              <span class="error-timestamp">${timeAgo}</span>
+            </div>
+
+            <div class="error-description">${error.plain_english}</div>
+
+            <div class="error-reason">
+              <strong>Why ${error.severity}?</strong> ${error.severity_reason}
+            </div>
+
+            ${error.endpoint || error.account_name ? `
+              <div class="error-context">
+                ${error.endpoint ? `<span>Endpoint: ${error.endpoint}</span>` : ''}
+                ${error.account_name ? `<span>Account: ${error.account_name}</span>` : ''}
+              </div>
+            ` : ''}
+
+            ${error.status !== 'resolved' ? `
+              <div style="margin-top: 12px;">
+                <button class="resolve-btn" onclick="resolveError(${error.id})">
+                  Mark as Resolved
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function resolveError(errorId) {
+      const resolvedBy = prompt('Your name (for tracking who resolved this):');
+      if (!resolvedBy) return;
+
+      const notes = prompt('Resolution notes (optional):') || '';
+
+      try {
+        const response = await fetch(`/api/admin/errors/${errorId}/resolve`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resolvedBy, notes })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('Error marked as resolved!');
+          loadErrorMonitoring(); // Refresh the list
+        } else {
+          alert('Failed to resolve error: ' + data.error);
+        }
+      } catch (error) {
+        console.error('Failed to resolve error:', error);
+        alert('Failed to resolve error: ' + error.message);
+      }
+    }
+
+    function formatTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+
+      if (seconds < 60) return 'Just now';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+      if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+      return date.toLocaleDateString();
+    }
+
+    // Add event listener for severity filter
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('errorSeverityFilter').addEventListener('change', loadErrorMonitoring);
+    });
+  </script>
+</body>
+</html>

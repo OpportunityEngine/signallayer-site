@@ -1,0 +1,126 @@
+{
+  "ok": true,
+  "run_id": "20251231-142943-449796",
+  "source_type": "chrome",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 0,
+    "raw_text_preview": "",
+    "meta": {
+      "source_ref": {
+        "kind": "url",
+        "value": "https://mail-attachment.googleusercontent.com/attachment/u/1/?ui=2&ik=cf475be27a&attid=0.1&permmsgid=msg-f:1851052390932463626&th=19b042579e2ac00a&view=att&zw&disp=inline&saddbat=ANGjdJ__lgYuCy6zQPZ_uwr-Tq2GhN3etN0NCRs976Jigwtc3puPL2BuRSH2BdDTm5pEVxdW-_YBHMivCm_TgcWnEu-fxVqHNJTayg7R5F4wQuPNheZCiGLgXYZm8-ff3B1gJkntOMsFacl7KXafBkJyG2qEdg35Z3ulCzS25uLm-3pnggZDdsyXs5q5xhYCL8-N3VsUQmhc3qJTtq2EgprfD1x-aMtuehhW_iS2Iu75hWfLdPkkWUnnBd4_zX9tEX9D5o03k5iM6J0_W9EsHSfeoVMYXwycimDGRL05gtMi3ljg7ZLfEWkqgW-6fWVNzWC1yVUnvITEDmKO4GvJwszUQ3PxCl3HHojFQtlPy6tc2iEVl-kL5zxCh0ru11-LlTKrSHMtZ0_SbnuZUWDlAL-7EKbJR4vgSGncI1VOTx8ZcxSU_g_s8SWFL2FDLUARgJNsdpcCByfAa3zirnNPxpDGnR4awRJBxbZ-WxL2XoHg2A2Y4YLb0d-Q0n0ho_JEk-LKH5t43n8gG-RVDykIkyEBmedtA3CkTtSJ1hXtjeiSc0Tu_xehXd7QCEfMIzO0axL5lYHQ07tthKneyh6A1EeWfdNn9ROOqj3px6Ap7usLDmtDOZLpHnfQo6elhdW76Z82A4K-62fbsI8NjCD9ufBl4q-jCWRNWwAjf9JfhkU4gmbDzR5Vck7pR5jYPtNXzaBZsQGCBOTp9Sf7tIG9M2dOnB1fnVuPUIg-QwXzf7CJUWfKXUfBNUGwIQ6oxmGpjhHgskA_ER9VkxjqwU9neKGCYNXHieObFjDE_Qo637P9xL3pe2CKkYeHTiVLdZFVTB_f1dlm86dBN7UOR_WTqij5do-T2Ip9pTjoguBv8qd7yhCikrLfgRovajGFO8g0M4ZOwoK3kgj2imKHqIapw_zzWxsTdnlC63ZT0CnXNiecEGcLAVonSK7ojM5ViH5IeHkDAOkrfzBl4TETKu6tFBisglzy7x-omZVKJFGq9cDTcQhWtqYBl-GKZsFg8KLMZ9JGWn7__9f8EM3AXPsJ-pua3UmUjsYYPq4sJSaepjonfXCshhlkj1-12pjiATE",
+        "mime_type": "text/html"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "url",
+      "value": "https://mail-attachment.googleusercontent.com/attachment/u/1/?ui=2&ik=cf475be27a&attid=0.1&permmsgid=msg-f:1851052390932463626&th=19b042579e2ac00a&view=att&zw&disp=inline&saddbat=ANGjdJ__lgYuCy6zQPZ_uwr-Tq2GhN3etN0NCRs976Jigwtc3puPL2BuRSH2BdDTm5pEVxdW-_YBHMivCm_TgcWnEu-fxVqHNJTayg7R5F4wQuPNheZCiGLgXYZm8-ff3B1gJkntOMsFacl7KXafBkJyG2qEdg35Z3ulCzS25uLm-3pnggZDdsyXs5q5xhYCL8-N3VsUQmhc3qJTtq2EgprfD1x-aMtuehhW_iS2Iu75hWfLdPkkWUnnBd4_zX9tEX9D5o03k5iM6J0_W9EsHSfeoVMYXwycimDGRL05gtMi3ljg7ZLfEWkqgW-6fWVNzWC1yVUnvITEDmKO4GvJwszUQ3PxCl3HHojFQtlPy6tc2iEVl-kL5zxCh0ru11-LlTKrSHMtZ0_SbnuZUWDlAL-7EKbJR4vgSGncI1VOTx8ZcxSU_g_s8SWFL2FDLUARgJNsdpcCByfAa3zirnNPxpDGnR4awRJBxbZ-WxL2XoHg2A2Y4YLb0d-Q0n0ho_JEk-LKH5t43n8gG-RVDykIkyEBmedtA3CkTtSJ1hXtjeiSc0Tu_xehXd7QCEfMIzO0axL5lYHQ07tthKneyh6A1EeWfdNn9ROOqj3px6Ap7usLDmtDOZLpHnfQo6elhdW76Z82A4K-62fbsI8NjCD9ufBl4q-jCWRNWwAjf9JfhkU4gmbDzR5Vck7pR5jYPtNXzaBZsQGCBOTp9Sf7tIG9M2dOnB1fnVuPUIg-QwXzf7CJUWfKXUfBNUGwIQ6oxmGpjhHgskA_ER9VkxjqwU9neKGCYNXHieObFjDE_Qo637P9xL3pe2CKkYeHTiVLdZFVTB_f1dlm86dBN7UOR_WTqij5do-T2Ip9pTjoguBv8qd7yhCikrLfgRovajGFO8g0M4ZOwoK3kgj2imKHqIapw_zzWxsTdnlC63ZT0CnXNiecEGcLAVonSK7ojM5ViH5IeHkDAOkrfzBl4TETKu6tFBisglzy7x-omZVKJFGq9cDTcQhWtqYBl-GKZsFg8KLMZ9JGWn7__9f8EM3AXPsJ-pua3UmUjsYYPq4sJSaepjonfXCshhlkj1-12pjiATE",
+      "mime_type": "text/html"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": false,
+      "ok": false,
+      "source": "none",
+      "leadCount": 0,
+      "leads": [],
+      "cacheKey": "",
+      "inferredZip": ""
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-c2883309af5d",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-31T19:29:43.183Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": null,
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "chrome",
+      "captured_at": "2025-12-31T19:29:43.183Z",
+      "parser": {
+        "name": "ingest.chrome",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "url",
+        "value": "https://mail-attachment.googleusercontent.com/attachment/u/1/?ui=2&ik=cf475be27a&attid=0.1&permmsgid=msg-f:1851052390932463626&th=19b042579e2ac00a&view=att&zw&disp=inline&saddbat=ANGjdJ__lgYuCy6zQPZ_uwr-Tq2GhN3etN0NCRs976Jigwtc3puPL2BuRSH2BdDTm5pEVxdW-_YBHMivCm_TgcWnEu-fxVqHNJTayg7R5F4wQuPNheZCiGLgXYZm8-ff3B1gJkntOMsFacl7KXafBkJyG2qEdg35Z3ulCzS25uLm-3pnggZDdsyXs5q5xhYCL8-N3VsUQmhc3qJTtq2EgprfD1x-aMtuehhW_iS2Iu75hWfLdPkkWUnnBd4_zX9tEX9D5o03k5iM6J0_W9EsHSfeoVMYXwycimDGRL05gtMi3ljg7ZLfEWkqgW-6fWVNzWC1yVUnvITEDmKO4GvJwszUQ3PxCl3HHojFQtlPy6tc2iEVl-kL5zxCh0ru11-LlTKrSHMtZ0_SbnuZUWDlAL-7EKbJR4vgSGncI1VOTx8ZcxSU_g_s8SWFL2FDLUARgJNsdpcCByfAa3zirnNPxpDGnR4awRJBxbZ-WxL2XoHg2A2Y4YLb0d-Q0n0ho_JEk-LKH5t43n8gG-RVDykIkyEBmedtA3CkTtSJ1hXtjeiSc0Tu_xehXd7QCEfMIzO0axL5lYHQ07tthKneyh6A1EeWfdNn9ROOqj3px6Ap7usLDmtDOZLpHnfQo6elhdW76Z82A4K-62fbsI8NjCD9ufBl4q-jCWRNWwAjf9JfhkU4gmbDzR5Vck7pR5jYPtNXzaBZsQGCBOTp9Sf7tIG9M2dOnB1fnVuPUIg-QwXzf7CJUWfKXUfBNUGwIQ6oxmGpjhHgskA_ER9VkxjqwU9neKGCYNXHieObFjDE_Qo637P9xL3pe2CKkYeHTiVLdZFVTB_f1dlm86dBN7UOR_WTqij5do-T2Ip9pTjoguBv8qd7yhCikrLfgRovajGFO8g0M4ZOwoK3kgj2imKHqIapw_zzWxsTdnlC63ZT0CnXNiecEGcLAVonSK7ojM5ViH5IeHkDAOkrfzBl4TETKu6tFBisglzy7x-omZVKJFGq9cDTcQhWtqYBl-GKZsFg8KLMZ9JGWn7__9f8EM3AXPsJ-pua3UmUjsYYPq4sJSaepjonfXCshhlkj1-12pjiATE",
+        "mime_type": "text/html"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

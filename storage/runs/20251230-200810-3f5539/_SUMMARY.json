@@ -1,0 +1,26 @@
+{
+  "run_id": "20251230-200810-3f5539",
+  "source_type": "chrome",
+  "status": "no_items",
+  "counts": {
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "rawTextLength": 0,
+    "autoLeadCount": 0
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      }
+    ]
+  }
+}

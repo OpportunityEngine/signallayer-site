@@ -1,0 +1,1284 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Revenue Radar – Rep Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 32px 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header with role toggle */
+    .header {
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 900;
+      color: #fbbf24;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                  0 4px 12px rgba(251, 191, 36, 0.25),
+                  0 0 0 2px rgba(251, 191, 36, 0.35),
+                  inset 0 2px 4px rgba(255, 255, 255, 0.1),
+                  inset 0 -2px 4px rgba(0, 0, 0, 0.5);
+      border: 1.5px solid rgba(251, 191, 36, 0.4);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.3px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      margin-bottom: 4px;
+    }
+
+    .header-text .subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .header-text .subtitle .highlight {
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
+    /* Role toggle */
+    .role-toggle {
+      display: flex;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .role-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-btn.active {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      color: #0f172a;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .role-btn:hover:not(.active) {
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+    }
+
+    /* Card styles */
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.12);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                  0 1px 4px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      border-color: rgba(251, 191, 36, 0.35);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4),
+                  0 2px 8px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(251, 191, 36, 0.9);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    /* Active SPIFs Banner */
+    .spif-banner {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.08) 100%);
+      border: 2px solid transparent;
+      border-image: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(217, 119, 6, 0.2)) 1;
+      border-radius: 18px;
+      padding: 16px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(251, 191, 36, 0.12), 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .spif-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.03) 50%, transparent 100%);
+      animation: shimmer 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes shimmer {
+      0%, 100% {
+        transform: translateX(-100%);
+        opacity: 0.4;
+      }
+      50% {
+        transform: translateX(100%);
+        opacity: 1;
+      }
+    }
+
+    .spif-content h3 {
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.95);
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .spif-content p {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 600;
+    }
+
+    .spif-value {
+      font-size: 24px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    /* Commission Tracking */
+    .commission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .kpi {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 14px;
+      padding: 20px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .kpi:hover {
+      border-color: rgba(251, 191, 36, 0.4);
+      background: rgba(15, 23, 42, 0.7);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi:hover::before {
+      opacity: 1;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      font-family: 'Montserrat', sans-serif;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .kpi-value.gold {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .kpi-sub .highlight {
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      border-radius: 999px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+    }
+
+    /* Activity Chart Container */
+    .chart-container {
+      position: relative;
+      height: 320px;
+      margin-bottom: 16px;
+    }
+
+    /* Sort Controls */
+    .sort-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .sort-btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.5);
+      color: #94a3b8;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sort-btn.active {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      border-color: rgba(251, 191, 36, 0.4);
+      color: #0f172a;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .sort-btn:hover:not(.active) {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(251, 191, 36, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Opportunity list */
+    .opportunity-list {
+      display: grid;
+      gap: 12px;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    /* Custom scrollbar for opportunity list */
+    .opportunity-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .opportunity-list::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 4px;
+    }
+
+    .opportunity-list::-webkit-scrollbar-thumb {
+      background: rgba(251, 191, 36, 0.3);
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+
+    .opportunity-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(251, 191, 36, 0.5);
+    }
+
+    .opportunity-item {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(251, 191, 36, 0.08);
+      border-radius: 14px;
+      padding: 18px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .opportunity-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .opportunity-item:hover {
+      border-color: rgba(251, 191, 36, 0.35);
+      transform: translateY(-2px);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .opportunity-item:hover::before {
+      opacity: 1;
+    }
+
+    /* Missed opportunity indicator */
+    .opportunity-item.missed {
+      border-left: 4px solid rgba(255, 90, 90, 0.6);
+    }
+
+    .opportunity-item.follow-up {
+      border-left: 4px solid rgba(255, 210, 120, 0.6);
+    }
+
+    .opportunity-content h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .opportunity-content p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .opportunity-meta {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .opportunity-actions {
+      display: flex;
+      gap: 8px;
+      flex-direction: column;
+    }
+
+    /* Alert badges */
+    .alert-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .alert-badge.urgent {
+      background: rgba(255, 90, 90, 0.15);
+      border: 1px solid rgba(255, 90, 90, 0.4);
+      color: rgba(255, 90, 90, 0.95);
+    }
+
+    .alert-badge.follow-up {
+      background: rgba(255, 210, 120, 0.18);
+      border: 1px solid rgba(255, 210, 120, 0.4);
+      color: rgba(255, 210, 120, 0.95);
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .badge.high {
+      background: rgba(120, 255, 190, 0.18);
+      border: 1px solid rgba(120, 255, 190, 0.3);
+      color: rgba(120, 255, 190, 0.95);
+    }
+
+    .badge.medium {
+      background: rgba(255, 210, 120, 0.18);
+      border: 1px solid rgba(255, 210, 120, 0.3);
+      color: rgba(255, 210, 120, 0.95);
+    }
+
+    .badge.gold {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: rgba(251, 191, 36, 0.95);
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.5);
+      color: #e2e8f0;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(251, 191, 36, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: #0f172a;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(251, 191, 36, 0.35),
+                  0 2px 6px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    button.primary:hover {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.45),
+                  0 3px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Fade in animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card {
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 16px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .role-toggle {
+        width: 100%;
+      }
+
+      .role-btn {
+        flex: 1;
+      }
+
+      .commission-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .opportunity-item {
+        grid-template-columns: 1fr;
+      }
+
+      .opportunity-actions {
+        flex-direction: row;
+      }
+
+      .sort-controls {
+        flex-direction: column;
+      }
+
+      .sort-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header with role toggle -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">$</div>
+        <div class="header-text">
+          <h1>Revenue Radar</h1>
+          <div class="subtitle">Rep Dashboard • <span class="highlight">Your Performance</span></div>
+        </div>
+      </div>
+      <div class="role-toggle">
+        <button class="role-btn" onclick="window.location.href='manager-view.html'">Manager</button>
+        <button class="role-btn active">Rep</button>
+      </div>
+    </div>
+
+    <!-- Active SPIF Banner -->
+    <div class="spif-banner">
+      <div style="flex: 1;">
+        <div class="spif-content">
+          <h3>ACTIVE SPIF - MOST MLAs REVIEWED THIS WEEK</h3>
+          <p style="margin-bottom: 12px;">Top 3 reps win $100 bonus • Ends Friday 11:59 PM</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;">
+          <div style="background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 10px; color: rgba(251, 191, 36, 0.8); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">1st Place</div>
+            <div style="font-size: 14px; font-weight: 800; color: #ffffff; margin-bottom: 2px;">John</div>
+            <div style="font-size: 12px; font-weight: 700; color: rgba(251, 191, 36, 0.95);">34 MLAs</div>
+          </div>
+          <div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 10px; color: rgba(148, 163, 184, 0.8); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">2nd Place</div>
+            <div style="font-size: 14px; font-weight: 800; color: #ffffff; margin-bottom: 2px;">Sarah</div>
+            <div style="font-size: 12px; font-weight: 700; color: rgba(148, 163, 184, 0.95);">31 MLAs</div>
+          </div>
+          <div style="background: rgba(217, 119, 6, 0.12); border: 1px solid rgba(217, 119, 6, 0.3); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 10px; color: rgba(217, 119, 6, 0.8); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">3rd Place</div>
+            <div style="font-size: 14px; font-weight: 800; color: #ffffff; margin-bottom: 2px;">You</div>
+            <div style="font-size: 12px; font-weight: 700; color: rgba(217, 119, 6, 0.95);">28 MLAs</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding-left: 24px; border-left: 1px solid rgba(251, 191, 36, 0.2);">
+        <div style="font-size: 11px; color: rgba(255, 255, 255, 0.7); font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Prize</div>
+        <div class="spif-value">$100</div>
+        <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6); font-weight: 600; margin-top: 4px;">Bonus Pay</div>
+      </div>
+    </div>
+
+    <!-- Commission Tracking -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Commission Tracking - This Month</div>
+      </div>
+      <div class="commission-grid">
+        <div class="kpi">
+          <div class="kpi-label">Total Commissions</div>
+          <div class="kpi-value gold">$8,420</div>
+          <div class="kpi-sub">+18% vs last month</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 84%;"></div>
+          </div>
+          <div class="kpi-sub" style="margin-top: 4px;">
+            <span class="highlight">84%</span> of monthly goal
+          </div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">Deals Closed</div>
+          <div class="kpi-value">12</div>
+          <div class="kpi-sub">4 this week</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">Avg Deal Size</div>
+          <div class="kpi-value">$15,800</div>
+          <div class="kpi-sub">Above team avg: <span class="highlight">$14,200</span></div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">SPIF Bonuses</div>
+          <div class="kpi-value gold">$750</div>
+          <div class="kpi-sub">3 qualifying sales</div>
+        </div>
+
+        <div class="kpi" style="border: 1px solid rgba(120, 255, 190, 0.2); background: rgba(15, 23, 42, 0.6); position: relative; overflow: visible;">
+          <div class="kpi-label" style="color: rgba(120, 255, 190, 0.7);">💰 Ready to Earn</div>
+          <div class="kpi-value" style="color: rgba(120, 255, 190, 0.85); font-size: 32px;">$4,175</div>
+          <div class="kpi-sub" style="color: rgba(148, 163, 184, 0.8);">
+            <strong style="color: rgba(120, 255, 190, 0.75);">3 hot opportunities</strong> waiting
+          </div>
+          <div class="kpi-sub" style="margin-top: 6px; color: rgba(148, 163, 184, 0.7); font-weight: 700;">
+            MLA-approved • One call away
+          </div>
+          <div style="position: absolute; top: 8px; right: 8px; background: rgba(120, 255, 190, 0.12); padding: 4px 8px; border-radius: 999px; font-size: 9px; font-weight: 900; color: rgba(120, 255, 190, 0.85); letter-spacing: 0.5px; animation: pulse 2s ease-in-out infinite;">
+            READY NOW
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opportunities - Sortable (MOVED UP) -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Your Sales Funnel - System-Detected Opportunities</div>
+      </div>
+      <div class="sort-controls">
+        <button class="sort-btn active" onclick="sortOpportunities('likelihood')">Sort by Likelihood</button>
+        <button class="sort-btn" onclick="sortOpportunities('commission')">Sort by Commission</button>
+        <button class="sort-btn" onclick="sortOpportunities('urgent')">Urgent Actions</button>
+      </div>
+      <div class="opportunity-list" id="opportunityList">
+        <!-- Missed Opportunity - Urgent -->
+        <div class="opportunity-item missed" data-likelihood="92" data-commission="1625" data-status="missed">
+          <div class="opportunity-content">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <h4>Bella's Italian Kitchen - Equipment Upgrade</h4>
+              <span class="alert-badge urgent">Not Contacted</span>
+            </div>
+            <p>MLA expires in 45 days • High likelihood to renew with equipment upgrade • <strong style="color: #ff5a5a;">Detected 12 days ago</strong></p>
+            <div class="opportunity-meta">
+              <span class="badge high">92% Likelihood</span>
+              <span class="badge high">Contract-Approved</span>
+              <span>Est. Value: <strong>$32,500</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$1,625</strong></span>
+              <span style="color: #ff5a5a; font-weight: 700;">⏰ First contact overdue by 5 days</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Contact NOW</button>
+            <button>View Details</button>
+          </div>
+        </div>
+
+        <!-- Follow-up Needed -->
+        <div class="opportunity-item follow-up" data-likelihood="88" data-commission="1400" data-status="follow-up">
+          <div class="opportunity-content">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <h4>Sunset Bistro - MLA Renewal + Service Package</h4>
+              <span class="alert-badge follow-up">Follow-Up Due</span>
+            </div>
+            <p>Strong payment history • Last contact: 8 days ago • Requested pricing info</p>
+            <div class="opportunity-meta">
+              <span class="badge high">88% Likelihood</span>
+              <span>Est. Value: <strong>$28,000</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$1,400</strong></span>
+              <span style="color: #ffd278; font-weight: 700;">⏰ Follow-up due today</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Follow Up</button>
+            <button>View History</button>
+          </div>
+        </div>
+
+        <!-- Active Opportunity -->
+        <div class="opportunity-item" data-likelihood="85" data-commission="925" data-status="active">
+          <div class="opportunity-content">
+            <h4>Downtown Diner - Aging Oven Replacement</h4>
+            <p>Equipment analysis flagged 8-year-old oven • Contacted 2 days ago • Meeting scheduled</p>
+            <div class="opportunity-meta">
+              <span class="badge high">85% Likelihood</span>
+              <span class="badge high">Contract-Approved</span>
+              <span>Est. Value: <strong>$18,500</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$925</strong></span>
+              <span style="color: #78ffbe;">Meeting: Jan 15, 10am</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Prep Meeting</button>
+            <button>View Details</button>
+          </div>
+        </div>
+
+        <!-- New Opportunity -->
+        <div class="opportunity-item" data-likelihood="82" data-commission="2800" data-status="new">
+          <div class="opportunity-content">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <h4>Harborview Grille - Full Kitchen Remodel Financing</h4>
+              <span class="badge gold" style="background: rgba(251, 191, 36, 0.25); animation: pulse 2s ease-in-out infinite;">NEW</span>
+            </div>
+            <p>Major renovation planned for Q2 2026 • Strong credit history • Detected yesterday</p>
+            <div class="opportunity-meta">
+              <span class="badge high">82% Likelihood</span>
+              <span class="badge high">Contract-Approved</span>
+              <span>Est. Value: <strong>$56,000</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$2,800</strong></span>
+              <span style="color: #78ffbe;">Prime opportunity</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Contact Now</button>
+            <button>View Details</button>
+          </div>
+        </div>
+
+        <!-- Medium Priority -->
+        <div class="opportunity-item" data-likelihood="72" data-commission="2250" data-status="active">
+          <div class="opportunity-content">
+            <h4>Marina Seafood Grill - MLA Upgrade Opportunity</h4>
+            <p>Current MLA ending • Recommended upgrade to premium tier • Emailed 3 days ago</p>
+            <div class="opportunity-meta">
+              <span class="badge medium">72% Likelihood</span>
+              <span>Est. Value: <strong>$45,000</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$2,250</strong></span>
+              <span style="color: #94a3b8;">Awaiting response</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Send Reminder</button>
+            <button>View Details</button>
+          </div>
+        </div>
+
+        <!-- Follow-up Overdue -->
+        <div class="opportunity-item follow-up" data-likelihood="75" data-commission="1150" data-status="follow-up">
+          <div class="opportunity-content">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <h4>Riverside Cafe - Service Contract Renewal</h4>
+              <span class="alert-badge follow-up">Follow-Up Overdue</span>
+            </div>
+            <p>Contract expires in 30 days • Last contact: 15 days ago • Needs proposal</p>
+            <div class="opportunity-meta">
+              <span class="badge medium">75% Likelihood</span>
+              <span>Est. Value: <strong>$23,000</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$1,150</strong></span>
+              <span style="color: #ffd278; font-weight: 700;">⏰ Overdue by 8 days</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Follow Up</button>
+            <button>Send Proposal</button>
+          </div>
+        </div>
+
+        <!-- Lower Priority -->
+        <div class="opportunity-item" data-likelihood="68" data-commission="640" data-status="active">
+          <div class="opportunity-content">
+            <h4>The Coffee House - Espresso Machine Financing</h4>
+            <p>Expressed interest in upgrading • Researching options • First contact made</p>
+            <div class="opportunity-meta">
+              <span class="badge medium">68% Likelihood</span>
+              <span>Est. Value: <strong>$12,800</strong></span>
+              <span style="color: #ffffff;">Commission: <strong style="color: #fbbf24;">$640</strong></span>
+              <span style="color: #94a3b8;">Info gathering phase</span>
+            </div>
+          </div>
+          <div class="opportunity-actions">
+            <button class="primary">Send Info</button>
+            <button>View Details</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commission History & Trends -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Commission History & Payment Schedule</div>
+      </div>
+
+      <!-- Period Selector -->
+      <div class="sort-controls" style="margin-bottom: 24px;">
+        <button class="sort-btn active" onclick="showCommissionPeriod('month')">This Month</button>
+        <button class="sort-btn" onclick="showCommissionPeriod('lastMonth')">Last Month</button>
+        <button class="sort-btn" onclick="showCommissionPeriod('quarter')">This Quarter</button>
+        <button class="sort-btn" onclick="showCommissionPeriod('year')">This Year</button>
+      </div>
+
+      <!-- Commission Trend Chart -->
+      <div class="chart-container" style="height: 280px; margin-bottom: 24px;">
+        <canvas id="commissionTrendChart"></canvas>
+      </div>
+
+      <!-- Payment Schedule -->
+      <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(251, 191, 36, 0.12); border-radius: 14px; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 13px; font-weight: 800; color: rgba(251, 191, 36, 0.9); text-transform: uppercase; letter-spacing: 0.8px;">
+            Upcoming Commission Payments
+          </h3>
+        </div>
+        <div style="display: grid; gap: 12px;">
+          <!-- Payment 1 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(15, 23, 42, 0.5); border-radius: 10px; border-left: 3px solid rgba(120, 255, 190, 0.5);">
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 4px;">January 15, 2026</div>
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">December deals + Q4 bonuses</div>
+            </div>
+            <div style="font-size: 20px; font-weight: 900; color: rgba(120, 255, 190, 0.95);">$8,420</div>
+          </div>
+          <!-- Payment 2 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(15, 23, 42, 0.5); border-radius: 10px; border-left: 3px solid rgba(251, 191, 36, 0.4);">
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 4px;">February 15, 2026</div>
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">January deals (projected)</div>
+            </div>
+            <div style="font-size: 20px; font-weight: 900; color: rgba(251, 191, 36, 0.95);">$9,200</div>
+          </div>
+          <!-- Payment 3 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(15, 23, 42, 0.3); border-radius: 10px; border-left: 3px solid rgba(148, 163, 184, 0.3);">
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.8); margin-bottom: 4px;">March 15, 2026</div>
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">February deals (projected)</div>
+            </div>
+            <div style="font-size: 20px; font-weight: 900; color: rgba(148, 163, 184, 0.8);">$7,850</div>
+          </div>
+        </div>
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.1); display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 12px; color: #94a3b8; font-weight: 600;">Total Expected (Next 90 Days)</div>
+          <div style="font-size: 24px; font-weight: 900; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$25,470</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity vs Opportunities Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Your Activity & Opportunity Correlation</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="activityChart"></canvas>
+      </div>
+      <div class="commission-grid" style="margin-bottom: 0;">
+        <div class="kpi">
+          <div class="kpi-label">Invoices Analyzed</div>
+          <div class="kpi-value">47</div>
+          <div class="kpi-sub">This week: <span class="highlight">12</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">MLAs Reviewed</div>
+          <div class="kpi-value">28</div>
+          <div class="kpi-sub">Opportunities found: <span class="highlight">18</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Tool Activity</div>
+          <div class="kpi-value">65</div>
+          <div class="kpi-sub">Total clicks this week</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Conversion Rate</div>
+          <div class="kpi-value gold">38%</div>
+          <div class="kpi-sub">From opportunity to close</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance Leaderboard -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Team Leaderboard - This Quarter</div>
+      </div>
+      <div class="commission-grid">
+        <div class="kpi">
+          <div class="kpi-label">Your Ranking</div>
+          <div class="kpi-value gold">#3</div>
+          <div class="kpi-sub">of 18 reps</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Top Performer</div>
+          <div class="kpi-value">Sarah M.</div>
+          <div class="kpi-sub">$24,150 commissions</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Your Total (Q1)</div>
+          <div class="kpi-value gold">$22,830</div>
+          <div class="kpi-sub">Only $1,320 behind!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // Chart.js premium styling
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(148, 163, 184, 0.1)';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.font.weight = 600;
+
+    // Activity vs Opportunities Correlation Chart
+    const activityCtx = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(activityCtx, {
+      type: 'line',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [
+          {
+            label: 'Tool Activity (clicks)',
+            data: [12, 8, 15, 11, 19, 3, 2],
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251, 191, 36, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#fbbf24',
+            pointBorderColor: '#0f172a',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Opportunities Found',
+            data: [5, 3, 6, 4, 7, 1, 0],
+            borderColor: '#78ffbe',
+            backgroundColor: 'rgba(120, 255, 190, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#78ffbe',
+            pointBorderColor: '#0f172a',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Missed Opportunities',
+            data: [1, 2, 1, 3, 1, 0, 0],
+            borderColor: '#ff5a5a',
+            backgroundColor: 'rgba(255, 90, 90, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#ff5a5a',
+            pointBorderColor: '#0f172a',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: '#94a3b8',
+              padding: 16,
+              font: { size: 13, weight: 700 },
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleColor: '#fbbf24',
+            bodyColor: '#e2e8f0',
+            borderColor: 'rgba(251, 191, 36, 0.3)',
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 8,
+            titleFont: { size: 14, weight: 'bold' },
+            bodyFont: { size: 13 }
+          }
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            position: 'left',
+            beginAtZero: true,
+            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 12, weight: 600 }
+            },
+            title: {
+              display: true,
+              text: 'Count',
+              color: '#fbbf24',
+              font: { size: 13, weight: 700 }
+            }
+          },
+          x: {
+            grid: { color: 'rgba(148, 163, 184, 0.05)' },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 12, weight: 600 }
+            }
+          }
+        }
+      }
+    });
+
+    // Sort opportunities function
+    function sortOpportunities(sortBy) {
+      // Update active button
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      const list = document.getElementById('opportunityList');
+      const items = Array.from(list.children);
+
+      items.sort((a, b) => {
+        if (sortBy === 'likelihood') {
+          return parseFloat(b.dataset.likelihood) - parseFloat(a.dataset.likelihood);
+        } else if (sortBy === 'commission') {
+          return parseFloat(b.dataset.commission) - parseFloat(a.dataset.commission);
+        } else if (sortBy === 'urgent') {
+          const statusOrder = { 'missed': 0, 'follow-up': 1, 'new': 2, 'active': 3 };
+          return statusOrder[a.dataset.status] - statusOrder[b.dataset.status];
+        }
+      });
+
+      // Re-append in sorted order
+      items.forEach(item => list.appendChild(item));
+    }
+
+    // Commission Trend Chart
+    const commissionTrendCtx = document.getElementById('commissionTrendChart').getContext('2d');
+
+    // Gold gradient for bars
+    const goldGradient = (ctx) => {
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, '#fbbf24');
+      gradient.addColorStop(1, '#d97706');
+      return gradient;
+    };
+
+    let commissionTrendChart = new Chart(commissionTrendCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        datasets: [{
+          label: 'Commissions Earned',
+          data: [2100, 2300, 1920, 2100],
+          backgroundColor: goldGradient(commissionTrendCtx),
+          borderColor: '#fbbf24',
+          borderWidth: 2,
+          borderRadius: 8,
+          hoverBackgroundColor: '#fcd34d',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleColor: '#fbbf24',
+            bodyColor: '#e2e8f0',
+            borderColor: 'rgba(251, 191, 36, 0.3)',
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 8,
+            titleFont: { size: 14, weight: 'bold' },
+            bodyFont: { size: 13 },
+            callbacks: {
+              label: function(context) {
+                return 'Commission: $' + context.parsed.y.toLocaleString();
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 12, weight: 600 },
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            },
+            title: {
+              display: true,
+              text: 'Commission ($)',
+              color: '#fbbf24',
+              font: { size: 13, weight: 700 }
+            }
+          },
+          x: {
+            grid: { color: 'rgba(148, 163, 184, 0.05)' },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 12, weight: 600 }
+            }
+          }
+        }
+      }
+    });
+
+    // Period switching function
+    function showCommissionPeriod(period) {
+      // Update active button
+      const buttons = document.querySelectorAll('.sort-controls button');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Update chart data based on period
+      let labels, data;
+      if (period === 'month') {
+        labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        data = [2100, 2300, 1920, 2100];
+      } else if (period === 'lastMonth') {
+        labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        data = [1980, 2200, 2140, 2100];
+      } else if (period === 'quarter') {
+        labels = ['Oct', 'Nov', 'Dec'];
+        data = [7200, 8100, 8420];
+      } else if (period === 'year') {
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        data = [6500, 6800, 7100, 6900, 7400, 7200, 6800, 7000, 6800, 7200, 8100, 8420];
+      }
+
+      commissionTrendChart.data.labels = labels;
+      commissionTrendChart.data.datasets[0].data = data;
+      commissionTrendChart.update('active');
+    }
+
+    // Animate progress bars on load
+    window.addEventListener('load', () => {
+      document.querySelectorAll('.progress-fill').forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => {
+          bar.style.width = width;
+        }, 300);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "errors": [
+    {
+      "instancePath": "/provenance",
+      "schemaPath": "#/properties/provenance/additionalProperties",
+      "keyword": "additionalProperties",
+      "params": {
+        "additionalProperty": "location_hint"
+      },
+      "message": "must NOT have additional properties"
+    }
+  ]
+}

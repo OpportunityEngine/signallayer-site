@@ -1,0 +1,24 @@
+{
+  "source_type": "chrome",
+  "payload": {
+    "accountName": "Target",
+    "items": [
+      {
+        "sku": "X280",
+        "description": "FR JEAN",
+        "quantity": "5",
+        "unitPrice": "0.67"
+      }
+    ],
+    "shipTo": {
+      "line1": "Target Corporation",
+      "line2": "1000 Nicollet Mall",
+      "city_state_zip": "Minneapolis, MN 55403"
+    }
+  },
+  "source_ref": {
+    "kind": "test",
+    "value": "manual-test",
+    "mime_type": "application/json"
+  }
+}

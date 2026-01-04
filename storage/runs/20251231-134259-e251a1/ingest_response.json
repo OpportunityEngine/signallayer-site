@@ -1,0 +1,190 @@
+{
+  "ok": true,
+  "run_id": "20251231-134259-e251a1",
+  "source_type": "pdf_text",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 29660,
+    "raw_text_preview": "\n\nREMIT PAYMENT TO:PAY YOUR BILL WITH MYCINTAS\nWWW.CINTAS.COM/MYACCOUNT\nMANAGE | SHOP | PAY\nCINTAS CORP\nP.O. BOX 88005\nCHICAGO, IL 60680-1005\nCUSTOMER SVC/BILLING \nCINTAS FAX #\nPAYMENT INQUIRY \n833-711-5960\n651-225-0770\n763-391-5263\nINVOICE\nSHIP TO:OWENS CORNING\n1901 49TH AVE N\nMINNEAPOLIS, MN 55430-3793\nBILL TO:OWENS CORNING\n1901 49TH AVE N\nMINNEAPOLIS, MN 55430-3793\nINVOICE #\nINVOICE DATE\nSERVICE TICKET #\nPURCHASE ORDER #\n4251930157\n12/03/2025\n4251930157\n4517125186\nSOLD TO #\nPAYER #\nPAYMENT TERMS\nSORT #\nCINTAS ROUTE\n16532159\n16532098\nNET 80 DAYS\n04700001378\n30 / DAY 3 / STOP 002\nDEPT:MAINTENANCE\nEMP#/LOCK#MATERIALDESCRIPTIONFREQEXCHQTYUNIT PRICELINE TOTALTAX\nX2160SM SHOP TWL-RED-01F3000.053 15.90N\nX2995CRT CABINET-01F10.270 0.27N\nX8004LAUNDRY LOCK UP-01F21.913 3.83N\nX9304DISPOSABLE PAPER CRT-01F14.040 4.04N\n0101X273WKSHIRT/BLACK/ MICRO P/CTN LS-00LLS01F10.376 0.38N\n0101X294FR SHRT/CRHRT 88/12 KHAKI/LS-00LLS01F20.376 0.75N\n0101X371PANT/FR/CARHART/88C/12N/NAVY-0363201F20.376 0.75N\n0101X381JEAN/CARHART/RELX FIT/DK DENIM-0363201F20.459 0.92N\n0101X935UNIF SHRT NY/BL SLATE/LS-00LLS01F10.166 0.17N\n0101X935SHIRT/UNIFORM/BLUE/WHITE/LS-00LLS01F10.166 0.17N\n0101MARIO ROSITAS  SUBTOTAL - 3.14\n0102X280FR JEAN/CARHART/RLX FIT/ DENIM - SZ\nPREM-03634\n01F90.666 5.99N\n0102ALEX NISEN  SUBTOTAL - 5.99\n0103X371PANT/FR/CARHART/88C/12N/NAVY-0363001F110.376 4.14N\n0103X59294FR SHRT/CRHRT ANSI 3 YEL/LS-0XLLS01F111.075 11.83N\n0103X78150FR OVRL M/QDUCK BIB/CRHRT/NVY-04201F11.979 1.98N\n0103NICK SITZ  SUBTOTAL - 17.95\n0104X371PANT/FR/CARHART/88C/12N/NAVY - SZ\nPREM-04432\n01F110.441 4.85N\n0104X59294FR SHRT/CRHRT ANSI 3 YEL/LS - SZ PREM-3XLLS01F111.140 12.54N\n0104ALAN DAVIS  SUBTOTAL - 17.39\n0105X290JEAN/FR/CARPNTR/RLX FIT/ DENIM - SZ\nPREM-03634\n01F110.666 7.33N\n0105X59294FR SHRT/CRHRT ANSI 3 YEL/LS - SZ PREM-00LLS01F111.140 12.54N\n0105X78150FR OVRL M/QDUCK BIB/CRHRT/NVY-04001F21.979 3.96N\n0105KYLE VARGA  SUBTOTAL - 23.83\n0106X280FR JEAN/CARHART/RLX FIT/ DENIM - SZ\nPREM-04034\n01F110.666 7.33N\n010…",
+    "meta": {
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+        "mime_type": "application/pdf"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_ref/kind",
+        "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "url",
+            "file",
+            "email",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+      "mime_type": "application/pdf"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "web_scraper",
+      "leadCount": 3,
+      "leads": [
+        {
+          "contactName": "OWENS CORNING Main Line",
+          "title": "Main Line",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 535-5522",
+          "email": "info@bbbwestflorida.org",
+          "city": "TH AVE N\nMINNEAPOLIS",
+          "state": "MN",
+          "postalCode": "55430",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "OWENS CORNING Contact 2",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 539-6301",
+          "email": "boglesby@bbbwestflorida.org",
+          "city": "TH AVE N\nMINNEAPOLIS",
+          "state": "MN",
+          "postalCode": "55430",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "OWENS CORNING Contact 3",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 530-4651",
+          "email": "teikenberry@bbbwestflorida.org",
+          "city": "TH AVE N\nMINNEAPOLIS",
+          "state": "MN",
+          "postalCode": "55430",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        }
+      ],
+      "cacheKey": "owens corning|60680",
+      "inferredZip": "60680"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-89571301687b",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-31T18:42:59.159Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "89571301687b1086f61ddf6fdd7eaf50dc772f21206efab888557988bda36cb2",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "pdf_text",
+      "captured_at": "2025-12-31T18:42:59.160Z",
+      "parser": {
+        "name": "ingest.pdf_text",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+        "mime_type": "application/pdf"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": "invoice.v1",
+  "doc": {
+    "doc_id": "DOC-34430c83935f",
+    "doc_type": "invoice",
+    "invoice_number": null,
+    "purchase_order": null,
+    "issued_at": "2025-12-30T02:59:03.944Z",
+    "service_period": null,
+    "currency": "USD",
+    "raw_text_hash": null,
+    "tags": []
+  },
+  "parties": {
+    "vendor": {
+      "name": "Unknown Vendor",
+      "normalized_name": "unknown vendor",
+      "addresses": []
+    },
+    "customer": {
+      "name": "Test",
+      "normalized_name": "test",
+      "addresses": []
+    },
+    "bill_to": null,
+    "ship_to": null
+  },
+  "line_items": [],
+  "totals": {
+    "invoice_total": null,
+    "weekly_equivalent_total": null,
+    "notes": []
+  },
+  "signals": [],
+  "opportunities": [],
+  "provenance": {
+    "source_type": "test",
+    "captured_at": "2025-12-30T02:59:03.944Z",
+    "parser": {
+      "name": "ingest.test",
+      "version": "1.0.0",
+      "warnings": [
+        "No line items found in payload (checked multiple candidate keys)."
+      ]
+    },
+    "source_ref": {
+      "kind": "unknown",
+      "value": null,
+      "mime_type": null
+    }
+  },
+  "confidence": {
+    "overall": 0.6,
+    "fields": [
+      {
+        "path": "parties.customer.name",
+        "score": 0.3,
+        "method": "unknown",
+        "evidence": []
+      },
+      {
+        "path": "line_items",
+        "score": 0.1,
+        "method": "parsed",
+        "evidence": []
+      }
+    ]
+  }
+}

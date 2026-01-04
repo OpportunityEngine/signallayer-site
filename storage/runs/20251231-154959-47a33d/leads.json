@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "OWENS CORNING Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(800) 766-3464",
+      "email": "",
+      "city": "FAIRBURN",
+      "state": "GA",
+      "postalCode": "30213",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "OWENS CORNING Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(800) 824-9472",
+      "email": "",
+      "city": "FAIRBURN",
+      "state": "GA",
+      "postalCode": "30213",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "OWENS CORNING Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(419) 248-8000",
+      "email": "",
+      "city": "FAIRBURN",
+      "state": "GA",
+      "postalCode": "30213",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "owens corning|30213",
+    "hit": true
+  },
+  "accountName": "OWENS CORNING",
+  "postalCode": "30213",
+  "addressHint": "7000 MCLARIN RD, FAIRBURN, GA 30213",
+  "run_id": "20251231-154959-47a33d",
+  "storedAt": "2025-12-31T20:50:51.202Z"
+}

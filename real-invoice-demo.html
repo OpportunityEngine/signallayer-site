@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Invoice - Demo FR Program</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        padding: 16px;
+        background: #f9fafb;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        font-size: 12px;
+      }
+
+      .block {
+        margin-bottom: 8px;
+      }
+
+      .title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .label {
+        font-weight: 600;
+      }
+
+      .meta {
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
+
+      .account-name {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .account-number {
+        font-weight: 600;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+
+      th,
+      td {
+        border: 1px solid #e5e7eb;
+        padding: 4px 6px;
+        text-align: left;
+      }
+
+      th {
+        background: #f3f4f6;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .subtotal-row td {
+        background: #f9fafb;
+        font-weight: 600;
+        border-top: 2px solid #e5e7eb;
+      }
+
+      .right {
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top header -->
+    <div class="header">
+      <div>
+        <div class="title">INVOICE</div>
+        <div class="block">
+          <div><span class="label">Remit To:</span> ServiceCo Corp</div>
+          <div>P.O. Box 88005</div>
+          <div>Chicago, IL 60680-1005</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block">
+          <div><span class="label">Invoice #:</span> 4251930157</div>
+          <div><span class="label">Invoice Date:</span> 12/03/2025</div>
+          <div><span class="label">Service Ticket #:</span> 4251930157</div>
+          <div><span class="label">Dept:</span> MAINTENANCE</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block">
+          <div class="label">Bill To:</div>
+          <div>Demo Manufacturing Plant A</div>
+          <div>1901 Industrial Ave</div>
+          <div>Minneapolis, MN 55430</div>
+        </div>
+        <div class="block">
+          <div class="label">Ship To:</div>
+          <div>Demo Manufacturing Plant A</div>
+          <div>1901 Industrial Ave</div>
+          <div>Minneapolis, MN 55430</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account info (these classes are used by your content.js) -->
+    <div class="meta">
+      <div class="account-name">Demo Manufacturing Plant A</div>
+      <div>
+        <span class="label">Account #:</span>
+        <span class="account-number">10147</span>
+      </div>
+    </div>
+
+    <!-- Line item table: EMP#/LOCK# MATERIAL DESCRIPTION FREQ EXCH QTY UNIT PRICE LINE TOTAL TAX -->
+    <table>
+      <thead>
+        <tr>
+          <th>EMP#/LOCK#</th>
+          <th>SKU</th>
+          <th>Material Description</th>
+          <th>Freq</th>
+          <th>Exch</th>
+          <th>Qty</th>
+          <th>Unit Price</th>
+          <th>Line Total</th>
+          <th>Tax</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Wearer 0102 (example from your real invoice style, anonymized) -->
+        <tr>
+          <td>0102</td>
+          <td>X280</td>
+          <td>FR JEAN / CARHARTT / RELAXED FIT / DENIM</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">9</td>
+          <td class="right">0.67</td>
+          <td class="right">5.99</td>
+          <td>N</td>
+        </tr>
+        <tr>
+          <td>0102</td>
+          <td>X59294</td>
+          <td>FR SHIRT / ANSI CLASS 3 / YELLOW / LS</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">11</td>
+          <td class="right">1.08</td>
+          <td class="right">11.83</td>
+          <td>N</td>
+        </tr>
+        <tr>
+          <td>0102</td>
+          <td>X78150</td>
+          <td>FR OVERALL / QUILT-LINED BIB / NAVY</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">1</td>
+          <td class="right">1.98</td>
+          <td class="right">1.98</td>
+          <td>N</td>
+        </tr>
+        <tr class="subtotal-row">
+          <td colspan="7">0102 JOHN DOE SUBTOTAL</td>
+          <td class="right">19.80</td>
+          <td></td>
+        </tr>
+
+        <!-- Wearer 0103 -->
+        <tr>
+          <td>0103</td>
+          <td>X371</td>
+          <td>FR PANT / 88C12N / NAVY</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">11</td>
+          <td class="right">0.38</td>
+          <td class="right">4.14</td>
+          <td>N</td>
+        </tr>
+        <tr>
+          <td>0103</td>
+          <td>X59294</td>
+          <td>FR SHIRT / ANSI CLASS 3 / YELLOW / LS</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">11</td>
+          <td class="right">1.08</td>
+          <td class="right">11.83</td>
+          <td>N</td>
+        </tr>
+        <tr>
+          <td>0103</td>
+          <td>X78150</td>
+          <td>FR OVERALL / QUILT-LINED BIB / NAVY</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">1</td>
+          <td class="right">1.98</td>
+          <td class="right">1.98</td>
+          <td>N</td>
+        </tr>
+        <tr class="subtotal-row">
+          <td colspan="7">0103 JANE SMITH SUBTOTAL</td>
+          <td class="right">19.95</td>
+          <td></td>
+        </tr>
+
+        <!-- Wearer 0104 (showing jeans + shirt only) -->
+        <tr>
+          <td>0104</td>
+          <td>X280</td>
+          <td>FR JEAN / CARHARTT / RELAXED FIT / DENIM</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">11</td>
+          <td class="right">0.69</td>
+          <td class="right">7.59</td>
+          <td>N</td>
+        </tr>
+        <tr>
+          <td>0104</td>
+          <td>X59294</td>
+          <td>FR SHIRT / ANSI CLASS 3 / YELLOW / LS</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">11</td>
+          <td class="right">1.14</td>
+          <td class="right">12.54</td>
+          <td>N</td>
+        </tr>
+        <tr class="subtotal-row">
+          <td colspan="7">0104 A. TECH SUBTOTAL</td>
+          <td class="right">20.13</td>
+          <td></td>
+        </tr>
+
+        <!-- Example FR liner SKU (matches your MLA logic, e.g. 64356) -->
+        <tr>
+          <td>LINER</td>
+          <td>64356</td>
+          <td>FR INSULATED LINER</td>
+          <td>01</td>
+          <td>F</td>
+          <td class="right">9</td>
+          <td class="right">2.50</td>
+          <td class="right">22.50</td>
+          <td>N</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

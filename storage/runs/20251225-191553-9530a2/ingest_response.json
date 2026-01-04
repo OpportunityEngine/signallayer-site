@@ -1,0 +1,357 @@
+{
+  "ok": true,
+  "run_id": "20251225-191553-9530a2",
+  "source_type": "chrome",
+  "status": "canonical_valid",
+  "message": "Canonical invoice valid. Opportunity/legacy engine ran.",
+  "canonical": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-0d908b8ed1b5",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-26T01:15:53.959Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": null,
+      "tags": [
+        "location:real invoice demo"
+      ]
+    },
+    "parties": {
+      "vendor": {
+        "name": "Cintas",
+        "normalized_name": "cintas",
+        "addresses": []
+      },
+      "customer": {
+        "name": "real invoice demo",
+        "normalized_name": "real invoice demo",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [
+      {
+        "line_id": "L1",
+        "raw_description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+        "normalized_description": "fr jean / carhartt / relaxed fit / denim",
+        "sku": "X280",
+        "quantity": 9,
+        "unit_price": {
+          "amount": 0.67,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L2",
+        "raw_description": "FR SHIRT / ANSI CLASS 3 / YELLOW / LS",
+        "normalized_description": "fr shirt / ansi class 3 / yellow / ls",
+        "sku": "X59294",
+        "quantity": 11,
+        "unit_price": {
+          "amount": 1.08,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L3",
+        "raw_description": "FR OVERALL / QUILT-LINED BIB / NAVY",
+        "normalized_description": "fr overall / quilt-lined bib / navy",
+        "sku": "X78150",
+        "quantity": 1,
+        "unit_price": {
+          "amount": 1.98,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L4",
+        "raw_description": "FR PANT / 88C12N / NAVY",
+        "normalized_description": "fr pant / 88c12n / navy",
+        "sku": "X371",
+        "quantity": 11,
+        "unit_price": {
+          "amount": 0.38,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L5",
+        "raw_description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+        "normalized_description": "fr jean / carhartt / relaxed fit / denim",
+        "sku": "X280",
+        "quantity": 11,
+        "unit_price": {
+          "amount": 0.69,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L6",
+        "raw_description": "FR SHIRT / ANSI CLASS 3 / YELLOW / LS",
+        "normalized_description": "fr shirt / ansi class 3 / yellow / ls",
+        "sku": "X59294",
+        "quantity": 11,
+        "unit_price": {
+          "amount": 1.14,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L7",
+        "raw_description": "FR INSULATED LINER",
+        "normalized_description": "fr insulated liner",
+        "sku": "64356",
+        "quantity": 9,
+        "unit_price": {
+          "amount": 2.5,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      }
+    ],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "chrome",
+      "captured_at": "2025-12-26T01:15:53.959Z",
+      "parser": {
+        "name": "ingest.chrome",
+        "version": "1.0.0",
+        "warnings": []
+      },
+      "source_ref": {
+        "kind": "url",
+        "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+        "mime_type": "text/html"
+      }
+    },
+    "confidence": {
+      "overall": 0.75,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.9,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  },
+  "extracted": {
+    "items": [
+      {
+        "sku": "X280",
+        "description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+        "quantity": "9",
+        "unitPrice": "0.67"
+      },
+      {
+        "sku": "X59294",
+        "description": "FR SHIRT / ANSI CLASS 3 / YELLOW / LS",
+        "quantity": "11",
+        "unitPrice": "1.08"
+      },
+      {
+        "sku": "X78150",
+        "description": "FR OVERALL / QUILT-LINED BIB / NAVY",
+        "quantity": "1",
+        "unitPrice": "1.98"
+      },
+      {
+        "sku": "X371",
+        "description": "FR PANT / 88C12N / NAVY",
+        "quantity": "11",
+        "unitPrice": "0.38"
+      },
+      {
+        "sku": "X280",
+        "description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+        "quantity": "11",
+        "unitPrice": "0.69"
+      },
+      {
+        "sku": "X59294",
+        "description": "FR SHIRT / ANSI CLASS 3 / YELLOW / LS",
+        "quantity": "11",
+        "unitPrice": "1.14"
+      },
+      {
+        "sku": "64356",
+        "description": "FR INSULATED LINER",
+        "quantity": "9",
+        "unitPrice": "2.50"
+      }
+    ],
+    "tableHtml": [],
+    "raw_text_length": 0,
+    "raw_text_preview": "",
+    "meta": {
+      "source_ref": {
+        "kind": "url",
+        "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+        "mime_type": "text/html"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": true,
+    "errors": []
+  },
+  "legacy": {
+    "ok": true,
+    "message": "Backend processed invoice and MLA/opportunity logic.",
+    "account": {
+      "accountNumber": "10147",
+      "accountName": "Demo Manufacturing Plant A"
+    },
+    "stats": {
+      "totalItems": 7,
+      "frItemsCount": 7,
+      "frWearerCount": 63
+    },
+    "mlaSummary": {
+      "mlaId": "MLA-GEN-DEFAULT",
+      "mlaName": "Standard FR Program",
+      "liner": {
+        "presentOnFormulary": true,
+        "sku": "64356",
+        "description": "FR Insulated Liner",
+        "pricePerWeek": 2.5,
+        "allowedAtLocalLevel": false,
+        "formularyTier": "Extended",
+        "notes": "Extended formulary item; may require approval depending on region."
+      }
+    },
+    "opportunity": {
+      "linerAddOn": {
+        "sku": "64356",
+        "description": "FR Insulated Liner add-on",
+        "frWearerCount": 63,
+        "currentLinerWearers": 9,
+        "missingLiners": 54,
+        "potentialWeeklyRevenue": 135,
+        "commissionEstimate": {
+          "multiplier": 3,
+          "estimatedPayout": 405
+        }
+      },
+      "jacketConversion": {
+        "description": "Convert non-FR jackets to FR jackets",
+        "frUniformQty": 11,
+        "estimatedFrEmployees": 1,
+        "nonFrJacketQty": 0,
+        "frWearersWithNonFrJacket": 0,
+        "exampleJacketPricePerWeek": 3,
+        "potentialWeeklyRevenue": 0,
+        "commissionEstimate": {
+          "multiplier": 3,
+          "estimatedPayout": 0
+        }
+      },
+      "uniformMix": {
+        "frUniformQty": 11,
+        "nonFrUniformQty": 0,
+        "estimatedFrEmployees": 1,
+        "estimatedNonFrEmployees": 0,
+        "conversionRule": "11 uniforms ≈ 1 employee",
+        "notes": "Uniform quantities are derived from shirt + pant pairs. Employee estimates are based on 11 uniforms per employee."
+      }
+    }
+  },
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "url",
+      "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+      "mime_type": "text/html"
+    },
+    "extractedItemsCount": 7,
+    "canonicalLineItemsCount": 7
+  },
+  "error": null
+}

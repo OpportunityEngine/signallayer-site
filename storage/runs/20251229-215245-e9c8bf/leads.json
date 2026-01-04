@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "Owens Corning Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "376656-2770",
+      "email": "info@bbbwestflorida.org",
+      "city": "MINNEAPOLIS",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "Owens Corning Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 535-5522",
+      "email": "boglesby@bbbwestflorida.org",
+      "city": "MINNEAPOLIS",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "Owens Corning Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 539-6301",
+      "email": "teikenberry@bbbwestflorida.org",
+      "city": "MINNEAPOLIS",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "owens corning|55430",
+    "hit": true
+  },
+  "accountName": "Owens Corning",
+  "postalCode": "55430",
+  "addressHint": "MINNEAPOLIS, MN 55430-3793",
+  "run_id": "20251229-215245-e9c8bf",
+  "storedAt": "2025-12-30T02:53:13.164Z"
+}

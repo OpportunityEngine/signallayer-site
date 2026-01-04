@@ -1,0 +1,25 @@
+{
+  "run_id": "20251223-181437-438e42",
+  "source_type": "chrome",
+  "status": "extracted_only",
+  "counts": {
+    "extractedItemsCount": 7,
+    "canonicalLineItemsCount": 7,
+    "rawTextLength": 0
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/provenance",
+        "schemaPath": "#/properties/provenance/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "location_hint"
+        },
+        "message": "must NOT have additional properties"
+      }
+    ]
+  }
+}

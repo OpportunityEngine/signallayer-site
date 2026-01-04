@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Sales – Internal Dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8fafc;
+      margin: 0;
+      padding: 16px;
+      color: #0f172a;
+    }
+    h1 { margin: 0 0 6px 0; }
+    .muted { color: #6b7280; font-size: 13px; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; align-items: flex-start; }
+    .col { flex: 1; min-width: 0; }
+    .col.left { max-width: 380px; }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      border: 1px solid rgba(15,23,42,.06);
+    }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button {
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #0f172a;
+      border-color: #0f172a;
+      color: white;
+    }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .pill {
+      display: inline-block;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #111827;
+      margin-left: 6px;
+    }
+    .runItem {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .runItem:hover { background: #f8fafc; }
+    .runItem.active { border-color: #0f172a; background: #eef2ff; }
+    .kvs { display: grid; grid-template-columns: 140px 1fr; gap: 6px 10px; font-size: 13px; }
+    .k { color: #6b7280; }
+    pre {
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.35;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 1000px) {
+      .row { flex-direction: column; }
+      .col.left { max-width: none; }
+      .split { grid-template-columns: 1fr; }
+    }
+    .fileBtn {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+    .fileBtn:hover { background: #f8fafc; }
+    .small { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+
+<h1>AI Sales – Internal Debug Dashboard</h1>
+<div class="muted">Live view of runs, parsers, canonical invoices, and opportunity engine outputs.</div>
+
+<div class="card">
+  <div class="toolbar">
+    <button class="primary" onclick="loadRuns()">Refresh runs</button>
+    <button onclick="clearViewer()">Clear viewer</button>
+
+    <label class="small" style="display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="autoToggle" onchange="toggleAutoRefresh()" />
+      Auto-refresh (3s)
+    </label>
+
+    <span class="small" id="statusLine"></span>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col left">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>Runs</strong>
+        <span class="pill" id="runCount">0</span>
+      </div>
+      <div class="muted" style="margin:8px 0 0 0;">Click a run to view files and JSON.</div>
+      <div id="runsList" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <strong>Selected run</strong>
+      <div class="muted" id="selectedRunMeta" style="margin-top:6px;">None</div>
+      <div id="selectedRunBody" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <strong>JSON viewer</strong>
+      <div class="muted" id="viewerMeta" style="margin-top:6px;">Select a file to view JSON.</div>
+      <div id="viewer" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedRunId = null;
+let autoTimer = null;
+
+function setStatus(text) {
+  document.getElementById("statusLine").textContent = text || "";
+}
+
+function clearViewer() {
+  document.getElementById("viewerMeta").textContent = "Select a file to view JSON.";
+  document.getElementById("viewer").innerHTML = "";
+}
+
+function fmt(v) {
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+function summarizeSummaryCounts(summaryCounts) {
+  // Your backend sometimes stores summaryCounts as array (older runs) or object (new runs)
+  if (!summaryCounts) return "";
+  if (Array.isArray(summaryCounts)) {
+    const first = summaryCounts[0] || {};
+    const parts = [];
+    if (first.parserUsed) parts.push(`parser: ${first.parserUsed}`);
+    if (typeof first.usedOcr === "boolean") parts.push(`ocr: ${first.usedOcr ? "yes" : "no"}`);
+    if (first.parsedItemsCount != null) parts.push(`items: ${first.parsedItemsCount}`);
+    if (first.textLength != null) parts.push(`text: ${first.textLength}`);
+    return parts.join(" • ");
+  }
+  if (typeof summaryCounts === "object") {
+    const parts = [];
+    if (summaryCounts.parserUsed) parts.push(`parser: ${summaryCounts.parserUsed}`);
+    if (typeof summaryCounts.usedOcr === "boolean") parts.push(`ocr: ${summaryCounts.usedOcr ? "yes" : "no"}`);
+    if (summaryCounts.parsedItemsCount != null) parts.push(`items: ${summaryCounts.parsedItemsCount}`);
+    if (summaryCounts.textLength != null) parts.push(`text: ${summaryCounts.textLength}`);
+    return parts.join(" • ");
+  }
+  return "";
+}
+
+async function loadRuns() {
+  setStatus("Loading runs…");
+  const list = document.getElementById("runsList");
+  list.innerHTML = "Loading…";
+
+  try {
+    const res = await fetch("/api/runs");
+    const data = await res.json();
+
+    if (!data.ok) {
+      list.innerHTML = "Failed to load runs.";
+      setStatus("Failed to load runs.");
+      return;
+    }
+
+    const runs = Array.isArray(data.runs) ? data.runs : [];
+    document.getElementById("runCount").textContent = String(runs.length);
+
+    list.innerHTML = "";
+    runs.forEach((r) => {
+      const runId = r.runId || r.id || r.run_id || "";
+      const createdAt = r.createdAt || "";
+      const hint = summarizeSummaryCounts(r.summaryCounts);
+
+      const div = document.createElement("div");
+      div.className = "runItem" + (runId === selectedRunId ? " active" : "");
+      div.onclick = () => selectRun(runId);
+
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:10px;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${runId}</div>
+            <div class="small">${createdAt ? "Updated: " + createdAt : ""}</div>
+            <div class="small">${hint}</div>
+          </div>
+        </div>
+      `;
+
+      list.appendChild(div);
+    });
+
+    setStatus(`Loaded ${runs.length} run(s).`);
+
+    // Auto-select newest if none selected
+    if (!selectedRunId && runs.length > 0) {
+      const firstRunId = runs[0].runId || runs[0].id || runs[0].run_id;
+      if (firstRunId) selectRun(firstRunId);
+    }
+  } catch (err) {
+    list.innerHTML = "Error loading runs.";
+    setStatus("Error loading runs.");
+  }
+}
+
+async function selectRun(runId) {
+  selectedRunId = runId;
+  clearViewer();
+
+  // Update active styles
+  [...document.querySelectorAll(".runItem")].forEach((el) => {
+    el.classList.remove("active");
+  });
+  // Best-effort: mark clicked active (re-render also happens on refresh)
+  // We'll rely on refresh to properly apply active class.
+
+  document.getElementById("selectedRunMeta").textContent = `Run: ${runId}`;
+  document.getElementById("selectedRunBody").innerHTML = "Loading run…";
+
+  try {
+    const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
+    const data = await res.json();
+
+    if (!data.ok) {
+      document.getElementById("selectedRunBody").innerHTML = "Failed to load run details.";
+      return;
+    }
+
+    const summary = data.summary || null;
+    const files = Array.isArray(data.files) ? data.files : [];
+
+    const summaryHtml = `
+      <div class="split">
+        <div>
+          <div style="font-weight:600;margin-bottom:8px;">Summary</div>
+          <pre>${summary ? JSON.stringify(summary, null, 2) : "No _SUMMARY.json found for this run."}</pre>
+        </div>
+        <div>
+          <div style="font-weight:600;margin-bottom:8px;">Files</div>
+          ${files.length ? files.map(f => `
+            <button class="fileBtn" onclick="loadRunFile('${runId}', '${f.fileName}')">
+              <div style="font-weight:600;">${f.fileName}</div>
+              <div class="small">
+                status: ${fmt(f.status)} • parser: ${fmt(f.parserUsed)} • ocr: ${f.usedOcr ? "yes" : "no"} • items: ${fmt(f.parsedItemsCount)} • text: ${fmt(f.textLength)}
+              </div>
+            </button>
+          `).join("") : `<div class="small">No JSON files found in this run folder.</div>`}
+        </div>
+      </div>
+    `;
+
+    document.getElementById("selectedRunBody").innerHTML = summaryHtml;
+
+    // Refresh run list so active class highlights correctly
+    await loadRuns();
+  } catch (err) {
+    document.getElementById("selectedRunBody").innerHTML = "Error loading run.";
+  }
+}
+
+async function loadRunFile(runId, fileName) {
+  document.getElementById("viewerMeta").textContent = `Run: ${runId} • File: ${fileName}`;
+  document.getElementById("viewer").innerHTML = "Loading…";
+
+  try {
+    const res = await fetch(`/api/runs/${encodeURIComponent(runId)}/file/${encodeURIComponent(fileName)}`);
+    const data = await res.json();
+    document.getElementById("viewer").innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+  } catch (err) {
+    document.getElementById("viewer").innerHTML = "Error loading file JSON.";
+  }
+}
+
+function toggleAutoRefresh() {
+  const on = document.getElementById("autoToggle").checked;
+  if (on) {
+    autoTimer = setInterval(() => loadRuns(), 3000);
+    setStatus("Auto-refresh enabled.");
+  } else {
+    if (autoTimer) clearInterval(autoTimer);
+    autoTimer = null;
+    setStatus("Auto-refresh disabled.");
+  }
+}
+
+loadRuns();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,217 @@
+{
+  "ok": true,
+  "run_id": "20251231-213442-a744ab",
+  "source_type": "pdf_text",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 18390,
+    "raw_text_preview": "\n\nREMIT PAYMENT TO:PAY YOUR BILL WITH MYCINTAS\nWWW.CINTAS.COM/MYACCOUNT\nMANAGE | SHOP | PAY\nCINTAS\nP.O. BOX 631025\nCINCINNATI, OH 45263-1025\nCUSTOMER SVC/BILLING \nCINTAS FAX #\nPAYMENT INQUIRY \n833-711-5953\n770-987-4472\n470-238-7024\nINVOICE\nSHIP TO:PROFILE PRODUCTS\n719 GEORGIA PACIFIC RD\nMONTICELLO, GA 31064\nBILL TO:PROFILE PRODUCTS\n750 W LAKE COOK RD STE 440\nBUFFALO GROVE, IL 60089-2090\nINVOICE #\nINVOICE DATE\nSERVICE TICKET #\n4251993972\n12/03/2025\n4251993972\nSOLD TO #\nPAYER #\nPAYMENT TERMS\nSORT #\nCINTAS ROUTE\n21314200\n21311526\nNET 30 EOM\n02010002048\n15 / DAY 3 / STOP 016\nEMP#/LOCK#MATERIALDESCRIPTIONFREQEXCHQTYUNIT PRICELINE TOTALTAX\nX20023SIG HRDWND WHT LRG-01F128.192 98.30Y\nX2160SM SHOP TWL-RED-01F2000.164 32.80Y\nX27026SIG AIR SVC01F124.070 48.84Y\nX27027SIG AIR RFL CLEAN-02F60.000 0.00N\nX27028SIG AIR RFL MANGO-02F60.000 0.00N\nX27069SIG SOAP SVC01F22.390 4.78Y\nX45690B&V AIR CARE COUNTER DISP WHT-01F125.632 67.58Y\nX6116MM AIR FRESHENER SVC01F92.790 25.11Y\nX7418SAFEWASHER SVC01F135.840 35.84Y\nX7702JRT TOILET PAPER CAS-01F175.776 75.78Y\nX9265HARDWOUND TWL SVC01F30.000 0.00N\nX95411000 HD CHERRY SVC01F33.150 9.45Y\nX9560SIG AB SOAP SVC01F43.050 12.20Y\n0001X290JEAN/FR/CARPNTR/RLX FIT/ DENIM-0362801F110.490 5.39Y\n0001X63680FRSHIRT/CRHRT/EVIS/NVY/LS-00MLS01F111.167 12.84Y\nEMPLOYEE 0001 OWES 003 Shirts OR PAY $ 230.40 REPLACEMENT CHARGE IN 2 WEEK/S (Z)\n0001X69526TSHIRT/NO PKT/HI VIS YELLOW/SS-RG00L01F111.031 11.34Y\n0001X9585JCKT/FR/EVIS/8812/NAVY/LS-00LLS01F22.611 5.22Y\n0001CLAUDIO QUIROS  SUBTOTAL - 34.79\n0002X69526TSHIRT/NO PKT/HI VIS YELLOW/SS-RG0XL01F111.031 11.34Y\n0002LENITRA STONE  SUBTOTAL - 11.34\n0003X290JEAN/FR/CARPNTR/RLX FIT/ DENIM-0363001F110.490 5.39Y\n0003X65386SHIRT/HI VIS YEL W/REFLECT/LS-00LLS01F110.717 7.89Y\n0003X69526TSHIRT/NO PKT/HI VIS YELLOW/SS-RG0XL01F111.031 11.34Y\n0003CLARENCE JONES  SUBTOTAL - 24.62\n0004X69526TSHIRT/NO PKT/HI VIS YELLOW/SS - SZ\nPREM-RG2XL\n01F111.133 12.46Y\n0004ALONZA VINSON  SUBTOTAL - 12.46\n0005X23270PANT/M/CARGO/CANV/STRETCH/KHK-03…",
+    "meta": {
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/profile%20products%20invoice.pdf",
+        "mime_type": "application/pdf"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_ref/kind",
+        "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "url",
+            "file",
+            "email",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/profile%20products%20invoice.pdf",
+      "mime_type": "application/pdf"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "zoominfo",
+      "leadCount": 5,
+      "leads": [
+        {
+          "company": "Profile Products",
+          "normalizedCompany": "profile products",
+          "contactName": "Lakeshia Jones",
+          "title": "",
+          "department": "",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(678) 628-0518",
+          "email": "",
+          "city": "MONTICELLO",
+          "state": "GA",
+          "postalCode": "31064",
+          "score": 25
+        },
+        {
+          "company": "Sonoco Products",
+          "normalizedCompany": "sonoco products",
+          "contactName": "",
+          "title": "",
+          "department": "",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "404-279-6420",
+          "email": "",
+          "city": "Forest Park",
+          "state": "GA",
+          "postalCode": "30297",
+          "score": 25
+        },
+        {
+          "company": "Ampro Products",
+          "normalizedCompany": "ampro products",
+          "contactName": "",
+          "title": "",
+          "department": "",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "770-535-7207",
+          "email": "",
+          "city": "Gainesville",
+          "state": "GA",
+          "postalCode": "30507",
+          "score": 25
+        },
+        {
+          "company": "Bass Pro Shops",
+          "normalizedCompany": "bass pro shops",
+          "contactName": "",
+          "title": "",
+          "department": "",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "478-719-4111",
+          "email": "",
+          "city": "Macon",
+          "state": "GA",
+          "postalCode": "31210",
+          "score": 25
+        },
+        {
+          "company": "COMPRESSED AIR PRODUCTS I",
+          "normalizedCompany": "compressed air products i",
+          "contactName": "",
+          "title": "",
+          "department": "",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "404-549-6996",
+          "email": "",
+          "city": "NEWNAN",
+          "state": "GA",
+          "postalCode": "30265",
+          "score": 25
+        }
+      ],
+      "cacheKey": "profile products|31064",
+      "inferredZip": "31064"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-af0ad26cf31f",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2026-01-01T02:34:42.716Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "af0ad26cf31f4d2705d11fa11faedaf3b734ee4efa9ef466bcda79eac5509e69",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "pdf_text",
+      "captured_at": "2026-01-01T02:34:42.716Z",
+      "parser": {
+        "name": "ingest.pdf_text",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/profile%20products%20invoice.pdf",
+        "mime_type": "application/pdf"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

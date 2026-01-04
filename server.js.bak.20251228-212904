@@ -1,0 +1,1271 @@
+/**
+ * server.js - QuietSignal backend (single-source-of-truth)
+ * "Gold" Build (robust + non-breaking)
+ *
+ * Keeps stable routes:
+ *  - POST /capture
+ *  - POST /analyze-mla
+ *  - POST /find-leads
+ *
+ * Restores / adds:
+ *  - GET  /health
+ *  - Telemetry: POST /telemetry, GET /api/telemetry/events, GET /api/telemetry/summary (if telemetryStore exists)
+ *  - Dashboard: /dashboard static + /api/dashboard router (if present)
+ *  - Runs browser: GET /api/runs, GET /api/runs/:runId, GET /api/runs/:runId/file/:fileName
+ *  - Ingest artifact pipeline: POST /ingest (canonical if present; always stores artifacts)
+ *  - PDF capture: POST /capture-pdf (pdf-parse + optional OCR + optional parser registry)
+ *  - Intel: /api/intel/* endpoints + safe detections from ingest/leads (if src/intel exists)
+ *
+ * Design goals:
+ *  - Never crash demo flow due to optional modules missing
+ *  - Maintain stable JSON envelopes for ingest
+ *  - Keep opportunity logic identical to your stable version
+ */
+
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+const { parse } = require("csv-parse/sync");
+
+const app = express();
+const PORT = Number(process.env.PORT || 5050);
+const VERSION = process.env.VERSION || "v2025-12-18cintas-parser-1";
+
+app.use(cors());
+app.use(express.json({ limit: "25mb" }));
+
+function optionalRequire(p, fallback = null) {
+  try {
+    return require(p);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+if (typeof global.fetch !== "function") {
+  try {
+    global.fetch = require("node-fetch");
+  } catch (_) {
+    console.warn("[WARN] global.fetch missing and node-fetch not installed. Public lead lookup may fail.");
+  }
+}
+
+const canonicalBuildMod = optionalRequire("./canonical/buildCanonicalInvoice");
+const canonicalValidateMod = optionalRequire("./canonical/validate");
+const ocrMod = optionalRequire("./ocr/ocrPdfToText");
+const telemetryMod = optionalRequire("./telemetry/telemetryStore");
+const dashboardRoutes = optionalRequire("./dashboard/routes");
+
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "YOUR_GOOGLE_PLACES_API_KEY_HERE";
+
+const mlaStore = {};
+let contacts = [];
+
+const DASHBOARD_DIR = path.join(__dirname, "dashboard");
+const RUNS_DIR = path.join(__dirname, "storage", "runs");
+
+function ensureDir(p) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
+
+function isSafeSegment(s) {
+  if (!s) return false;
+  if (s.includes("..")) return false;
+  if (s.includes("/") || s.includes("\\")) return false;
+  return true;
+}
+
+function nowRunId() {
+  const d = new Date();
+  const pad = (v) => String(v).padStart(2, "0");
+  const ts =
+    d.getFullYear() +
+    pad(d.getMonth() + 1) +
+    pad(d.getDate()) +
+    "-" +
+    pad(d.getHours()) +
+    pad(d.getMinutes()) +
+    pad(d.getSeconds());
+  const rand = Math.random().toString(16).slice(2, 8);
+  return `${ts}-${rand}`;
+}
+
+function writeRunJson(runId, fileName, obj) {
+  ensureDir(RUNS_DIR);
+  const runPath = path.join(RUNS_DIR, runId);
+  ensureDir(runPath);
+  const fp = path.join(runPath, fileName);
+  fs.writeFileSync(fp, JSON.stringify(obj, null, 2), "utf8");
+  return fp;
+}
+
+function normalizeCompanyName(name) {
+  if (!name) return "";
+  return String(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractAddressHintFromRawText(rawText) {
+  const raw = String(rawText || "");
+  if (!raw) return "";
+
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const cityStateZip = /([A-Za-z.\-'\s]{2,40}),\s*([A-Z]{2})\s+(\d{5})(?:-\d{4})?/;
+  const streetLike = /\d{1,6}\s+[A-Za-z0-9.\-'\s]{3,80}/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const m = l.match(cityStateZip);
+    if (!m) continue;
+
+    const prev = i > 0 ? lines[i - 1] : "";
+    const street = streetLike.test(prev) ? prev : "";
+    const city = (m[1] || "").trim();
+    const state = (m[2] || "").trim();
+    const zip = (m[3] || "").trim();
+
+    const parts = [street, `${city}, ${state} ${zip}`].filter(Boolean);
+    return parts.join(", ");
+  }
+
+  return "";
+}
+
+let intel = {
+  addDetection: () => {},
+  listDetections: () => [],
+  listMatches: () => [],
+  recomputeMatches: () => ({ scanned: 0, matchesCreated: 0 })
+};
+
+try {
+  const intelEngine = require("./src/intel/engine");
+  if (intelEngine && typeof intelEngine.createIntelEngine === "function") {
+    intel = intelEngine.createIntelEngine("intel.sqlite");
+    console.log("[INTEL] Enabled");
+  } else {
+    console.warn("[INTEL] Engine module loaded but createIntelEngine not found");
+  }
+} catch (e) {
+  console.warn("[INTEL] Disabled (missing or failed to load):", String(e && (e.message || e)));
+}
+
+function safeIntelAddDetection(d) {
+  try {
+    if (!d || !d.rawName) return;
+    if (typeof intel.addDetection === "function") intel.addDetection(d);
+  } catch (e) {
+    console.warn("[INTEL] addDetection failed:", String(e && (e.stack || e.message || e)));
+  }
+}
+
+function safeIntelSeedFromContacts(list) {
+  const enabled = String(process.env.INTEL_SEED_ON_START || "").trim() === "1";
+  if (!enabled) return;
+  try {
+    let count = 0;
+    for (const c of list || []) {
+      if (!c || !c.company) continue;
+      const addr = [c.city, c.state, c.postalCode].filter(Boolean).join(", ");
+      safeIntelAddDetection({
+        sourceType: "lead_seed",
+        sourceId: c.email || c.directPhone || c.corpPhone || `${c.company}-${c.postalCode || ""}`,
+        rawName: c.company,
+        rawAddress: addr
+      });
+      count += 1;
+    }
+    console.log(`[INTEL] Seeded detections from contacts: ${count}`);
+  } catch (e) {
+    console.warn("[INTEL] Seeding failed:", String(e && (e.stack || e.message || e)));
+  }
+}
+
+function loadContactsFromCsv() {
+  const csvPath = path.join(__dirname, "zoominfo-contacts.csv");
+  if (!fs.existsSync(csvPath)) {
+    console.log("[LEADS] zoominfo-contacts.csv not found. Lead sourcing limited to public fallback.");
+    return;
+  }
+
+  try {
+    const raw = fs.readFileSync(csvPath, "utf8");
+    const records = parse(raw, { skip_empty_lines: true });
+
+    if (!records.length) {
+      console.log("[LEADS] zoominfo-contacts.csv is empty.");
+      return;
+    }
+
+    const header = records[0].map((v) => (v ? String(v) : ""));
+    const rows = records.slice(1);
+
+    function findColumnIndex(candidates) {
+      const lower = header.map((h) => (h ? String(h).toLowerCase().trim() : ""));
+      for (const name of candidates) {
+        const target = name.toLowerCase();
+        const idx = lower.findIndex((h) => h === target || (h && h.includes(target)));
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    }
+
+    const idxCompany = findColumnIndex(["company", "account name"]);
+    const idxName = findColumnIndex(["contact name", "name", "full name"]);
+    const idxTitle = findColumnIndex(["title", "job title"]);
+    const idxDept = findColumnIndex(["department", "dept"]);
+    const idxDirectPhone = findColumnIndex(["direct phone", "direct dial", "direct line"]);
+    const idxMobilePhone = findColumnIndex(["mobile phone", "cell", "mobile"]);
+    const idxCorpPhone = findColumnIndex(["corporate phone", "hq phone", "main phone", "company phone"]);
+    const idxEmail = findColumnIndex(["email", "business email", "work email"]);
+    const idxCity = findColumnIndex(["city"]);
+    const idxState = findColumnIndex(["state", "region"]);
+    const idxPostal = findColumnIndex(["postalcode", "zip", "zip code"]);
+
+    console.log("[LEADS] CSV column mapping:");
+    console.log("  Company:", idxCompany);
+    console.log("  Contact Name:", idxName);
+    console.log("  Title:", idxTitle);
+    console.log("  Department:", idxDept);
+    console.log("  Direct Phone:", idxDirectPhone);
+    console.log("  Mobile Phone:", idxMobilePhone);
+    console.log("  Corporate Phone:", idxCorpPhone);
+    console.log("  Email:", idxEmail);
+    console.log("  City:", idxCity);
+    console.log("  State:", idxState);
+    console.log("  PostalCode:", idxPostal);
+
+    contacts = rows
+      .map((row) => {
+        function get(idx) {
+          if (idx === -1) return "";
+          const v = row[idx];
+          return v === undefined || v === null ? "" : String(v).trim();
+        }
+
+        const company = get(idxCompany);
+        const contactName = get(idxName);
+        const title = get(idxTitle);
+        const department = get(idxDept);
+        const directPhone = get(idxDirectPhone);
+        const mobilePhone = get(idxMobilePhone);
+        const corpPhone = get(idxCorpPhone);
+        const email = get(idxEmail);
+        const city = get(idxCity);
+        const state = get(idxState);
+        const postalCode = get(idxPostal);
+
+        if (!company && !contactName && !corpPhone && !directPhone) return null;
+
+        return {
+          company,
+          normalizedCompany: normalizeCompanyName(company),
+          contactName,
+          title,
+          department,
+          directPhone,
+          mobilePhone,
+          corpPhone,
+          email,
+          city,
+          state,
+          postalCode
+        };
+      })
+      .filter(Boolean);
+
+    console.log(`[LEADS] Loaded ${contacts.length} contacts from zoominfo-contacts.csv`);
+
+    safeIntelSeedFromContacts(contacts);
+  } catch (err) {
+    console.error("[LEADS] Error reading zoominfo-contacts.csv:", err);
+  }
+}
+
+loadContactsFromCsv();
+
+function scoreContact(contact) {
+  let score = 0;
+
+  if (contact.directPhone) score += 40;
+  else if (contact.mobilePhone) score += 35;
+  else if (contact.corpPhone) score += 25;
+
+  const dept = (contact.department || "").toLowerCase();
+  const title = (contact.title || "").toLowerCase();
+
+  if (dept.includes("reception") || dept.includes("front desk") || title.includes("receptionist")) {
+    score += 15;
+  } else if (dept.includes("hr") || dept.includes("human resources") || title.includes("hr")) {
+    score += 10;
+  } else if (dept.includes("maintenance") || title.includes("maintenance")) {
+    score += 8;
+  } else if (dept.includes("safety") || dept.includes("ehs") || title.includes("safety")) {
+    score += 8;
+  }
+
+  if (score > 100) score = 100;
+  return score;
+}
+
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    service: "ai-sales-backend",
+    version: VERSION,
+    port: PORT,
+    time: new Date().toISOString()
+  });
+});
+
+app.get("/api/intel/status", (req, res) => {
+  res.json({
+    ok: true,
+    hasIntel: !!intel,
+    intelMethods: {
+      addDetection: typeof intel.addDetection === "function",
+      listDetections: typeof intel.listDetections === "function",
+      listMatches: typeof intel.listMatches === "function",
+      recomputeMatches: typeof intel.recomputeMatches === "function"
+    }
+  });
+});
+
+app.post("/api/intel/recompute", (req, res) => {
+  try {
+    const out = typeof intel.recomputeMatches === "function" ? intel.recomputeMatches(500) : { scanned: 0, matchesCreated: 0 };
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: "intel recompute failed", error: String(e && (e.stack || e.message || e)) });
+  }
+});
+
+app.get("/api/intel/matches", (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 200);
+    const matches = typeof intel.listMatches === "function" ? intel.listMatches(limit) : [];
+    res.json({ ok: true, matches });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: "intel matches failed", error: String(e && (e.stack || e.message || e)) });
+  }
+});
+
+app.get("/api/intel/detections", (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 200);
+    const detections = typeof intel.listDetections === "function" ? intel.listDetections(limit) : [];
+    res.json({ ok: true, detections });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: "intel detections failed", error: String(e && (e.stack || e.message || e)) });
+  }
+});
+
+app.post("/api/intel/test-detection", (req, res) => {
+  try {
+    const body = req.body || {};
+    const d = {
+      sourceType: body.sourceType || "test",
+      sourceId: body.sourceId || `test:${Date.now()}`,
+      rawName: body.rawName || "Test Company LLC",
+      rawAddress: body.rawAddress || "123 Test St, Testville, MO 63101"
+    };
+    safeIntelAddDetection(d);
+    res.json({ ok: true, added: d });
+  } catch (e) {
+    res.status(200).json({ ok: false, error: String(e && (e.stack || e.message || e)) });
+  }
+});
+
+if (telemetryMod && typeof telemetryMod.appendEvent === "function") {
+  const { appendEvent, readEvents, summarizeEvents } = telemetryMod;
+
+  app.post("/telemetry", (req, res) => {
+    try {
+      const body = req.body || {};
+      const evt = {
+        ts: body.ts || new Date().toISOString(),
+        user_id: body.user_id ?? null,
+        session_id: body.session_id ?? null,
+        source: body.source || "unknown",
+        action: body.action || "unknown",
+        meta: body.meta && typeof body.meta === "object" ? body.meta : {}
+      };
+      const saved = appendEvent(evt);
+      return res.status(200).json({ ok: true, event: saved });
+    } catch (err) {
+      return res.status(500).json({ ok: false, message: "telemetry failed", error: String(err && (err.stack || err)) });
+    }
+  });
+
+  app.get("/api/telemetry/events", (req, res) => {
+    try {
+      const limit = Math.max(1, Math.min(2000, Number(req.query.limit || 200)));
+      const events = readEvents({ limit });
+      return res.json({ ok: true, limit, events });
+    } catch (err) {
+      return res.status(500).json({ ok: false, message: "telemetry read failed", error: String(err && (err.stack || err)) });
+    }
+  });
+
+  app.get("/api/telemetry/summary", (req, res) => {
+    try {
+      const windowHours = Math.max(1, Math.min(24 * 30, Number(req.query.windowHours || 24)));
+      const events = readEvents({ limit: 5000 });
+
+      const cutoff = Date.now() - windowHours * 60 * 60 * 1000;
+      const inWindow = events.filter((e) => {
+        const t = Date.parse(e.ts || "");
+        return Number.isFinite(t) && t >= cutoff;
+      });
+
+      const summary = summarizeEvents(inWindow) || {};
+      const byAction = summary.byAction || {};
+      const adoption = {
+        analyze_invoice_clicked: byAction["analyze_invoice_clicked"] || 0,
+        opportunity_clicked: byAction["opportunity_clicked"] || 0,
+        find_leads_clicked: byAction["find_leads_clicked"] || 0,
+        analyze_mla_clicked: byAction["analyze_mla_clicked"] || 0
+      };
+
+      return res.json({
+        ok: true,
+        windowHours,
+        totals: {
+          events: inWindow.length,
+          uniqueUsers: Object.keys(summary.byUser || {}).length
+        },
+        adoption,
+        breakdown: summary
+      });
+    } catch (err) {
+      return res.status(500).json({ ok: false, message: "telemetry summary failed", error: String(err && (err.stack || err)) });
+    }
+  });
+} else {
+  console.log("[TELEMETRY] telemetryStore not found; telemetry routes disabled.");
+}
+
+if (dashboardRoutes) {
+  app.use("/api/dashboard", dashboardRoutes);
+}
+
+if (fs.existsSync(DASHBOARD_DIR)) {
+  app.use("/dashboard", express.static(DASHBOARD_DIR, { index: false }));
+  app.get(["/dashboard", "/dashboard/"], (req, res) => {
+    return res.sendFile(path.join(DASHBOARD_DIR, "index.html"));
+  });
+}
+
+app.get("/api/runs", (req, res) => {
+  try {
+    if (!fs.existsSync(RUNS_DIR)) return res.json({ ok: true, runs: [] });
+
+    const entries = fs
+      .readdirSync(RUNS_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort((a, b) => (a < b ? 1 : -1));
+
+    const runs = entries.map((runId) => {
+      const runPath = path.join(RUNS_DIR, runId);
+      const summaryPath = path.join(runPath, "_SUMMARY.json");
+      let summaryCounts = null;
+      let createdAt = null;
+
+      try {
+        const stat = fs.statSync(runPath);
+        createdAt = stat.mtime ? stat.mtime.toISOString() : null;
+      } catch (_) {}
+
+      if (fs.existsSync(summaryPath)) {
+        try {
+          const summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
+          summaryCounts = summary && summary.counts ? summary.counts : summary;
+        } catch (_) {
+          summaryCounts = null;
+        }
+      }
+
+      return { runId, createdAt, summaryCounts };
+    });
+
+    return res.json({ ok: true, runs });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Failed to list runs", error: String(err) });
+  }
+});
+
+app.get("/api/runs/:runId", (req, res) => {
+  try {
+    const runId = req.params.runId;
+    if (!isSafeSegment(runId)) return res.status(400).json({ ok: false, message: "Invalid runId" });
+
+    const runPath = path.join(RUNS_DIR, runId);
+    if (!fs.existsSync(runPath)) return res.status(404).json({ ok: false, message: "Run not found" });
+
+    const summaryPath = path.join(runPath, "_SUMMARY.json");
+    let summary = null;
+    if (fs.existsSync(summaryPath)) {
+      try {
+        summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
+      } catch (_) {
+        summary = null;
+      }
+    }
+
+    const files = fs
+      .readdirSync(runPath)
+      .filter((f) => f.endsWith(".json") && f !== "_SUMMARY.json")
+      .sort();
+
+    const meta = files.map((fileName) => {
+      const fp = path.join(runPath, fileName);
+      let obj = null;
+
+      try {
+        obj = JSON.parse(fs.readFileSync(fp, "utf8"));
+      } catch (_) {
+        obj = null;
+      }
+
+      const extracted = obj && obj.extracted ? obj.extracted : {};
+      const status = obj && obj.status ? obj.status : obj && obj.ok ? "ok" : "unknown";
+
+      return {
+        fileName,
+        status,
+        parserUsed: extracted.parserUsed || obj?.parserUsed || "unknown",
+        parsedItemsCount: extracted.parsedItemsCount ?? obj?.parsedItemsCount ?? null,
+        usedOcr: extracted.usedOcr ?? obj?.usedOcr ?? false,
+        textLength: extracted.textLength ?? obj?.textLength ?? null
+      };
+    });
+
+    return res.json({ ok: true, runId, summary, files: meta });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Failed to load run", error: String(err) });
+  }
+});
+
+app.get("/api/runs/:runId/file/:fileName", (req, res) => {
+  try {
+    const { runId, fileName } = req.params;
+    if (!isSafeSegment(runId) || !isSafeSegment(fileName)) {
+      return res.status(400).json({ ok: false, message: "Invalid path segment" });
+    }
+    if (!fileName.endsWith(".json")) {
+      return res.status(400).json({ ok: false, message: "fileName must end with .json" });
+    }
+
+    const fp = path.join(RUNS_DIR, runId, fileName);
+    if (!fs.existsSync(fp)) return res.status(404).json({ ok: false, message: "File not found" });
+
+    const obj = JSON.parse(fs.readFileSync(fp, "utf8"));
+    return res.json(obj);
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Failed to load file", error: String(err) });
+  }
+});
+
+function processInvoice(payload, items) {
+  const parseQty = (q) => {
+    const n = parseInt(q, 10);
+    return isNaN(n) ? 0 : n;
+  };
+
+  const totalItems = items.length;
+
+  let frItemsCount = 0;
+
+  let frShirtQty = 0;
+  let frPantQty = 0;
+  let frJacketQty = 0;
+
+  let nonFrShirtQty = 0;
+  let nonFrPantQty = 0;
+  let nonFrJacketQty = 0;
+
+  const linerSku = "64356";
+  let linerQty = 0;
+
+  for (const it of items) {
+    const desc = String(it.description || "");
+    const descLower = desc.toLowerCase();
+    const qty = parseQty(it.quantity);
+    const sku = String(it.sku || "");
+
+    const isFR = descLower.includes("fr");
+    const isShirt = descLower.includes("shirt");
+    const isPant = descLower.includes("pant");
+    const isJacket = descLower.includes("jacket") || descLower.includes("coat");
+
+    if (isFR) {
+      frItemsCount += 1;
+      if (isShirt) frShirtQty += qty;
+      else if (isPant) frPantQty += qty;
+      else if (isJacket) frJacketQty += qty;
+    } else {
+      if (isShirt) nonFrShirtQty += qty;
+      else if (isPant) nonFrPantQty += qty;
+      else if (isJacket) nonFrJacketQty += qty;
+    }
+
+    if (sku === linerSku) linerQty += qty;
+  }
+
+  const frWearerCount = items.reduce((sum, it) => {
+    const descLower = String(it.description || "").toLowerCase();
+    if (!descLower.includes("fr")) return sum;
+    return sum + parseQty(it.quantity);
+  }, 0);
+
+  const totalShirtQty = frShirtQty + nonFrShirtQty;
+  const totalPantQty = frPantQty + nonFrPantQty;
+
+  const frUniformQty = Math.min(frShirtQty, frPantQty);
+  const totalUniformQty = Math.min(totalShirtQty, totalPantQty);
+  const nonFrUniformQty = Math.max(totalUniformQty - frUniformQty, 0);
+
+  const estimatedFrEmployees = Math.max(Math.ceil(frUniformQty / 11), 0);
+  const estimatedNonFrEmployees = Math.max(Math.ceil(nonFrUniformQty / 11), 0);
+
+  const frCoreEmployees = estimatedFrEmployees;
+  const frWearersWithNonFrJacket = Math.min(nonFrJacketQty, frCoreEmployees);
+
+  const missingLiners = Math.max(frWearerCount - linerQty, 0);
+  const linerPricePerWeek = 2.5;
+  const potentialWeeklyRevenue_Liners = missingLiners * linerPricePerWeek;
+
+  const commissionMultiplier = 3;
+  const estimatedCommissionPayout_Liners = potentialWeeklyRevenue_Liners * commissionMultiplier;
+
+  const jacketPricePerWeek = 3.0;
+  const potentialWeeklyRevenue_JacketConversion = frWearersWithNonFrJacket * jacketPricePerWeek;
+  const estimatedCommissionPayout_JacketConversion = potentialWeeklyRevenue_JacketConversion * commissionMultiplier;
+
+  const mlaSummary = {
+    mlaId: "MLA-GEN-DEFAULT",
+    mlaName: "Standard FR Program",
+    liner: {
+      presentOnFormulary: true,
+      sku: linerSku,
+      description: "FR Insulated Liner",
+      pricePerWeek: linerPricePerWeek,
+      allowedAtLocalLevel: false,
+      formularyTier: "Extended",
+      notes: "Extended formulary item; may require approval depending on region."
+    }
+  };
+
+  const opportunity = {
+    linerAddOn: {
+      sku: linerSku,
+      description: "FR Insulated Liner add-on",
+      frWearerCount,
+      currentLinerWearers: linerQty,
+      missingLiners,
+      potentialWeeklyRevenue: potentialWeeklyRevenue_Liners,
+      commissionEstimate: {
+        multiplier: commissionMultiplier,
+        estimatedPayout: estimatedCommissionPayout_Liners
+      }
+    },
+    jacketConversion: {
+      description: "Convert non-FR jackets to FR jackets",
+      frUniformQty,
+      estimatedFrEmployees,
+      nonFrJacketQty,
+      frWearersWithNonFrJacket,
+      exampleJacketPricePerWeek: jacketPricePerWeek,
+      potentialWeeklyRevenue: potentialWeeklyRevenue_JacketConversion,
+      commissionEstimate: {
+        multiplier: commissionMultiplier,
+        estimatedPayout: estimatedCommissionPayout_JacketConversion
+      }
+    },
+    uniformMix: {
+      frUniformQty,
+      nonFrUniformQty,
+      estimatedFrEmployees,
+      estimatedNonFrEmployees,
+      conversionRule: "11 uniforms ≈ 1 employee",
+      notes: "Uniform quantities are derived from shirt + pant pairs. Employee estimates are based on 11 uniforms per employee."
+    }
+  };
+
+  return {
+    ok: true,
+    message: "Backend processed invoice and MLA/opportunity logic.",
+    account: {
+      accountNumber: payload.accountNumber || "",
+      accountName: payload.accountName || ""
+    },
+    stats: { totalItems, frItemsCount, frWearerCount },
+    mlaSummary,
+    opportunity
+  };
+}
+
+app.post("/capture", (req, res) => {
+  const payload = req.body || {};
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  return res.json(processInvoice(payload, items));
+});
+
+app.post("/ingest", (req, res) => {
+  const run_id = nowRunId();
+  const safeArray = (x) => (Array.isArray(x) ? x : []);
+  const truncate = (str, n) => {
+    const s = String(str ?? "");
+    return s.length <= n ? s : s.slice(0, n) + "…";
+  };
+
+  function buildUnified({ ok, status, message, extracted, canonical, validation, legacy, debug, error, source_type }) {
+    const rawText = extracted?.raw_text ?? "";
+    const items = safeArray(extracted?.items);
+    const tableHtml = safeArray(extracted?.tableHtml);
+
+    return {
+      ok: !!ok,
+      run_id,
+      source_type,
+      status,
+      message: message || null,
+      canonical: status === "canonical_valid" ? canonical : null,
+      extracted: {
+        items,
+        tableHtml,
+        raw_text_length: rawText.length,
+        raw_text_preview: truncate(rawText, 2000),
+        meta: extracted?.meta || {}
+      },
+      validation: validation || { attempted: false, ok: false, errors: [] },
+      legacy: status === "canonical_valid" ? legacy ?? null : null,
+      debug: { version: VERSION, ...(debug || {}) },
+      error: error ? { message: String(error?.message || error), stack: String(error?.stack || "") } : null
+    };
+  }
+
+  try {
+    const body = req.body || {};
+    const source_type = body.source_type || "unknown";
+    const payload = body.payload || body;
+
+    const extracted = {
+      items: safeArray(payload?.items),
+      raw_text: payload?.raw_text || "",
+      tableHtml: safeArray(payload?.tableHtml),
+      meta: { source_ref: body.source_ref || null }
+    };
+
+    writeRunJson(run_id, "raw_capture.json", body);
+
+    const accountName = payload.accountName || body.accountName || "";
+    const addressHint = extractAddressHintFromRawText(extracted.raw_text);
+
+    if (accountName) {
+      safeIntelAddDetection({
+        sourceType: "invoice",
+        sourceId: String(run_id),
+        rawName: String(accountName).trim(),
+        rawAddress: addressHint
+      });
+    }
+
+    const hasCanonical =
+      canonicalBuildMod &&
+      canonicalValidateMod &&
+      typeof canonicalBuildMod.buildCanonicalInvoiceV1 === "function" &&
+      typeof canonicalValidateMod.validateCanonicalInvoice === "function";
+
+    if (!hasCanonical) {
+      const unified = buildUnified({
+        ok: true,
+        status: extracted.items.length ? "extracted_only" : "no_items",
+        message: "Ingest stored artifacts (canonical pipeline not available in this build).",
+        extracted,
+        canonical: null,
+        validation: { attempted: false, ok: false, errors: [] },
+        legacy: null,
+        debug: { source_ref: body.source_ref || null, extractedItemsCount: extracted.items.length },
+        error: null,
+        source_type
+      });
+
+      writeRunJson(run_id, "ingest_response.json", unified);
+      writeRunJson(run_id, "_SUMMARY.json", {
+        run_id,
+        source_type,
+        status: unified.status,
+        counts: {
+          extractedItemsCount: extracted.items.length,
+          tableCount: extracted.tableHtml.length,
+          rawTextLength: extracted.raw_text.length
+        }
+      });
+
+      return res.status(200).json(unified);
+    }
+
+    const { buildCanonicalInvoiceV1 } = canonicalBuildMod;
+    const { validateCanonicalInvoice } = canonicalValidateMod;
+
+    const canonical = buildCanonicalInvoiceV1({
+      source_type,
+      payload,
+      parserName: `ingest.${source_type}`,
+      parserVersion: "1.0.0",
+      source_ref: body.source_ref || { kind: "unknown", value: null, mime_type: null }
+    });
+
+    writeRunJson(run_id, "canonical.json", canonical);
+    writeRunJson(run_id, "extracted.json", extracted);
+
+    const validation = validateCanonicalInvoice(canonical);
+    writeRunJson(run_id, "validation.json", validation);
+
+    if (!validation.ok) {
+      const unified = buildUnified({
+        ok: false,
+        status: extracted.items.length ? "extracted_only" : "no_items",
+        message: "Canonical invoice validation failed",
+        extracted,
+        canonical: null,
+        validation: { attempted: true, ok: false, errors: validation.errors || [] },
+        legacy: null,
+        debug: {
+          source_ref: body.source_ref || null,
+          extractedItemsCount: extracted.items.length,
+          canonicalLineItemsCount: safeArray(canonical?.line_items).length
+        },
+        error: null,
+        source_type
+      });
+
+      unified.canonical_preview = canonical;
+
+      writeRunJson(run_id, "ingest_response.json", unified);
+      writeRunJson(run_id, "_SUMMARY.json", {
+        run_id,
+        source_type,
+        status: unified.status,
+        counts: {
+          extractedItemsCount: extracted.items.length,
+          canonicalLineItemsCount: safeArray(canonical?.line_items).length,
+          rawTextLength: extracted.raw_text.length
+        },
+        validation: unified.validation
+      });
+
+      return res.status(200).json(unified);
+    }
+
+    const itemsForExistingEngine = (canonical.line_items || []).map((li) => ({
+      sku: li.sku || "",
+      description: li.raw_description,
+      quantity: String(li.quantity),
+      unitPrice: li.unit_price ? String(li.unit_price.amount) : ""
+    }));
+
+    const legacy = processInvoice(payload, itemsForExistingEngine);
+
+    const unified = buildUnified({
+      ok: true,
+      status: "canonical_valid",
+      message: "Canonical invoice valid. Opportunity/legacy engine ran.",
+      extracted,
+      canonical,
+      validation: { attempted: true, ok: true, errors: [] },
+      legacy,
+      debug: {
+        source_ref: body.source_ref || null,
+        extractedItemsCount: extracted.items.length,
+        canonicalLineItemsCount: (canonical.line_items || []).length
+      },
+      error: null,
+      source_type
+    });
+
+    writeRunJson(run_id, "ingest_response.json", unified);
+    writeRunJson(run_id, "_SUMMARY.json", {
+      run_id,
+      source_type,
+      status: unified.status,
+      counts: {
+        extractedItemsCount: extracted.items.length,
+        canonicalLineItemsCount: (canonical.line_items || []).length,
+        rawTextLength: extracted.raw_text.length
+      }
+    });
+
+    return res.status(200).json(unified);
+  } catch (err) {
+    const unified = {
+      ok: false,
+      run_id,
+      source_type: "unknown",
+      status: "parse_error",
+      message: "ingest failed",
+      canonical: null,
+      extracted: { items: [], tableHtml: [], raw_text_length: 0, raw_text_preview: "", meta: {} },
+      validation: { attempted: false, ok: false, errors: [] },
+      legacy: null,
+      debug: { version: VERSION },
+      error: { message: String(err?.message || err), stack: String(err?.stack || "") }
+    };
+
+    try {
+      writeRunJson(run_id, "ingest_error.json", unified);
+      writeRunJson(run_id, "_SUMMARY.json", { run_id, source_type: "unknown", status: "parse_error" });
+    } catch (_) {}
+
+    return res.status(200).json(unified);
+  }
+});
+
+let _pdfParseFn = null;
+async function getPdfParse() {
+  if (_pdfParseFn) return _pdfParseFn;
+
+  try {
+    const mod = require("pdf-parse");
+    _pdfParseFn = typeof mod === "function" ? mod : mod?.default || null;
+  } catch (_) {
+    _pdfParseFn = null;
+  }
+
+  if (!_pdfParseFn) {
+    const mod = await import("pdf-parse");
+    _pdfParseFn = typeof mod.default === "function" ? mod.default : null;
+  }
+
+  if (!_pdfParseFn) throw new Error("pdf-parse could not be loaded as a function (CJS/ESM).");
+  return _pdfParseFn;
+}
+
+function parseLineItemsFromText(text) {
+  const rawLines = String(text || "").split(/\r?\n/);
+  const lines = rawLines.map((l) => (l || "").replace(/\s+/g, " ").trim()).filter(Boolean);
+
+  const items = [];
+  const skuRegex = /^[A-Z0-9]{3,}$/;
+  const moneyRegex = /^(\$)?\d{1,10}(\.\d{2})$/;
+
+  for (const line of lines) {
+    const tokens = line.split(" ").filter(Boolean);
+    if (tokens.length < 4) continue;
+
+    const sku = tokens[0];
+    if (!skuRegex.test(sku)) continue;
+
+    const last = tokens[tokens.length - 1];
+    const secondLast = tokens[tokens.length - 2];
+
+    const qtyCand = parseInt(secondLast, 10);
+    const priceCand = last;
+
+    if (!Number.isFinite(qtyCand) || qtyCand <= 0) continue;
+    if (!moneyRegex.test(priceCand)) continue;
+
+    const description = tokens.slice(1, tokens.length - 2).join(" ").trim();
+    if (!description) continue;
+
+    items.push({
+      sku,
+      description,
+      quantity: String(qtyCand),
+      unitPrice: priceCand.replace("$", "")
+    });
+  }
+
+  const cleaned = items.filter((it) => {
+    const d = String(it.description || "").trim();
+    return !/^\d+(\.\d+)?$/.test(d);
+  });
+
+  return { items: cleaned.slice(0, 200), parserUsed: cleaned.length ? "generic" : "none" };
+}
+
+app.post("/capture-pdf", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const pdfBase64 = body.pdfBase64 || "";
+    if (!pdfBase64) return res.json({ ok: false, message: "pdfBase64 required" });
+
+    const enableOcr = body.enableOcr === true;
+    const ocrMaxPages = Number.isFinite(Number(body.ocrMaxPages)) ? Number(body.ocrMaxPages) : 6;
+
+    const pdfBuffer = Buffer.from(pdfBase64, "base64");
+
+    const pdfParse = await getPdfParse();
+    const parsed = await pdfParse(pdfBuffer);
+
+    let text = parsed?.text ? parsed.text : "";
+    let textLength = text.length;
+
+    let parsedItems = parseLineItemsFromText(text);
+    let items = parsedItems.items;
+    let parserUsed = parsedItems.parserUsed;
+
+    let usedOcr = false;
+    let ocrTextLength = 0;
+
+    const shouldTryOcr = enableOcr && (!items.length || textLength < 200);
+
+    if (shouldTryOcr) {
+      if (!ocrMod || typeof ocrMod.ocrPdfBufferToText !== "function") {
+        return res.json({
+          ok: true,
+          message: "PDF parsed; OCR requested but OCR module not available in this build.",
+          version: VERSION,
+          extracted: { textLength, usedOcr: false, parserUsed, sourceLabel: body.sourceLabel || "" },
+          parsedItems: [],
+          hint: "OCR module missing. Ensure ./ocr/ocrPdfToText exists."
+        });
+      }
+
+      try {
+        usedOcr = true;
+        const ocrText = await ocrMod.ocrPdfBufferToText(pdfBuffer, { maxPages: ocrMaxPages, lang: "eng", dpi: 200 });
+        ocrTextLength = ocrText.length;
+        text = ocrText;
+        textLength = text.length;
+
+        parsedItems = parseLineItemsFromText(text);
+        items = parsedItems.items;
+        parserUsed = parsedItems.parserUsed;
+      } catch (ocrErr) {
+        return res.json({
+          ok: true,
+          message: "PDF parsed; OCR fallback attempted but failed.",
+          version: VERSION,
+          extracted: { textLength, usedOcr, ocrError: String(ocrErr && (ocrErr.stack || ocrErr)) },
+          parsedItems: [],
+          hint: 'OCR requires local deps: "brew install tesseract poppler".'
+        });
+      }
+    }
+
+    try {
+      const registry = optionalRequire("./parsers/selectAndParseTextToItems");
+      if (registry && typeof registry.selectAndParseTextToItems === "function") {
+        const out = await registry.selectAndParseTextToItems({ text });
+        if (out && out.ok) {
+          items = out.items;
+          parserUsed = out.parserUsed;
+        }
+      }
+    } catch (_) {}
+
+    if (!items.length) {
+      return res.json({
+        ok: true,
+        message: "PDF processed but no line items matched the parser yet.",
+        version: VERSION,
+        extracted: { textLength, usedOcr, ocrTextLength, parserUsed, sourceLabel: body.sourceLabel || "", textPreview: text.slice(0, 900) },
+        parsedItems: [],
+        hint: "Next step: widen the parser to match this vendor’s line format."
+      });
+    }
+
+    const response = processInvoice(
+      { accountNumber: body.accountNumber || "", accountName: body.accountName || "", sourceLabel: body.sourceLabel || "" },
+      items
+    );
+
+    if (body.accountName) {
+      safeIntelAddDetection({
+        sourceType: "invoice_pdf",
+        sourceId: `pdf:${Date.now()}`,
+        rawName: String(body.accountName).trim(),
+        rawAddress: extractAddressHintFromRawText(text)
+      });
+    }
+
+    return res.json({
+      ...response,
+      version: VERSION,
+      extracted: { textLength, usedOcr, ocrTextLength, parserUsed, parsedItemsCount: items.length, sourceLabel: body.sourceLabel || "" }
+    });
+  } catch (err) {
+    return res.json({ ok: false, message: "capture-pdf failed", error: String(err && (err.stack ? err.stack : err)) });
+  }
+});
+
+app.post("/analyze-mla", (req, res) => {
+  const body = req.body || {};
+  const mlaId = body.mlaId || body.title || `MLA-${Date.now()}`;
+
+  const textLength = (body.text || "").length;
+  const hasTableHtml = !!body.tableHtml;
+
+  mlaStore[mlaId] = {
+    mlaId,
+    sourceUrl: body.sourceUrl || "",
+    textLength,
+    hasTableHtml,
+    storedAt: new Date().toISOString()
+  };
+
+  return res.json({ ok: true, message: `Stored MLA ${mlaId}`, mlaId, textLength, hasTableHtml });
+});
+
+async function findPublicLeads(accountName, postalCode) {
+  if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY.startsWith("YOUR_GOOGLE_PLACES_API_KEY")) {
+    console.log("[PUBLIC_LEADS] No Google Places API key configured; skipping public lookup.");
+    return [];
+  }
+
+  const query = postalCode ? `${accountName} ${postalCode}` : accountName;
+
+  const searchUrl =
+    "https://maps.googleapis.com/maps/api/place/textsearch/json" +
+    `?query=${encodeURIComponent(query)}` +
+    `&key=${GOOGLE_PLACES_API_KEY}`;
+
+  try {
+    const searchRes = await fetch(searchUrl);
+    const searchJson = await searchRes.json();
+
+    if (!searchJson.results || !searchJson.results.length) return [];
+
+    const top = searchJson.results[0];
+    const placeId = top.place_id;
+    const businessName = top.name || accountName;
+    let formattedAddress = top.formatted_address || "";
+
+    let phone = "";
+    let city = "";
+    let state = "";
+    let postal = postalCode || "";
+
+    if (placeId) {
+      const detailsUrl =
+        "https://maps.googleapis.com/maps/api/place/details/json" +
+        `?place_id=${encodeURIComponent(placeId)}` +
+        "&fields=name,formatted_phone_number,formatted_address" +
+        `&key=${GOOGLE_PLACES_API_KEY}`;
+
+      const detailsRes = await fetch(detailsUrl);
+      const detailsJson = await detailsRes.json();
+      if (detailsJson.result) {
+        phone = detailsJson.result.formatted_phone_number || "";
+        if (detailsJson.result.formatted_address) formattedAddress = detailsJson.result.formatted_address;
+      }
+    }
+
+    const addrParts = formattedAddress.split(",");
+    if (addrParts.length >= 3) {
+      const cityPart = addrParts[addrParts.length - 3].trim();
+      const stateZipPart = addrParts[addrParts.length - 2].trim();
+      city = cityPart;
+
+      const m = stateZipPart.match(/([A-Z]{2})\s+(\d{5})/);
+      if (m) {
+        state = m[1];
+        if (!postal) postal = m[2];
+      }
+    }
+
+    return [
+      {
+        contactName: businessName + " (Main Line)",
+        title: "",
+        department: "Front Desk",
+        directPhone: "",
+        mobilePhone: "",
+        corpPhone: phone,
+        email: "",
+        city,
+        state,
+        postalCode: postal,
+        score: 60
+      }
+    ];
+  } catch (err) {
+    console.error("[PUBLIC_LEADS] Error calling Google Places:", err);
+    return [];
+  }
+}
+
+app.post("/find-leads", async (req, res) => {
+  const body = req.body || {};
+  const accountName = body.accountName || "";
+  const postalCode = (body.postalCode || "").trim();
+
+  if (!accountName) return res.json({ ok: false, message: "accountName required" });
+
+  safeIntelAddDetection({
+    sourceType: "lead_request",
+    sourceId: `find-leads:${Date.now()}`,
+    rawName: String(accountName).trim(),
+    rawAddress: postalCode ? String(postalCode).trim() : ""
+  });
+
+  let candidates = [];
+
+  if (contacts.length) {
+    const normalizedAccount = normalizeCompanyName(accountName);
+
+    candidates = contacts.filter((c) => {
+      if (!c.normalizedCompany) return false;
+
+      const nameMatch = c.normalizedCompany.includes(normalizedAccount) || normalizedAccount.includes(c.normalizedCompany);
+      if (!nameMatch) return false;
+
+      if (postalCode) {
+        if (!c.postalCode) return false;
+        return c.postalCode.replace(/\s+/g, "") === postalCode.replace(/\s+/g, "");
+      }
+
+      return true;
+    });
+  }
+
+  if (candidates.length > 0) {
+    const scored = candidates
+      .map((c) => ({ ...c, score: scoreContact(c) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    for (const l of scored) {
+      const addr = [l.city, l.state, l.postalCode].filter(Boolean).join(", ");
+      safeIntelAddDetection({
+        sourceType: "lead_result",
+        sourceId: l.email || l.directPhone || l.corpPhone || `${l.company}-${l.postalCode || ""}`,
+        rawName: l.company,
+        rawAddress: addr
+      });
+    }
+
+    return res.json({ ok: true, source: "zoominfo", leads: scored });
+  }
+
+  const fallbackLeads = await findPublicLeads(accountName, postalCode);
+  if (!fallbackLeads.length) return res.json({ ok: false, message: "No public fallback leads found." });
+
+  for (const l of fallbackLeads) {
+    const addr = [l.city, l.state, l.postalCode].filter(Boolean).join(", ");
+    safeIntelAddDetection({
+      sourceType: "lead_result_public",
+      sourceId: `public:${l.corpPhone || l.contactName || Date.now()}`,
+      rawName: accountName,
+      rawAddress: addr || (postalCode ? postalCode : "")
+    });
+  }
+
+  return res.json({ ok: true, source: "public_web", leads: fallbackLeads });
+});
+
+app.listen(PORT, () => {
+  console.log(`AI backend listening at http://localhost:${PORT}`);
+  console.log(`Version: ${VERSION}`);
+});

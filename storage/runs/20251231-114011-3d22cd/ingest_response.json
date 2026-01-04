@@ -1,0 +1,126 @@
+{
+  "ok": true,
+  "run_id": "20251231-114011-3d22cd",
+  "source_type": "chrome",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 0,
+    "raw_text_preview": "",
+    "meta": {
+      "source_ref": {
+        "kind": "url",
+        "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+        "mime_type": "text/html"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "url",
+      "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+      "mime_type": "text/html"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": false,
+      "ok": false,
+      "source": "none",
+      "leadCount": 0,
+      "leads": [],
+      "cacheKey": "",
+      "inferredZip": ""
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-f78708ba70b0",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-31T16:40:11.114Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": null,
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "chrome",
+      "captured_at": "2025-12-31T16:40:11.114Z",
+      "parser": {
+        "name": "ingest.chrome",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "url",
+        "value": "file:///Users/taylorray/Desktop/untitled%20folder/inv%201.pdf",
+        "mime_type": "text/html"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

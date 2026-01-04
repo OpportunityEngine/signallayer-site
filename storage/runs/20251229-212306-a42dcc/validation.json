@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "errors": [
+    {
+      "instancePath": "/provenance/source_ref/kind",
+      "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+      "keyword": "enum",
+      "params": {
+        "allowedValues": [
+          "url",
+          "file",
+          "email",
+          "api",
+          "unknown"
+        ]
+      },
+      "message": "must be equal to one of the allowed values"
+    }
+  ]
+}

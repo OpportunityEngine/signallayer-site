@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../ai-sales-extension"
+		}
+	],
+	"settings": {
+		"claudeCode.preferredLocation": "sidebar",
+		"claudeCode.useTerminal": true
+	}
+}

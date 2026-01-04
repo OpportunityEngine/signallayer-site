@@ -1,0 +1,19 @@
+{
+  "source_type": "chrome",
+  "payload": {
+    "accountName": "",
+    "sourceUrl": "file:///Users/taylorray/Desktop/untitled%20folder/Chili's.pdf",
+    "docTitle": "",
+    "raw_text": "",
+    "tableHtml": [],
+    "items": [],
+    "billTo": null,
+    "shipTo": null,
+    "serviceAddress": null
+  },
+  "source_ref": {
+    "kind": "url",
+    "value": "file:///Users/taylorray/Desktop/untitled%20folder/Chili's.pdf",
+    "mime_type": "text/html"
+  }
+}

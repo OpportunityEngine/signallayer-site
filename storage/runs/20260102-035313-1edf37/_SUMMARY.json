@@ -1,0 +1,41 @@
+{
+  "run_id": "20260102-035313-1edf37",
+  "source_type": "pdf_text",
+  "status": "no_items",
+  "counts": {
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "rawTextLength": 41754,
+    "autoLeadCount": 5
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_ref/kind",
+        "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "url",
+            "file",
+            "email",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  }
+}

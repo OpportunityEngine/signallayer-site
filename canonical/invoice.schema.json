@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuietSignal Canonical Invoice v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "doc", "parties", "line_items", "totals", "provenance", "confidence"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "invoice.v1" },
+
+    "doc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["doc_id", "doc_type", "currency", "issued_at"],
+      "properties": {
+        "doc_id": { "type": "string", "minLength": 3 },
+        "doc_type": { "type": "string", "enum": ["invoice", "statement", "packing_slip", "unknown"] },
+        "invoice_number": { "type": ["string", "null"] },
+        "purchase_order": { "type": ["string", "null"] },
+        "issued_at": { "type": "string" },
+        "service_period": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "properties": {
+            "start": { "type": "string" },
+            "end": { "type": "string" }
+          }
+        },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "raw_text_hash": { "type": ["string", "null"] },
+        "tags": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+
+    "parties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vendor", "customer"],
+      "properties": {
+        "vendor": { "$ref": "#/$defs/party" },
+        "customer": { "$ref": "#/$defs/party" },
+        "bill_to": { "$ref": "#/$defs/partyOptional" },
+        "ship_to": { "$ref": "#/$defs/partyOptional" }
+      }
+    },
+
+    "line_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/lineItem" }
+    },
+
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invoice_total"],
+      "properties": {
+        "invoice_total": { "$ref": "#/$defs/moneyOptional" },
+        "weekly_equivalent_total": { "$ref": "#/$defs/moneyOptional" },
+        "notes": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+
+    "signals": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/signal" }
+    },
+
+    "opportunities": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/opportunity" }
+    },
+
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "captured_at", "parser", "source_ref"],
+      "properties": {
+        "source_type": { "type": "string", "enum": ["chrome", "pdf_text", "pdf_ocr", "upload", "api", "unknown"] },
+        "captured_at": { "type": "string" },
+        "parser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" },
+            "warnings": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        },
+        "source_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["url", "file", "email", "api", "unknown"] },
+            "value": { "type": ["string", "null"] },
+            "mime_type": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall"],
+      "properties": {
+        "overall": { "type": "number", "minimum": 0, "maximum": 1 },
+        "fields": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "score", "method"],
+            "properties": {
+              "path": { "type": "string" },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "method": { "type": "string", "enum": ["explicit", "parsed", "inferred", "heuristic", "unknown"] },
+              "evidence": { "type": "array", "items": { "type": "string" }, "default": [] }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "partyOptional": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "normalized_name": { "type": ["string", "null"] },
+        "addresses": { "type": "array", "default": [], "items": { "$ref": "#/$defs/address" } }
+      }
+    },
+    "party": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "normalized_name": { "type": ["string", "null"] },
+        "addresses": { "type": "array", "default": [], "items": { "$ref": "#/$defs/address" } }
+      }
+    },
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw"],
+      "properties": {
+        "raw": { "type": "string" },
+        "street": { "type": ["string", "null"] },
+        "city": { "type": ["string", "null"] },
+        "state": { "type": ["string", "null"] },
+        "postal": { "type": ["string", "null"] },
+        "country": { "type": ["string", "null"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 }
+      }
+    },
+    "moneyOptional": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
+      }
+    },
+    "lineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line_id", "raw_description", "quantity"],
+      "properties": {
+        "line_id": { "type": "string" },
+        "raw_description": { "type": "string" },
+        "normalized_description": { "type": ["string", "null"] },
+        "sku": { "type": ["string", "null"] },
+        "quantity": { "type": "number" },
+        "unit_price": { "$ref": "#/$defs/moneyOptional" },
+        "frequency": { "type": "string", "enum": ["weekly", "monthly", "one_time", "unknown"], "default": "unknown" },
+        "attributes": { "type": "object", "additionalProperties": true, "default": {} },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["overall"],
+          "properties": {
+            "overall": { "type": "number", "minimum": 0, "maximum": 1 },
+            "notes": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        }
+      }
+    },
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal_id", "type", "title", "severity", "confidence"],
+      "properties": {
+        "signal_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["trend", "anomaly", "savings", "pricing_leakage", "compliance", "data_quality", "other"] },
+        "title": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"], "default": "low" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "impacted_line_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "metrics": { "type": "object", "additionalProperties": true, "default": {} }
+      }
+    },
+    "opportunity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opp_id", "type", "title", "confidence"],
+      "properties": {
+        "opp_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["fr_addon", "conversion", "upsell", "cross_sell", "renewal", "other"] },
+        "title": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "impacted_line_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "meta": { "type": "object", "additionalProperties": true, "default": {} }
+      }
+    }
+  }
+}

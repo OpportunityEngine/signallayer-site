@@ -1,0 +1,10 @@
+{
+  "run_id": "20251225-191553-9530a2",
+  "source_type": "chrome",
+  "status": "canonical_valid",
+  "counts": {
+    "extractedItemsCount": 7,
+    "canonicalLineItemsCount": 7,
+    "rawTextLength": 0
+  }
+}

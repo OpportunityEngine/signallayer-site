@@ -1,0 +1,10 @@
+{
+  "ok": false,
+  "message": "No leads found (ZoomInfo, public, and OSM).",
+  "source": "none",
+  "leads": [],
+  "cache": {
+    "hit": false,
+    "key": "demo manufacturing plant a|"
+  }
+}

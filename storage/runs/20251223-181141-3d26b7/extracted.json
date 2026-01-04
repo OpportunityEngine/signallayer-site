@@ -1,0 +1,55 @@
+{
+  "items": [
+    {
+      "sku": "X280",
+      "description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+      "quantity": "9",
+      "unitPrice": "0.67"
+    },
+    {
+      "sku": "X59294",
+      "description": "FR SHIRT / ANSI CLASS 3 / YELLOW / LS",
+      "quantity": "11",
+      "unitPrice": "1.08"
+    },
+    {
+      "sku": "X78150",
+      "description": "FR OVERALL / QUILT-LINED BIB / NAVY",
+      "quantity": "1",
+      "unitPrice": "1.98"
+    },
+    {
+      "sku": "X371",
+      "description": "FR PANT / 88C12N / NAVY",
+      "quantity": "11",
+      "unitPrice": "0.38"
+    },
+    {
+      "sku": "X280",
+      "description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+      "quantity": "11",
+      "unitPrice": "0.69"
+    },
+    {
+      "sku": "X59294",
+      "description": "FR SHIRT / ANSI CLASS 3 / YELLOW / LS",
+      "quantity": "11",
+      "unitPrice": "1.14"
+    },
+    {
+      "sku": "64356",
+      "description": "FR INSULATED LINER",
+      "quantity": "9",
+      "unitPrice": "2.50"
+    }
+  ],
+  "raw_text": "",
+  "tableHtml": [],
+  "meta": {
+    "source_ref": {
+      "kind": "url",
+      "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+      "mime_type": "text/html"
+    }
+  }
+}

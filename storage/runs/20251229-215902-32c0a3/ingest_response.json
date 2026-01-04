@@ -1,0 +1,148 @@
+{
+  "ok": true,
+  "run_id": "20251229-215902-32c0a3",
+  "source_type": "test",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 0,
+    "raw_text_preview": "",
+    "meta": {
+      "source_ref": null
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_type",
+        "schemaPath": "#/properties/provenance/properties/source_type/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "chrome",
+            "pdf_text",
+            "pdf_ocr",
+            "upload",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": null,
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "osm",
+      "leadCount": 1,
+      "leads": [
+        {
+          "contactName": "Test, Hidalgo County, New Mexico, United States (Main Line)",
+          "title": "",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "",
+          "email": "",
+          "city": "",
+          "state": "",
+          "postalCode": "",
+          "score": 55
+        }
+      ],
+      "cacheKey": "test|",
+      "inferredZip": ""
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-34430c83935f",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-30T02:59:03.944Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": null,
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Test",
+        "normalized_name": "test",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "test",
+      "captured_at": "2025-12-30T02:59:03.944Z",
+      "parser": {
+        "name": "ingest.test",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "unknown",
+        "value": null,
+        "mime_type": null
+      }
+    },
+    "confidence": {
+      "overall": 0.6,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

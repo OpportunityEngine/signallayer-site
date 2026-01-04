@@ -1,0 +1,12 @@
+{
+  "items": [],
+  "raw_text": "\n\nSubtotal$27.97\nTax$1.96\nTip$5.39\nTotal$35.32\n11411 Forest Ave. Clive, IA 50325\nYour Receipt\nJune 28th, 2023\nItemPriceQtyLine Total\nCHIPS & DIPS$5.691$5.69\n  CHIPS AND SALSA-$0.0010.00\nMODELO ESP L$7.591$7.59\nTRIPLE DIPPER$14.691$14.69\n   SW EGGRLLS$0.0010.00\n   BONELESS5 HC$0.0010.00\n   HNY CHIP CRISPERS$0.0010.00\n   1 PLATE$0.0010.00\nPayment$35.32\nPayment\nCredit\nTime: 08:06 PM\nChili's - Clive (10051806)\n\nCheck: 3020190\nTable: 808\nAuth: 040425\nCard: XXXXXXXXXXXX5620\nAID: A0000000041010\nCVM: NO_CVM\nIAD: 0110A04001220000000000000000000000FF\nTSI: E800\nTVR: 0000008000\nAppl Preferred Name: NA\nCryptogram: 333603C1C70CEA9B\n11411 Forest Ave.\nClive, IA 50325\n515-226-1744\nwww.chilis.com\nThanks for using the Presto!\nDid you like the Presto tablet? Learn more at presto.com",
+  "tableHtml": [],
+  "meta": {
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/untitled%20folder/Chili's.pdf",
+      "mime_type": "application/pdf"
+    }
+  }
+}

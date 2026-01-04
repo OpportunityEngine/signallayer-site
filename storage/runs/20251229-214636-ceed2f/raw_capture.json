@@ -1,0 +1,13 @@
+{
+  "source_type": "chrome",
+  "payload": {
+    "accountName": "Owens Corning",
+    "raw_text": "OWENS CORNING 1901 49TH AVE N MINNEAPOLIS, MN 55430-3793",
+    "items": [],
+    "shipTo": {
+      "line1": "OWENS CORNING",
+      "line2": "1901 49TH AVE N",
+      "city_state_zip": "MINNEAPOLIS, MN 55430-3793"
+    }
+  }
+}

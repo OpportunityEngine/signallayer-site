@@ -1,0 +1,19 @@
+{
+  "source_type": "test",
+  "payload": {
+    "accountName": "Bella's Italian Kitchen",
+    "items": [
+      {
+        "description": "Commercial Oven Lease",
+        "quantity": 1,
+        "unitPrice": "500000"
+      },
+      {
+        "description": "Maintenance Service",
+        "quantity": 12,
+        "unitPrice": "15000"
+      }
+    ],
+    "raw_text": "INVOICE\n\nSHIP TO\nBella's Italian Kitchen\n123 Main St\nBoston, MA 02101\n\nBILL TO\nBella's Italian Kitchen\n123 Main St\nBoston, MA 02101\n\nITEMS:\nCommercial Oven Lease - $5,000.00\nMaintenance Service (12 months) - $1,800.00\n\nTOTAL: $6,800.00"
+  }
+}

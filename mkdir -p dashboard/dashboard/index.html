@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Sales – Internal Dashboard</title>
+  <style>
+    body { font-family: system-ui,-apple-system,BlinkMacSystemFont,sans-serif; background:#f8fafc; margin:0; padding:16px; color:#0f172a; }
+    h1 { margin:0 0 6px 0; }
+    .muted { color:#6b7280; font-size:13px; margin-bottom:12px; }
+    .row { display:flex; gap:12px; align-items:flex-start; }
+    .col { flex:1; min-width:0; }
+    .col.left { max-width:380px; }
+    .card { background:white; border-radius:12px; padding:12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid rgba(15,23,42,.06); }
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    button { padding:7px 10px; border-radius:10px; border:1px solid #d1d5db; background:#f9fafb; cursor:pointer; }
+    button.primary { background:#0f172a; border-color:#0f172a; color:white; }
+    .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; color:#111827; margin-left:6px; }
+    .badge { display:inline-block; font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; color:#111827; }
+    .badge.good { border-color:#16a34a33; background:#16a34a10; }
+    .badge.warn { border-color:#f59e0b33; background:#f59e0b10; }
+    .badge.bad  { border-color:#dc262633; background:#dc262610; }
+
+    .runItem { padding:10px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:8px; cursor:pointer; }
+    .runItem:hover { background:#f8fafc; }
+    .runItem.active { border-color:#0f172a; background:#eef2ff; }
+
+    pre { background:#0f172a; color:#e5e7eb; padding:12px; border-radius:10px; overflow-x:auto; font-size:12px; line-height:1.35; margin:0; white-space:pre-wrap; word-break:break-word; }
+    .split { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width: 1000px) { .row{flex-direction:column;} .col.left{max-width:none;} .split{grid-template-columns:1fr;} }
+
+    .fileBtn { width:100%; text-align:left; padding:8px 10px; border-radius:12px; border:1px solid #e5e7eb; background:white; cursor:pointer; margin-bottom:6px; }
+    .fileBtn:hover { background:#f8fafc; }
+    .small { font-size:12px; color:#6b7280; }
+
+    .kvs { display:grid; grid-template-columns: 160px 1fr; gap: 6px 10px; font-size: 13px; }
+    .k { color:#6b7280; }
+    .hr { height:1px; background:#e5e7eb; margin:10px 0; }
+    .two { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 800px) { .two { grid-template-columns: 1fr; } }
+
+    .big { font-size:18px; font-weight:700; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    input[type="number"] { width: 90px; padding:6px 8px; border-radius:10px; border:1px solid #d1d5db; }
+    .miniCard { border:1px solid #e5e7eb; border-radius:12px; padding:10px; background:#fff; }
+  </style>
+</head>
+<body>
+
+<h1>AI Sales – Internal Debug Dashboard</h1>
+<div class="muted">Executive view (sales-friendly) + deep JSON visibility.</div>
+
+<div class="card">
+  <div class="toolbar">
+    <button class="primary" onclick="loadRuns()">Refresh runs</button>
+    <button onclick="clearViewer()">Clear viewer</button>
+
+    <label class="small" style="display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="autoToggle" onchange="toggleAutoRefresh()" />
+      Auto-refresh (3s)
+    </label>
+
+    <span class="small" id="statusLine"></span>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col left">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>Runs</strong>
+        <span class="pill" id="runCount">0</span>
+      </div>
+      <div class="muted" style="margin:8px 0 0 0;">Click a run to view files and summaries.</div>
+      <div id="runsList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <strong>Time-saved model</strong>
+      <div class="muted" style="margin-top:6px;">
+        This is a simple, editable estimate for demo conversations. Adjust anytime.
+      </div>
+
+      <div class="kvs" style="margin-top:10px;">
+        <div class="k">Manual review (min)</div>
+        <div><input type="number" id="manualMin" value="15" min="1" /> <span class="small">per invoice</span></div>
+
+        <div class="k">With QuietSignal (min)</div>
+        <div><input type="number" id="toolMin" value="3" min="0" /> <span class="small">per invoice</span></div>
+
+        <div class="k">Invoices / rep / week</div>
+        <div><input type="number" id="invPerWeek" value="25" min="0" /> <span class="small">for weekly projection</span></div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="small">
+        “Time saved” will appear in the Executive Summary when you click a file that contains extracted/canonical/opportunity data.
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <strong>Selected run</strong>
+      <div class="muted" id="selectedRunMeta" style="margin-top:6px;">None</div>
+      <div id="selectedRunBody" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <strong>Executive Summary</strong>
+      <div class="muted" id="execMeta" style="margin-top:6px;">Select a file to generate a sales-friendly summary.</div>
+      <div id="exec" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <strong>JSON viewer</strong>
+      <div class="muted" id="viewerMeta" style="margin-top:6px;">Select a file to view raw JSON.</div>
+      <div id="viewer" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedRunId = null;
+let autoTimer = null;
+let lastLoadedFileJson = null;
+
+function setStatus(text) {
+  document.getElementById("statusLine").textContent = text || "";
+}
+
+function clearViewer() {
+  lastLoadedFileJson = null;
+  document.getElementById("viewerMeta").textContent = "Select a file to view raw JSON.";
+  document.getElementById("viewer").innerHTML = "";
+  document.getElementById("execMeta").textContent = "Select a file to generate a sales-friendly summary.";
+  document.getElementById("exec").innerHTML = "";
+}
+
+function fmt(v) {
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+function money(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "";
+  return x.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+function money2(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "";
+  return x.toLocaleString(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function badge(text, kind) {
+  const cls = kind ? `badge ${kind}` : "badge";
+  return `<span class="${cls}">${text}</span>`;
+}
+
+function getTimeModel() {
+  const manualMin = Number(document.getElementById("manualMin").value || 0);
+  const toolMin = Number(document.getElementById("toolMin").value || 0);
+  const invPerWeek = Number(document.getElementById("invPerWeek").value || 0);
+  return { manualMin, toolMin, invPerWeek };
+}
+
+function computeTimeSaved() {
+  const { manualMin, toolMin, invPerWeek } = getTimeModel();
+  const perInvoice = Math.max(manualMin - toolMin, 0);
+  const perWeekMin = perInvoice * Math.max(invPerWeek, 0);
+  const perWeekHours = perWeekMin / 60;
+  return { perInvoiceMin: perInvoice, perWeekMin, perWeekHours };
+}
+
+function summarizeSummaryCounts(summaryCounts) {
+  if (!summaryCounts) return "";
+  if (Array.isArray(summaryCounts)) {
+    const first = summaryCounts[0] || {};
+    const parts = [];
+    if (first.parserUsed) parts.push(`parser: ${first.parserUsed}`);
+    if (typeof first.usedOcr === "boolean") parts.push(`ocr: ${first.usedOcr ? "yes" : "no"}`);
+    if (first.parsedItemsCount != null) parts.push(`items: ${first.parsedItemsCount}`);
+    if (first.textLength != null) parts.push(`text: ${first.textLength}`);
+    return parts.join(" • ");
+  }
+  if (typeof summaryCounts === "object") {
+    const parts = [];
+    if (summaryCounts.parserUsed) parts.push(`parser: ${summaryCounts.parserUsed}`);
+    if (typeof summaryCounts.usedOcr === "boolean") parts.push(`ocr: ${summaryCounts.usedOcr ? "yes" : "no"}`);
+    if (summaryCounts.parsedItemsCount != null) parts.push(`items: ${summaryCounts.parsedItemsCount}`);
+    if (summaryCounts.textLength != null) parts.push(`text: ${summaryCounts.textLength}`);
+    return parts.join(" • ");
+  }
+  return "";
+}
+
+async function loadRuns() {
+  setStatus("Loading runs…");
+  const list = document.getElementById("runsList");
+  list.innerHTML = "Loading…";
+
+  try {
+    const res = await fetch("/api/runs");
+    const data = await res.json();
+
+    if (!data.ok) {
+      list.innerHTML = "Failed to load runs.";
+      setStatus("Failed to load runs.");
+      return;
+    }
+
+    const runs = Array.isArray(data.runs) ? data.runs : [];
+    document.getElementById("runCount").textContent = String(runs.length);
+
+    list.innerHTML = "";
+    runs.forEach((r) => {
+      const runId = r.runId || r.id || r.run_id || "";
+      const createdAt = r.createdAt || "";
+      const hint = summarizeSummaryCounts(r.summaryCounts);
+
+      const div = document.createElement("div");
+      div.className = "runItem" + (runId === selectedRunId ? " active" : "");
+      div.onclick = () => selectRun(runId);
+
+      div.innerHTML = `
+        <div style="min-width:0;">
+          <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${runId}</div>
+          <div class="small">${createdAt ? "Updated: " + createdAt : ""}</div>
+          <div class="small">${hint}</div>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+
+    setStatus(`Loaded ${runs.length} run(s).`);
+
+    if (!selectedRunId && runs.length > 0) {
+      const firstRunId = runs[0].runId || runs[0].id || runs[0].run_id;
+      if (firstRunId) selectRun(firstRunId);
+    }
+  } catch (err) {
+    list.innerHTML = "Error loading runs.";
+    setStatus("Error loading runs.");
+  }
+}
+
+async function selectRun(runId) {
+  selectedRunId = runId;
+  clearViewer();
+
+  document.getElementById("selectedRunMeta").textContent = `Run: ${runId}`;
+  document.getElementById("selectedRunBody").innerHTML = "Loading run…";
+
+  try {
+    const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
+    const data = await res.json();
+
+    if (!data.ok) {
+      document.getElementById("selectedRunBody").innerHTML = "Failed to load run details.";
+      return;
+    }
+
+    const summary = data.summary || null;
+    const files = Array.isArray(data.files) ? data.files : [];
+
+    const summaryHtml = `
+      <div class="split">
+        <div>
+          <div style="font-weight:700;margin-bottom:8px;">Summary</div>
+          <pre>${summary ? JSON.stringify(summary, null, 2) : "No _SUMMARY.json found for this run."}</pre>
+        </div>
+        <div>
+          <div style="font-weight:700;margin-bottom:8px;">Files</div>
+          ${files.length ? files.map(f => `
+            <button class="fileBtn" onclick="loadRunFile('${runId}', '${f.fileName}')">
+              <div style="font-weight:700;">${f.fileName}</div>
+              <div class="small">
+                status: ${fmt(f.status)} • parser: ${fmt(f.parserUsed)} • ocr: ${f.usedOcr ? "yes" : "no"}
+                • items: ${fmt(f.parsedItemsCount)} • text: ${fmt(f.textLength)}
+              </div>
+            </button>
+          `).join("") : `<div class="small">No JSON files found in this run folder.</div>`}
+        </div>
+      </div>
+    `;
+
+    document.getElementById("selectedRunBody").innerHTML = summaryHtml;
+  } catch (err) {
+    document.getElementById("selectedRunBody").innerHTML = "Error loading run.";
+  }
+}
+
+function extractOpportunityRollup(obj) {
+  // Works with your unified /ingest envelope (legacy.opportunity.*) and older processInvoice responses
+  const legacy = obj?.legacy || obj?.opportunity ? obj : obj?.legacy;
+  const opp = legacy?.opportunity || obj?.opportunity || null;
+  if (!opp) return null;
+
+  const liner = opp.linerAddOn || {};
+  const jacket = opp.jacketConversion || {};
+
+  const weeklyRevenue =
+    (Number(liner.potentialWeeklyRevenue) || 0) +
+    (Number(jacket.potentialWeeklyRevenue) || 0);
+
+  const commission =
+    (Number(liner.commissionEstimate?.estimatedPayout) || 0) +
+    (Number(jacket.commissionEstimate?.estimatedPayout) || 0);
+
+  const actions = [];
+  if ((Number(liner.missingLiners) || 0) > 0) {
+    actions.push(`Add ${liner.missingLiners} FR liner(s) (SKU ${fmt(liner.sku)})`);
+  }
+  if ((Number(jacket.frWearersWithNonFrJacket) || 0) > 0) {
+    actions.push(`Convert ${jacket.frWearersWithNonFrJacket} jacket(s) to FR`);
+  }
+
+  return {
+    weeklyRevenue,
+    commission,
+    liner,
+    jacket,
+    actions
+  };
+}
+
+function extractConfidence(obj) {
+  // canonical.confidence.overall present in your unified envelope
+  const c = obj?.canonical?.confidence?.overall;
+  if (typeof c === "number") return c;
+
+  // fallback: if validation ok, assume medium-high
+  if (obj?.validation?.ok === true || obj?.ok === true) return 0.75;
+  return null;
+}
+
+function extractOperationalSignals(obj) {
+  const parserUsed =
+    obj?.debug?.parserUsed ||
+    obj?.extracted?.parserUsed ||
+    obj?.parserUsed ||
+    obj?.extracted?.parserUsed ||
+    "unknown";
+
+  const usedOcr =
+    obj?.debug?.usedOcr ??
+    obj?.extracted?.usedOcr ??
+    obj?.usedOcr ??
+    false;
+
+  const extractedItemsCount =
+    obj?.debug?.extractedItemsCount ??
+    (Array.isArray(obj?.extracted?.items) ? obj.extracted.items.length : null) ??
+    obj?.parsedItemsCount ??
+    null;
+
+  const canonicalLineItemsCount =
+    obj?.debug?.canonicalLineItemsCount ??
+    (Array.isArray(obj?.canonical?.line_items) ? obj.canonical.line_items.length : null) ??
+    null;
+
+  const status =
+    obj?.status ||
+    (obj?.validation?.ok ? "canonical_valid" : (obj?.ok ? "ok" : "unknown"));
+
+  return { parserUsed, usedOcr, extractedItemsCount, canonicalLineItemsCount, status };
+}
+
+function renderExecutiveSummary(obj, runId, fileName) {
+  const { perInvoiceMin, perWeekHours } = computeTimeSaved();
+  const opp = extractOpportunityRollup(obj);
+  const conf = extractConfidence(obj);
+  const sig = extractOperationalSignals(obj);
+
+  const confPct = (typeof conf === "number") ? Math.round(conf * 100) : null;
+  const confBadge =
+    confPct === null ? badge("Confidence: unknown", "warn") :
+    confPct >= 85 ? badge(`Confidence: ${confPct}%`, "good") :
+    confPct >= 65 ? badge(`Confidence: ${confPct}%`, "warn") :
+    badge(`Confidence: ${confPct}%`, "bad");
+
+  let statusBadge = badge(`Status: ${sig.status}`, "warn");
+  if (sig.status === "canonical_valid" || sig.status === "ok") statusBadge = badge(`Status: ${sig.status}`, "good");
+  if (sig.status === "parse_error") statusBadge = badge(`Status: ${sig.status}`, "bad");
+
+  const ocrBadge = sig.usedOcr ? badge("OCR: yes", "warn") : badge("OCR: no", "good");
+
+  const timeSavedLine =
+    perInvoiceMin > 0
+      ? `<div class="big">${perInvoiceMin.toFixed(0)} min</div><div class="small">estimated time saved per rep per invoice</div>`
+      : `<div class="big">0 min</div><div class="small">time saved (model set to 0)</div>`;
+
+  const weekSavedLine =
+    perWeekHours > 0
+      ? `<div class="small">Projection: <span class="mono">${perWeekHours.toFixed(1)}</span> hours saved per rep per week (based on your settings).</div>`
+      : `<div class="small">Projection: 0 hours/week (based on your settings).</div>`;
+
+  const oppSection = opp ? `
+    <div class="hr"></div>
+    <div class="two">
+      <div class="miniCard">
+        <div class="small">Potential weekly revenue impact</div>
+        <div class="big">${money(opp.weeklyRevenue)}</div>
+        <div class="small">Commission impact (est.)</div>
+        <div style="font-weight:700;">${money(opp.commission)}</div>
+      </div>
+      <div class="miniCard">
+        <div style="font-weight:700;margin-bottom:6px;">Recommended rep actions</div>
+        ${opp.actions.length ? `<ul style="margin:0;padding-left:18px;">${opp.actions.map(a => `<li class="small">${a}</li>`).join("")}</ul>` : `<div class="small">No actionable opportunities detected.</div>`}
+      </div>
+    </div>
+  ` : `
+    <div class="hr"></div>
+    <div class="miniCard">
+      <div style="font-weight:700;margin-bottom:6px;">Opportunities</div>
+      <div class="small">No opportunity object found in this file. If this is an /ingest response, ensure you clicked <span class="mono">ingest_response.json</span>.</div>
+    </div>
+  `;
+
+  const html = `
+    <div class="kvs">
+      <div class="k">Run / File</div>
+      <div><span class="mono">${runId}</span> • <span class="mono">${fileName}</span></div>
+
+      <div class="k">Processing</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${statusBadge}
+        ${ocrBadge}
+        ${badge(`Parser: ${fmt(sig.parserUsed)}`, "")}
+        ${confBadge}
+      </div>
+
+      <div class="k">Line items</div>
+      <div>
+        <span class="mono">extracted:</span> ${fmt(sig.extractedItemsCount)} &nbsp;&nbsp;
+        <span class="mono">canonical:</span> ${fmt(sig.canonicalLineItemsCount)}
+      </div>
+
+      <div class="k">Time saved</div>
+      <div>
+        ${timeSavedLine}
+        ${weekSavedLine}
+      </div>
+    </div>
+
+    ${oppSection}
+  `;
+
+  document.getElementById("execMeta").textContent = "Executive view generated from selected JSON.";
+  document.getElementById("exec").innerHTML = html;
+}
+
+async function loadRunFile(runId, fileName) {
+  document.getElementById("viewerMeta").textContent = `Run: ${runId} • File: ${fileName}`;
+  document.getElementById("viewer").innerHTML = "Loading…";
+  document.getElementById("execMeta").textContent = "Generating executive summary…";
+  document.getElementById("exec").innerHTML = "";
+
+  try {
+    const res = await fetch(`/api/runs/${encodeURIComponent(runId)}/file/${encodeURIComponent(fileName)}`);
+    const data = await res.json();
+    lastLoadedFileJson = data;
+
+    document.getElementById("viewer").innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    renderExecutiveSummary(data, runId, fileName);
+  } catch (err) {
+    document.getElementById("viewer").innerHTML = "Error loading file JSON.";
+    document.getElementById("execMeta").textContent = "Failed to generate executive summary.";
+  }
+}
+
+function toggleAutoRefresh() {
+  const on = document.getElementById("autoToggle").checked;
+  if (on) {
+    autoTimer = setInterval(() => loadRuns(), 3000);
+    setStatus("Auto-refresh enabled.");
+  } else {
+    if (autoTimer) clearInterval(autoTimer);
+    autoTimer = null;
+    setStatus("Auto-refresh disabled.");
+  }
+}
+
+// If user changes time model, regenerate exec summary (if a file is loaded)
+["manualMin","toolMin","invPerWeek"].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("input", () => {
+    if (lastLoadedFileJson && selectedRunId) {
+      // Re-render using last loaded file context; viewer stays the same.
+      // We don't know fileName here, so we keep meta as-is.
+      document.getElementById("execMeta").textContent = "Executive view updated (time model changed).";
+      // Best-effort: leave run/file line as previously displayed by reusing existing meta text.
+      // We can’t reliably reconstruct fileName without storing it; keep simple.
+      // (If you want, I can store lastRunId/lastFileName as globals.)
+      const meta = document.getElementById("viewerMeta").textContent;
+      const m = meta.match(/Run:\s(.+?)\s•\sFile:\s(.+)$/);
+      const runId = m ? m[1] : selectedRunId;
+      const fileName = m ? m[2] : "selected.json";
+      renderExecutiveSummary(lastLoadedFileJson, runId, fileName);
+    }
+  });
+});
+
+loadRuns();
+</script>
+
+</body>
+</html>

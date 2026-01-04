@@ -1,0 +1,335 @@
+{
+  "ok": false,
+  "run_id": "20251229-200127-9a9c42",
+  "source_type": "chrome",
+  "status": "extracted_only",
+  "message": "Canonical invoice validation failed",
+  "canonical": null,
+  "extracted": {
+    "items": [
+      {
+        "sku": "X280",
+        "description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+        "quantity": "9",
+        "unitPrice": "0.67"
+      },
+      {
+        "sku": "64356",
+        "description": "FR INSULATED LINER",
+        "quantity": "9",
+        "unitPrice": "2.50"
+      }
+    ],
+    "tableHtml": [],
+    "raw_text_length": 0,
+    "raw_text_preview": "",
+    "meta": {
+      "source_ref": {
+        "kind": "url",
+        "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+        "mime_type": "text/html"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/parties",
+        "schemaPath": "#/properties/parties/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "service_address"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/customer/addresses/0",
+        "schemaPath": "#/$defs/address/required",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "raw"
+        },
+        "message": "must have required property 'raw'"
+      },
+      {
+        "instancePath": "/parties/customer/addresses/0",
+        "schemaPath": "#/$defs/address/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "postalCode"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/customer/addresses/0",
+        "schemaPath": "#/$defs/address/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "full"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/bill_to",
+        "schemaPath": "#/required",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "name"
+        },
+        "message": "must have required property 'name'"
+      },
+      {
+        "instancePath": "/parties/bill_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "street"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/bill_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "city"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/bill_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "state"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/bill_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "postalCode"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/bill_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "full"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/ship_to",
+        "schemaPath": "#/required",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "name"
+        },
+        "message": "must have required property 'name'"
+      },
+      {
+        "instancePath": "/parties/ship_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "street"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/ship_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "city"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/ship_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "state"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/ship_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "postalCode"
+        },
+        "message": "must NOT have additional properties"
+      },
+      {
+        "instancePath": "/parties/ship_to",
+        "schemaPath": "#/additionalProperties",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "full"
+        },
+        "message": "must NOT have additional properties"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "url",
+      "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+      "mime_type": "text/html"
+    },
+    "extractedItemsCount": 2,
+    "canonicalLineItemsCount": 2,
+    "autoLeads": {
+      "attempted": true,
+      "ok": false,
+      "source": "public_web",
+      "leadCount": 0,
+      "cacheKey": "demo manufacturing plant a|",
+      "inferredZip": ""
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-9b5946e8e7ad",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-30T01:01:28.006Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": null,
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Demo Manufacturing Plant A",
+        "normalized_name": "demo manufacturing plant a",
+        "addresses": [
+          {
+            "street": "Demo Manufacturing Plant A",
+            "city": "Minneapolis",
+            "state": "MN",
+            "postalCode": "55430",
+            "full": "Demo Manufacturing Plant A, Minneapolis, MN 55430"
+          }
+        ]
+      },
+      "bill_to": {
+        "street": "Demo Manufacturing Plant A",
+        "city": "Minneapolis",
+        "state": "MN",
+        "postalCode": "55430",
+        "full": "Demo Manufacturing Plant A, Minneapolis, MN 55430"
+      },
+      "ship_to": {
+        "street": "Demo Manufacturing Plant A",
+        "city": "Minneapolis",
+        "state": "MN",
+        "postalCode": "55430",
+        "full": "Demo Manufacturing Plant A, Minneapolis, MN 55430"
+      },
+      "service_address": null
+    },
+    "line_items": [
+      {
+        "line_id": "L1",
+        "raw_description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+        "normalized_description": "fr jean / carhartt / relaxed fit / denim",
+        "sku": "X280",
+        "quantity": 9,
+        "unit_price": {
+          "amount": 0.67,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L2",
+        "raw_description": "FR INSULATED LINER",
+        "normalized_description": "fr insulated liner",
+        "sku": "64356",
+        "quantity": 9,
+        "unit_price": {
+          "amount": 2.5,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      }
+    ],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "chrome",
+      "captured_at": "2025-12-30T01:01:28.006Z",
+      "parser": {
+        "name": "ingest.chrome",
+        "version": "1.0.0",
+        "warnings": []
+      },
+      "source_ref": {
+        "kind": "url",
+        "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+        "mime_type": "text/html"
+      }
+    },
+    "confidence": {
+      "overall": 0.85,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.9,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

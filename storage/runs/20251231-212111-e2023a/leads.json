@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "source": "zoominfo",
+  "leads": [
+    {
+      "company": "Pilgrims Athens Ga Feed",
+      "normalizedCompany": "pilgrims athens ga feed",
+      "contactName": "Brett Johns",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(706) 224-0176",
+      "email": "",
+      "city": "ATHENS",
+      "state": "GA",
+      "postalCode": "30608",
+      "score": 25
+    },
+    {
+      "company": "Pilgrims Athens Ga",
+      "normalizedCompany": "pilgrims athens ga",
+      "contactName": "Brett Johns",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(706) 549-6277",
+      "email": "",
+      "city": "ATHENS",
+      "state": "GA",
+      "postalCode": "30608",
+      "score": 25
+    },
+    {
+      "company": "Pilgrims Athens Georgia",
+      "normalizedCompany": "pilgrims athens georgia",
+      "contactName": "Brett Johns",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(706) 549-2810",
+      "email": "",
+      "city": "ATHENS",
+      "state": "GA",
+      "postalCode": "30608",
+      "score": 25
+    },
+    {
+      "company": "Pilgrims Commerce GA Feed",
+      "normalizedCompany": "pilgrims commerce ga feed",
+      "contactName": "Brett Johns",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(706) 248-8524",
+      "email": "",
+      "city": "ATHENS",
+      "state": "GA",
+      "postalCode": "30608",
+      "score": 25
+    },
+    {
+      "company": "Pilgrims Commerce Ga",
+      "normalizedCompany": "pilgrims commerce ga",
+      "contactName": "Brett Johns",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(706) 549-2810",
+      "email": "",
+      "city": "ATHENS",
+      "state": "GA",
+      "postalCode": "30608",
+      "score": 25
+    }
+  ],
+  "cache": {
+    "key": "pilgrim's pride|31533",
+    "hit": true
+  },
+  "accountName": "PILGRIM'S PRIDE",
+  "postalCode": "31533",
+  "addressHint": "113 MCNEIL DR, DOUGLAS, GA 31533",
+  "run_id": "20251231-212111-e2023a",
+  "storedAt": "2026-01-01T02:21:11.978Z"
+}

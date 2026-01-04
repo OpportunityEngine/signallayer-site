@@ -1,0 +1,19 @@
+{
+  "source_type": "pdf_text",
+  "payload": {
+    "accountName": "",
+    "sourceUrl": "http://localhost:5050/dashboard/manager.html",
+    "docTitle": "Revenue Radar – Executive Dashboard",
+    "raw_text": "$\nRevenue Radar\nExecutive Dashboard • Real-Time Intelligence\n⟳ Refresh Now\nLive Updates (10s)\n⏸️ Live updates paused\n⚙️ Performance Metrics Configuration\n💾 Save Changes\nMINUTES SAVED PER INVOICE ANALYSIS\nMINUTES SAVED PER LEAD DISCOVERY\nMINUTES SAVED PER MLA ANALYSIS\nOPPORTUNITY CONVERSION RATE (%)\n📊 Key Performance Indicators\nLast 24 hours • 238 events • 1 active users\nINVOICE ANALYSIS\n0\nExecutions in last 24h\nOPPORTUNITY CLICKS\n0\nCTR: 0%\nLEAD DISCOVERY\n0\nSearches completed\nTIME SAVED\n0.0hrs\nProductivity gain\n📈 Feature Adoption\n🎯 Engagement Quality\n⏱️ Time Efficiency Gains\n📅 Activity Trends",
+    "tableHtml": [],
+    "items": [],
+    "billTo": null,
+    "shipTo": null,
+    "serviceAddress": null
+  },
+  "source_ref": {
+    "kind": "pdf",
+    "value": "http://localhost:5050/dashboard/manager.html",
+    "mime_type": "application/pdf"
+  }
+}

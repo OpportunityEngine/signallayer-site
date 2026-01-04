@@ -1,0 +1,110 @@
+{
+  "schema_version": "invoice.v1",
+  "doc": {
+    "doc_id": "DOC-edc178113097",
+    "doc_type": "invoice",
+    "invoice_number": null,
+    "purchase_order": null,
+    "issued_at": "2026-01-03T01:11:08.616Z",
+    "service_period": null,
+    "currency": "USD",
+    "raw_text_hash": "edc178113097c76b1defe844c67d713df79fe4ce8e0b57ddda9cdff94b91cfed",
+    "tags": []
+  },
+  "parties": {
+    "vendor": {
+      "name": "Unknown Vendor",
+      "normalized_name": "unknown vendor",
+      "addresses": []
+    },
+    "customer": {
+      "name": "Bella's Italian Kitchen",
+      "normalized_name": "bella's italian kitchen",
+      "addresses": []
+    },
+    "bill_to": null,
+    "ship_to": null
+  },
+  "line_items": [
+    {
+      "line_id": "L1",
+      "raw_description": "Commercial Oven Lease",
+      "normalized_description": "commercial oven lease",
+      "sku": null,
+      "quantity": 1,
+      "unit_price": {
+        "amount": 500000,
+        "currency": "USD"
+      },
+      "frequency": "unknown",
+      "attributes": {},
+      "confidence": {
+        "overall": 0.95,
+        "notes": [
+          "HAS_DESCRIPTION",
+          "HAS_QUANTITY",
+          "HAS_UNIT_PRICE"
+        ]
+      }
+    },
+    {
+      "line_id": "L2",
+      "raw_description": "Maintenance Service",
+      "normalized_description": "maintenance service",
+      "sku": null,
+      "quantity": 12,
+      "unit_price": {
+        "amount": 15000,
+        "currency": "USD"
+      },
+      "frequency": "unknown",
+      "attributes": {},
+      "confidence": {
+        "overall": 0.95,
+        "notes": [
+          "HAS_DESCRIPTION",
+          "HAS_QUANTITY",
+          "HAS_UNIT_PRICE"
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "invoice_total": null,
+    "weekly_equivalent_total": null,
+    "notes": []
+  },
+  "signals": [],
+  "opportunities": [],
+  "provenance": {
+    "source_type": "test",
+    "captured_at": "2026-01-03T01:11:08.616Z",
+    "parser": {
+      "name": "ingest.test",
+      "version": "1.0.0",
+      "warnings": []
+    },
+    "source_ref": {
+      "kind": "unknown",
+      "value": null,
+      "mime_type": null
+    }
+  },
+  "confidence": {
+    "overall": 0.85,
+    "fields": [
+      {
+        "path": "parties.customer.name",
+        "score": 0.3,
+        "method": "unknown",
+        "evidence": []
+      },
+      {
+        "path": "line_items",
+        "score": 0.9,
+        "method": "parsed",
+        "evidence": []
+      }
+    ]
+  }
+}

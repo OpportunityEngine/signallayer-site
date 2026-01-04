@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "OWENS CORNING Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 535-5522",
+      "email": "info@bbbwestflorida.org",
+      "city": "TH AVE N\nMINNEAPOLIS",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "OWENS CORNING Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 539-6301",
+      "email": "boglesby@bbbwestflorida.org",
+      "city": "TH AVE N\nMINNEAPOLIS",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "OWENS CORNING Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 530-4651",
+      "email": "teikenberry@bbbwestflorida.org",
+      "city": "TH AVE N\nMINNEAPOLIS",
+      "state": "MN",
+      "postalCode": "55430",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "owens corning|55430",
+    "hit": true
+  },
+  "accountName": "OWENS CORNING",
+  "postalCode": "55430",
+  "addressHint": "1901 49TH AVE N, TH AVE N\nMINNEAPOLIS, MN 55430",
+  "run_id": "20251231-133855-37149c",
+  "storedAt": "2025-12-31T18:40:17.637Z"
+}

@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "Target Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 535-5522",
+      "email": "info@bbbwestflorida.org",
+      "city": "Minneapolis",
+      "state": "MN",
+      "postalCode": "55403",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "Target Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 539-6301",
+      "email": "boglesby@bbbwestflorida.org",
+      "city": "Minneapolis",
+      "state": "MN",
+      "postalCode": "55403",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "Target Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(727) 530-4651",
+      "email": "teikenberry@bbbwestflorida.org",
+      "city": "Minneapolis",
+      "state": "MN",
+      "postalCode": "55403",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "target|55403",
+    "hit": false
+  },
+  "accountName": "Target",
+  "postalCode": "55403",
+  "addressHint": "Minneapolis, MN 55403",
+  "run_id": "20251229-212124-a9ff72",
+  "storedAt": "2025-12-30T02:21:54.667Z"
+}

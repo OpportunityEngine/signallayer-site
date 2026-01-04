@@ -1,0 +1,875 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Revenue Radar – Executive Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 32px 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 900;
+      color: #fbbf24;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                  0 4px 12px rgba(251, 191, 36, 0.25),
+                  0 0 0 2px rgba(251, 191, 36, 0.35),
+                  inset 0 2px 4px rgba(255, 255, 255, 0.1),
+                  inset 0 -2px 4px rgba(0, 0, 0, 0.5);
+      border: 1.5px solid rgba(251, 191, 36, 0.4);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.3px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      margin-bottom: 4px;
+    }
+
+    .header-text .subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .header-text .subtitle .highlight {
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
+    /* Toolbar card */
+    .toolbar-card {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
+                  0 1px 4px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .toolbar-left {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.5);
+      color: #e2e8f0;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(251, 191, 36, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: #0f172a;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(251, 191, 36, 0.35),
+                  0 2px 6px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    button.primary:hover {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.45),
+                  0 3px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #94a3b8;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #fbbf24;
+    }
+
+    .status {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+      padding: 6px 12px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 8px;
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    /* Settings card */
+    .settings-card {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
+                  0 1px 4px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .settings-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: 0.3px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.5);
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: rgba(251, 191, 36, 0.5);
+      background: rgba(15, 23, 42, 0.7);
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    /* Main card styles */
+    .card {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
+                  0 1px 4px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      border-color: rgba(251, 191, 36, 0.25);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4),
+                  0 2px 6px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .card-meta {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .kpi {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 14px;
+      padding: 20px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .kpi:hover {
+      border-color: rgba(251, 191, 36, 0.4);
+      background: rgba(15, 23, 42, 0.7);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi:hover::before {
+      opacity: 1;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      font-family: 'Montserrat', sans-serif;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .kpi-sub .highlight {
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    /* Chart containers */
+    .chart-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1100px) {
+      .chart-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 280px !important;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 16px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .toolbar-left {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Loading animation */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* Smooth fade-in for cards */
+    .card {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Updated chart styles */
+    .chart-container {
+      position: relative;
+      padding: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">$</div>
+      <div class="header-text">
+        <h1>Revenue Radar</h1>
+        <div class="subtitle">Executive Dashboard • <span class="highlight">Real-Time Intelligence</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar-card">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="primary" onclick="refreshAll()">⟳ Refresh Now</button>
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoToggle" onchange="toggleAuto()" />
+            Live Updates (10s)
+          </label>
+        </div>
+        <span class="status" id="status">Ready</span>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-card">
+      <div class="settings-header">
+        <div class="settings-title">⚙️ Performance Metrics Configuration</div>
+        <button onclick="save()">💾 Save Changes</button>
+      </div>
+      <div class="settings-grid">
+        <div class="setting-item">
+          <div class="setting-label">Minutes Saved per Invoice Analysis</div>
+          <input id="ts_invoice" type="number" value="12" min="0">
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Minutes Saved per Lead Discovery</div>
+          <input id="ts_leads" type="number" value="10" min="0">
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Minutes Saved per MLA Analysis</div>
+          <input id="ts_mla" type="number" value="15" min="0">
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Opportunity Conversion Rate (%)</div>
+          <input id="conv" type="number" value="25" min="0" max="100">
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Overview -->
+    <div class="card">
+      <div class="card-title">📊 Key Performance Indicators</div>
+      <div class="card-meta" id="meta">Loading metrics...</div>
+      <div class="kpi-grid" id="kpis"></div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">📈 Feature Adoption</div>
+        <div class="chart-container">
+          <canvas id="adoptionChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🎯 Engagement Quality</div>
+        <div class="chart-container">
+          <canvas id="ctrChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">⏱️ Time Efficiency Gains</div>
+        <div class="chart-container">
+          <canvas id="timeChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Activity Trends</div>
+        <div class="chart-container">
+          <canvas id="dayChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // Chart.js default styling for executive look
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(148, 163, 184, 0.1)';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.font.weight = 600;
+
+    let timer = null;
+    let charts = {};
+
+    function money(n){const x=Number(n);return (Number.isFinite(x)?x:0).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0});}
+    function hours(n){const x=Number(n);return (Number.isFinite(x)?x:0).toFixed(1);}
+    function setStatus(t){
+      const el = document.getElementById("status");
+      el.textContent = t || "Ready";
+      el.classList.add('loading');
+      setTimeout(() => el.classList.remove('loading'), 500);
+    }
+
+    function loadSaved(){
+      try{
+        const raw=localStorage.getItem("revenue_radar_settings");
+        if(!raw) return;
+        const s=JSON.parse(raw);
+        ["ts_invoice","ts_leads","ts_mla","conv"].forEach(id=>{
+          if(s[id]!=null) document.getElementById(id).value=s[id];
+        });
+      }catch(_){}
+    }
+
+    function save(){
+      const s={
+        ts_invoice:Number(document.getElementById("ts_invoice").value||0),
+        ts_leads:Number(document.getElementById("ts_leads").value||0),
+        ts_mla:Number(document.getElementById("ts_mla").value||0),
+        conv:Number(document.getElementById("conv").value||0)
+      };
+      localStorage.setItem("revenue_radar_settings", JSON.stringify(s));
+      setStatus("✓ Settings saved successfully");
+      refreshAll();
+    }
+
+    function settings(){
+      return {
+        ts_invoice:Number(document.getElementById("ts_invoice").value||0),
+        ts_leads:Number(document.getElementById("ts_leads").value||0),
+        ts_mla:Number(document.getElementById("ts_mla").value||0),
+        conv:(Number(document.getElementById("conv").value||0)/100)
+      };
+    }
+
+    async function getSummary(){
+      const res = await fetch("/api/telemetry/summary?windowHours=24");
+      return await res.json();
+    }
+
+    function destroy(id){ if(charts[id]) { charts[id].destroy(); charts[id]=null; } }
+
+    function render(summary){
+      const s=settings();
+      const a=summary.adoption||{};
+      const inv=a.analyze_invoice_clicked||0;
+      const opp=a.opportunity_clicked||0;
+      const leads=a.find_leads_clicked||0;
+      const mla=a.analyze_mla_clicked||0;
+
+      const ctr = inv>0 ? (opp/inv) : 0;
+
+      const minutesSaved = (inv*s.ts_invoice) + (leads*s.ts_leads) + (mla*s.ts_mla);
+      const hoursSaved = minutesSaved/60;
+
+      document.getElementById("meta").textContent =
+        `Last 24 hours • ${summary.totals?.events||0} events • ${summary.totals?.uniqueUsers||0} active users`;
+
+      document.getElementById("kpis").innerHTML = `
+        <div class="kpi">
+          <div class="kpi-label">Invoice Analysis</div>
+          <div class="kpi-value">${inv}</div>
+          <div class="kpi-sub">Executions in last 24h</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Opportunity Clicks</div>
+          <div class="kpi-value">${opp}</div>
+          <div class="kpi-sub">CTR: <span class="highlight">${(ctr*100).toFixed(0)}%</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Lead Discovery</div>
+          <div class="kpi-value">${leads}</div>
+          <div class="kpi-sub">Searches completed</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Time Saved</div>
+          <div class="kpi-value">${hours(hoursSaved)}<span style="font-size:20px;color:#94a3b8;margin-left:4px;">hrs</span></div>
+          <div class="kpi-sub">Productivity gain</div>
+        </div>
+      `;
+
+      // Premium chart colors
+      const goldGradient = (ctx) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+        gradient.addColorStop(0, 'rgba(251, 191, 36, 0.8)');
+        gradient.addColorStop(1, 'rgba(217, 119, 6, 0.4)');
+        return gradient;
+      };
+
+      // Adoption chart
+      destroy("adoption");
+      const adoptionCtx = document.getElementById("adoptionChart").getContext('2d');
+      charts.adoption = new Chart(adoptionCtx,{
+        type:"bar",
+        data:{
+          labels:["Invoice Analysis","Opportunity Click","Lead Discovery","MLA Analysis"],
+          datasets:[{
+            label:"Actions",
+            data:[inv,opp,leads,mla],
+            backgroundColor: goldGradient(adoptionCtx),
+            borderColor: '#fbbf24',
+            borderWidth: 2,
+            borderRadius: 8,
+            borderSkipped: false,
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio: false,
+          plugins:{
+            legend:{display:false},
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#fbbf24',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8,
+              titleFont: { size: 14, weight: 'bold' },
+              bodyFont: { size: 13 }
+            }
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              grid: { color: 'rgba(148, 163, 184, 0.1)' },
+              ticks: { color: '#94a3b8' }
+            },
+            x:{
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+
+      // CTR chart
+      destroy("ctr");
+      const ctrCtx = document.getElementById("ctrChart").getContext('2d');
+      charts.ctr = new Chart(ctrCtx,{
+        type:"doughnut",
+        data:{
+          labels:["Engaged","Not Engaged"],
+          datasets:[{
+            data:[ctr*100, 100-(ctr*100)],
+            backgroundColor: [
+              'rgba(251, 191, 36, 0.8)',
+              'rgba(30, 41, 59, 0.5)'
+            ],
+            borderColor: ['#fbbf24', 'rgba(148, 163, 184, 0.2)'],
+            borderWidth: 2
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio: false,
+          plugins:{
+            legend:{
+              position: 'bottom',
+              labels: {
+                color: '#94a3b8',
+                padding: 16,
+                font: { size: 12, weight: 600 }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#fbbf24',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8
+            }
+          },
+          cutout: '65%'
+        }
+      });
+
+      // Time chart
+      destroy("time");
+      const timeCtx = document.getElementById("timeChart").getContext('2d');
+      charts.time = new Chart(timeCtx,{
+        type:"bar",
+        data:{
+          labels:["Minutes Saved"],
+          datasets:[{
+            label:"Minutes",
+            data:[minutesSaved],
+            backgroundColor: goldGradient(timeCtx),
+            borderColor: '#fbbf24',
+            borderWidth: 2,
+            borderRadius: 8,
+            borderSkipped: false,
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio: false,
+          plugins:{
+            legend:{display:false},
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#fbbf24',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8
+            }
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              grid: { color: 'rgba(148, 163, 184, 0.1)' },
+              ticks: { color: '#94a3b8' }
+            },
+            x:{
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+
+      // Day breakdown
+      const byDay = summary.breakdown?.byDay || {};
+      const days = Object.keys(byDay).sort();
+      const counts = days.map(d => byDay[d]);
+      destroy("day");
+      const dayCtx = document.getElementById("dayChart").getContext('2d');
+      charts.day = new Chart(dayCtx,{
+        type:"line",
+        data:{
+          labels:days,
+          datasets:[{
+            label:"Events",
+            data:counts,
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251, 191, 36, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#fbbf24',
+            pointBorderColor: '#0f172a',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio: false,
+          plugins:{
+            legend:{display:false},
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#fbbf24',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8
+            }
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              grid: { color: 'rgba(148, 163, 184, 0.1)' },
+              ticks: { color: '#94a3b8' }
+            },
+            x:{
+              grid: { color: 'rgba(148, 163, 184, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+    }
+
+    async function refreshAll(){
+      setStatus("⟳ Refreshing data...");
+      try{
+        const summary = await getSummary();
+        if(!summary.ok){ setStatus("⚠️ Failed to load data"); return; }
+        render(summary);
+        setStatus("✓ Updated " + new Date().toLocaleTimeString());
+      }catch(e){
+        setStatus("⚠️ Connection error");
+      }
+    }
+
+    function toggleAuto(){
+      const on=document.getElementById("autoToggle").checked;
+      if(on){
+        timer=setInterval(refreshAll,10000);
+        setStatus("🔴 Live updates active");
+      }else{
+        if(timer) clearInterval(timer);
+        timer=null;
+        setStatus("⏸️ Live updates paused");
+      }
+    }
+
+    loadSaved();
+    refreshAll();
+  </script>
+</body>
+</html>

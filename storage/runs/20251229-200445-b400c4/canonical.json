@@ -1,0 +1,148 @@
+{
+  "schema_version": "invoice.v1",
+  "doc": {
+    "doc_id": "DOC-a9df4cb8bbcf",
+    "doc_type": "invoice",
+    "invoice_number": null,
+    "purchase_order": null,
+    "issued_at": "2025-12-30T01:04:45.853Z",
+    "service_period": null,
+    "currency": "USD",
+    "raw_text_hash": null,
+    "tags": []
+  },
+  "parties": {
+    "vendor": {
+      "name": "Unknown Vendor",
+      "normalized_name": "unknown vendor",
+      "addresses": []
+    },
+    "customer": {
+      "name": "Demo Manufacturing Plant A",
+      "normalized_name": "demo manufacturing plant a",
+      "addresses": [
+        {
+          "raw": "Demo Manufacturing Plant A, Minneapolis, MN 55430",
+          "street": "Demo Manufacturing Plant A",
+          "city": "Minneapolis",
+          "state": "MN",
+          "postal": "55430",
+          "country": "US",
+          "confidence": 0.85
+        }
+      ]
+    },
+    "bill_to": {
+      "name": "Demo Manufacturing Plant A",
+      "normalized_name": "demo manufacturing plant a",
+      "addresses": [
+        {
+          "raw": "Demo Manufacturing Plant A, Minneapolis, MN 55430",
+          "street": "Demo Manufacturing Plant A",
+          "city": "Minneapolis",
+          "state": "MN",
+          "postal": "55430",
+          "country": "US",
+          "confidence": 0.85
+        }
+      ]
+    },
+    "ship_to": {
+      "name": "Demo Manufacturing Plant A",
+      "normalized_name": "demo manufacturing plant a",
+      "addresses": [
+        {
+          "raw": "Demo Manufacturing Plant A, Minneapolis, MN 55430",
+          "street": "Demo Manufacturing Plant A",
+          "city": "Minneapolis",
+          "state": "MN",
+          "postal": "55430",
+          "country": "US",
+          "confidence": 0.85
+        }
+      ]
+    }
+  },
+  "line_items": [
+    {
+      "line_id": "L1",
+      "raw_description": "FR JEAN / CARHARTT / RELAXED FIT / DENIM",
+      "normalized_description": "fr jean / carhartt / relaxed fit / denim",
+      "sku": "X280",
+      "quantity": 9,
+      "unit_price": {
+        "amount": 0.67,
+        "currency": "USD"
+      },
+      "frequency": "unknown",
+      "attributes": {},
+      "confidence": {
+        "overall": 0.95,
+        "notes": [
+          "HAS_DESCRIPTION",
+          "HAS_QUANTITY",
+          "HAS_UNIT_PRICE"
+        ]
+      }
+    },
+    {
+      "line_id": "L2",
+      "raw_description": "FR INSULATED LINER",
+      "normalized_description": "fr insulated liner",
+      "sku": "64356",
+      "quantity": 9,
+      "unit_price": {
+        "amount": 2.5,
+        "currency": "USD"
+      },
+      "frequency": "unknown",
+      "attributes": {},
+      "confidence": {
+        "overall": 0.95,
+        "notes": [
+          "HAS_DESCRIPTION",
+          "HAS_QUANTITY",
+          "HAS_UNIT_PRICE"
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "invoice_total": null,
+    "weekly_equivalent_total": null,
+    "notes": []
+  },
+  "signals": [],
+  "opportunities": [],
+  "provenance": {
+    "source_type": "chrome",
+    "captured_at": "2025-12-30T01:04:45.853Z",
+    "parser": {
+      "name": "ingest.chrome",
+      "version": "1.0.0",
+      "warnings": []
+    },
+    "source_ref": {
+      "kind": "url",
+      "value": "file:///Users/taylorray/Desktop/real-invoice-demo.html",
+      "mime_type": "text/html"
+    }
+  },
+  "confidence": {
+    "overall": 0.85,
+    "fields": [
+      {
+        "path": "parties.customer.name",
+        "score": 0.3,
+        "method": "unknown",
+        "evidence": []
+      },
+      {
+        "path": "line_items",
+        "score": 0.9,
+        "method": "parsed",
+        "evidence": []
+      }
+    ]
+  }
+}

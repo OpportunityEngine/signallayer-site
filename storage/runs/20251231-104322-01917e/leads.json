@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "source": "zoominfo",
+  "leads": [
+    {
+      "company": "No Company Match",
+      "normalizedCompany": "no company match",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "",
+      "email": "",
+      "city": "",
+      "state": "Lance Oil\tFRC\t3090 Moon Station Rd Nw\tKennesaw\tGA\t30144\t770-432-5176\t\t10 to 19\t20",
+      "postalCode": "",
+      "score": 0
+    },
+    {
+      "company": "No Company Match",
+      "normalizedCompany": "no company match",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "",
+      "email": "",
+      "city": "",
+      "state": "Lang Farms\t\t23588 County Road 34\tEden Valley\tMN\t55329\t320-453-4750\t\t1 to 4\t1",
+      "postalCode": "",
+      "score": 0
+    },
+    {
+      "company": "Legislative",
+      "normalizedCompany": "legislative",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "",
+      "email": "",
+      "city": "",
+      "state": "Lawrenceville City Shop\tMAM; FRC\t20 S Clayton St\tLawrenceville\tGA\t30046\t770-963-9299\t\t5 to 9\t10",
+      "postalCode": "",
+      "score": 0
+    },
+    {
+      "company": "Paper",
+      "normalizedCompany": "paper",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "",
+      "email": "",
+      "city": "",
+      "state": "Ldi Liberty Paper\tCMAM\t13500 Liberty Ln\tBecker\tMN\t55308\t763-262-1196\t\t1 to 4\t2",
+      "postalCode": "",
+      "score": 0
+    },
+    {
+      "company": "No Company Match",
+      "normalizedCompany": "no company match",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "",
+      "email": "",
+      "city": "",
+      "state": "Lehigh Hanson\t\t12300 Dupont Ave S # Y\tBurnsville\tMN\t55337\t952-890-1600\t\t1 to 4\t20",
+      "postalCode": "",
+      "score": 0
+    }
+  ],
+  "cache": {
+    "key": "|",
+    "hit": true
+  },
+  "accountName": "",
+  "postalCode": "",
+  "addressHint": "",
+  "run_id": "20251231-104322-01917e",
+  "storedAt": "2025-12-31T15:43:22.865Z"
+}

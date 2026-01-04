@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source": "web_scraper",
+  "leads": [
+    {
+      "contactName": "PILGRIM'S PRIDE Main Line",
+      "title": "Main Line",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(309) 833-9602",
+      "email": "",
+      "city": "DOUGLAS",
+      "state": "GA",
+      "postalCode": "31533",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "PILGRIM'S PRIDE Contact 2",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(904) 721-2288",
+      "email": "",
+      "city": "DOUGLAS",
+      "state": "GA",
+      "postalCode": "31533",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    },
+    {
+      "contactName": "PILGRIM'S PRIDE Contact 3",
+      "title": "General Contact",
+      "department": "Front Desk",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(904) 721-7373",
+      "email": "",
+      "city": "DOUGLAS",
+      "state": "GA",
+      "postalCode": "31533",
+      "score": 40,
+      "source": "bbb",
+      "isLocalFacility": false,
+      "locationConfidence": 0.3
+    }
+  ],
+  "cache": {
+    "key": "pilgrim's pride|31533",
+    "hit": true
+  },
+  "accountName": "PILGRIM'S PRIDE",
+  "postalCode": "31533",
+  "addressHint": "113 MCNEIL DR, DOUGLAS, GA 31533",
+  "run_id": "20251231-163450-dc0143",
+  "storedAt": "2025-12-31T21:34:50.212Z"
+}

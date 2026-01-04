@@ -1,0 +1,69 @@
+{
+  "schema_version": "invoice.v1",
+  "doc": {
+    "doc_id": "DOC-2a0b7b367623",
+    "doc_type": "invoice",
+    "invoice_number": null,
+    "purchase_order": null,
+    "issued_at": "2025-12-31T20:48:29.755Z",
+    "service_period": null,
+    "currency": "USD",
+    "raw_text_hash": "2a0b7b36762399b31780aa28189018fcc78e99ede0520380fb9f1f5620b1ae87",
+    "tags": []
+  },
+  "parties": {
+    "vendor": {
+      "name": "Unknown Vendor",
+      "normalized_name": "unknown vendor",
+      "addresses": []
+    },
+    "customer": {
+      "name": "Unknown Customer",
+      "normalized_name": "unknown customer",
+      "addresses": []
+    },
+    "bill_to": null,
+    "ship_to": null
+  },
+  "line_items": [],
+  "totals": {
+    "invoice_total": null,
+    "weekly_equivalent_total": null,
+    "notes": []
+  },
+  "signals": [],
+  "opportunities": [],
+  "provenance": {
+    "source_type": "pdf_text",
+    "captured_at": "2025-12-31T20:48:29.755Z",
+    "parser": {
+      "name": "ingest.pdf_text",
+      "version": "1.0.0",
+      "warnings": [
+        "No line items found in payload (checked multiple candidate keys)."
+      ]
+    },
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/perdue%20invoice%20.pdf",
+      "mime_type": "application/pdf"
+    }
+  },
+  "confidence": {
+    "overall": 0.5,
+    "fields": [
+      {
+        "path": "parties.customer.name",
+        "score": 0.3,
+        "method": "unknown",
+        "evidence": []
+      },
+      {
+        "path": "line_items",
+        "score": 0.1,
+        "method": "parsed",
+        "evidence": []
+      }
+    ]
+  }
+}

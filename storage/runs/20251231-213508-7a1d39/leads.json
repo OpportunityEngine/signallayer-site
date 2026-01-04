@@ -1,0 +1,75 @@
+{
+  "ok": true,
+  "source": "zoominfo",
+  "leads": [
+    {
+      "company": "Owens Corning",
+      "normalizedCompany": "owens corning",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "(770) 964-9811",
+      "email": "",
+      "city": "Fairburn",
+      "state": "GA",
+      "postalCode": "30213",
+      "score": 25
+    },
+    {
+      "company": "Owens Corning - Asphalt",
+      "normalizedCompany": "owens corning asphalt",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "404-836-3512",
+      "email": "",
+      "city": "Atlanta",
+      "state": "GA",
+      "postalCode": "30336",
+      "score": 25
+    },
+    {
+      "company": "Owens Corning - Roofing",
+      "normalizedCompany": "owens corning roofing",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "404-836-3512",
+      "email": "",
+      "city": "Atlanta",
+      "state": "GA",
+      "postalCode": "30336",
+      "score": 25
+    },
+    {
+      "company": "Owens Welding",
+      "normalizedCompany": "owens welding",
+      "contactName": "",
+      "title": "",
+      "department": "",
+      "directPhone": "",
+      "mobilePhone": "",
+      "corpPhone": "706-865-7982",
+      "email": "",
+      "city": "Cleveland",
+      "state": "GA",
+      "postalCode": "30528",
+      "score": 25
+    }
+  ],
+  "cache": {
+    "key": "owens corning|30213",
+    "hit": true
+  },
+  "accountName": "OWENS CORNING",
+  "postalCode": "30213",
+  "addressHint": "7000 MCLARIN RD, FAIRBURN, GA 30213",
+  "run_id": "20251231-213508-7a1d39",
+  "storedAt": "2026-01-01T02:35:08.672Z"
+}

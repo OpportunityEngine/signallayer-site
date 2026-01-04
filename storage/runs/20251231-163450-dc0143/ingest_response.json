@@ -1,0 +1,190 @@
+{
+  "ok": true,
+  "run_id": "20251231-163450-dc0143",
+  "source_type": "pdf_text",
+  "status": "no_items",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [],
+    "tableHtml": [],
+    "raw_text_length": 26758,
+    "raw_text_preview": "\n\nREMIT PAYMENT TO:PAY YOUR BILL WITH MYCINTAS\nWWW.CINTAS.COM/MYACCOUNT\nMANAGE | SHOP | PAY\nCINTAS CORP\nP.O. BOX 630910\nCINCINNATI, OH 45263-0910\nCUSTOMER SVC/BILLING \nCINTAS FAX #\n833-711-5953\n912-537-6243\nINVOICE\nSHIP TO:PILGRIM'S PRIDE\n113 MCNEIL DR\nDOUGLAS, GA 31533-2715\nBILL TO:PILGRIM'S PRIDE\n113 MCNEIL DR\nDOUGLAS, GA 31533-2715\nINVOICE #\nINVOICE DATE\nSERVICE TICKET #\nPURCHASE ORDER #\nCUSTOMER REF #\n4251866977\n12/04/2025\n4251866977\n4230086473\nFRESH PLANT\nSOLD TO #\nPAYER #\nPAYMENT TERMS\nSORT #\nCINTAS ROUTE\n20609429\n20609429\n2% 90 NET 120\n02200000539\n17 / DAY 4 / STOP 003\nEMP#/LOCK#MATERIALDESCRIPTIONFREQEXCHQTYUNIT PRICELINE TOTALTAX\nX101843X5 ACTIVE SCRAPER01F111.480 16.28N\nX101893X5 XTRAC MAT ONYX01F133.750 48.75N\nX101924X6 XTRAC MAT ONYX01F64.200 25.20N\nX102023X10 XTRAC MAT ONYX01F44.750 19.00N\nX27012SIG ZFOLD RFL PAPER/CS-01F132.000 32.00N\nX27026SIG AIR SVC01F122.750 33.00N\nX27069SIG SOAP SVC01F12.200 2.20N\nX8000LOCKER 8 COMP HANGER-01F720.770 55.44N\nX9210URINAL SCREEN SVC01F401.250 50.00N\n0086X73478FR/DUNGRE/CRHRTT/INHRNT/NVY-0403001F130.330 4.29N\n0086X833SNAP FRT SHT/NAVY/POP SS-RG2XL01F130.120 1.56N\n0086RODNEY SUMMERSET  SUBTOTAL - 5.85\n0087X290JEAN/FR/CARPNTR/RLX FIT/ DENIM-0303201F40.550 2.20N\n0087X60659FR SHIRT/CTN/NYL/FOOD PROC/LS-00MLS01F130.280 3.64N\n0087X73478FR/DUNGRE/CRHRTT/INHRNT/NVY-0303201F70.330 2.31N\n0087CODY CERSERY  SUBTOTAL - 8.15\n0088X76003BTCHR COAT SNP 2PKT/WHITE-0XLLS01F130.140 1.82N\n0088CIARRA WATSON  SUBTOTAL - 1.82\n0089X76003BTCHR COAT SNP 2PKT/WHITE-00SLS01F20.140 0.28N\n0089X76003BTCHR COAT SNP 2PKT/WHITE-00MLS01F130.140 1.82N\n0089SHAKAYLA DUGGER  SUBTOTAL - 2.10\n0091X76003BTCHR COAT SNP 2PKT/WHITE-2XLLS01F130.140 1.82N\n0091LENEDRA ARMSTRONG  SUBTOTAL - 1.82\n0092X76003BTCHR COAT SNP 2PKT/WHITE-2XLLS01F130.140 1.82N\n0092MELISSA DISHAROON  SUBTOTAL - 1.82\n0093X76003BTCHR COAT SNP 2PKT/WHITE-00LLS01F130.140 1.82N\n0093DOREATHER BURNS  SUBTOTAL - 1.82\n0094X76003BTCHR COAT SNP 2PKT/WHITE-0XSLS01F130.140 1.82N\n0094FRANCES WILLIAMS  SUBT…",
+    "meta": {
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/pilgrims%20invoice.pdf",
+        "mime_type": "application/pdf"
+      }
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/line_items",
+        "schemaPath": "#/properties/line_items/minItems",
+        "keyword": "minItems",
+        "params": {
+          "limit": 1
+        },
+        "message": "must NOT have fewer than 1 items"
+      },
+      {
+        "instancePath": "/provenance/source_ref/kind",
+        "schemaPath": "#/properties/provenance/properties/source_ref/properties/kind/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "url",
+            "file",
+            "email",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": {
+      "kind": "pdf",
+      "value": "file:///Users/taylorray/Desktop/pilgrims%20invoice.pdf",
+      "mime_type": "application/pdf"
+    },
+    "extractedItemsCount": 0,
+    "canonicalLineItemsCount": 0,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "web_scraper",
+      "leadCount": 3,
+      "leads": [
+        {
+          "contactName": "PILGRIM'S PRIDE Main Line",
+          "title": "Main Line",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(309) 833-9602",
+          "email": "",
+          "city": "DOUGLAS",
+          "state": "GA",
+          "postalCode": "31533",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "PILGRIM'S PRIDE Contact 2",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(904) 721-2288",
+          "email": "",
+          "city": "DOUGLAS",
+          "state": "GA",
+          "postalCode": "31533",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "PILGRIM'S PRIDE Contact 3",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(904) 721-7373",
+          "email": "",
+          "city": "DOUGLAS",
+          "state": "GA",
+          "postalCode": "31533",
+          "score": 40,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        }
+      ],
+      "cacheKey": "pilgrim's pride|31533",
+      "inferredZip": "31533"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-ce5378e8d283",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2025-12-31T21:34:50.217Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "ce5378e8d2835ad6035f04e5dd2d23aaa21a5a35e276cc329cf5d65d8663e33a",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Unknown Customer",
+        "normalized_name": "unknown customer",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "pdf_text",
+      "captured_at": "2025-12-31T21:34:50.218Z",
+      "parser": {
+        "name": "ingest.pdf_text",
+        "version": "1.0.0",
+        "warnings": [
+          "No line items found in payload (checked multiple candidate keys)."
+        ]
+      },
+      "source_ref": {
+        "kind": "pdf",
+        "value": "file:///Users/taylorray/Desktop/pilgrims%20invoice.pdf",
+        "mime_type": "application/pdf"
+      }
+    },
+    "confidence": {
+      "overall": 0.5,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.1,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}

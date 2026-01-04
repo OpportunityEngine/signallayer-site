@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "source": "none",
+  "leads": [],
+  "cache": {
+    "key": "demo manufacturing plant a|55430",
+    "hit": false
+  },
+  "accountName": "Demo Manufacturing Plant A",
+  "postalCode": "55430",
+  "addressHint": "Minneapolis, MN 55430",
+  "run_id": "20251229-200541-718699",
+  "storedAt": "2025-12-30T01:05:46.376Z"
+}

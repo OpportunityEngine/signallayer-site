@@ -1,0 +1,226 @@
+{
+  "ok": true,
+  "run_id": "20260102-200928-5f232a",
+  "source_type": "test",
+  "status": "extracted_only",
+  "message": "Ingest successful (canonical validation failed)",
+  "canonical": null,
+  "extracted": {
+    "items": [
+      {
+        "description": "Commercial Oven Lease",
+        "quantity": 1,
+        "unitPrice": "500000"
+      },
+      {
+        "description": "Maintenance Service",
+        "quantity": 12,
+        "unitPrice": "15000"
+      }
+    ],
+    "tableHtml": [],
+    "raw_text_length": 235,
+    "raw_text_preview": "INVOICE\n\nSHIP TO\nBella's Italian Kitchen\n123 Main St\nBoston, MA 02101\n\nBILL TO\nBella's Italian Kitchen\n123 Main St\nBoston, MA 02101\n\nITEMS:\nCommercial Oven Lease - $5,000.00\nMaintenance Service (12 months) - $1,800.00\n\nTOTAL: $6,800.00",
+    "meta": {
+      "source_ref": null
+    }
+  },
+  "validation": {
+    "attempted": true,
+    "ok": false,
+    "errors": [
+      {
+        "instancePath": "/provenance/source_type",
+        "schemaPath": "#/properties/provenance/properties/source_type/enum",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "chrome",
+            "pdf_text",
+            "pdf_ocr",
+            "upload",
+            "api",
+            "unknown"
+          ]
+        },
+        "message": "must be equal to one of the allowed values"
+      }
+    ]
+  },
+  "legacy": null,
+  "debug": {
+    "version": "v2025-12-18cintas-parser-1",
+    "source_ref": null,
+    "extractedItemsCount": 2,
+    "canonicalLineItemsCount": 2,
+    "autoLeads": {
+      "attempted": true,
+      "ok": true,
+      "source": "web_scraper",
+      "leadCount": 3,
+      "leads": [
+        {
+          "contactName": "Bella's Italian Kitchen Main Line",
+          "title": "Main Line",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 535-5522",
+          "email": "service@interactiveblue.com",
+          "city": "Boston",
+          "state": "MA",
+          "postalCode": "02101",
+          "score": 65,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "Bella's Italian Kitchen Contact 2",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 539-6301",
+          "email": "",
+          "city": "Boston",
+          "state": "MA",
+          "postalCode": "02101",
+          "score": 50,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        },
+        {
+          "contactName": "Bella's Italian Kitchen Contact 3",
+          "title": "General Contact",
+          "department": "Front Desk",
+          "directPhone": "",
+          "mobilePhone": "",
+          "corpPhone": "(727) 530-4651",
+          "email": "",
+          "city": "Boston",
+          "state": "MA",
+          "postalCode": "02101",
+          "score": 50,
+          "source": "bbb",
+          "isLocalFacility": false,
+          "locationConfidence": 0.3
+        }
+      ],
+      "cacheKey": "bella's italian kitchen|02101",
+      "inferredZip": "02101"
+    }
+  },
+  "error": null,
+  "canonical_preview": {
+    "schema_version": "invoice.v1",
+    "doc": {
+      "doc_id": "DOC-edc178113097",
+      "doc_type": "invoice",
+      "invoice_number": null,
+      "purchase_order": null,
+      "issued_at": "2026-01-03T01:11:08.616Z",
+      "service_period": null,
+      "currency": "USD",
+      "raw_text_hash": "edc178113097c76b1defe844c67d713df79fe4ce8e0b57ddda9cdff94b91cfed",
+      "tags": []
+    },
+    "parties": {
+      "vendor": {
+        "name": "Unknown Vendor",
+        "normalized_name": "unknown vendor",
+        "addresses": []
+      },
+      "customer": {
+        "name": "Bella's Italian Kitchen",
+        "normalized_name": "bella's italian kitchen",
+        "addresses": []
+      },
+      "bill_to": null,
+      "ship_to": null
+    },
+    "line_items": [
+      {
+        "line_id": "L1",
+        "raw_description": "Commercial Oven Lease",
+        "normalized_description": "commercial oven lease",
+        "sku": null,
+        "quantity": 1,
+        "unit_price": {
+          "amount": 500000,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      },
+      {
+        "line_id": "L2",
+        "raw_description": "Maintenance Service",
+        "normalized_description": "maintenance service",
+        "sku": null,
+        "quantity": 12,
+        "unit_price": {
+          "amount": 15000,
+          "currency": "USD"
+        },
+        "frequency": "unknown",
+        "attributes": {},
+        "confidence": {
+          "overall": 0.95,
+          "notes": [
+            "HAS_DESCRIPTION",
+            "HAS_QUANTITY",
+            "HAS_UNIT_PRICE"
+          ]
+        }
+      }
+    ],
+    "totals": {
+      "invoice_total": null,
+      "weekly_equivalent_total": null,
+      "notes": []
+    },
+    "signals": [],
+    "opportunities": [],
+    "provenance": {
+      "source_type": "test",
+      "captured_at": "2026-01-03T01:11:08.616Z",
+      "parser": {
+        "name": "ingest.test",
+        "version": "1.0.0",
+        "warnings": []
+      },
+      "source_ref": {
+        "kind": "unknown",
+        "value": null,
+        "mime_type": null
+      }
+    },
+    "confidence": {
+      "overall": 0.85,
+      "fields": [
+        {
+          "path": "parties.customer.name",
+          "score": 0.3,
+          "method": "unknown",
+          "evidence": []
+        },
+        {
+          "path": "line_items",
+          "score": 0.9,
+          "method": "parsed",
+          "evidence": []
+        }
+      ]
+    }
+  }
+}
