@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
@@ -8,15 +8,15 @@ CREATE TABLE users (
     last_active DATETIME,
     FOREIGN KEY (team_id) REFERENCES teams(id)
 );
-CREATE TABLE sqlite_sequence(name,seq);
-CREATE TABLE teams (
+-- sqlite_sequence is automatically created by SQLite when using AUTOINCREMENT
+CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     manager_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (manager_id) REFERENCES users(id)
 );
-CREATE TABLE ingestion_runs (
+CREATE TABLE IF NOT EXISTS ingestion_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT UNIQUE NOT NULL,
     user_id INTEGER NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE ingestion_runs (
     error_message TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE TABLE invoice_items (
+CREATE TABLE IF NOT EXISTS invoice_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id INTEGER NOT NULL,
     description TEXT,
@@ -41,7 +41,7 @@ CREATE TABLE invoice_items (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (run_id) REFERENCES ingestion_runs(id)
 );
-CREATE TABLE mlas (
+CREATE TABLE IF NOT EXISTS mlas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_name TEXT NOT NULL,
     vendor_name TEXT,
@@ -56,7 +56,7 @@ CREATE TABLE mlas (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (last_reviewed_by) REFERENCES users(id)
 );
-CREATE TABLE mla_reviews (
+CREATE TABLE IF NOT EXISTS mla_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mla_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE mla_reviews (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (run_id) REFERENCES ingestion_runs(id)
 );
-CREATE TABLE opportunities (
+CREATE TABLE IF NOT EXISTS opportunities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_name TEXT NOT NULL,
     opportunity_type TEXT CHECK(opportunity_type IN ('mla_renewal', 'equipment_upgrade', 'contract_expansion', 'new_service', 'price_correction')),
@@ -89,7 +89,7 @@ CREATE TABLE opportunities (
     FOREIGN KEY (source_run_id) REFERENCES ingestion_runs(id),
     FOREIGN KEY (mla_id) REFERENCES mlas(id)
 );
-CREATE TABLE opportunity_activities (
+CREATE TABLE IF NOT EXISTS opportunity_activities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     opportunity_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE opportunity_activities (
     FOREIGN KEY (opportunity_id) REFERENCES opportunities(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE TABLE spifs (
+CREATE TABLE IF NOT EXISTS spifs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     description TEXT,
@@ -115,7 +115,7 @@ CREATE TABLE spifs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
-CREATE TABLE spif_standings (
+CREATE TABLE IF NOT EXISTS spif_standings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     spif_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE spif_standings (
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(spif_id, user_id)
 );
-CREATE TABLE commissions (
+CREATE TABLE IF NOT EXISTS commissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     opportunity_id INTEGER,
@@ -140,7 +140,7 @@ CREATE TABLE commissions (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)
 );
-CREATE TABLE telemetry_events (
+CREATE TABLE IF NOT EXISTS telemetry_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     event_type TEXT NOT NULL, -- 'invoice_analyzed', 'mla_reviewed', 'lead_found', 'opportunity_viewed'
@@ -150,7 +150,7 @@ CREATE TABLE telemetry_events (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE TABLE leads (
+CREATE TABLE IF NOT EXISTS leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     source_run_id INTEGER,
     account_name TEXT NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE leads (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (source_run_id) REFERENCES ingestion_runs(id)
 );
-CREATE TABLE analytics_cache (
+CREATE TABLE IF NOT EXISTS analytics_cache (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cache_key TEXT UNIQUE NOT NULL,
     cache_value TEXT NOT NULL, -- JSON blob
