@@ -1078,9 +1078,25 @@ async function findLeadsForAccount({ accountName, postalCode, allowPublic = true
 }
 const app = express();
 
-// CORS configuration using centralized config
+// CORS configuration - flexible for development and production
 app.use(cors({
-  origin: config.allowedOrigins,  // From .env ALLOWED_ORIGINS
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    // In production, auto-allow DigitalOcean app domains
+    if (process.env.NODE_ENV === 'production' && origin.includes('.ondigitalocean.app')) {
+      return callback(null, true);
+    }
+
+    // Check against configured allowed origins
+    if (config.allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+
+    // Default deny with helpful message
+    callback(new Error('CORS policy: Origin not allowed'));
+  },
   credentials: true
 }));
 
@@ -3594,6 +3610,22 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
   // In production, you might want to restart the process
+});
+
+// Root endpoint - helpful for verifying deployment
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'Revenue Radar',
+    version: VERSION,
+    environment: config.isProduction() ? 'production' : 'development',
+    endpoints: {
+      login: '/dashboard/login.html',
+      health: '/health',
+      api: '/api'
+    },
+    message: 'Server is running! Visit /dashboard/login.html to get started.'
+  });
 });
 
 const server = app.listen(PORT, () => {
