@@ -354,12 +354,25 @@
 
           // Redirect after smooth animation
           setTimeout(() => {
+            // Admin sees manager dashboard with access to all dashboards
             if (data.data.user.role === 'admin') {
               window.location.href = '/dashboard/manager-view.html';
-            } else if (data.data.user.role === 'rep') {
-              window.location.href = '/dashboard/revenue-dashboard.html';
-            } else {
-              window.location.href = '/dashboard/revenue-dashboard.html';
+            }
+            // Manager (Sales Manager/GM) sees manager dashboard
+            else if (data.data.user.role === 'manager') {
+              window.location.href = '/dashboard/manager-view.html';
+            }
+            // Customer Admin (VP/Regional Manager) sees VP dashboard
+            else if (data.data.user.role === 'customer_admin') {
+              window.location.href = 'http://localhost:5173/dashboard';
+            }
+            // Rep sees rep dashboard
+            else if (data.data.user.role === 'rep') {
+              window.location.href = '/dashboard/rep-view.html';
+            }
+            // Default fallback
+            else {
+              window.location.href = '/dashboard/rep-view.html';
             }
           }, 400);
 
@@ -442,7 +455,7 @@
             if (userData.role === 'admin') {
               window.location.href = '/dashboard/manager-view.html';
             } else {
-              window.location.href = '/dashboard/revenue-dashboard.html';
+              window.location.href = '/dashboard/rep-view.html';
             }
           }
         })
