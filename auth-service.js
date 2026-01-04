@@ -332,7 +332,7 @@ class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        fullName: user.name,
+        name: user.name,
         role: user.role,
         accountName: user.account_name,
         isEmailVerified: user.is_email_verified

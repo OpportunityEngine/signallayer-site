@@ -305,7 +305,7 @@ router.get('/me', requireAuth, async (req, res) => {
       data: {
         id: user.id,
         email: user.email,
-        fullName: user.name,
+        name: user.name,
         role: user.role,
         accountName: user.account_name,
         isActive: user.is_active,
