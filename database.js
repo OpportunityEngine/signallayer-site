@@ -13,8 +13,9 @@ let db;
 
 function initDatabase() {
   try {
-    // Create database connection
-    db = new sqlite3(DB_PATH, { verbose: console.log });
+    // Create database connection (verbose logging only in development)
+    const options = process.env.NODE_ENV === 'production' ? {} : { verbose: console.log };
+    db = new sqlite3(DB_PATH, options);
 
     // Enable WAL mode for better concurrency
     db.pragma('journal_mode = WAL');
