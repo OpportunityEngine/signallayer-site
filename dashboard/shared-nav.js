@@ -22,28 +22,34 @@ async function initializeNavigation() {
 
   // Define dashboard configurations
   const dashboards = {
+    analytics: {
+      name: 'Analytics',
+      url: '/dashboard/admin-ops.html',
+      icon: '',
+      roles: ['admin']
+    },
     admin: {
       name: 'Admin',
       url: '/dashboard/user-management.html',
-      icon: '⚙️',
+      icon: '',
       roles: ['admin']
     },
     manager: {
       name: 'Manager',
       url: '/dashboard/manager-view.html',
-      icon: '📊',
+      icon: '',
       roles: ['admin', 'manager', 'customer_admin']
     },
     vp: {
       name: 'VP',
       url: '/dashboard/vp-view.html',
-      icon: '🎯',
+      icon: '',
       roles: ['admin', 'customer_admin']
     },
     rep: {
       name: 'Rep',
       url: '/dashboard/rep-view.html',
-      icon: '💰',
+      icon: '',
       roles: ['admin', 'manager', 'rep']
     }
   };
@@ -254,6 +260,7 @@ async function initializeNavigation() {
 function getCurrentDashboard(key) {
   const path = window.location.pathname;
   const dashboardMap = {
+    'analytics': 'admin-ops.html',
     'admin': 'user-management.html',
     'manager': 'manager-view.html',
     'vp': 'vp-view.html',

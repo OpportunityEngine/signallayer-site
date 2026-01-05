@@ -600,6 +600,10 @@
       font-size: 14px;
     }
   </style>
+  <!-- Authentication Manager - Load FIRST -->
+  <script src="/dashboard/auth-manager.js"></script>
+  <!-- Shared Navigation - Load SECOND -->
+  <script src="/dashboard/shared-nav.js"></script>
 </head>
 <body>
   <div class="container">
@@ -907,11 +911,29 @@
 
   <script>
     // Auto-refresh every 30 seconds
-    setInterval(refreshAllData, 30000);
+    let refreshInterval;
 
-    // Load data on page load
-    window.addEventListener('DOMContentLoaded', () => {
-      refreshAllData();
+    // Load data on page load with authentication
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 1. Initialize authentication (blocks until complete)
+        const user = await window.AuthManager.initialize();
+
+        // 2. Check role access - Analytics dashboard requires admin role only
+        window.AuthManager.requireRole(['admin']);
+
+        // 3. Initialize navigation (depends on auth being ready)
+        await window.initializeNavigation();
+
+        // 4. Load dashboard content
+        refreshAllData();
+
+        // 5. Start auto-refresh
+        refreshInterval = setInterval(refreshAllData, 30000);
+      } catch (error) {
+        // AuthManager already handled redirect
+        console.error('Analytics dashboard auth failed:', error);
+      }
     });
 
     async function refreshAllData() {
