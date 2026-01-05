@@ -2,13 +2,21 @@
 // SHARED NAVIGATION COMPONENT
 // Role-based tab navigation for all dashboards
 // =====================================================
+// REQUIRES: auth-manager.js to be loaded first
+// =====================================================
 
-function initializeNavigation() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const accessToken = localStorage.getItem('accessToken');
+/**
+ * Initialize navigation component
+ * MUST be called after AuthManager.initialize() completes
+ * @returns {Promise<void>}
+ */
+async function initializeNavigation() {
+  // Get authenticated user from AuthManager (should already be initialized)
+  const user = window.AuthManager.getUser();
 
-  if (!accessToken || !user.role) {
-    window.location.href = '/dashboard/login.html';
+  if (!user || !user.role) {
+    // AuthManager should have already redirected, but just in case
+    console.error('Navigation: No authenticated user found');
     return;
   }
 
@@ -28,7 +36,7 @@ function initializeNavigation() {
     },
     vp: {
       name: 'VP',
-      url: 'http://localhost:5173/dashboard',
+      url: '/dashboard/vp-view.html',
       icon: '🎯',
       roles: ['admin', 'customer_admin']
     },
@@ -51,7 +59,7 @@ function initializeNavigation() {
       <div class="nav-container">
         <div class="nav-left">
           <div class="nav-logo">
-            <div class="logo-icon">R</div>
+            <div class="logo-icon">$</div>
             <span class="logo-text">Revenue Radar</span>
           </div>
           <div class="nav-tabs">
@@ -67,7 +75,7 @@ function initializeNavigation() {
         </div>
         <div class="nav-right">
           <div class="user-menu">
-            <span class="user-name">${user.name}</span>
+            <span class="user-name">${user.name || user.email}</span>
             <span class="user-role">${formatRole(user.role)}</span>
             <button class="logout-btn" onclick="handleLogout()">Logout</button>
           </div>
@@ -238,24 +246,28 @@ function initializeNavigation() {
   document.body.insertAdjacentHTML('afterbegin', navHTML);
 }
 
-// Helper: Determine current dashboard
+/**
+ * Determine if current page is the given dashboard
+ * @param {string} key - Dashboard key (admin, manager, vp, rep)
+ * @returns {boolean}
+ */
 function getCurrentDashboard(key) {
   const path = window.location.pathname;
   const dashboardMap = {
     'admin': 'user-management.html',
     'manager': 'manager-view.html',
-    'vp': 'localhost:5173',
+    'vp': 'vp-view.html',
     'rep': 'rep-view.html'
   };
-
-  if (key === 'vp' && window.location.href.includes('localhost:5173')) {
-    return true;
-  }
 
   return path.includes(dashboardMap[key]);
 }
 
-// Helper: Format role for display
+/**
+ * Format role for display
+ * @param {string} role - User role
+ * @returns {string}
+ */
 function formatRole(role) {
   const roleNames = {
     'admin': 'Administrator',
@@ -267,19 +279,5 @@ function formatRole(role) {
   return roleNames[role] || role;
 }
 
-// Handle logout
-function handleLogout() {
-  if (confirm('Are you sure you want to logout?')) {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    window.location.href = '/dashboard/login.html';
-  }
-}
-
-// Auto-initialize when script loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeNavigation);
-} else {
-  initializeNavigation();
-}
+// Export for use in dashboards
+window.initializeNavigation = initializeNavigation;

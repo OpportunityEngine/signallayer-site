@@ -557,7 +557,9 @@
       }
     }
   </style>
-  <!-- Shared Navigation -->
+  <!-- Authentication Manager - Load FIRST -->
+  <script src="/dashboard/auth-manager.js"></script>
+  <!-- Shared Navigation - Load SECOND -->
   <script src="/dashboard/shared-nav.js"></script>
 </head>
 <body>
@@ -724,45 +726,11 @@
   <script>
     let users = [];
     let currentEditUserId = null;
-    let authToken = localStorage.getItem('authToken');
+    let authToken = null; // Will be set after auth initialization
 
-    // Check authentication
-    if (!authToken) {
-      window.location.href = '/dashboard/login.html';
-    }
-
-    // Fetch current user info
-    async function loadCurrentUser() {
-      try {
-        const response = await fetch('/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          document.getElementById('currentUser').textContent = data.user.name;
-
-          // Check if user is admin
-          if (data.user.role !== 'admin') {
-            alert('Access denied. Admin privileges required.');
-            window.location.href = '/dashboard/login.html';
-          }
-        } else {
-          throw new Error('Auth failed');
-        }
-      } catch (error) {
-        console.error('Auth error:', error);
-        localStorage.removeItem('authToken');
-        window.location.href = '/dashboard/login.html';
-      }
-    }
-
-    // Logout
+    // Logout function - delegates to AuthManager
     function logout() {
-      localStorage.removeItem('authToken');
-      window.location.href = '/dashboard/login.html';
+      window.AuthManager.logout();
     }
 
     // Load statistics
@@ -1058,11 +1026,31 @@
       }, 5000);
     }
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      loadCurrentUser();
-      loadUsers();
-      loadStats();
+    // Initialize with new centralized auth pattern
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 1. Initialize authentication (blocks until complete)
+        const user = await window.AuthManager.initialize();
+
+        // 2. Check role access - Admin dashboard requires admin role
+        window.AuthManager.requireRole(['admin']);
+
+        // 3. Set auth token for API calls
+        authToken = window.AuthManager.getToken();
+
+        // 4. Display current user name
+        document.getElementById('currentUser').textContent = user.name || user.email;
+
+        // 5. Initialize navigation (depends on auth being ready)
+        await window.initializeNavigation();
+
+        // 6. Load page-specific content
+        loadUsers();
+        loadStats();
+      } catch (error) {
+        // AuthManager already handled redirect, this is just cleanup
+        console.error('Admin dashboard auth failed:', error);
+      }
     });
   </script>
 </body>

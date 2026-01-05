@@ -517,7 +517,9 @@
       }
     }
   </style>
-  <!-- Shared Navigation -->
+  <!-- Authentication Manager - Load FIRST -->
+  <script src="/dashboard/auth-manager.js"></script>
+  <!-- Shared Navigation - Load SECOND -->
   <script src="/dashboard/shared-nav.js"></script>
 </head>
 <body>
@@ -1080,18 +1082,33 @@
 
     // ===== EMAIL AUTOPILOT FUNCTIONS =====
 
-    // Auto-load email monitors on page load
-    window.addEventListener('DOMContentLoaded', () => {
-      refreshEmailMonitors();
-      loadEmailServiceStatus();
-      loadDetectedSavings();
-      loadActivityFeed();
+    // Auto-load email monitors on page load with auth
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 1. Initialize authentication (blocks until complete)
+        const user = await window.AuthManager.initialize();
 
-      // Auto-refresh every 30 seconds
-      setInterval(() => {
+        // 2. Check role access - Manager dashboard requires admin, manager, or customer_admin role
+        window.AuthManager.requireRole(['admin', 'manager', 'customer_admin']);
+
+        // 3. Initialize navigation (depends on auth being ready)
+        await window.initializeNavigation();
+
+        // 4. Load page-specific content
+        refreshEmailMonitors();
         loadEmailServiceStatus();
+        loadDetectedSavings();
         loadActivityFeed();
-      }, 30000);
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+          loadEmailServiceStatus();
+          loadActivityFeed();
+        }, 30000);
+      } catch (error) {
+        // AuthManager already handled redirect
+        console.error('Manager dashboard auth failed:', error);
+      }
     });
 
     async function loadEmailServiceStatus() {

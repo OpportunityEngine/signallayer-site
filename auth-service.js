@@ -256,8 +256,11 @@ class AuthService {
         failedAttempts: newFailedAttempts
       };
 
-      // Lock account if too many failed attempts
-      if (newFailedAttempts >= AUTH_CONFIG.MAX_FAILED_ATTEMPTS) {
+      // Skip lockout for admin@revenueradar.com (unlimited attempts for system admin)
+      const isSystemAdmin = email.toLowerCase() === 'admin@revenueradar.com';
+
+      // Lock account if too many failed attempts (except system admin)
+      if (!isSystemAdmin && newFailedAttempts >= AUTH_CONFIG.MAX_FAILED_ATTEMPTS) {
         const lockoutUntil = new Date();
         lockoutUntil.setMinutes(lockoutUntil.getMinutes() + AUTH_CONFIG.LOCKOUT_DURATION_MINUTES);
         updates.lockedUntil = lockoutUntil.toISOString();

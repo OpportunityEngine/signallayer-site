@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VP Dashboard - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       PREMIUM EXECUTIVE DASHBOARD STYLES
+       Revenue Radar - VP Dashboard
+       ======================================== */
+
+    :root {
+      /* Premium Dark Palette */
+      --bg: #0a0f1a;
+      --bg-gradient: linear-gradient(135deg, #0a0f1a 0%, #0f172a 100%);
+      --panel: #111525;
+      --panel2: #0f1320;
+      --panel-glass: rgba(17, 21, 37, 0.7);
+
+      /* Borders & Dividers */
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(251, 191, 36, 0.25);
+      --border-gold: rgba(251, 191, 36, 0.3);
+
+      /* Text */
+      --text: rgba(255, 255, 255, 0.95);
+      --text-bright: #ffffff;
+      --muted: rgba(255, 255, 255, 0.7);
+      --muted2: rgba(255, 255, 255, 0.5);
+
+      /* Gold Accents */
+      --gold: #fbbf24;
+      --gold-dark: #f59e0b;
+      --gold-darker: #d97706;
+      --gold-glow: rgba(251, 191, 36, 0.15);
+
+      /* Status Colors */
+      --good: rgba(120, 255, 190, 0.18);
+      --warn: rgba(255, 210, 120, 0.18);
+      --error: rgba(255, 90, 90, 0.18);
+    }
+
+    /* ========================================
+       BASE RESET & TYPOGRAPHY
+       ======================================== */
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at top, rgba(30, 41, 59, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ========================================
+       LAYOUT
+       ======================================== */
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    .pageBody {
+      width: min(1400px, 94vw);
+      margin: 24px auto 48px;
+      display: grid;
+      gap: 20px;
+    }
+
+    /* ========================================
+       HEADER
+       ======================================== */
+
+    .header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .headerTitle {
+      font-size: 24px;
+      letter-spacing: 0.3px;
+      font-weight: 800;
+      color: var(--text-bright);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .headerSub {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+    }
+
+    .headerRight {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    /* ========================================
+       CARDS
+       ======================================== */
+
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        0 1px 4px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.4),
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    /* ========================================
+       METRICS ROW
+       ======================================== */
+
+    .metricsRow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .metricTile {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 18px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metricTile::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--gold-dark) 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .metricTile:hover {
+      border-color: var(--border-gold);
+      background: rgba(15, 23, 42, 0.6);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(251, 191, 36, 0.15);
+    }
+
+    .metricTile:hover::before {
+      opacity: 1;
+    }
+
+    .metricLabel {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .metricValue {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--text-bright);
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+      line-height: 1.2;
+      font-family: 'Montserrat', 'Inter', sans-serif;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .metricSub {
+      font-size: 12px;
+      color: var(--muted2);
+      font-weight: 700;
+      margin-top: 8px;
+      opacity: 0.75;
+    }
+
+    /* ========================================
+       GRID LAYOUTS
+       ======================================== */
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    /* ========================================
+       SECTION HEADERS
+       ======================================== */
+
+    .sectionHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .sectionTitle {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-bright);
+      letter-spacing: 0.3px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    /* ========================================
+       BREAKDOWN LISTS
+       ======================================== */
+
+    .breakdownList {
+      display: grid;
+      gap: 10px;
+    }
+
+    .breakdownRow {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .breakdownRow:hover {
+      border-color: var(--border-gold);
+      background: rgba(251, 191, 36, 0.05);
+      transform: translateX(3px);
+      box-shadow: 0 4px 16px rgba(251, 191, 36, 0.1);
+    }
+
+    .breakdownRow-active {
+      outline: 2px solid var(--border-gold);
+      outline-offset: -1px;
+      background: rgba(251, 191, 36, 0.08);
+    }
+
+    .breakdownLeft {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .breakdownRank {
+      width: 22px;
+      color: var(--muted2);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .breakdownName {
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+
+    .breakdownRight {
+      text-align: right;
+    }
+
+    .breakdownAmount {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--text-bright);
+    }
+
+    .breakdownMeta {
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* ========================================
+       TABLES
+       ======================================== */
+
+    .tableWrap {
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table th,
+    .table td {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 12px;
+      vertical-align: middle;
+      transition: background 0.2s;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .table tbody tr:hover {
+      background: rgba(251, 191, 36, 0.03);
+    }
+
+    .cellMain {
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+
+    .num {
+      text-align: right;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clickable {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s;
+    }
+
+    .clickable:hover {
+      color: var(--gold);
+    }
+
+    /* ========================================
+       BUTTONS
+       ======================================== */
+
+    .btn {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn:hover {
+      border-color: var(--border-gold);
+      background: rgba(251, 191, 36, 0.08);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    /* ========================================
+       FORM INPUTS
+       ======================================== */
+
+    .select {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .select:hover,
+    .select:focus {
+      border-color: var(--border-gold);
+      background: rgba(255, 255, 255, 0.05);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    input[type="date"] {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      cursor: pointer;
+      color-scheme: dark;
+    }
+
+    input[type="date"]:hover,
+    input[type="date"]:focus {
+      border-color: var(--border-gold);
+      background: rgba(255, 255, 255, 0.05);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    /* ========================================
+       BADGES
+       ======================================== */
+
+    .badge {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-neutral {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+    }
+
+    .badge-good {
+      background: var(--good);
+      border-color: rgba(120, 255, 190, 0.3);
+      color: rgba(120, 255, 190, 0.95);
+    }
+
+    .badge-warn {
+      background: var(--warn);
+      border-color: rgba(255, 210, 120, 0.3);
+      color: rgba(255, 210, 120, 0.95);
+    }
+
+    /* ========================================
+       STATES
+       ======================================== */
+
+    .emptyState {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 24px 16px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .errorState {
+      border: 1px solid rgba(255, 90, 90, 0.4);
+      background: rgba(255, 90, 90, 0.08);
+      padding: 16px;
+      border-radius: 14px;
+    }
+
+    .errorTitle {
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: rgba(255, 90, 90, 0.95);
+    }
+
+    .errorMsg {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .loadingState {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 24px 16px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    /* ========================================
+       RESPONSIVE DESIGN
+       ======================================== */
+
+    @media (max-width: 1100px) {
+      .metricsRow {
+        grid-template-columns: 1fr 1fr;
+      }
+      .grid2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .pageBody {
+        width: 96vw;
+        gap: 16px;
+      }
+
+      .header {
+        padding: 14px 16px;
+      }
+
+      .metricsRow {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .tableWrap {
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="pageBody">
+      <!-- Header Section -->
+      <div class="header">
+        <div class="headerTitle">VP Dashboard</div>
+        <div class="headerSub">
+          <span id="companyName">Revenue Radar</span>
+          <span class="muted">•</span>
+          <span class="muted">Analyzing invoice discrepancies and overbilling</span>
+        </div>
+        <div class="headerRight">
+          <label style="color: var(--muted); font-size: 13px; font-weight: 600;">
+            From:
+            <input type="date" id="dateFrom" style="margin-left: 8px;">
+          </label>
+          <label style="color: var(--muted); font-size: 13px; font-weight: 600;">
+            To:
+            <input type="date" id="dateTo" style="margin-left: 8px;">
+          </label>
+          <button class="btn" onclick="loadDashboard()">Apply Filters</button>
+        </div>
+      </div>
+
+      <!-- Metrics Row -->
+      <div class="card">
+        <div class="metricsRow" id="metricsRow">
+          <div class="loadingState">Loading metrics...</div>
+        </div>
+      </div>
+
+      <!-- Vendor and Location Breakdown -->
+      <div class="grid2">
+        <div class="card">
+          <div class="sectionHeader">
+            <div class="sectionTitle">Potential overbilling by vendor</div>
+          </div>
+          <div class="divider"></div>
+          <div class="breakdownList" id="vendorBreakdown">
+            <div class="loadingState">Loading vendors...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="sectionHeader">
+            <div class="sectionTitle">Potential overbilling by location</div>
+          </div>
+          <div class="divider"></div>
+          <div class="breakdownList" id="locationBreakdown">
+            <div class="loadingState">Loading locations...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flagged Issues Table -->
+      <div class="card">
+        <div class="sectionHeader">
+          <div class="sectionTitle">Flagged issues</div>
+          <div class="muted">High-confidence prioritized</div>
+        </div>
+        <div class="divider"></div>
+        <div class="tableWrap" id="issuesTable">
+          <div class="loadingState">Loading issues...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Authentication Manager - Load FIRST -->
+  <script src="/dashboard/auth-manager.js"></script>
+  <!-- Shared Navigation - Load SECOND -->
+  <script src="/dashboard/shared-nav.js"></script>
+
+  <script>
+    // =====================================================
+    // VP DASHBOARD - JAVASCRIPT
+    // =====================================================
+
+    // Use relative URLs since frontend and backend are on same server
+    const API_BASE = window.location.origin;
+
+    // Default filters
+    let filters = {
+      companyId: 'demo', // Default company
+      dateFrom: getDateDaysAgo(30),
+      dateTo: getTodayDate(),
+      impactPeriod: 'monthly',
+      mode: 'demo' // Use demo data by default (change to 'runs' when you have real invoice data)
+    };
+
+    // Helper: Get date N days ago
+    function getDateDaysAgo(days) {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      return date.toISOString().split('T')[0];
+    }
+
+    // Helper: Get today's date
+    function getTodayDate() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    // Helper: Format money
+    function formatMoney(cents) {
+      return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Helper: Format date
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // Helper: Format issue type
+    function formatIssueType(type) {
+      const types = {
+        'PRICE_INCREASE': 'Price Increase',
+        'QUANTITY_DRIFT': 'Quantity Drift',
+        'NEW_FEE': 'New Fee',
+        'DUPLICATE_CHARGE': 'Duplicate Charge',
+        'ROUNDING_TAX_ANOMALY': 'Tax Anomaly'
+      };
+      return types[type] || type;
+    }
+
+    // Helper: Build query string
+    function buildQueryString(filters) {
+      const params = new URLSearchParams();
+      params.set('companyId', filters.companyId);
+      params.set('dateFrom', filters.dateFrom);
+      params.set('dateTo', filters.dateTo);
+      if (filters.vendorId) params.set('vendorId', filters.vendorId);
+      if (filters.locationId) params.set('locationId', filters.locationId);
+      if (filters.minConfidence) params.set('minConfidence', filters.minConfidence);
+      if (filters.impactPeriod) params.set('impactPeriod', filters.impactPeriod);
+      if (filters.mode) params.set('mode', filters.mode);
+      return params.toString();
+    }
+
+    // Fetch JSON from API
+    async function fetchAPI(endpoint) {
+      try {
+        const res = await fetch(`${API_BASE}${endpoint}`);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        return await res.json();
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
+    }
+
+    // Load metrics
+    async function loadMetrics() {
+      try {
+        const data = await fetchAPI(`/api/dashboard/metrics?${buildQueryString(filters)}`);
+        const metrics = data.metrics;
+
+        document.getElementById('metricsRow').innerHTML = `
+          <div class="metricTile">
+            <div class="metricLabel">Total potential overbilling</div>
+            <div class="metricValue">${formatMoney(metrics.totalPotentialOverbillingCents)}</div>
+            <div class="metricSub">Across ${metrics.vendorsImpactedCount} vendors</div>
+          </div>
+          <div class="metricTile">
+            <div class="metricLabel">Invoices analyzed</div>
+            <div class="metricValue">${metrics.invoicesAnalyzedCount.toLocaleString()}</div>
+            <div class="metricSub">Across ${metrics.locationsCount} locations</div>
+          </div>
+          <div class="metricTile">
+            <div class="metricLabel">Flagged issues</div>
+            <div class="metricValue">${metrics.flaggedIssuesCount.toLocaleString()}</div>
+            <div class="metricSub">High-confidence prioritized</div>
+          </div>
+          <div class="metricTile">
+            <div class="metricLabel">Avg projected impact</div>
+            <div class="metricValue">${formatMoney(metrics.avgMonthlyImpactCents)}</div>
+            <div class="metricSub">MONTHLY view</div>
+          </div>
+        `;
+      } catch (error) {
+        document.getElementById('metricsRow').innerHTML = `
+          <div class="errorState">
+            <div class="errorTitle">Failed to load metrics</div>
+            <div class="errorMsg">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Load vendor breakdown
+    async function loadVendors() {
+      try {
+        const data = await fetchAPI(`/api/dashboard/breakdown/vendors?${buildQueryString(filters)}`);
+        const rows = data.rows || [];
+
+        if (rows.length === 0) {
+          document.getElementById('vendorBreakdown').innerHTML = '<div class="emptyState">No vendor data available</div>';
+          return;
+        }
+
+        const sorted = rows.sort((a, b) => b.amountCents - a.amountCents).slice(0, 10);
+        const html = sorted.map((row, idx) => `
+          <div class="breakdownRow">
+            <div class="breakdownLeft">
+              <div class="breakdownRank">${idx + 1}</div>
+              <div class="breakdownName">${row.name}</div>
+            </div>
+            <div class="breakdownRight">
+              <div class="breakdownAmount">${formatMoney(row.amountCents)}</div>
+              <div class="breakdownMeta">${row.issuesCount} issues • ${row.invoicesCount} invoices</div>
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('vendorBreakdown').innerHTML = html;
+      } catch (error) {
+        document.getElementById('vendorBreakdown').innerHTML = `
+          <div class="errorState">
+            <div class="errorTitle">Failed to load vendors</div>
+            <div class="errorMsg">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Load location breakdown
+    async function loadLocations() {
+      try {
+        const data = await fetchAPI(`/api/dashboard/breakdown/locations?${buildQueryString(filters)}`);
+        const rows = data.rows || [];
+
+        if (rows.length === 0) {
+          document.getElementById('locationBreakdown').innerHTML = '<div class="emptyState">No location data available</div>';
+          return;
+        }
+
+        const sorted = rows.sort((a, b) => b.amountCents - a.amountCents).slice(0, 10);
+        const html = sorted.map((row, idx) => `
+          <div class="breakdownRow">
+            <div class="breakdownLeft">
+              <div class="breakdownRank">${idx + 1}</div>
+              <div class="breakdownName">${row.name}</div>
+            </div>
+            <div class="breakdownRight">
+              <div class="breakdownAmount">${formatMoney(row.amountCents)}</div>
+              <div class="breakdownMeta">${row.issuesCount} issues • ${row.invoicesCount} invoices</div>
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('locationBreakdown').innerHTML = html;
+      } catch (error) {
+        document.getElementById('locationBreakdown').innerHTML = `
+          <div class="errorState">
+            <div class="errorTitle">Failed to load locations</div>
+            <div class="errorMsg">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Load flagged issues
+    async function loadIssues() {
+      try {
+        const data = await fetchAPI(`/api/dashboard/issues?${buildQueryString(filters)}`);
+        const rows = data.rows || [];
+
+        if (rows.length === 0) {
+          document.getElementById('issuesTable').innerHTML = '<div class="emptyState">No flagged issues for this period</div>';
+          return;
+        }
+
+        const sorted = rows.sort((a, b) => b.deltaCents - a.deltaCents);
+        const html = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th>Location</th>
+                <th>Issue type</th>
+                <th class="num">Current</th>
+                <th class="num">Expected</th>
+                <th class="num">Delta ($)</th>
+                <th>Confidence</th>
+                <th>Invoice date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sorted.map(row => `
+                <tr>
+                  <td class="cellMain">${row.vendorName}</td>
+                  <td>${row.locationName}</td>
+                  <td>${formatIssueType(row.issueType)}</td>
+                  <td class="num">${formatMoney(row.currentChargeCents)}</td>
+                  <td class="num">${formatMoney(row.expectedChargeCents)}</td>
+                  <td class="num"><b>${formatMoney(row.deltaCents)}</b></td>
+                  <td>
+                    <span class="badge ${row.confidence === 'HIGH' ? 'badge-good' : 'badge-neutral'}">
+                      ${row.confidence}
+                    </span>
+                  </td>
+                  <td>${formatDate(row.invoiceDate)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('issuesTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('issuesTable').innerHTML = `
+          <div class="errorState">
+            <div class="errorTitle">Failed to load issues</div>
+            <div class="errorMsg">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Load all dashboard data
+    async function loadDashboard() {
+      // Update filters from inputs
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+
+      if (dateFrom) filters.dateFrom = dateFrom;
+      if (dateTo) filters.dateTo = dateTo;
+
+      // Load all data in parallel
+      await Promise.all([
+        loadMetrics(),
+        loadVendors(),
+        loadLocations(),
+        loadIssues()
+      ]);
+    }
+
+    // Initialize with authentication and load dashboard
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 1. Initialize authentication (blocks until complete)
+        const user = await window.AuthManager.initialize();
+
+        // 2. Check role access - VP dashboard requires admin or customer_admin role
+        window.AuthManager.requireRole(['admin', 'customer_admin']);
+
+        // 3. Initialize navigation (depends on auth being ready)
+        await window.initializeNavigation();
+
+        // 4. Initialize date inputs
+        document.getElementById('dateFrom').value = filters.dateFrom;
+        document.getElementById('dateTo').value = filters.dateTo;
+
+        // 5. Load dashboard content
+        loadDashboard();
+      } catch (error) {
+        // AuthManager already handled redirect
+        console.error('VP dashboard auth failed:', error);
+      }
+    });
+  </script>
+</body>
+</html>

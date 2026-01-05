@@ -642,7 +642,9 @@
       }
     }
   </style>
-  <!-- Shared Navigation -->
+  <!-- Authentication Manager - Load FIRST -->
+  <script src="/dashboard/auth-manager.js"></script>
+  <!-- Shared Navigation - Load SECOND -->
   <script src="/dashboard/shared-nav.js"></script>
 </head>
 <body>
@@ -1271,15 +1273,30 @@
       commissionTrendChart.update('active');
     }
 
-    // Animate progress bars on load
-    window.addEventListener('load', () => {
-      document.querySelectorAll('.progress-fill').forEach(bar => {
-        const width = bar.style.width;
-        bar.style.width = '0%';
-        setTimeout(() => {
-          bar.style.width = width;
-        }, 300);
-      });
+    // Initialize with authentication and animate progress bars on load
+    window.addEventListener('load', async () => {
+      try {
+        // 1. Initialize authentication (blocks until complete)
+        const user = await window.AuthManager.initialize();
+
+        // 2. Check role access - Rep dashboard requires admin, manager, or rep role
+        window.AuthManager.requireRole(['admin', 'manager', 'rep']);
+
+        // 3. Initialize navigation (depends on auth being ready)
+        await window.initializeNavigation();
+
+        // 4. Animate progress bars
+        document.querySelectorAll('.progress-fill').forEach(bar => {
+          const width = bar.style.width;
+          bar.style.width = '0%';
+          setTimeout(() => {
+            bar.style.width = width;
+          }, 300);
+        });
+      } catch (error) {
+        // AuthManager already handled redirect
+        console.error('Rep dashboard auth failed:', error);
+      }
     });
   </script>
 </body>
