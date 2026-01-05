@@ -128,9 +128,12 @@ const backupService = require('./backup-service');  // Database backups
 const healthRoutes = require('./health-routes');  // Health monitoring
 const backupRoutes = require('./backup-routes');  // Backup management
 const authRoutes = require('./auth-routes');  // Authentication routes
+const { requireAuth, requireRole } = require('./auth-middleware');  // Auth middleware
 const userManagementRoutes = require('./user-management-routes');  // User management
 const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitoring
 const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin analytics
+const signupRoutes = require('./signup-routes');  // Public self-service signup
+const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware');  // Trial enforcement
 // --------------------------------------------------------------------
 
 // -------------------- Core app bootstrap --------------------
@@ -1131,6 +1134,10 @@ try {
 }
 
 // ===== New Infrastructure Routes =====
+// Public Signup routes (no authentication - self-service trial signups)
+app.use('/signup', signupRoutes);
+console.log('✅ Public signup routes registered at /signup');
+
 // Authentication routes (login, register, password reset, etc.)
 app.use('/auth', authRoutes);
 console.log('✅ Authentication routes registered at /auth');
@@ -1766,7 +1773,7 @@ function detectOpportunityFromInvoice(canonical, userId, runId) {
   return null;
 }
 
-app.post("/ingest", async (req, res) => {
+app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
   const run_id = nowRunId();
   const safeArray = (x) => (Array.isArray(x) ? x : []);
   const truncate = (str, n) => {
@@ -2100,6 +2107,11 @@ app.post("/ingest", async (req, res) => {
         }
       });
 
+      // Increment trial invoice counter for trial users
+      if (req.user && req.user.is_trial) {
+        incrementInvoiceUsage(req.user.id);
+      }
+
       return res.status(200).json(unified);
     }
 
@@ -2162,6 +2174,11 @@ app.post("/ingest", async (req, res) => {
         },
         validation: unified.validation
       });
+
+      // Increment trial invoice counter for trial users
+      if (req.user && req.user.is_trial) {
+        incrementInvoiceUsage(req.user.id);
+      }
 
       return res.status(200).json(unified);
     }
@@ -2391,6 +2408,11 @@ app.post("/ingest", async (req, res) => {
         autoLeadCount: autoLeads.leads.length
       }
     });
+
+    // Increment trial invoice counter for trial users
+    if (req.user && req.user.is_trial) {
+      incrementInvoiceUsage(req.user.id);
+    }
 
     return res.status(200).json(unified);
   } catch (err) {

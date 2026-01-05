@@ -587,6 +587,28 @@
         overflow-x: auto;
       }
     }
+
+    /* Trial Banner Styles */
+    .trial-banner {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+      display: none;
+    }
+
+    .trial-banner.warning {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+    }
+
+    .trial-banner-text {
+      font-size: 15px;
+    }
   </style>
 </head>
 <body>
@@ -611,6 +633,11 @@
           </label>
           <button class="btn" onclick="loadDashboard()">Apply Filters</button>
         </div>
+      </div>
+
+      <!-- Trial Status Banner -->
+      <div id="trialBanner" class="trial-banner">
+        <span id="trialStatusText" class="trial-banner-text"></span>
       </div>
 
       <!-- Metrics Row -->
@@ -654,6 +681,75 @@
           <div class="loadingState">Loading issues...</div>
         </div>
       </div>
+
+      <!-- Email Invoice Autopilot Section -->
+      <div class="card">
+        <div class="sectionHeader">
+          <div class="sectionTitle">📧 Email Invoice Autopilot</div>
+          <button class="btn" onclick="openAddEmailMonitor()">+ Add Email Monitor</button>
+        </div>
+        <div class="divider"></div>
+        <div style="padding: 16px;">
+          <div id="emailMonitorsList" style="display: grid; gap: 12px;">
+            <div style="text-align: center; padding: 40px; color: var(--muted2);">
+              No email monitors configured. Click "+ Add Email Monitor" to start auto-ingesting invoices.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Email Monitor Modal -->
+  <div id="addEmailMonitorModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.9); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: var(--panel); border-radius: 12px; padding: 32px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2 style="margin: 0; font-size: 24px; font-weight: 700;">Add Email Monitor</h2>
+        <button onclick="closeAddEmailMonitor()" style="background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
+      </div>
+
+      <div style="display: grid; gap: 20px;">
+        <div>
+          <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Monitor Name *</label>
+          <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+          <small style="display: block; color: var(--muted2); margin-top: 4px;">Friendly name to identify this monitor</small>
+        </div>
+
+        <div>
+          <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Email Address *</label>
+          <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+          <small style="display: block; color: var(--muted2); margin-top: 4px;">Email account to monitor for invoices</small>
+        </div>
+
+        <div>
+          <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Email Password/App Password *</label>
+          <input type="password" id="newMonitorPassword" placeholder="Your email password" required style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+          <small style="display: block; color: var(--gold); margin-top: 4px;">⚠️ For Gmail/Yahoo/Outlook, use App Password (not regular password)</small>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">IMAP Server *</label>
+            <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">IMAP Port</label>
+            <input type="number" id="newMonitorImapPort" placeholder="993" value="993" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <button onclick="testIMAPConnection()" type="button" class="btn" style="background: #6366f1;">🔌 Test Connection</button>
+          <div id="testConnectionResult" style="margin-top: 12px; display: none;"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 24px;">
+        <button onclick="createEmailMonitor()" class="btn" style="flex: 1;">Create Monitor</button>
+        <button onclick="closeAddEmailMonitor()" class="btn" style="flex: 1; background: var(--panel2);">Cancel</button>
+      </div>
+
+      <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
     </div>
   </div>
 
@@ -913,6 +1009,41 @@
       }
     }
 
+    // Load trial status for current user
+    async function loadTrialStatus() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/trial/status`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data && result.data.isTrial) {
+            const trial = result.data;
+            const banner = document.getElementById('trialBanner');
+            const text = document.getElementById('trialStatusText');
+
+            banner.style.display = 'block';
+
+            // Build status message
+            const daysText = trial.daysLeft === 1 ? '1 day' : `${trial.daysLeft} days`;
+            const invoicesText = trial.invoicesLeft === 1 ? '1 invoice' : `${trial.invoicesLeft} invoices`;
+            text.textContent = `🎁 FREE TRIAL: ${daysText} & ${invoicesText} remaining`;
+
+            // Warning color when low
+            if (trial.daysLeft <= 3 || trial.invoicesLeft <= 3) {
+              banner.classList.add('warning');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load trial status:', error);
+        // Non-critical - don't show error to user
+      }
+    }
+
     // Load all dashboard data
     async function loadDashboard() {
       // Update filters from inputs
@@ -947,13 +1078,245 @@
         document.getElementById('dateFrom').value = filters.dateFrom;
         document.getElementById('dateTo').value = filters.dateTo;
 
-        // 5. Load dashboard content
+        // 5. Load trial status (if applicable)
+        await loadTrialStatus();
+
+        // 6. Load dashboard content
         loadDashboard();
+
+        // 7. Load email monitors
+        loadEmailMonitors();
       } catch (error) {
         // AuthManager already handled redirect
         console.error('VP dashboard auth failed:', error);
       }
     });
+
+    // =====================================================
+    // EMAIL MONITOR FUNCTIONS
+    // =====================================================
+
+    async function loadEmailMonitors() {
+      try {
+        const response = await fetch(`${API_BASE}/api/email-monitors`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const list = document.getElementById('emailMonitorsList');
+
+          if (!result.monitors || result.monitors.length === 0) {
+            list.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted2);">No email monitors configured. Click "+ Add Email Monitor" to start auto-ingesting invoices.</div>';
+            return;
+          }
+
+          list.innerHTML = result.monitors.map(monitor => `
+            <div style="background: var(--panel2); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">${monitor.name}</div>
+                  <div style="font-size: 13px; color: var(--muted2);">📧 ${monitor.email_address}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" ${monitor.is_active ? 'checked' : ''}
+                           onchange="toggleEmailMonitor(${monitor.id}, this.checked)"
+                           style="margin-right: 8px;">
+                    <span style="font-size: 13px; color: var(--muted);">${monitor.is_active ? 'Active' : 'Inactive'}</span>
+                  </label>
+                  <button onclick="deleteEmailMonitor(${monitor.id}, '${monitor.name}')" class="btn" style="background: #dc2626; font-size: 13px; padding: 6px 12px;">Delete</button>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Failed to load email monitors:', error);
+      }
+    }
+
+    function openAddEmailMonitor() {
+      document.getElementById('addEmailMonitorModal').style.display = 'flex';
+    }
+
+    function closeAddEmailMonitor() {
+      document.getElementById('addEmailMonitorModal').style.display = 'none';
+      // Clear form
+      document.getElementById('newMonitorName').value = '';
+      document.getElementById('newMonitorEmail').value = '';
+      document.getElementById('newMonitorPassword').value = '';
+      document.getElementById('newMonitorImapHost').value = '';
+      document.getElementById('newMonitorImapPort').value = '993';
+      document.getElementById('testConnectionResult').style.display = 'none';
+    }
+
+    async function detectIMAPSettings() {
+      const email = document.getElementById('newMonitorEmail').value.trim();
+      if (!email) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-monitors/detect-settings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({ email })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.settings) {
+            document.getElementById('newMonitorImapHost').value = result.settings.imap_host;
+            document.getElementById('newMonitorImapPort').value = result.settings.imap_port;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to detect IMAP settings:', error);
+      }
+    }
+
+    async function testIMAPConnection() {
+      const email = document.getElementById('newMonitorEmail').value.trim();
+      const password = document.getElementById('newMonitorPassword').value;
+      const imapHost = document.getElementById('newMonitorImapHost').value.trim();
+      const imapPort = document.getElementById('newMonitorImapPort').value;
+
+      if (!email || !password || !imapHost) {
+        alert('Please fill in email, password, and IMAP server first');
+        return;
+      }
+
+      const resultDiv = document.getElementById('testConnectionResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<div style="color: var(--muted);">Testing connection...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-monitors/test-connection`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({
+            email_address: email,
+            email_password: password,
+            imap_host: imapHost,
+            imap_port: parseInt(imapPort)
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          resultDiv.innerHTML = '<div style="color: #10b981; font-weight: 600;">✓ Connection successful!</div>';
+        } else {
+          resultDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">✗ Connection failed: ${result.error}</div>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">✗ Connection failed: ${error.message}</div>`;
+      }
+    }
+
+    async function createEmailMonitor() {
+      const name = document.getElementById('newMonitorName').value.trim();
+      const email_address = document.getElementById('newMonitorEmail').value.trim();
+      const email_password = document.getElementById('newMonitorPassword').value;
+      const imap_host = document.getElementById('newMonitorImapHost').value.trim();
+      const imap_port = parseInt(document.getElementById('newMonitorImapPort').value);
+
+      if (!name || !email_address || !email_password || !imap_host) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-monitors`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({
+            name,
+            email_address,
+            email_password,
+            imap_host,
+            imap_port,
+            imap_secure: true,
+            folder: 'INBOX',
+            check_interval_minutes: 15
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('Email monitor created successfully!');
+          closeAddEmailMonitor();
+          loadEmailMonitors();
+        } else {
+          alert(`Failed to create monitor: ${result.error}`);
+        }
+      } catch (error) {
+        alert(`Error creating monitor: ${error.message}`);
+      }
+    }
+
+    async function toggleEmailMonitor(monitorId, isActive) {
+      try {
+        const url = isActive ?
+          `${API_BASE}/api/email-monitors/${monitorId}/start` :
+          `${API_BASE}/api/email-monitors/${monitorId}/stop`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          loadEmailMonitors();
+        } else {
+          alert(`Failed to ${isActive ? 'start' : 'stop'} monitor: ${result.error}`);
+          loadEmailMonitors();
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+        loadEmailMonitors();
+      }
+    }
+
+    async function deleteEmailMonitor(monitorId, monitorName) {
+      if (!confirm(`Are you sure you want to delete the email monitor "${monitorName}"?\n\nThis will stop monitoring this email and cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-monitors/${monitorId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          loadEmailMonitors();
+        } else {
+          alert(`Failed to delete monitor: ${result.error}`);
+        }
+      } catch (error) {
+        alert(`Error deleting monitor: ${error.message}`);
+      }
+    }
   </script>
 </body>
 </html>

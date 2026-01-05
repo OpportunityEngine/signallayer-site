@@ -677,4 +677,30 @@ router.delete('/users/:userId',
   }
 );
 
+// =====================================================
+// TRIAL STATUS ENDPOINT
+// =====================================================
+
+/**
+ * GET /auth/trial/status
+ * Get trial status for current user
+ */
+router.get('/trial/status', requireAuth, (req, res) => {
+  try {
+    const { getTrialStatus } = require('./trial-middleware');
+    const trialStatus = getTrialStatus(req.user.id);
+
+    res.json({
+      success: true,
+      data: trialStatus
+    });
+  } catch (error) {
+    console.error('[AUTH] Trial status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load trial status'
+    });
+  }
+});
+
 module.exports = router;

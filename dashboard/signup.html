@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - Revenue Radar | Free Trial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0a0f1a 0%, #1a1f2e 50%, #0a0f1a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* Ambient background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top, rgba(251, 191, 36, 0.1) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .signup-container {
+      position: relative;
+      z-index: 1;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .signup-card {
+      background: rgba(17, 21, 37, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 48px 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6),
+                  0 0 0 1px rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      font-weight: 900;
+      color: #fbbf24;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                  0 0 0 2px rgba(251, 191, 36, 0.3);
+      border: 2px solid rgba(251, 191, 36, 0.4);
+      margin-bottom: 16px;
+    }
+
+    .logo-text {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.3px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 15px;
+      margin-bottom: 32px;
+    }
+
+    .trial-badge {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 32px;
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .trial-features {
+      background: rgba(251, 191, 36, 0.05);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+
+    .trial-features h3 {
+      font-size: 14px;
+      color: #fbbf24;
+      margin-bottom: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .trial-features ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .trial-features li {
+      padding: 8px 0;
+      font-size: 14px;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .trial-features li::before {
+      content: '✅';
+      font-size: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #e2e8f0;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(15, 19, 32, 0.8);
+      border: 1px solid rgba(251, 191, 36, 0.25);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 15px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+      background: rgba(15, 19, 32, 0.95);
+    }
+
+    .form-input::placeholder {
+      color: #64748b;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #1a1a1a;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-link {
+      text-align: center;
+      margin-top: 24px;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .login-link a {
+      color: #fbbf24;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .login-link a:hover {
+      text-decoration: underline;
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .success-message {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+      padding: 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .success-message strong {
+      color: #10b981;
+    }
+
+    @media (max-width: 600px) {
+      .signup-card {
+        padding: 32px 24px;
+      }
+
+      .logo-icon {
+        width: 56px;
+        height: 56px;
+        font-size: 32px;
+      }
+
+      .logo-text {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-container">
+    <div class="signup-card">
+      <div class="logo">
+        <div class="logo-icon">$</div>
+        <div class="logo-text">Revenue Radar</div>
+      </div>
+
+      <p class="subtitle">Start your free trial - no credit card required</p>
+
+      <div class="trial-badge">
+        🎁 FREE 30-Day Trial • Process 20 Invoices
+      </div>
+
+      <div class="trial-features">
+        <h3>Your Trial Includes:</h3>
+        <ul>
+          <li>30 days of full access</li>
+          <li>Process up to 20 invoices</li>
+          <li>AI-powered savings detection</li>
+          <li>Automated opportunity alerts</li>
+          <li>Email invoice monitoring</li>
+          <li>VP Dashboard access</li>
+        </ul>
+      </div>
+
+      <div class="error-message" id="errorMessage"></div>
+      <div class="success-message" id="successMessage"></div>
+
+      <form id="signupForm">
+        <div class="form-group">
+          <label class="form-label" for="name">Full Name *</label>
+          <input
+            type="text"
+            id="name"
+            class="form-input"
+            placeholder="John Smith"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email Address *</label>
+          <input
+            type="email"
+            id="email"
+            class="form-input"
+            placeholder="john@company.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="companyName">Company Name (Optional)</label>
+          <input
+            type="text"
+            id="companyName"
+            class="form-input"
+            placeholder="ACME Corporation"
+          >
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          Start Free Trial
+        </button>
+      </form>
+
+      <div class="login-link">
+        Already have an account? <a href="/dashboard/login.html">Log in</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('signupForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Hide previous messages
+      errorMessage.style.display = 'none';
+      successMessage.style.display = 'none';
+
+      // Disable button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating your account...';
+
+      // Get form data
+      const formData = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        companyName: document.getElementById('companyName').value.trim()
+      };
+
+      try {
+        const response = await fetch('/signup/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Show success message
+          successMessage.innerHTML = `
+            <strong>✅ Account Created!</strong><br>
+            We've sent a verification email to <strong>${formData.email}</strong><br>
+            Please check your inbox and click the link to activate your trial.
+          `;
+          successMessage.style.display = 'block';
+
+          // Hide form
+          form.style.display = 'none';
+
+          // Show resend option after 10 seconds
+          setTimeout(() => {
+            successMessage.innerHTML += `
+              <br><br>
+              <a href="#" onclick="resendVerification('${formData.email}'); return false;"
+                 style="color: #fbbf24; text-decoration: underline;">
+                Didn't receive the email? Click to resend
+              </a>
+            `;
+          }, 10000);
+
+        } else {
+          // Show error
+          errorMessage.textContent = result.error || 'Failed to create account. Please try again.';
+          errorMessage.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Start Free Trial';
+        }
+
+      } catch (error) {
+        console.error('Signup error:', error);
+        errorMessage.textContent = 'Network error. Please check your connection and try again.';
+        errorMessage.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Start Free Trial';
+      }
+    });
+
+    // Resend verification email
+    window.resendVerification = async function(email) {
+      try {
+        const response = await fetch('/signup/resend-verification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          successMessage.innerHTML = `
+            <strong>✅ Verification Email Sent!</strong><br>
+            Please check your inbox at <strong>${email}</strong>
+          `;
+        } else {
+          errorMessage.textContent = result.error;
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        errorMessage.textContent = 'Failed to resend email. Please try again.';
+        errorMessage.style.display = 'block';
+      }
+    };
+  </script>
+</body>
+</html>
