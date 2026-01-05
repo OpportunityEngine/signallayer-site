@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth Debug - Revenue Radar</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      padding: 40px;
+      line-height: 1.6;
+    }
+    .section {
+      background: rgba(17, 21, 37, 0.8);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #fbbf24;
+      margin-top: 0;
+    }
+    pre {
+      background: #000;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .btn {
+      background: #fbbf24;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .btn:hover {
+      background: #f59e0b;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .success {
+      background: rgba(120, 255, 190, 0.2);
+      border: 1px solid rgba(120, 255, 190, 0.3);
+      color: #78ffbe;
+    }
+    .error {
+      background: rgba(255, 90, 90, 0.2);
+      border: 1px solid rgba(255, 90, 90, 0.3);
+      color: #ff5a5a;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Authentication Debug Panel</h1>
+
+  <div class="section">
+    <h2>LocalStorage Contents</h2>
+    <pre id="localStorageData"></pre>
+  </div>
+
+  <div class="section">
+    <h2>Parsed User Object</h2>
+    <pre id="userObject"></pre>
+  </div>
+
+  <div class="section">
+    <h2>Navigation Check</h2>
+    <div id="navCheck"></div>
+  </div>
+
+  <div class="section">
+    <h2>API Test: /auth/me</h2>
+    <button class="btn" onclick="testAuthMe()">Test /auth/me</button>
+    <div id="authMeResult"></div>
+  </div>
+
+  <div class="section">
+    <h2>Actions</h2>
+    <button class="btn" onclick="window.location.href='/dashboard/login.html'">Go to Login</button>
+    <button class="btn" onclick="window.location.href='/dashboard/user-management.html'">Go to Admin Dashboard</button>
+    <button class="btn" onclick="clearAuth()">Clear Auth & Reload</button>
+  </div>
+
+  <script>
+    // Display localStorage
+    function displayLocalStorage() {
+      const storage = {
+        accessToken: localStorage.getItem('accessToken'),
+        refreshToken: localStorage.getItem('refreshToken'),
+        user: localStorage.getItem('user')
+      };
+      document.getElementById('localStorageData').textContent = JSON.stringify(storage, null, 2);
+
+      // Parse user
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        document.getElementById('userObject').textContent = JSON.stringify(user, null, 2);
+      } catch (e) {
+        document.getElementById('userObject').textContent = 'Error parsing user: ' + e.message;
+      }
+    }
+
+    // Check navigation logic
+    function checkNavigation() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const accessToken = localStorage.getItem('accessToken');
+
+      let html = '';
+
+      if (!accessToken) {
+        html += '<div class="error">❌ No accessToken found - would redirect to login</div>';
+      } else {
+        html += '<div class="success">✅ accessToken exists</div>';
+      }
+
+      if (!user.role) {
+        html += '<div class="error">❌ No user.role found - would redirect to login</div>';
+      } else {
+        html += '<div class="success">✅ user.role exists: ' + user.role + '</div>';
+      }
+
+      if (accessToken && user.role) {
+        html += '<div class="success">✅ Navigation would initialize successfully</div>';
+      }
+
+      document.getElementById('navCheck').innerHTML = html;
+    }
+
+    // Test /auth/me endpoint
+    async function testAuthMe() {
+      const resultDiv = document.getElementById('authMeResult');
+      resultDiv.innerHTML = '<div>Testing...</div>';
+
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          resultDiv.innerHTML = '<div class="error">No accessToken found</div>';
+          return;
+        }
+
+        const response = await fetch('/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <div class="success">✅ Success (${response.status})</div>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div class="error">❌ Failed (${response.status})</div>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    // Clear auth
+    function clearAuth() {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      location.reload();
+    }
+
+    // Initialize
+    displayLocalStorage();
+    checkNavigation();
+  </script>
+</body>
+</html>

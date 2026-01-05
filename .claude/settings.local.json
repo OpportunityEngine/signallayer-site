@@ -34,7 +34,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push)",
-      "Bash(git ls-files:*)"
+      "Bash(git ls-files:*)",
+      "Bash(xargs ps:*)",
+      "Bash(git push:*)",
+      "Bash(if [ -f .env ])",
+      "Bash(then grep -E \"\\(SERVER|HOST|SSH|DEPLOY\\)\" .env)",
+      "Bash(else echo \".env file not found\")"
     ]
   }
 }

@@ -129,6 +129,7 @@ const healthRoutes = require('./health-routes');  // Health monitoring
 const backupRoutes = require('./backup-routes');  // Backup management
 const authRoutes = require('./auth-routes');  // Authentication routes
 const userManagementRoutes = require('./user-management-routes');  // User management
+const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitoring
 // --------------------------------------------------------------------
 
 // -------------------- Core app bootstrap --------------------
@@ -1136,6 +1137,10 @@ console.log('✅ Authentication routes registered at /auth');
 // User Management routes (admin only - full CRUD)
 app.use('/api/user-management', userManagementRoutes);
 console.log('✅ User management routes registered at /api/user-management');
+
+// Email Monitor routes (authenticated users - email invoice autopilot)
+app.use('/api/email-monitors', emailMonitorRoutes);
+console.log('✅ Email monitor routes registered at /api/email-monitors');
 
 // Health check routes (public - for load balancers)
 app.use('/health', healthRoutes);
@@ -3657,6 +3662,13 @@ const server = app.listen(PORT, async () => {
   console.log(`    POST /auth/register - Create user (admin only)`);
   console.log(`    POST /auth/refresh - Refresh access token`);
   console.log(`    GET  /auth/me - Get current user`);
+  console.log(`  📧 Email Invoice Autopilot:`);
+  console.log(`    GET  /api/email-monitors - List email monitors`);
+  console.log(`    POST /api/email-monitors - Create email monitor`);
+  console.log(`    PUT  /api/email-monitors/:id - Update monitor`);
+  console.log(`    DELETE /api/email-monitors/:id - Delete monitor`);
+  console.log(`    POST /api/email-monitors/detect-settings - Auto-detect IMAP`);
+  console.log(`    POST /api/email-monitors/test-connection - Test IMAP connection`);
   console.log(`  🏥 Health & Monitoring:`);
   console.log(`    GET  /health - Health check`);
   console.log(`    GET  /health/detailed - Detailed health (admin)`);
@@ -3683,7 +3695,7 @@ const server = app.listen(PORT, async () => {
 
   // Start Email Invoice Autopilot Service
   try {
-    const emailService = require('./email-monitor-service');
+    const emailService = require('./email-imap-service');
     setTimeout(async () => {
       console.log('📧 Starting Email Invoice Autopilot...');
       await emailService.startAll();

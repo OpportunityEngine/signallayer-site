@@ -709,81 +709,57 @@
 
         <div class="logic-grid" style="margin-bottom: 20px;">
           <div class="logic-item">
-            <div class="logic-label">Account Name *</div>
-            <input type="text" id="newMonitorAccountName" placeholder="e.g., ACME Corporation" required>
-            <small style="display: block; color: #9ca3af; margin-top: 4px;">Your business or client name</small>
-          </div>
-
-          <div class="logic-item">
-            <div class="logic-label">Monitor Name (optional)</div>
-            <input type="text" id="newMonitorName" placeholder="e.g., Main Invoices, Site 1 Billing">
-            <small style="display: block; color: #9ca3af; margin-top: 4px;">Friendly name for this email monitor</small>
+            <div class="logic-label">Monitor Name *</div>
+            <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required>
+            <small style="display: block; color: #9ca3af; margin-top: 4px;">Friendly name to identify this monitor</small>
           </div>
 
           <div class="logic-item">
             <div class="logic-label">Email Address *</div>
-            <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required>
+            <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()">
+            <small style="display: block; color: #9ca3af; margin-top: 4px;">Email account to monitor for invoices</small>
           </div>
 
           <div class="logic-item">
             <div class="logic-label">Email Password/App Password *</div>
             <input type="password" id="newMonitorPassword" placeholder="Your email password" required>
-            <small style="display: block; color: #fbbf24; margin-top: 4px;">⚠️ Use an App Password for Gmail (not your main password)</small>
+            <small style="display: block; color: #fbbf24; margin-top: 4px;">⚠️ For Gmail/Yahoo/Outlook, use App Password (not regular password)</small>
           </div>
 
           <div class="logic-item">
-            <div class="logic-label">IMAP Server</div>
-            <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" value="imap.gmail.com">
+            <div class="logic-label">IMAP Server *</div>
+            <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required>
+            <small style="display: block; color: #10b981; margin-top: 4px;" id="imapDetectHint">Auto-detected based on email address</small>
           </div>
 
           <div class="logic-item">
-            <div class="logic-label">Industry</div>
-            <select id="newMonitorIndustry">
-              <option value="">Select industry...</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="retail">Retail</option>
-              <option value="healthcare">Healthcare</option>
-              <option value="manufacturing">Manufacturing</option>
-              <option value="hospitality">Hospitality</option>
-              <option value="construction">Construction</option>
-              <option value="professional_services">Professional Services</option>
-              <option value="other">Other</option>
+            <div class="logic-label">IMAP Port</div>
+            <input type="number" id="newMonitorImapPort" placeholder="993" value="993">
+          </div>
+
+          <div class="logic-item">
+            <div class="logic-label">Use SSL/TLS</div>
+            <select id="newMonitorImapSecure">
+              <option value="true">Yes (Port 993)</option>
+              <option value="false">No (Port 143)</option>
             </select>
           </div>
 
           <div class="logic-item">
-            <div class="logic-label">Customer Type</div>
-            <select id="newMonitorCustomerType">
-              <option value="business">Business (Single Location)</option>
-              <option value="enterprise">Enterprise (Multiple Sites)</option>
-              <option value="accountant_multi_client">Accountant (Managing Multiple Clients)</option>
-            </select>
+            <div class="logic-label">Folder to Monitor</div>
+            <input type="text" id="newMonitorFolder" placeholder="INBOX" value="INBOX">
           </div>
 
           <div class="logic-item">
             <div class="logic-label">Check Interval (minutes)</div>
-            <input type="number" id="newMonitorInterval" value="5" min="1" max="60">
+            <input type="number" id="newMonitorInterval" value="15" min="5" max="60">
+            <small style="display: block; color: #9ca3af; margin-top: 4px;">How often to check for new emails</small>
           </div>
         </div>
 
-        <div style="margin-bottom: 24px;">
-          <div style="font-weight: 600; margin-bottom: 12px;">Detection Features</div>
-          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-            <input type="checkbox" id="enableCostSavings" checked>
-            <span>Detect Cost Savings Opportunities</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-            <input type="checkbox" id="enableDuplicates" checked>
-            <span>Detect Duplicate Charges</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-            <input type="checkbox" id="enablePriceIncreases" checked>
-            <span>Alert on Price Increases</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" id="enableContractValidation">
-            <span>Validate Against Contract Pricing (requires MLA)</span>
-          </label>
+        <div style="margin-bottom: 16px; text-align: center;">
+          <button onclick="testIMAPConnection()" type="button" style="background: #6366f1; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">🔌 Test Connection</button>
+          <div id="testConnectionResult" style="margin-top: 12px; display: none;"></div>
         </div>
 
         <div style="display: flex; gap: 12px;">
@@ -1137,9 +1113,13 @@
       }
     }
 
-    async function refreshEmailMonitors() {
+    async function loadEmailMonitors() {
       try {
-        const response = await fetch('/api/email-monitors');
+        const response = await fetch('/api/email-monitors', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -1152,20 +1132,23 @@
           }
 
           list.innerHTML = monitors.map(monitor => {
-            const lastCheck = monitor.last_check_at ?
-              new Date(monitor.last_check_at).toLocaleTimeString() : 'Never';
+            const lastCheck = monitor.last_checked_at ?
+              new Date(monitor.last_checked_at).toLocaleString() : 'Never';
+            const lastSuccess = monitor.last_success_at ?
+              new Date(monitor.last_success_at).toLocaleString() : 'Never';
 
             return `
               <div style="background: #1e293b; padding: 20px; border-radius: 8px; border-left: 4px solid ${monitor.is_active ? '#10b981' : '#6b7280'};">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                   <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
-                      ${monitor.monitor_name || monitor.account_name}
+                      ${monitor.name}
                     </div>
                     <div style="color: #9ca3af; font-size: 13px;">
-                      📧 ${monitor.email_address}
-                      ${monitor.industry ? `| ${monitor.industry}` : ''}
-                      ${monitor.customer_type ? `| ${monitor.customer_type.replace('_', ' ')}` : ''}
+                      📧 ${monitor.email_address} | ${monitor.imap_host}:${monitor.imap_port}
+                    </div>
+                    <div style="color: #9ca3af; font-size: 12px; margin-top: 4px;">
+                      Checks every ${monitor.check_frequency_minutes} min | Folder: ${monitor.folder_name || 'INBOX'}
                     </div>
                   </div>
                   <div style="display: flex; gap: 8px;">
@@ -1174,27 +1157,33 @@
                              onchange="toggleEmailMonitor(${monitor.id}, this.checked)">
                       <span style="font-size: 13px; font-weight: 600;">${monitor.is_active ? 'Active' : 'Paused'}</span>
                     </label>
+                    <button onclick="deleteEmailMonitor(${monitor.id}, '${monitor.name}')" style="background: #dc2626; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Delete</button>
                   </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155;">
                   <div>
-                    <div style="color: #9ca3af; font-size: 12px;">Invoices Found</div>
-                    <div style="font-weight: 700; font-size: 18px; color: #3b82f6;">${monitor.total_invoices_found || 0}</div>
+                    <div style="color: #9ca3af; font-size: 12px;">Emails Processed</div>
+                    <div style="font-weight: 700; font-size: 18px; color: #3b82f6;">${monitor.emails_processed_count || 0}</div>
                   </div>
                   <div>
-                    <div style="color: #9ca3af; font-size: 12px;">Opportunities</div>
-                    <div style="font-weight: 700; font-size: 18px; color: #f59e0b;">${monitor.total_opportunities_detected || 0}</div>
-                  </div>
-                  <div>
-                    <div style="color: #9ca3af; font-size: 12px;">Savings Detected</div>
-                    <div style="font-weight: 700; font-size: 18px; color: #10b981;">$${((monitor.total_savings_detected_cents || 0) / 100).toFixed(0)}</div>
+                    <div style="color: #9ca3af; font-size: 12px;">Invoices Created</div>
+                    <div style="font-weight: 700; font-size: 18px; color: #10b981;">${monitor.invoices_created_count || 0}</div>
                   </div>
                   <div>
                     <div style="color: #9ca3af; font-size: 12px;">Last Check</div>
                     <div style="font-weight: 600; font-size: 14px;">${lastCheck}</div>
                   </div>
+                  <div>
+                    <div style="color: #9ca3af; font-size: 12px;">Last Success</div>
+                    <div style="font-weight: 600; font-size: 14px; color: #10b981;">${lastSuccess}</div>
+                  </div>
                 </div>
+                ${monitor.last_error ? `
+                  <div style="margin-top: 12px; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; color: #ef4444; font-size: 13px;">
+                    ⚠️ Last error: ${monitor.last_error}
+                  </div>
+                ` : ''}
               </div>
             `;
           }).join('');
@@ -1203,6 +1192,9 @@
         console.error('Error loading monitors:', error);
       }
     }
+
+    // Alias for backwards compatibility
+    const refreshEmailMonitors = loadEmailMonitors;
 
     async function loadDetectedSavings() {
       try {
@@ -1290,18 +1282,100 @@
       document.getElementById('newMonitorStatus').style.display = 'none';
     }
 
-    async function createEmailMonitor() {
-      const accountName = document.getElementById('newMonitorAccountName').value.trim();
-      const monitorName = document.getElementById('newMonitorName').value.trim();
-      const emailAddress = document.getElementById('newMonitorEmail').value.trim();
-      const password = document.getElementById('newMonitorPassword').value;
-      const imapHost = document.getElementById('newMonitorImapHost').value.trim();
-      const industry = document.getElementById('newMonitorIndustry').value;
-      const customerType = document.getElementById('newMonitorCustomerType').value;
-      const checkIntervalMinutes = parseInt(document.getElementById('newMonitorInterval').value);
+    async function detectIMAPSettings() {
+      const email = document.getElementById('newMonitorEmail').value.trim();
+      if (!email || !email.includes('@')) return;
 
-      if (!accountName || !emailAddress || !password) {
-        alert('Please fill in all required fields (Account Name, Email, Password)');
+      try {
+        const response = await fetch('/api/email-monitors/detect-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          const config = result.data;
+          document.getElementById('newMonitorImapHost').value = config.host;
+          document.getElementById('newMonitorImapPort').value = config.port;
+          document.getElementById('newMonitorImapSecure').value = config.secure ? 'true' : 'false';
+
+          const hint = document.getElementById('imapDetectHint');
+          if (config.detected) {
+            hint.textContent = `✓ ${config.provider} settings auto-detected`;
+            hint.style.color = '#10b981';
+          } else {
+            hint.textContent = 'Settings suggested - verify with your email provider';
+            hint.style.color = '#f59e0b';
+          }
+        }
+      } catch (error) {
+        console.error('IMAP detection error:', error);
+      }
+    }
+
+    async function testIMAPConnection() {
+      const email = document.getElementById('newMonitorEmail').value.trim();
+      const password = document.getElementById('newMonitorPassword').value;
+      const host = document.getElementById('newMonitorImapHost').value.trim();
+      const port = parseInt(document.getElementById('newMonitorImapPort').value);
+      const secure = document.getElementById('newMonitorImapSecure').value === 'true';
+
+      if (!email || !password || !host) {
+        alert('Please fill in Email, Password, and IMAP Server first');
+        return;
+      }
+
+      const resultDiv = document.getElementById('testConnectionResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<div style="background: #3b82f6; color: white; padding: 10px; border-radius: 6px;">⏳ Testing connection...</div>';
+
+      try {
+        const response = await fetch('/api/email-monitors/test-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({ email, password, host, port, secure })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data.success) {
+          resultDiv.innerHTML = '<div style="background: #10b981; color: white; padding: 10px; border-radius: 6px;">✓ Connection successful! IMAP settings are correct.</div>';
+        } else {
+          const error = result.data.error || result.error || 'Unknown error';
+          const suggestion = result.data.suggestion || '';
+          resultDiv.innerHTML = `
+            <div style="background: #ef4444; color: white; padding: 10px; border-radius: 6px;">
+              <strong>✗ Connection failed:</strong><br>
+              ${error}<br>
+              ${suggestion ? `<br><em>${suggestion}</em>` : ''}
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<div style="background: #ef4444; color: white; padding: 10px; border-radius: 6px;">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function createEmailMonitor() {
+      const name = document.getElementById('newMonitorName').value.trim();
+      const email_address = document.getElementById('newMonitorEmail').value.trim();
+      const imap_password = document.getElementById('newMonitorPassword').value;
+      const imap_host = document.getElementById('newMonitorImapHost').value.trim();
+      const imap_port = parseInt(document.getElementById('newMonitorImapPort').value);
+      const imap_secure = document.getElementById('newMonitorImapSecure').value === 'true';
+      const folder_name = document.getElementById('newMonitorFolder').value.trim();
+      const check_frequency_minutes = parseInt(document.getElementById('newMonitorInterval').value);
+
+      if (!name || !email_address || !imap_password || !imap_host) {
+        alert('Please fill in all required fields (Name, Email, Password, IMAP Server)');
         return;
       }
 
@@ -1312,20 +1386,20 @@
       try {
         const response = await fetch('/api/email-monitors', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
           body: JSON.stringify({
-            accountName,
-            monitorName: monitorName || null,
-            emailAddress,
-            password,
-            imapHost,
-            industry,
-            customerType,
-            checkIntervalMinutes,
-            enableCostSavingsDetection: document.getElementById('enableCostSavings').checked,
-            enableDuplicateDetection: document.getElementById('enableDuplicates').checked,
-            enablePriceIncreaseAlerts: document.getElementById('enablePriceIncreases').checked,
-            enableContractValidation: document.getElementById('enableContractValidation').checked
+            name,
+            email_address,
+            imap_user: email_address,
+            imap_password,
+            imap_host,
+            imap_port,
+            imap_secure,
+            folder_name,
+            check_frequency_minutes
           })
         });
 
@@ -1335,14 +1409,14 @@
           statusDiv.innerHTML = `
             <div style="background: #10b981; color: white; padding: 12px; border-radius: 6px;">
               <strong>✓ Monitor Created Successfully!</strong><br>
-              Now monitoring: ${emailAddress}
+              Now monitoring: ${email_address}<br>
+              Checking every ${check_frequency_minutes} minutes
             </div>
           `;
 
           setTimeout(() => {
             closeAddEmailMonitor();
-            refreshEmailMonitors();
-            loadEmailServiceStatus();
+            loadEmailMonitors();
           }, 2000);
 
         } else {
@@ -1364,25 +1438,63 @@
 
     async function toggleEmailMonitor(monitorId, isActive) {
       try {
-        const response = await fetch(`/api/email-monitors/${monitorId}/toggle`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isActive })
+        const endpoint = isActive ?
+          `/api/email-monitors/${monitorId}/start` :
+          `/api/email-monitors/${monitorId}/stop`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
         });
 
         const result = await response.json();
 
         if (result.success) {
-          console.log(`Monitor ${monitorId} ${isActive ? 'enabled' : 'disabled'}`);
+          console.log(`Monitor ${monitorId} ${isActive ? 'started' : 'stopped'}`);
           setTimeout(() => {
-            refreshEmailMonitors();
-            loadEmailServiceStatus();
+            loadEmailMonitors();
           }, 500);
+        } else {
+          alert(`Failed to ${isActive ? 'start' : 'stop'} monitor: ${result.error}`);
+          // Reload to reflect actual state
+          loadEmailMonitors();
         }
 
       } catch (error) {
         console.error('Error toggling monitor:', error);
         alert('Failed to update monitor status');
+        loadEmailMonitors();
+      }
+    }
+
+    async function deleteEmailMonitor(monitorId, monitorName) {
+      if (!confirm(`Are you sure you want to delete the email monitor "${monitorName}"?\n\nThis will stop monitoring this email and cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/email-monitors/${monitorId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log(`Monitor ${monitorId} deleted`);
+          loadEmailMonitors();
+        } else {
+          alert(`Failed to delete monitor: ${result.error}`);
+        }
+
+      } catch (error) {
+        console.error('Error deleting monitor:', error);
+        alert('Failed to delete monitor');
       }
     }
 
@@ -1713,9 +1825,10 @@
       }
     }
 
-    // Load saved config on page load
+    // Load saved config and data on page load
     loadLogicConfig();
     loadRules(); // Load rules on page load
+    loadEmailMonitors(); // Load email monitors
   </script>
 </body>
 </html>

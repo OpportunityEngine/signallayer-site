@@ -29,7 +29,7 @@
     "mailparser": "^3.9.1",
     "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "^1.1.4",
     "react-router-dom": "^7.11.0",
     "xlsx": "^0.18.5"
   }

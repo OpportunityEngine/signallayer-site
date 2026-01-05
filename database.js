@@ -1453,6 +1453,71 @@ function trackVendor(monitorId, vendorName, data) {
   }
 }
 
+// =====================================================
+// EMAIL MONITOR HELPER FUNCTIONS (NEW SCHEMA)
+// =====================================================
+
+function getEmailMonitor(monitorId) {
+  return db.prepare('SELECT * FROM email_monitors WHERE id = ?').get(monitorId);
+}
+
+function updateEmailMonitorLastChecked(monitorId, timestamp) {
+  db.prepare(`
+    UPDATE email_monitors
+    SET last_checked_at = ?, last_success_at = ?
+    WHERE id = ?
+  `).run(timestamp, timestamp, monitorId);
+}
+
+function updateEmailMonitorError(monitorId, errorMessage) {
+  db.prepare(`
+    UPDATE email_monitors
+    SET last_error = ?, last_checked_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(errorMessage, monitorId);
+}
+
+function isEmailAlreadyProcessed(monitorId, emailUid) {
+  const exists = db.prepare(`
+    SELECT id FROM email_processing_log
+    WHERE monitor_id = ? AND email_uid = ?
+  `).get(monitorId, emailUid);
+  return !!exists;
+}
+
+function logEmailProcessing(data) {
+  db.prepare(`
+    INSERT INTO email_processing_log (
+      monitor_id, email_uid, email_subject, from_address, received_date,
+      status, attachments_count, invoices_created, invoice_ids,
+      processing_time_ms, error_message
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.monitorId,
+    data.emailUid,
+    data.subject,
+    data.fromAddress,
+    data.receivedDate,
+    data.status,
+    data.attachmentsCount || 0,
+    data.invoicesCreated || 0,
+    data.invoiceIds || null,
+    data.processingTimeMs || 0,
+    data.errorMessage || null
+  );
+}
+
+function incrementEmailMonitorStats(monitorId, invoicesCreated) {
+  db.prepare(`
+    UPDATE email_monitors
+    SET
+      emails_processed_count = emails_processed_count + 1,
+      invoices_created_count = invoices_created_count + ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(invoicesCreated, monitorId);
+}
+
 module.exports = {
   initDatabase,
   getDatabase,
@@ -1519,5 +1584,13 @@ module.exports = {
   getDetectedSavingsSummary,
   logEmailActivity,
   getRecentEmailActivity,
-  trackVendor
+  trackVendor,
+
+  // Email Monitor helpers (new schema)
+  getEmailMonitor,
+  updateEmailMonitorLastChecked,
+  updateEmailMonitorError,
+  isEmailAlreadyProcessed,
+  logEmailProcessing,
+  incrementEmailMonitorStats
 };
