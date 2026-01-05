@@ -65,10 +65,7 @@
       font-size: 22px;
       font-weight: 800;
       margin-bottom: 4px;
-      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #ffffff;
       letter-spacing: 0.3px;
     }
 
@@ -631,6 +628,56 @@
       </div>
     </div>
 
+    <!-- User Management Section -->
+    <div class="section-header">
+      <h2 class="section-title">User Management</h2>
+    </div>
+    <div class="card">
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div style="text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: #fbbf24;" id="totalUsers">0</div>
+          <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Total Users</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: #10b981;" id="activeUsers">0</div>
+          <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Active Users</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: #3b82f6;" id="adminCount">0</div>
+          <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Admins</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: #8b5cf6;" id="repCount">0</div>
+          <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Reps</div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <input type="text" id="searchInput" placeholder="Search users..." style="flex: 1; max-width: 400px; padding: 10px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; color: #e2e8f0; font-size: 14px;">
+        <button onclick="openCreateModal()" style="padding: 10px 20px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border: none; border-radius: 8px; color: #0a0f1a; font-weight: 700; cursor: pointer; font-size: 14px;">+ Add User</button>
+      </div>
+
+      <div class="scrollable-container-small">
+        <table class="table" id="usersTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Login</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <tr>
+              <td colspan="6" class="loading">Loading users...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- API Endpoint Usage (Top Priority) -->
     <div class="section-header">
       <h2 class="section-title">API Endpoint Usage</h2>
@@ -909,6 +956,86 @@
 
   </div>
 
+  <!-- Create/Edit User Modal -->
+  <div id="userModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+    <div style="background: linear-gradient(135deg, rgba(17, 21, 37, 0.95) 0%, rgba(15, 19, 32, 0.98) 100%); border-radius: 16px; width: 90%; max-width: 500px; border: 2px solid rgba(251, 191, 36, 0.3); padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 id="modalTitle" style="color: #ffffff; font-size: 20px; font-weight: 700;">Add User</h2>
+        <button onclick="closeModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
+      </div>
+
+      <div id="modalAlerts" style="margin-bottom: 16px;"></div>
+
+      <form id="userForm" onsubmit="event.preventDefault(); saveUser();">
+        <input type="hidden" id="userId">
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; color: #e2e8f0; font-size: 14px; margin-bottom: 6px; font-weight: 600;">Full Name *</label>
+          <input type="text" id="userName" required style="width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; color: #e2e8f0; font-size: 14px; margin-bottom: 6px; font-weight: 600;">Email Address *</label>
+          <input type="email" id="userEmail" required style="width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; color: #e2e8f0; font-size: 14px; margin-bottom: 6px; font-weight: 600;">Role *</label>
+          <select id="userRole" required style="width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+            <option value="">Select Role</option>
+            <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
+            <option value="customer_admin">Customer Admin (VP)</option>
+            <option value="rep">Rep</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; color: #e2e8f0; font-size: 14px; margin-bottom: 6px; font-weight: 600;">Account Name</label>
+          <input type="text" id="userAccountName" style="width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: flex; align-items: center; color: #e2e8f0; font-size: 14px; cursor: pointer;">
+            <input type="checkbox" id="userActive" checked style="margin-right: 8px; width: 18px; height: 18px;">
+            Active
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+          <button type="button" onclick="closeModal()" style="padding: 10px 20px; background: rgba(100, 116, 139, 0.2); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; font-weight: 600; cursor: pointer;">Cancel</button>
+          <button type="submit" style="padding: 10px 20px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border: none; border-radius: 8px; color: #0a0f1a; font-weight: 700; cursor: pointer;"><span id="saveButtonText">Create User</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Password Display Modal -->
+  <div id="passwordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10001; align-items: center; justify-content: center;">
+    <div style="background: linear-gradient(135deg, rgba(17, 21, 37, 0.95) 0%, rgba(15, 19, 32, 0.98) 100%); border-radius: 16px; width: 90%; max-width: 500px; border: 2px solid rgba(16, 185, 129, 0.3); padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #ffffff; font-size: 20px; font-weight: 700;">User Created Successfully</h2>
+        <button onclick="closePasswordModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+        <strong style="color: #10b981;">Temporary Password:</strong><br>
+        <div style="font-size: 18px; font-family: monospace; margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; color: #fbbf24;">
+          <span id="tempPassword"></span>
+        </div>
+        <p style="margin-top: 16px; font-size: 13px; color: #94a3b8;">
+          Please save this password securely. It will not be shown again.
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button onclick="copyPassword()" style="padding: 10px 20px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border: none; border-radius: 8px; color: #0a0f1a; font-weight: 700; cursor: pointer;">Copy Password</button>
+        <button onclick="closePasswordModal()" style="padding: 10px 20px; background: rgba(100, 116, 139, 0.2); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; font-weight: 600; cursor: pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Auto-refresh every 30 seconds
     let refreshInterval;
@@ -939,6 +1066,8 @@
     async function refreshAllData() {
       updateTimestamp();
       await Promise.all([
+        loadUserStats(),
+        loadUsers(),
         loadSystemHealth(),
         loadUsageAnalytics(),
         loadFinancialMetrics(),
@@ -953,6 +1082,232 @@
     function updateTimestamp() {
       document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
     }
+
+    // =====================================================
+    // USER MANAGEMENT FUNCTIONS
+    // =====================================================
+
+    let users = [];
+    let currentEditUserId = null;
+    let authToken = null;
+
+    // Load user statistics
+    async function loadUserStats() {
+      try {
+        authToken = window.AuthManager.getToken();
+        const response = await fetch('/api/user-management/users/stats/overview', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('totalUsers').textContent = data.data.total;
+          document.getElementById('activeUsers').textContent = data.data.active;
+          document.getElementById('adminCount').textContent = data.data.by_role.admin || 0;
+          document.getElementById('repCount').textContent = data.data.by_role.rep || 0;
+        }
+      } catch (error) {
+        console.error('Error loading user stats:', error);
+      }
+    }
+
+    // Load users
+    async function loadUsers(search = '') {
+      try {
+        authToken = window.AuthManager.getToken();
+        const url = new URL('/api/user-management/users', window.location.origin);
+        if (search) url.searchParams.set('search', search);
+
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          users = data.data.users;
+          renderUsers(users);
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+      }
+    }
+
+    // Render users table
+    function renderUsers(userList) {
+      const tbody = document.getElementById('userTableBody');
+      tbody.innerHTML = '';
+
+      if (userList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b;">No users found</td></tr>';
+        return;
+      }
+
+      userList.forEach(user => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${user.name}</strong></td>
+          <td>${user.email}</td>
+          <td><span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${user.role}</span></td>
+          <td>
+            <span style="background: ${user.is_active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.2)'}; color: ${user.is_active ? '#10b981' : '#64748b'}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+              ${user.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+          <td>${user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : 'Never'}</td>
+          <td>
+            <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; color: #3b82f6; cursor: pointer; margin-right: 6px; font-size: 12px;">Edit</button>
+            <button onclick="deleteUser(${user.id}, '${user.email}')" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; color: #ef4444; cursor: pointer; margin-right: 6px; font-size: 12px;">Delete</button>
+            <button onclick="resetPassword(${user.id})" style="padding: 6px 12px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 6px; color: #fbbf24; cursor: pointer; font-size: 12px;">Reset PW</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Search users
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      loadUsers(e.target.value);
+    });
+
+    // Open create modal
+    function openCreateModal() {
+      currentEditUserId = null;
+      document.getElementById('modalTitle').textContent = 'Add User';
+      document.getElementById('saveButtonText').textContent = 'Create User';
+      document.getElementById('userForm').reset();
+      document.getElementById('userId').value = '';
+      document.getElementById('userModal').style.display = 'flex';
+    }
+
+    // Edit user
+    async function editUser(userId) {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      currentEditUserId = userId;
+      document.getElementById('modalTitle').textContent = 'Edit User';
+      document.getElementById('saveButtonText').textContent = 'Update User';
+      document.getElementById('userId').value = user.id;
+      document.getElementById('userName').value = user.name;
+      document.getElementById('userEmail').value = user.email;
+      document.getElementById('userRole').value = user.role;
+      document.getElementById('userAccountName').value = user.account_name || '';
+      document.getElementById('userActive').checked = user.is_active;
+      document.getElementById('userModal').style.display = 'flex';
+    }
+
+    // Save user (create or update)
+    async function saveUser() {
+      const userId = document.getElementById('userId').value;
+      const userData = {
+        name: document.getElementById('userName').value,
+        email: document.getElementById('userEmail').value,
+        role: document.getElementById('userRole').value,
+        accountName: document.getElementById('userAccountName').value || null,
+        isActive: document.getElementById('userActive').checked
+      };
+
+      try {
+        const url = userId ? `/api/user-management/users/${userId}` : '/api/user-management/users';
+        const method = userId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (!userId && data.data.temporaryPassword) {
+            document.getElementById('tempPassword').textContent = data.data.temporaryPassword;
+            closeModal();
+            document.getElementById('passwordModal').style.display = 'flex';
+          } else {
+            closeModal();
+          }
+          loadUsers();
+          loadUserStats();
+        } else {
+          alert('Error: ' + (data.error || 'Failed to save user'));
+        }
+      } catch (error) {
+        console.error('Error saving user:', error);
+        alert('Error saving user: ' + error.message);
+      }
+    }
+
+    // Delete user
+    async function deleteUser(userId, email) {
+      if (!confirm(`Are you sure you want to delete user: ${email}?`)) return;
+
+      try {
+        const response = await fetch(`/api/user-management/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          loadUsers();
+          loadUserStats();
+        } else {
+          alert('Failed to delete user');
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Error deleting user');
+      }
+    }
+
+    // Reset password
+    async function resetPassword(userId) {
+      if (!confirm('Generate a new password for this user?')) return;
+
+      try {
+        const response = await fetch(`/api/user-management/users/${userId}/reset-password`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('tempPassword').textContent = data.data.temporaryPassword;
+          document.getElementById('passwordModal').style.display = 'flex';
+        } else {
+          alert('Failed to reset password');
+        }
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        alert('Error resetting password');
+      }
+    }
+
+    // Close modal
+    function closeModal() {
+      document.getElementById('userModal').style.display = 'none';
+    }
+
+    // Close password modal
+    function closePasswordModal() {
+      document.getElementById('passwordModal').style.display = 'none';
+    }
+
+    // Copy password
+    function copyPassword() {
+      const password = document.getElementById('tempPassword').textContent;
+      navigator.clipboard.writeText(password).then(() => {
+        alert('Password copied to clipboard!');
+      });
+    }
+
+    // =====================================================
+    // END USER MANAGEMENT FUNCTIONS
+    // =====================================================
 
     async function loadSystemHealth() {
       try {
