@@ -130,6 +130,7 @@ const backupRoutes = require('./backup-routes');  // Backup management
 const authRoutes = require('./auth-routes');  // Authentication routes
 const userManagementRoutes = require('./user-management-routes');  // User management
 const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitoring
+const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin analytics
 // --------------------------------------------------------------------
 
 // -------------------- Core app bootstrap --------------------
@@ -1141,6 +1142,10 @@ console.log('✅ User management routes registered at /api/user-management');
 // Email Monitor routes (authenticated users - email invoice autopilot)
 app.use('/api/email-monitors', emailMonitorRoutes);
 console.log('✅ Email monitor routes registered at /api/email-monitors');
+
+// Admin Analytics routes (admin only - real-time metrics)
+app.use('/api/admin', adminAnalyticsRoutes);
+console.log('✅ Admin analytics routes registered at /api/admin');
 
 // Health check routes (public - for load balancers)
 app.use('/health', healthRoutes);

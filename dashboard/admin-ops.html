@@ -1471,8 +1471,15 @@
 
     async function loadRecentActivity() {
       try {
-        const response = await fetch('/api/email-monitors-activity?limit=10');
-        if (!response.ok) return;
+        const response = await fetch('/api/admin/recent-activity?limit=15', {
+          headers: { 'Authorization': `Bearer ${authToken || window.AuthManager.getToken()}` }
+        });
+
+        if (!response.ok) {
+          document.getElementById('recentActivity').innerHTML =
+            '<div style="text-align: center; padding: 20px; color: #64748b;">No recent activity</div>';
+          return;
+        }
 
         const result = await response.json();
         if (!result.success || !result.data || result.data.length === 0) {
@@ -1483,10 +1490,11 @@
 
         const activityHTML = result.data.map(activity => {
           const time = new Date(activity.created_at).toLocaleTimeString();
+          const date = new Date(activity.created_at).toLocaleDateString();
           return `
             <div style="padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px;">
               <div style="color: #e2e8f0;">${activity.message}</div>
-              <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${time}</div>
+              <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${date} ${time}</div>
             </div>
           `;
         }).join('');
@@ -1495,6 +1503,8 @@
 
       } catch (error) {
         console.error('Error loading recent activity:', error);
+        document.getElementById('recentActivity').innerHTML =
+          '<div style="text-align: center; padding: 20px; color: #64748b;">Error loading activity</div>';
       }
     }
 
