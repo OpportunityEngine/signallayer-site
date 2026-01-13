@@ -43,7 +43,8 @@
       "Bash({\"email\":\"admin@revenueradar.com\",\"password\":\"Admin123!\"})",
       "Bash(CURLDATA)",
       "Bash({\"email\":\"taylor@revenueradar.com\",\"password\":\"Taylor123!\"})",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiYWRtaW5AcmV2ZW51ZXJhZGFyLmNvbSIsInJvbGUiOiJhZG1pbiIsImFjY291bnROYW1lIjoiU3lzdGVtIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2ODI2MjAzNSwiZXhwIjoxNzY4MzQ4NDM1LCJqdGkiOiI3YWYxNTk2MDU0OTUwOTkxNDNlNmZhNTUzZmQ4YTI0NSJ9.z8ZZwzc0f_3VcoBWQfhvdAi1Ru62QTi1O4ETbjhR4PY\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiYWRtaW5AcmV2ZW51ZXJhZGFyLmNvbSIsInJvbGUiOiJhZG1pbiIsImFjY291bnROYW1lIjoiU3lzdGVtIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2ODI2MjAzNSwiZXhwIjoxNzY4MzQ4NDM1LCJqdGkiOiI3YWYxNTk2MDU0OTUwOTkxNDNlNmZhNTUzZmQ4YTI0NSJ9.z8ZZwzc0f_3VcoBWQfhvdAi1Ru62QTi1O4ETbjhR4PY\")",
+      "Bash(printf:*)"
     ]
   }
 }

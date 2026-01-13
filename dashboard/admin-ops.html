@@ -1502,20 +1502,38 @@
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          signupRequests = data.data.requests;
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          signupRequests = data.data.requests || [];
 
           // Update pending badge
-          const pendingCount = data.data.counts.pending || 0;
+          const pendingCount = data.data.counts?.pending || 0;
           const badge = document.getElementById('pendingBadge');
           badge.textContent = pendingCount;
           badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
 
           renderSignupRequests();
+        } else {
+          // Show error in the table
+          console.error('Signup requests API error:', data);
+          document.getElementById('requestTableBody').innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align: center; color: #ef4444; padding: 40px;">
+                Failed to load requests: ${data.error || 'Unknown error'}
+              </td>
+            </tr>
+          `;
         }
       } catch (error) {
         console.error('Error loading signup requests:', error);
+        document.getElementById('requestTableBody').innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; color: #ef4444; padding: 40px;">
+              Error: ${error.message}
+            </td>
+          </tr>
+        `;
       }
     }
 
