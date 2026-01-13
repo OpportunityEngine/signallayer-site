@@ -41,7 +41,7 @@ async function initializeNavigation() {
       roles: ['admin', 'manager', 'customer_admin']
     },
     vp: {
-      name: 'VP',
+      name: 'Business',
       url: '/dashboard/vp-view.html',
       icon: '',
       roles: ['admin', 'customer_admin']
