@@ -462,7 +462,7 @@ class AuthService {
       // Update last activity
       database.prepare(`
         UPDATE sessions
-        SET last_activity_at = CURRENT_TIMESTAMP
+        SET last_used_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(session.id);
 
@@ -538,7 +538,7 @@ class AuthService {
 
     database.prepare(`
       UPDATE sessions
-      SET expires_at = ?, last_activity_at = CURRENT_TIMESTAMP
+      SET expires_at = ?, last_used_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(newExpires.toISOString(), sessionId);
 
@@ -757,11 +757,11 @@ class AuthService {
     const database = db.getDatabase();
 
     return database.prepare(`
-      SELECT id, ip_address, user_agent, created_at, last_activity_at,
+      SELECT id, ip_address, user_agent, created_at, last_used_at,
              expires_at, is_active
       FROM sessions
       WHERE user_id = ? AND is_active = TRUE
-      ORDER BY last_activity_at DESC
+      ORDER BY last_used_at DESC
     `).all(userId);
   }
 
