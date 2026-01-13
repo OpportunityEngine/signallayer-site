@@ -194,10 +194,16 @@ function getDatabase() {
  * 2. demo_viewer - "Universal Demo" - Read-only access to all dashboards
  *    For: Family, friends, investors, anyone you want to show the full platform
  *    Email: demo@revenueradar.com / Password: Demo2026!
+ *
+ * FOUNDER ACCOUNTS (always exist):
+ * 3. admin@revenueradar.com / Admin123! - System admin
+ * 4. taylor@revenueradar.com / Taylor123! - Founder
+ * 5. victorianj23@gmail.com / Victoria123! - Founder
  */
 function seedDemoUsers() {
   const bcrypt = require('bcryptjs');
 
+  // Demo accounts (read-only, safe to share)
   const demoUsers = [
     {
       email: 'business@demo.revenueradar.com',
@@ -215,7 +221,35 @@ function seedDemoUsers() {
     }
   ];
 
-  for (const user of demoUsers) {
+  // Founder accounts (MUST always exist)
+  const founderAccounts = [
+    {
+      email: 'admin@revenueradar.com',
+      name: 'Admin',
+      password: 'Admin123!',
+      role: 'admin',
+      accountName: 'System'
+    },
+    {
+      email: 'taylor@revenueradar.com',
+      name: 'Taylor',
+      password: 'Taylor123!',
+      role: 'admin',
+      accountName: 'Revenue Radar'
+    },
+    {
+      email: 'victorianj23@gmail.com',
+      name: 'Victoria',
+      password: 'Victoria123!',
+      role: 'admin',
+      accountName: 'Revenue Radar Admin'
+    }
+  ];
+
+  // Combine all accounts to seed
+  const allUsers = [...demoUsers, ...founderAccounts];
+
+  for (const user of allUsers) {
     try {
       // Check if user already exists
       const existing = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(user.email);
