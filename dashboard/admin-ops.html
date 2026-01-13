@@ -1730,7 +1730,9 @@
 
     async function loadUsageAnalytics() {
       try {
-        const response = await fetch('/api/admin/usage-analytics');
+        const response = await fetch('/api/admin/usage-analytics', {
+          headers: { 'Authorization': `Bearer ${authToken || window.AuthManager.getToken()}` }
+        });
         if (!response.ok) return;
 
         const result = await response.json();
@@ -1758,7 +1760,9 @@
 
     async function loadFinancialMetrics() {
       try {
-        const response = await fetch('/api/admin/financial-metrics');
+        const response = await fetch('/api/admin/financial-metrics', {
+          headers: { 'Authorization': `Bearer ${authToken || window.AuthManager.getToken()}` }
+        });
         if (!response.ok) return;
 
         const result = await response.json();
@@ -1782,7 +1786,9 @@
 
     async function loadTopCustomers() {
       try {
-        const response = await fetch('/api/admin/top-customers');
+        const response = await fetch('/api/admin/top-customers', {
+          headers: { 'Authorization': `Bearer ${authToken || window.AuthManager.getToken()}` }
+        });
         if (!response.ok) return;
 
         const result = await response.json();
@@ -1813,7 +1819,9 @@
 
     async function loadSystemAlerts() {
       try {
-        const response = await fetch('/api/admin/system-alerts');
+        const response = await fetch('/api/admin/system-alerts', {
+          headers: { 'Authorization': `Bearer ${authToken || window.AuthManager.getToken()}` }
+        });
         if (!response.ok) {
           document.getElementById('systemAlerts').innerHTML =
             '<div class="alert info"><div>No critical alerts</div></div>';
@@ -1913,8 +1921,11 @@
 
     async function loadErrorMonitoring() {
       try {
+        const token = authToken || window.AuthManager.getToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
+
         // Load error summary
-        const summaryResponse = await fetch('/api/admin/errors/summary?hours=24');
+        const summaryResponse = await fetch('/api/admin/errors/summary?hours=24', { headers });
         const summaryData = await summaryResponse.json();
 
         if (summaryData.success) {
@@ -1927,7 +1938,7 @@
           ? `/api/admin/errors?limit=20&severity=${severity}`
           : '/api/admin/errors?limit=20';
 
-        const errorsResponse = await fetch(url);
+        const errorsResponse = await fetch(url, { headers });
         const errorsData = await errorsResponse.json();
 
         if (errorsData.success) {
