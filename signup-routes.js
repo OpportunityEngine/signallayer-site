@@ -852,7 +852,9 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
       WHERE id = ?
     `).run(req.user.id, notes || null, userResult.lastInsertRowid, id);
 
-    // Send welcome email
+    // Try to send welcome email
+    let emailSent = false;
+    let emailError = null;
     try {
       await emailService.sendAccessApprovedEmail({
         email: request.email,
@@ -860,8 +862,10 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
         role: finalRole,
         temporaryPassword
       });
-    } catch (emailError) {
-      console.error('[SIGNUP] Failed to send welcome email:', emailError);
+      emailSent = true;
+    } catch (err) {
+      console.error('[SIGNUP] Failed to send welcome email:', err);
+      emailError = err.message;
     }
 
     // Log audit event
@@ -874,13 +878,20 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
       method: 'dashboard'
     }));
 
+    // Include temporary password in response so admin can share it manually if email fails
     res.json({
       success: true,
-      message: `Access approved for ${request.name}. Welcome email sent.`,
+      message: emailSent
+        ? `Access approved for ${request.name}. Welcome email sent.`
+        : `Access approved for ${request.name}. Email delivery failed - please share credentials manually.`,
       data: {
         userId: userResult.lastInsertRowid,
         email: request.email,
-        role: finalRole
+        name: request.name,
+        role: finalRole,
+        temporaryPassword: temporaryPassword,  // Always include for admin to share
+        emailSent: emailSent,
+        emailError: emailError
       }
     });
 
