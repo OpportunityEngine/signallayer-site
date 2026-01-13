@@ -244,6 +244,40 @@
       line-height: 1.6;
     }
 
+    .request-access {
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .request-access-link {
+      display: inline-block;
+      width: 100%;
+      padding: 12px 24px;
+      background: transparent;
+      border: 2px solid rgba(251, 191, 36, 0.3);
+      border-radius: 10px;
+      color: #fbbf24;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+
+    .request-access-link:hover {
+      background: rgba(251, 191, 36, 0.1);
+      border-color: rgba(251, 191, 36, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .request-access-text {
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 12px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 480px) {
       .login-card {
         padding: 32px 24px;
@@ -301,8 +335,15 @@
         <a href="#" onclick="showForgotPassword(event)">Forgot your password?</a>
       </div>
 
-      <div class="info-text">
-        Need an account? Contact your administrator.
+      <div class="divider">
+        <span>OR</span>
+      </div>
+
+      <div class="request-access">
+        <a href="/dashboard/request-access.html" class="request-access-link">
+          Request Access
+        </a>
+        <p class="request-access-text">Don't have an account? Request access and we'll review your application.</p>
       </div>
     </div>
   </div>

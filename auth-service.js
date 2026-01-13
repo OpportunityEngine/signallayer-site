@@ -449,7 +449,7 @@ class AuthService {
         FROM sessions s
         JOIN users u ON u.id = s.user_id
         WHERE s.token_jti = ? AND s.is_active = TRUE
-      `).get(decoded.jwtid);
+      `).get(decoded.jti);
 
       if (!session) {
         throw new Error('Session not found or expired');

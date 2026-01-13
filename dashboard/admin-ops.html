@@ -596,6 +596,91 @@
       color: #64748b;
       font-size: 14px;
     }
+
+    /* Filter buttons for requests */
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.6);
+      color: #94a3b8;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: rgba(251, 191, 36, 0.4);
+      color: #fbbf24;
+    }
+
+    .filter-btn.active {
+      background: rgba(251, 191, 36, 0.15);
+      border-color: rgba(251, 191, 36, 0.5);
+      color: #fbbf24;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .action-btn.approve {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .action-btn.approve:hover {
+      background: rgba(16, 185, 129, 0.3);
+    }
+
+    .action-btn.deny {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .action-btn.deny:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .status-badge.pending {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+    }
+
+    .status-badge.approved {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .status-badge.denied {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .reason-preview {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #64748b;
+      font-size: 12px;
+    }
   </style>
   <!-- Authentication Manager - Load FIRST -->
   <script src="/dashboard/auth-manager.js"></script>
@@ -675,6 +760,96 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Signup Requests Section -->
+    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 class="section-title">
+        Access Requests
+        <span id="pendingBadge" style="display: inline-block; padding: 2px 8px; background: #ef4444; color: white; border-radius: 10px; font-size: 12px; margin-left: 8px; font-weight: 700;">0</span>
+      </h2>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="filterRequests('pending')" class="filter-btn active" id="filterPending">Pending</button>
+        <button onclick="filterRequests('approved')" class="filter-btn" id="filterApproved">Approved</button>
+        <button onclick="filterRequests('denied')" class="filter-btn" id="filterDenied">Denied</button>
+        <button onclick="filterRequests('all')" class="filter-btn" id="filterAll">All</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="scrollable-container-small">
+        <table class="table" id="requestsTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Company</th>
+              <th>Role</th>
+              <th>Requested</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="requestTableBody">
+            <tr>
+              <td colspan="7" class="loading">Loading requests...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Approve Request Modal -->
+    <div id="approveModal" class="modal" style="display: none;">
+      <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+          <h3>Approve Access Request</h3>
+          <span class="close-btn" onclick="closeApproveModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 16px; color: #94a3b8;">Approve access for <strong id="approveUserName" style="color: #fbbf24;"></strong></p>
+
+          <div class="form-group">
+            <label class="form-label">Assign Role</label>
+            <select id="approveRole" class="form-input">
+              <option value="rep">Sales Rep</option>
+              <option value="manager">Manager</option>
+              <option value="viewer">Viewer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notes (optional)</label>
+            <textarea id="approveNotes" class="form-input" rows="3" placeholder="Add any notes about this approval..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeApproveModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmApprove()" id="confirmApproveBtn" style="background: #10b981;">Approve</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deny Request Modal -->
+    <div id="denyModal" class="modal" style="display: none;">
+      <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+          <h3>Deny Access Request</h3>
+          <span class="close-btn" onclick="closeDenyModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 16px; color: #94a3b8;">Deny access for <strong id="denyUserName" style="color: #ef4444;"></strong></p>
+
+          <div class="form-group">
+            <label class="form-label">Reason (optional - will be sent to user)</label>
+            <textarea id="denyReason" class="form-input" rows="3" placeholder="Provide a reason for denial..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeDenyModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmDeny()" id="confirmDenyBtn" style="background: #ef4444;">Deny</button>
+        </div>
       </div>
     </div>
 
@@ -1068,6 +1243,7 @@
       await Promise.all([
         loadUserStats(),
         loadUsers(),
+        loadSignupRequests(),
         loadSystemHealth(),
         loadUsageAnalytics(),
         loadFinancialMetrics(),
@@ -1303,6 +1479,206 @@
       navigator.clipboard.writeText(password).then(() => {
         alert('Password copied to clipboard!');
       });
+    }
+
+    // =====================================================
+    // SIGNUP REQUEST MANAGEMENT FUNCTIONS
+    // =====================================================
+
+    let signupRequests = [];
+    let currentRequestFilter = 'pending';
+    let currentApproveRequestId = null;
+    let currentDenyRequestId = null;
+
+    async function loadSignupRequests(status = null) {
+      try {
+        authToken = window.AuthManager.getToken();
+        const filterStatus = status || currentRequestFilter;
+        const url = filterStatus === 'all'
+          ? '/signup/api/requests'
+          : `/signup/api/requests?status=${filterStatus}`;
+
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          signupRequests = data.data.requests;
+
+          // Update pending badge
+          const pendingCount = data.data.counts.pending || 0;
+          const badge = document.getElementById('pendingBadge');
+          badge.textContent = pendingCount;
+          badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+
+          renderSignupRequests();
+        }
+      } catch (error) {
+        console.error('Error loading signup requests:', error);
+      }
+    }
+
+    function renderSignupRequests() {
+      const tbody = document.getElementById('requestTableBody');
+
+      if (signupRequests.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; color: #64748b; padding: 40px;">
+              No ${currentRequestFilter === 'all' ? '' : currentRequestFilter} requests found
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = signupRequests.map(req => `
+        <tr>
+          <td>
+            <strong style="color: #e2e8f0;">${escapeHtml(req.name)}</strong>
+            ${req.linkedin_url ? `<br><a href="${escapeHtml(req.linkedin_url)}" target="_blank" style="font-size: 11px; color: #3b82f6;">LinkedIn</a>` : ''}
+          </td>
+          <td style="color: #94a3b8;">${escapeHtml(req.email)}</td>
+          <td style="color: #94a3b8;">${escapeHtml(req.company_name || '-')}</td>
+          <td style="text-transform: capitalize;">${req.requested_role}</td>
+          <td style="color: #64748b; font-size: 12px;">
+            ${new Date(req.created_at).toLocaleDateString()}<br>
+            ${new Date(req.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          </td>
+          <td><span class="status-badge ${req.status}">${req.status}</span></td>
+          <td>
+            ${req.status === 'pending' ? `
+              <button class="action-btn approve" onclick="openApproveModal(${req.id}, '${escapeHtml(req.name)}', '${req.requested_role}')">Approve</button>
+              <button class="action-btn deny" onclick="openDenyModal(${req.id}, '${escapeHtml(req.name)}')">Deny</button>
+            ` : `
+              <span style="color: #64748b; font-size: 12px;">
+                ${req.reviewed_by ? `by ${escapeHtml(req.reviewer_name || 'Admin')}` : 'via email'}
+              </span>
+            `}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterRequests(status) {
+      currentRequestFilter = status;
+
+      // Update active button
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('filter' + status.charAt(0).toUpperCase() + status.slice(1)).classList.add('active');
+
+      loadSignupRequests(status);
+    }
+
+    function openApproveModal(requestId, name, requestedRole) {
+      currentApproveRequestId = requestId;
+      document.getElementById('approveUserName').textContent = name;
+      document.getElementById('approveRole').value = requestedRole;
+      document.getElementById('approveNotes').value = '';
+      document.getElementById('approveModal').style.display = 'flex';
+    }
+
+    function closeApproveModal() {
+      document.getElementById('approveModal').style.display = 'none';
+      currentApproveRequestId = null;
+    }
+
+    async function confirmApprove() {
+      if (!currentApproveRequestId) return;
+
+      const role = document.getElementById('approveRole').value;
+      const notes = document.getElementById('approveNotes').value;
+      const btn = document.getElementById('confirmApproveBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Approving...';
+
+      try {
+        authToken = window.AuthManager.getToken();
+        const response = await fetch(`/signup/api/requests/${currentApproveRequestId}/approve`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ role, notes })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          closeApproveModal();
+          loadSignupRequests();
+          loadUsers(); // Refresh users list
+          alert(`Access approved! Welcome email sent to ${data.data.email}`);
+        } else {
+          alert('Error: ' + (data.error || 'Failed to approve'));
+        }
+      } catch (error) {
+        console.error('Approve error:', error);
+        alert('Connection error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Approve';
+      }
+    }
+
+    function openDenyModal(requestId, name) {
+      currentDenyRequestId = requestId;
+      document.getElementById('denyUserName').textContent = name;
+      document.getElementById('denyReason').value = '';
+      document.getElementById('denyModal').style.display = 'flex';
+    }
+
+    function closeDenyModal() {
+      document.getElementById('denyModal').style.display = 'none';
+      currentDenyRequestId = null;
+    }
+
+    async function confirmDeny() {
+      if (!currentDenyRequestId) return;
+
+      const reason = document.getElementById('denyReason').value;
+      const btn = document.getElementById('confirmDenyBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Denying...';
+
+      try {
+        authToken = window.AuthManager.getToken();
+        const response = await fetch(`/signup/api/requests/${currentDenyRequestId}/deny`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ reason })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          closeDenyModal();
+          loadSignupRequests();
+          alert('Request denied. User has been notified.');
+        } else {
+          alert('Error: ' + (data.error || 'Failed to deny'));
+        }
+      } catch (error) {
+        console.error('Deny error:', error);
+        alert('Connection error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Deny';
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // =====================================================
