@@ -124,6 +124,9 @@ function initDatabase() {
       }
     }
 
+    // Migrate users table to add demo roles to CHECK constraint
+    migrateUsersTableForDemoRoles(db);
+
     // Create API request log table for real-time analytics
     try {
       db.exec(`
@@ -243,6 +246,165 @@ function seedDemoUsers() {
         console.error(`❌ Error seeding demo user ${user.email}:`, error.message);
       }
     }
+  }
+}
+
+/**
+ * Migrate users table to add demo roles to the CHECK constraint
+ * SQLite doesn't support ALTER CHECK constraint, so we need to recreate the table
+ */
+function migrateUsersTableForDemoRoles(database) {
+  try {
+    // Check if migration is needed by looking at the current schema
+    const tableInfo = database.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
+
+    if (!tableInfo || !tableInfo.sql) {
+      console.log('⚠️  Users table not found, skipping demo role migration');
+      return;
+    }
+
+    // Check if demo roles already exist in the constraint
+    if (tableInfo.sql.includes('demo_business') && tableInfo.sql.includes('demo_viewer')) {
+      console.log('✅ Users table already has demo roles in CHECK constraint');
+      return;
+    }
+
+    console.log('🔄 Migrating users table to add demo roles to CHECK constraint...');
+
+    // Disable foreign key checks during migration
+    database.exec('PRAGMA foreign_keys = OFF');
+
+    // Perform migration in a transaction
+    database.transaction(() => {
+      // Step 0: Drop dependent views first (they reference users table)
+      database.exec(`DROP VIEW IF EXISTS active_spif_leaderboards`);
+      database.exec(`DROP VIEW IF EXISTS rep_performance`);
+
+      // Step 1: Get existing columns from current users table
+      const existingCols = database.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+      console.log('   Existing columns:', existingCols.length);
+
+      // Step 2: Create new users table with updated CHECK constraint
+      database.exec(`
+        CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          password_hash TEXT NOT NULL DEFAULT '',
+          role TEXT NOT NULL CHECK(role IN ('rep', 'manager', 'admin', 'viewer', 'customer_admin', 'demo_business', 'demo_viewer')) DEFAULT 'rep',
+          account_name TEXT,
+          team_id INTEGER,
+          is_active INTEGER DEFAULT 1,
+          is_email_verified INTEGER DEFAULT 0,
+          email_verification_token TEXT,
+          failed_login_attempts INTEGER DEFAULT 0,
+          locked_until DATETIME,
+          last_login_at DATETIME,
+          last_login_ip TEXT,
+          password_reset_token TEXT,
+          password_reset_expires DATETIME,
+          password_changed_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_active DATETIME,
+          is_trial INTEGER DEFAULT 0,
+          trial_started_at DATETIME,
+          trial_expires_at DATETIME,
+          trial_invoices_used INTEGER DEFAULT 0,
+          trial_invoices_limit INTEGER DEFAULT 20,
+          trial_days_limit INTEGER DEFAULT 30,
+          subscription_status TEXT DEFAULT 'trial' CHECK(subscription_status IN ('trial', 'active', 'expired', 'cancelled')),
+          signup_source TEXT DEFAULT 'manual',
+          created_by INTEGER,
+          FOREIGN KEY (team_id) REFERENCES teams(id)
+        )
+      `);
+
+      // Step 3: Build dynamic column list based on what exists in source table
+      const targetCols = [
+        'id', 'email', 'name', 'password_hash', 'role', 'account_name', 'team_id',
+        'is_active', 'is_email_verified', 'email_verification_token',
+        'failed_login_attempts', 'locked_until', 'last_login_at', 'last_login_ip',
+        'password_reset_token', 'password_reset_expires', 'password_changed_at',
+        'created_at', 'updated_at', 'last_active', 'is_trial', 'trial_started_at',
+        'trial_expires_at', 'trial_invoices_used', 'trial_invoices_limit',
+        'trial_days_limit', 'subscription_status', 'signup_source'
+      ];
+
+      // Only copy columns that exist in source
+      const colsToCopy = targetCols.filter(c => existingCols.includes(c));
+      const colList = colsToCopy.join(', ');
+      console.log('   Copying', colsToCopy.length, 'columns');
+
+      // Step 4: Copy data from old table to new table
+      database.exec(`INSERT INTO users_new (${colList}) SELECT ${colList} FROM users`);
+
+      // Step 5: Drop old table
+      database.exec(`DROP TABLE users`);
+
+      // Step 6: Rename new table to users
+      database.exec(`ALTER TABLE users_new RENAME TO users`);
+
+      // Step 7: Recreate indexes
+      database.exec(`
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_team ON users(team_id);
+        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      `);
+
+      // Step 8: Recreate the views that depend on users table
+      database.exec(`
+        CREATE VIEW IF NOT EXISTS active_spif_leaderboards AS
+        SELECT
+            s.id as spif_id,
+            s.name as spif_name,
+            s.spif_type,
+            s.prize_amount_cents,
+            s.end_date,
+            ss.user_id,
+            u.name as user_name,
+            u.email as user_email,
+            ss.current_value,
+            ss.rank
+        FROM spifs s
+        JOIN spif_standings ss ON s.id = ss.spif_id
+        JOIN users u ON ss.user_id = u.id
+        WHERE s.status = 'active'
+            AND ss.rank <= s.top_n_winners
+        ORDER BY s.id, ss.rank
+      `);
+
+      database.exec(`
+        CREATE VIEW IF NOT EXISTS rep_performance AS
+        SELECT
+            u.id as user_id,
+            u.name,
+            u.email,
+            COUNT(DISTINCT mr.id) as mlas_reviewed_count,
+            COUNT(DISTINCT o.id) as opportunities_assigned_count,
+            COUNT(DISTINCT CASE WHEN o.status = 'won' THEN o.id END) as opportunities_won_count,
+            SUM(CASE WHEN o.status = 'won' THEN o.estimated_commission_cents ELSE 0 END) as total_commission_cents,
+            MAX(mr.created_at) as last_activity_at
+        FROM users u
+        LEFT JOIN mla_reviews mr ON u.id = mr.user_id
+        LEFT JOIN opportunities o ON u.id = o.assigned_to
+        WHERE u.role = 'rep'
+        GROUP BY u.id, u.name, u.email
+      `);
+    })();
+
+    // Re-enable foreign key checks
+    database.exec('PRAGMA foreign_keys = ON');
+
+    console.log('✅ Users table migrated with demo roles in CHECK constraint');
+
+  } catch (error) {
+    console.error('❌ Failed to migrate users table for demo roles:', error.message);
+    // Re-enable foreign key checks even on error
+    try {
+      database.exec('PRAGMA foreign_keys = ON');
+    } catch (e) { /* ignore */ }
+    // Don't throw - allow server to continue even if migration fails
   }
 }
 
