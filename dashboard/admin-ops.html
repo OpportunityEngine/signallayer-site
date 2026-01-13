@@ -1225,8 +1225,8 @@
         // 1. Initialize authentication (blocks until complete)
         const user = await window.AuthManager.initialize();
 
-        // 2. Check role access - Analytics dashboard requires admin role only
-        window.AuthManager.requireRole(['admin']);
+        // 2. Check role access - Analytics dashboard requires admin or demo_viewer role
+        window.AuthManager.requireRole(['admin', 'demo_viewer']);
 
         // 3. Initialize navigation (depends on auth being ready)
         await window.initializeNavigation();

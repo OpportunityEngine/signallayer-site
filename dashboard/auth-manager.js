@@ -194,7 +194,9 @@
         'customer_admin': '/dashboard/manager-view.html',
         'manager': '/dashboard/manager-view.html',
         'rep': '/dashboard/rep-view.html',
-        'viewer': '/dashboard/rep-view.html'
+        'viewer': '/dashboard/rep-view.html',
+        'demo_business': '/dashboard/vp-view.html',
+        'demo_viewer': '/dashboard/manager-view.html'
       };
       return dashboards[role] || '/dashboard/login.html';
     }

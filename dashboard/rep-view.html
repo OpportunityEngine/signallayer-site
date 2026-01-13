@@ -1279,8 +1279,8 @@
         // 1. Initialize authentication (blocks until complete)
         const user = await window.AuthManager.initialize();
 
-        // 2. Check role access - Rep dashboard requires admin, manager, or rep role
-        window.AuthManager.requireRole(['admin', 'manager', 'rep']);
+        // 2. Check role access - Rep dashboard requires admin, manager, rep, or demo_viewer role
+        window.AuthManager.requireRole(['admin', 'manager', 'rep', 'demo_viewer']);
 
         // 3. Initialize navigation (depends on auth being ready)
         await window.initializeNavigation();
