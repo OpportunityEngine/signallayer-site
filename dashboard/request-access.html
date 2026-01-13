@@ -282,6 +282,131 @@
       font-weight: 500;
     }
 
+    .section-divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 28px 0 24px;
+    }
+
+    .section-divider::before,
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .section-divider span {
+      padding: 0 16px;
+      color: #fbbf24;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .password-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-wrapper .form-input {
+      padding-right: 50px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      font-size: 16px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .password-toggle:hover {
+      opacity: 1;
+    }
+
+    .password-requirements {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 8px;
+      border: 1px solid rgba(251, 191, 36, 0.1);
+    }
+
+    .password-requirements .req {
+      font-size: 12px;
+      color: #64748b;
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s;
+    }
+
+    .password-requirements .req.valid {
+      color: #10b981;
+    }
+
+    .password-requirements .req .req-icon {
+      font-size: 10px;
+    }
+
+    .password-requirements .req.valid .req-icon {
+      color: #10b981;
+    }
+
+    .password-strength {
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    .strength-bar {
+      height: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .strength-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 3px;
+      transition: all 0.3s ease;
+    }
+
+    .strength-text {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+      display: block;
+    }
+
+    .strength-weak .strength-fill {
+      width: 25%;
+      background: #ef4444;
+    }
+
+    .strength-fair .strength-fill {
+      width: 50%;
+      background: #f59e0b;
+    }
+
+    .strength-good .strength-fill {
+      width: 75%;
+      background: #10b981;
+    }
+
+    .strength-strong .strength-fill {
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
     @media (max-width: 480px) {
       .card {
         padding: 32px 24px;
@@ -379,6 +504,59 @@
             >
           </div>
 
+          <div class="section-divider">
+            <span>Create Your Account Password</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Create Password *</label>
+            <div class="password-input-wrapper">
+              <input
+                type="password"
+                id="password"
+                class="form-input"
+                placeholder="Create a secure password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+              >
+              <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                <span id="password-eye">👁️</span>
+              </button>
+            </div>
+            <div class="password-requirements" id="passwordRequirements">
+              <div class="req" id="req-length"><span class="req-icon">○</span> At least 8 characters</div>
+              <div class="req" id="req-upper"><span class="req-icon">○</span> One uppercase letter</div>
+              <div class="req" id="req-lower"><span class="req-icon">○</span> One lowercase letter</div>
+              <div class="req" id="req-number"><span class="req-icon">○</span> One number</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="confirmPassword">Confirm Password *</label>
+            <div class="password-input-wrapper">
+              <input
+                type="password"
+                id="confirmPassword"
+                class="form-input"
+                placeholder="Confirm your password"
+                required
+                autocomplete="new-password"
+              >
+              <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')">
+                <span id="confirmPassword-eye">👁️</span>
+              </button>
+            </div>
+            <p class="form-hint" id="passwordMatchHint" style="display: none;"></p>
+          </div>
+
+          <div class="password-strength" id="passwordStrength">
+            <div class="strength-bar">
+              <div class="strength-fill" id="strengthFill"></div>
+            </div>
+            <span class="strength-text" id="strengthText">Password strength</span>
+          </div>
+
           <button type="submit" class="submit-button" id="submitButton">
             Submit Request
           </button>
@@ -395,14 +573,145 @@
           Thanks for your interest in Revenue Radar. We've received your access request and will review it shortly.
         </p>
         <div class="success-box">
-          <p class="success-box-text">Check your email for a confirmation and updates on your request status.</p>
+          <p class="success-box-text">Your password has been saved. Once approved, you can log in immediately using your email and the password you just created.</p>
         </div>
+        <p class="success-message" style="font-size: 14px;">
+          Check your email for updates on your request status.
+        </p>
         <a href="/dashboard/login.html" class="back-link">← Back to Login</a>
       </div>
     </div>
   </div>
 
   <script>
+    // Password validation state
+    const passwordRequirements = {
+      length: false,
+      upper: false,
+      lower: false,
+      number: false
+    };
+
+    // Initialize password validation listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      const passwordInput = document.getElementById('password');
+      const confirmInput = document.getElementById('confirmPassword');
+
+      passwordInput.addEventListener('input', validatePassword);
+      confirmInput.addEventListener('input', checkPasswordMatch);
+    });
+
+    function togglePassword(fieldId) {
+      const input = document.getElementById(fieldId);
+      const eye = document.getElementById(fieldId + '-eye');
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        eye.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        eye.textContent = '👁️';
+      }
+    }
+
+    function validatePassword() {
+      const password = document.getElementById('password').value;
+
+      // Check requirements
+      passwordRequirements.length = password.length >= 8;
+      passwordRequirements.upper = /[A-Z]/.test(password);
+      passwordRequirements.lower = /[a-z]/.test(password);
+      passwordRequirements.number = /[0-9]/.test(password);
+
+      // Update UI
+      updateRequirement('req-length', passwordRequirements.length);
+      updateRequirement('req-upper', passwordRequirements.upper);
+      updateRequirement('req-lower', passwordRequirements.lower);
+      updateRequirement('req-number', passwordRequirements.number);
+
+      // Calculate strength
+      updatePasswordStrength(password);
+
+      // Check match if confirm has value
+      if (document.getElementById('confirmPassword').value) {
+        checkPasswordMatch();
+      }
+    }
+
+    function updateRequirement(id, valid) {
+      const el = document.getElementById(id);
+      const icon = el.querySelector('.req-icon');
+
+      if (valid) {
+        el.classList.add('valid');
+        icon.textContent = '✓';
+      } else {
+        el.classList.remove('valid');
+        icon.textContent = '○';
+      }
+    }
+
+    function updatePasswordStrength(password) {
+      const strengthDiv = document.getElementById('passwordStrength');
+      const strengthText = document.getElementById('strengthText');
+
+      // Remove all classes
+      strengthDiv.className = 'password-strength';
+
+      if (!password) {
+        strengthText.textContent = 'Password strength';
+        return;
+      }
+
+      let score = 0;
+      if (password.length >= 8) score++;
+      if (password.length >= 12) score++;
+      if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+      if (/[0-9]/.test(password)) score++;
+      if (/[^A-Za-z0-9]/.test(password)) score++;
+
+      if (score <= 1) {
+        strengthDiv.classList.add('strength-weak');
+        strengthText.textContent = 'Weak password';
+      } else if (score === 2) {
+        strengthDiv.classList.add('strength-fair');
+        strengthText.textContent = 'Fair password';
+      } else if (score === 3) {
+        strengthDiv.classList.add('strength-good');
+        strengthText.textContent = 'Good password';
+      } else {
+        strengthDiv.classList.add('strength-strong');
+        strengthText.textContent = 'Strong password';
+      }
+    }
+
+    function checkPasswordMatch() {
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirmPassword').value;
+      const hint = document.getElementById('passwordMatchHint');
+
+      if (!confirm) {
+        hint.style.display = 'none';
+        return;
+      }
+
+      hint.style.display = 'block';
+      if (password === confirm) {
+        hint.textContent = 'Passwords match';
+        hint.style.color = '#10b981';
+      } else {
+        hint.textContent = 'Passwords do not match';
+        hint.style.color = '#ef4444';
+      }
+    }
+
+    function isPasswordValid() {
+      return passwordRequirements.length &&
+             passwordRequirements.upper &&
+             passwordRequirements.lower &&
+             passwordRequirements.number;
+    }
+
     async function handleSubmit(event) {
       event.preventDefault();
 
@@ -412,12 +721,27 @@
       const requestedRole = document.getElementById('role').value;
       const reason = document.getElementById('reason').value.trim();
       const linkedinUrl = document.getElementById('linkedin').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
 
       const button = document.getElementById('submitButton');
       const errorDiv = document.getElementById('errorMessage');
 
       // Hide error
       errorDiv.style.display = 'none';
+
+      // Validate password
+      if (!isPasswordValid()) {
+        errorDiv.textContent = 'Please meet all password requirements.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorDiv.textContent = 'Passwords do not match.';
+        errorDiv.style.display = 'block';
+        return;
+      }
 
       // Disable button
       button.disabled = true;
@@ -435,7 +759,8 @@
             companyName: companyName || null,
             requestedRole,
             reason: reason || null,
-            linkedinUrl: linkedinUrl || null
+            linkedinUrl: linkedinUrl || null,
+            password  // Include the user's chosen password
           })
         });
 

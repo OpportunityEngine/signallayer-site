@@ -694,6 +694,103 @@ Questions? Reply to this email for support.
   }
 
   /**
+   * Send simple welcome email when user set their own password during signup
+   * @param {Object} options - { email, name, role, userSetPassword }
+   */
+  async sendAccessApprovedEmailSimple({ email, name, role, userSetPassword }) {
+    const loginUrl = `${APP_URL}/dashboard/login.html`;
+
+    const roleDescriptions = {
+      rep: 'Sales Rep - Access to your leads, opportunities, and performance tracking',
+      manager: 'Manager - Team oversight, analytics, and lead management',
+      viewer: 'Viewer - Read-only access to dashboards and reports',
+      admin: 'Administrator - Full access to all features and settings'
+    };
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center; }
+          .logo { font-size: 48px; margin-bottom: 10px; }
+          .header-text { color: white; font-size: 28px; font-weight: 800; margin: 0; }
+          .content { padding: 40px 30px; }
+          .welcome-icon { font-size: 64px; text-align: center; margin-bottom: 20px; }
+          .message { font-size: 16px; color: #666; line-height: 1.6; margin: 20px 0; }
+          .role-badge { display: inline-block; padding: 8px 16px; background: #dbeafe; color: #1e40af; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: capitalize; }
+          .role-desc { color: #6b7280; font-size: 14px; margin-top: 10px; }
+          .highlight { background: #d1fae5; border-radius: 10px; padding: 20px; margin: 25px 0; text-align: center; }
+          .highlight-text { color: #065f46; font-weight: 600; font-size: 15px; }
+          .button { display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #1a1a1a; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; }
+          .footer { padding: 30px; text-align: center; color: #999; font-size: 14px; background: #f9f9f9; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">$</div>
+            <h1 class="header-text">Access Approved!</h1>
+          </div>
+          <div class="content">
+            <div class="welcome-icon">🎉</div>
+            <p class="message" style="font-size: 20px; color: #333;">Welcome to Revenue Radar, ${name}!</p>
+            <p class="message">
+              Great news - your access request has been approved! You can now log in to the dashboard.
+            </p>
+
+            <p style="margin: 20px 0;">
+              <span class="role-badge">${role}</span>
+              <p class="role-desc">${roleDescriptions[role] || 'Dashboard access'}</p>
+            </p>
+
+            <div class="highlight">
+              <p class="highlight-text">
+                Use your email <strong>${email}</strong> and the password you created during signup to log in.
+              </p>
+            </div>
+
+            <center style="margin-top: 30px;">
+              <a href="${loginUrl}" class="button">Log In Now</a>
+            </center>
+          </div>
+          <div class="footer">
+            Questions? Reply to this email for support.<br>
+            Revenue Radar - Sales Intelligence Platform
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Welcome to Revenue Radar, ${name}!
+
+Great news - your access request has been approved!
+
+Your Role: ${role}
+${roleDescriptions[role] || ''}
+
+Use your email (${email}) and the password you created during signup to log in.
+
+Log in here: ${loginUrl}
+
+Questions? Reply to this email for support.
+
+- Revenue Radar Team
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: '✅ Access Approved - Welcome to Revenue Radar!',
+      html,
+      text
+    });
+  }
+
+  /**
    * Send notification when access is denied
    * @param {Object} options - { email, name, reason }
    */

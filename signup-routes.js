@@ -374,13 +374,33 @@ function checkAccessRequestLimit(email) {
  */
 router.post('/request-access', async (req, res) => {
   try {
-    const { email, name, companyName, requestedRole, reason, linkedinUrl } = req.body;
+    const { email, name, companyName, requestedRole, reason, linkedinUrl, password } = req.body;
 
     // Validation
     if (!email || !name) {
       return res.status(400).json({
         success: false,
         error: 'Email and name are required'
+      });
+    }
+
+    // Password validation
+    if (!password || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 8 characters'
+      });
+    }
+
+    // Validate password requirements
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+
+    if (!hasUpper || !hasLower || !hasNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must contain uppercase, lowercase, and number'
       });
     }
 
@@ -434,19 +454,22 @@ router.post('/request-access', async (req, res) => {
     const validRoles = ['rep', 'manager', 'viewer'];
     const role = validRoles.includes(requestedRole) ? requestedRole : 'rep';
 
+    // Hash the password for secure storage
+    const passwordHash = await bcrypt.hash(password, 10);
+
     // Generate approval/denial tokens
     const approvalToken = emailService.generateToken(32);
     const denialToken = emailService.generateToken(32);
     const tokenExpires = new Date();
     tokenExpires.setDate(tokenExpires.getDate() + 7); // 7 days
 
-    // Create the request
+    // Create the request with hashed password
     const result = getDb().prepare(`
       INSERT INTO signup_requests (
         email, name, company_name, requested_role, reason, linkedin_url,
-        status, approval_token, denial_token, token_expires_at,
+        password_hash, status, approval_token, denial_token, token_expires_at,
         ip_address, user_agent, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(
       normalizedEmail,
       name.trim(),
@@ -454,6 +477,7 @@ router.post('/request-access', async (req, res) => {
       role,
       reason ? reason.trim() : null,
       linkedinUrl ? linkedinUrl.trim() : null,
+      passwordHash,
       approvalToken,
       denialToken,
       tokenExpires.toISOString(),
@@ -534,9 +558,14 @@ router.get('/approve/:token', async (req, res) => {
       }));
     }
 
-    // Generate temporary password
-    const temporaryPassword = generateSecurePassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    // Use the password the user set during signup, or generate one if not set (legacy requests)
+    let passwordHash = request.password_hash;
+    let userSetPassword = true;
+    if (!passwordHash) {
+      const temporaryPassword = generateSecurePassword();
+      passwordHash = await bcrypt.hash(temporaryPassword, 10);
+      userSetPassword = false;
+    }
 
     // Determine final role (query param overrides request, default to requested)
     const validRoles = ['rep', 'manager', 'viewer', 'admin'];
@@ -567,13 +596,13 @@ router.get('/approve/:token', async (req, res) => {
       WHERE id = ?
     `).run(userResult.lastInsertRowid, request.id);
 
-    // Send welcome email with password
+    // Send welcome email (different message if user set their own password)
     try {
-      await emailService.sendAccessApprovedEmail({
+      await emailService.sendAccessApprovedEmailSimple({
         email: request.email,
         name: request.name,
         role: finalRole,
-        temporaryPassword
+        userSetPassword: userSetPassword
       });
     } catch (emailError) {
       console.error('[SIGNUP] Failed to send welcome email:', emailError);
@@ -587,16 +616,21 @@ router.get('/approve/:token', async (req, res) => {
       `).run(request.id, JSON.stringify({
         approved_email: request.email,
         role: finalRole,
-        method: 'email_link'
+        method: 'email_link',
+        userSetPassword: userSetPassword
       }));
     } catch (auditError) {
       console.error('[SIGNUP] Audit log error:', auditError);
     }
 
+    const approvalMessage = userSetPassword
+      ? `${request.name} (${request.email}) now has ${finalRole} access. They can log in using the password they created during signup.`
+      : `${request.name} (${request.email}) now has ${finalRole} access. A welcome email with temporary credentials has been sent.`;
+
     return res.send(renderApprovalPage({
       success: true,
       title: 'Access Approved!',
-      message: `${request.name} (${request.email}) now has ${finalRole} access. A welcome email with login credentials has been sent.`,
+      message: approvalMessage,
       userInfo: {
         name: request.name,
         email: request.email,
@@ -817,9 +851,17 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
       });
     }
 
-    // Generate temporary password
-    const temporaryPassword = generateSecurePassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    // Use the password the user set during signup, or generate one if not set (legacy requests)
+    let passwordHash = request.password_hash;
+    let temporaryPassword = null;
+    let userSetPassword = true;
+
+    if (!passwordHash) {
+      // Legacy request without password - generate temporary one
+      temporaryPassword = generateSecurePassword();
+      passwordHash = await bcrypt.hash(temporaryPassword, 10);
+      userSetPassword = false;
+    }
 
     // Determine role
     const validRoles = ['rep', 'manager', 'viewer', 'admin'];
@@ -856,12 +898,23 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
     let emailSent = false;
     let emailError = null;
     try {
-      await emailService.sendAccessApprovedEmail({
-        email: request.email,
-        name: request.name,
-        role: finalRole,
-        temporaryPassword
-      });
+      if (userSetPassword) {
+        // User set their own password - send simple welcome email
+        await emailService.sendAccessApprovedEmailSimple({
+          email: request.email,
+          name: request.name,
+          role: finalRole,
+          userSetPassword: true
+        });
+      } else {
+        // Legacy request - send email with temp password
+        await emailService.sendAccessApprovedEmail({
+          email: request.email,
+          name: request.name,
+          role: finalRole,
+          temporaryPassword
+        });
+      }
       emailSent = true;
     } catch (err) {
       console.error('[SIGNUP] Failed to send welcome email:', err);
@@ -875,21 +928,32 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
     `).run(req.user.id, id, JSON.stringify({
       approved_email: request.email,
       role: finalRole,
-      method: 'dashboard'
+      method: 'dashboard',
+      userSetPassword: userSetPassword
     }));
 
-    // Include temporary password in response so admin can share it manually if email fails
+    // Response message depends on whether user set their own password
+    let message;
+    if (userSetPassword) {
+      message = emailSent
+        ? `Access approved for ${request.name}. They can log in with the password they created during signup.`
+        : `Access approved for ${request.name}. Email delivery failed, but they can log in with the password they created.`;
+    } else {
+      message = emailSent
+        ? `Access approved for ${request.name}. Welcome email with credentials sent.`
+        : `Access approved for ${request.name}. Email delivery failed - please share credentials manually.`;
+    }
+
     res.json({
       success: true,
-      message: emailSent
-        ? `Access approved for ${request.name}. Welcome email sent.`
-        : `Access approved for ${request.name}. Email delivery failed - please share credentials manually.`,
+      message: message,
       data: {
         userId: userResult.lastInsertRowid,
         email: request.email,
         name: request.name,
         role: finalRole,
-        temporaryPassword: temporaryPassword,  // Always include for admin to share
+        userSetPassword: userSetPassword,
+        temporaryPassword: temporaryPassword,  // Only set for legacy requests
         emailSent: emailSent,
         emailError: emailError
       }

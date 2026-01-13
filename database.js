@@ -85,6 +85,7 @@ function initDatabase() {
             requested_role TEXT DEFAULT 'rep' CHECK(requested_role IN ('rep', 'manager', 'viewer')),
             reason TEXT,
             linkedin_url TEXT,
+            password_hash TEXT,
             status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'denied')),
             admin_notes TEXT,
             reviewed_by INTEGER,
@@ -109,6 +110,17 @@ function initDatabase() {
       // Table may already exist, which is fine
       if (!tableError.message.includes('already exists')) {
         console.log('⚠️  Signup requests table may already exist (safe to ignore)');
+      }
+    }
+
+    // Add password_hash column to signup_requests if it doesn't exist
+    try {
+      db.exec(`ALTER TABLE signup_requests ADD COLUMN password_hash TEXT`);
+      console.log('✅ Added password_hash column to signup_requests');
+    } catch (alterError) {
+      // Column may already exist
+      if (!alterError.message.includes('duplicate column')) {
+        console.log('⚠️  password_hash column may already exist (safe to ignore)');
       }
     }
 

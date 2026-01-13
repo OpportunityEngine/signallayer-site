@@ -1630,13 +1630,22 @@
           loadSignupRequests();
           loadUsers(); // Refresh users list
 
-          // Show credentials in a dialog so admin can share them
           const d = data.data;
-          const emailStatus = d.emailSent
-            ? '✅ Welcome email sent successfully!'
-            : '⚠️ Email delivery failed. Please share these credentials manually:';
 
-          const credentialsMsg = `
+          // Different handling based on whether user set their own password
+          if (d.userSetPassword) {
+            // User set their own password during signup - simple confirmation
+            const successMsg = d.emailSent
+              ? `✅ ${d.name} has been approved!\n\nThey can now log in using the password they created during signup.\nA welcome email has been sent.`
+              : `✅ ${d.name} has been approved!\n\nThey can now log in using the password they created during signup.\n\n⚠️ Note: Welcome email delivery failed, but they should still be able to log in.`;
+            alert(successMsg);
+          } else {
+            // Legacy request - show temp password for admin to share
+            const emailStatus = d.emailSent
+              ? '✅ Welcome email sent successfully!'
+              : '⚠️ Email delivery failed. Please share these credentials manually:';
+
+            const credentialsMsg = `
 ${emailStatus}
 
 USER CREDENTIALS:
@@ -1649,16 +1658,16 @@ Temporary Password: ${d.temporaryPassword}
 
 ${!d.emailSent ? '📋 Copy the password above and send it to the user.' : ''}
 Login URL: ${window.location.origin}/dashboard/login.html
-          `.trim();
+            `.trim();
 
-          // Use a custom modal or prompt for better display
-          if (!d.emailSent || confirm('Show user credentials? (Click OK to copy to clipboard)')) {
-            // Try to copy to clipboard
-            try {
-              await navigator.clipboard.writeText(`Email: ${d.email}\nTemporary Password: ${d.temporaryPassword}\nLogin: ${window.location.origin}/dashboard/login.html`);
-              alert(credentialsMsg + '\n\n✅ Credentials copied to clipboard!');
-            } catch (e) {
-              alert(credentialsMsg);
+            // Use a custom modal or prompt for better display
+            if (!d.emailSent || confirm('Show user credentials? (Click OK to copy to clipboard)')) {
+              try {
+                await navigator.clipboard.writeText(`Email: ${d.email}\nTemporary Password: ${d.temporaryPassword}\nLogin: ${window.location.origin}/dashboard/login.html`);
+                alert(credentialsMsg + '\n\n✅ Credentials copied to clipboard!');
+              } catch (e) {
+                alert(credentialsMsg);
+              }
             }
           }
         } else {
