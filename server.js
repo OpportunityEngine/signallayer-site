@@ -1162,13 +1162,37 @@ console.log('✅ Health monitoring routes registered at /health');
 app.use('/backups', backupRoutes);
 console.log('✅ Backup management routes registered at /backups');
 
-// Request logging middleware for better monitoring
+// Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
     if (duration > 1000) {
       console.log(`[SLOW REQUEST] ${req.method} ${req.path} - ${duration}ms - ${res.statusCode}`);
+    }
+
+    // Log API requests to database for analytics (skip static files and frequent endpoints)
+    const path = req.path;
+    if (path.startsWith('/api/') || path === '/ingest' || path.startsWith('/auth/') || path.startsWith('/signup/')) {
+      // Skip high-frequency polling endpoints to avoid bloat
+      if (path === '/health' || path === '/api/admin/recent-activity') {
+        return;
+      }
+
+      try {
+        const userId = req.user?.id || null;
+        const ip = req.ip || req.connection?.remoteAddress || '';
+        const userAgent = req.get('user-agent')?.substring(0, 255) || '';
+        const errorMsg = res.statusCode >= 400 ? (res.locals?.errorMessage || null) : null;
+
+        db.prepare(`
+          INSERT INTO api_request_log (endpoint, method, status_code, response_time_ms, user_id, ip_address, user_agent, error_message)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(path, req.method, res.statusCode, duration, userId, ip, userAgent, errorMsg);
+      } catch (logError) {
+        // Don't let logging errors break the app
+        console.error('[API-LOG] Failed to log request:', logError.message);
+      }
     }
   });
   next();

@@ -705,6 +705,10 @@
               <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>
               All Systems Operational
             </span>
+            <span id="liveUsersIndicator" class="status-pill" style="background: rgba(16, 185, 129, 0.2); color: #10b981; margin-left: 8px;">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s ease-in-out infinite;"></span>
+              <span id="liveUsersCount">0</span> Live
+            </span>
           </div>
         </div>
         <button class="refresh-btn" onclick="refreshAllData()">
@@ -863,9 +867,9 @@
           <thead>
             <tr>
               <th>Endpoint</th>
-              <th>Calls (Clicks)</th>
-              <th>Scans</th>
-              <th>Avg Response Time</th>
+              <th>Calls</th>
+              <th>Unique Users</th>
+              <th>Avg Response</th>
               <th>Error Rate</th>
               <th>Status</th>
             </tr>
@@ -1251,12 +1255,41 @@
         loadErrorMonitoring(),
         loadSystemAlerts(),
         loadRecentActivity(),
-        loadAPIEndpoints()
+        loadAPIEndpoints(),
+        loadLiveUsers()
       ]);
     }
 
     function updateTimestamp() {
       document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+    }
+
+    // Load live/active users (last 5 minutes)
+    async function loadLiveUsers() {
+      try {
+        const token = authToken || window.AuthManager.getToken();
+        const response = await fetch('/api/admin/live-users?minutes=5', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          const count = result.data.count || 0;
+          document.getElementById('liveUsersCount').textContent = count;
+
+          // Update indicator color based on activity
+          const indicator = document.getElementById('liveUsersIndicator');
+          if (count > 0) {
+            indicator.style.background = 'rgba(16, 185, 129, 0.2)';
+            indicator.style.color = '#10b981';
+          } else {
+            indicator.style.background = 'rgba(100, 116, 139, 0.15)';
+            indicator.style.color = '#94a3b8';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading live users:', error);
+      }
     }
 
     // =====================================================
@@ -1951,26 +1984,63 @@ Login URL: ${window.location.origin}/dashboard/login.html
     }
 
     async function loadAPIEndpoints() {
-      // Mock data for now - you can add real API logging later
-      const endpoints = [
-        { path: 'POST /ingest', calls: 47, scans: 47, avgTime: '1.2s', errorRate: '0.5%', status: 'healthy' },
-        { path: 'GET /api/email-monitors', calls: 124, scans: 89, avgTime: '45ms', errorRate: '0%', status: 'healthy' },
-        { path: 'POST /api/email-monitors', calls: 8, scans: 8, avgTime: '320ms', errorRate: '0%', status: 'healthy' },
-        { path: 'GET /api/detected-savings', calls: 56, scans: 42, avgTime: '120ms', errorRate: '0%', status: 'healthy' },
-        { path: 'POST /upload-mla-excel', calls: 3, scans: 3, avgTime: '2.1s', errorRate: '0%', status: 'healthy' }
-      ];
+      try {
+        const token = authToken || window.AuthManager.getToken();
+        const response = await fetch('/api/admin/endpoint-stats?hours=24', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-      const tbody = document.querySelector('#apiEndpointsTable tbody');
-      tbody.innerHTML = endpoints.map(ep => `
-        <tr>
-          <td style="font-family: 'Courier New', monospace; font-size: 12px;">${ep.path}</td>
-          <td>${ep.calls}</td>
-          <td>${ep.scans}</td>
-          <td>${ep.avgTime}</td>
-          <td>${ep.errorRate}</td>
-          <td><span class="badge success">${ep.status}</span></td>
-        </tr>
-      `).join('');
+        const result = await response.json();
+        const tbody = document.querySelector('#apiEndpointsTable tbody');
+
+        if (!result.success || !result.data.endpoints || result.data.endpoints.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; color: #64748b; padding: 24px;">
+                No API activity recorded yet. Data will appear as the system is used.
+              </td>
+            </tr>
+          `;
+
+          // Update API performance card with overall stats
+          document.getElementById('apiResponseTime').textContent = '0ms';
+          document.getElementById('apiRequests24h').textContent = '0';
+          document.getElementById('apiErrorRate').textContent = '0%';
+          return;
+        }
+
+        const endpoints = result.data.endpoints;
+        const overall = result.data.overall;
+
+        // Update API performance card
+        document.getElementById('apiResponseTime').textContent = overall.avgResponseTime > 1000
+          ? `${(overall.avgResponseTime / 1000).toFixed(1)}s`
+          : `${overall.avgResponseTime}ms`;
+        document.getElementById('apiRequests24h').textContent = overall.totalRequests.toLocaleString();
+        document.getElementById('apiErrorRate').textContent = `${overall.errorRate}%`;
+
+        tbody.innerHTML = endpoints.map(ep => `
+          <tr>
+            <td style="font-family: 'Courier New', monospace; font-size: 12px;">${ep.path}</td>
+            <td>${ep.calls}</td>
+            <td>${ep.uniqueUsers}</td>
+            <td>${ep.avgTime}</td>
+            <td>${ep.errorRate}</td>
+            <td><span class="badge ${ep.status}">${ep.status}</span></td>
+          </tr>
+        `).join('');
+
+      } catch (error) {
+        console.error('Error loading API endpoints:', error);
+        const tbody = document.querySelector('#apiEndpointsTable tbody');
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: #ef4444;">
+              Failed to load endpoint stats: ${error.message}
+            </td>
+          </tr>
+        `;
+      }
     }
 
     // =====================================================

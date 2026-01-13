@@ -16,7 +16,7 @@ const { requireAuth, requireRole } = require('./auth-middleware');
 
 // All routes require admin role
 router.use(requireAuth);
-router.use(requireRole(['admin']));
+router.use(requireRole('admin'));
 
 // =====================================================
 // USAGE ANALYTICS
@@ -531,6 +531,145 @@ router.get('/recent-activity', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to load recent activity'
+    });
+  }
+});
+
+// =====================================================
+// API ENDPOINT USAGE STATISTICS
+// =====================================================
+
+/**
+ * GET /api/admin/endpoint-stats
+ * Get real-time API endpoint usage statistics
+ */
+router.get('/endpoint-stats', (req, res) => {
+  try {
+    const hours = parseInt(req.query.hours) || 24;
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+    // Get endpoint statistics from api_request_log
+    let endpointStats = [];
+
+    try {
+      endpointStats = db.prepare(`
+        SELECT
+          method || ' ' || endpoint as path,
+          COUNT(*) as calls,
+          ROUND(AVG(response_time_ms), 0) as avg_time_ms,
+          SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as error_count,
+          COUNT(DISTINCT user_id) as unique_users,
+          MAX(created_at) as last_called
+        FROM api_request_log
+        WHERE created_at >= ?
+        GROUP BY method, endpoint
+        ORDER BY calls DESC
+        LIMIT 20
+      `).all(cutoff);
+
+      // Calculate error rate and format response
+      endpointStats = endpointStats.map(ep => ({
+        path: ep.path,
+        calls: ep.calls,
+        uniqueUsers: ep.unique_users || 0,
+        avgTime: ep.avg_time_ms > 1000 ? `${(ep.avg_time_ms / 1000).toFixed(1)}s` : `${ep.avg_time_ms}ms`,
+        errorRate: ep.calls > 0 ? `${((ep.error_count / ep.calls) * 100).toFixed(1)}%` : '0%',
+        status: ep.error_count === 0 ? 'healthy' : (ep.error_count / ep.calls > 0.1 ? 'error' : 'warning'),
+        lastCalled: ep.last_called
+      }));
+
+    } catch (e) {
+      console.log('API request log not available:', e.message);
+      // Return empty array - table may not exist yet
+    }
+
+    // Also get overall API health metrics
+    let overallStats = { totalRequests: 0, avgResponseTime: 0, errorRate: 0, uniqueUsers: 0 };
+
+    try {
+      const overall = db.prepare(`
+        SELECT
+          COUNT(*) as total_requests,
+          ROUND(AVG(response_time_ms), 0) as avg_time,
+          SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as errors,
+          COUNT(DISTINCT user_id) as unique_users
+        FROM api_request_log
+        WHERE created_at >= ?
+      `).get(cutoff);
+
+      overallStats = {
+        totalRequests: overall.total_requests || 0,
+        avgResponseTime: overall.avg_time || 0,
+        errorRate: overall.total_requests > 0 ? ((overall.errors / overall.total_requests) * 100).toFixed(1) : 0,
+        uniqueUsers: overall.unique_users || 0
+      };
+    } catch (e) {
+      // Table may not exist
+    }
+
+    res.json({
+      success: true,
+      data: {
+        endpoints: endpointStats,
+        overall: overallStats,
+        periodHours: hours
+      }
+    });
+
+  } catch (error) {
+    console.error('[ADMIN-ANALYTICS] Endpoint stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load endpoint statistics'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/live-users
+ * Get currently active users (last 5 minutes)
+ */
+router.get('/live-users', (req, res) => {
+  try {
+    const minutes = parseInt(req.query.minutes) || 5;
+    const cutoff = new Date(Date.now() - minutes * 60 * 1000).toISOString();
+
+    let liveUsers = [];
+
+    try {
+      liveUsers = db.prepare(`
+        SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.role,
+          arl.endpoint as last_endpoint,
+          arl.created_at as last_activity
+        FROM api_request_log arl
+        INNER JOIN users u ON u.id = arl.user_id
+        WHERE arl.created_at >= ?
+          AND arl.user_id IS NOT NULL
+        GROUP BY arl.user_id
+        ORDER BY arl.created_at DESC
+      `).all(cutoff);
+    } catch (e) {
+      console.log('Live users query failed:', e.message);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        count: liveUsers.length,
+        users: liveUsers,
+        periodMinutes: minutes
+      }
+    });
+
+  } catch (error) {
+    console.error('[ADMIN-ANALYTICS] Live users error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load live users'
     });
   }
 });

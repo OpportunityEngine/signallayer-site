@@ -124,6 +124,32 @@ function initDatabase() {
       }
     }
 
+    // Create API request log table for real-time analytics
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS api_request_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            endpoint TEXT NOT NULL,
+            method TEXT NOT NULL,
+            status_code INTEGER,
+            response_time_ms INTEGER,
+            user_id INTEGER,
+            ip_address TEXT,
+            user_agent TEXT,
+            error_message TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_api_log_endpoint ON api_request_log(endpoint, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_api_log_created ON api_request_log(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_api_log_status ON api_request_log(status_code);
+      `);
+      console.log('✅ API request log table created for real-time analytics');
+    } catch (tableError) {
+      if (!tableError.message.includes('already exists')) {
+        console.log('⚠️  API request log table may already exist (safe to ignore)');
+      }
+    }
+
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
     // Seed demo data if database is empty (only in development)
