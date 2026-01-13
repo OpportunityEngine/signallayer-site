@@ -14,9 +14,9 @@ const router = express.Router();
 const db = require('./database');
 const { requireAuth, requireRole } = require('./auth-middleware');
 
-// All routes require admin role
+// All routes require admin or demo_viewer role
 router.use(requireAuth);
-router.use(requireRole('admin'));
+router.use(requireRole('admin', 'demo_viewer'));
 
 // =====================================================
 // USAGE ANALYTICS
