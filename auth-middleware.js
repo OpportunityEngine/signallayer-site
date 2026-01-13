@@ -357,6 +357,147 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // =====================================================
+// DEMO USER RESTRICTIONS
+// =====================================================
+
+/**
+ * Demo role configuration
+ * - demo_business: Only sees Business/VP dashboard (for local shops)
+ * - demo_viewer: Sees Manager, Business, Rep, Analytics (read-only, safe to share)
+ */
+const DEMO_ROLES = {
+  demo_business: {
+    allowedDashboards: ['/dashboard/vp-view.html'],
+    allowedAPIs: [
+      '/api/dashboard',
+      '/api/opportunities',
+      '/api/analytics',
+      '/api/commissions',
+      '/auth/me',
+      '/auth/refresh'
+    ],
+    blockedActions: ['POST', 'PUT', 'DELETE', 'PATCH'],
+    displayName: 'Business Demo',
+    description: 'View-only access to Business Dashboard'
+  },
+  demo_viewer: {
+    allowedDashboards: [
+      '/dashboard/manager-view.html',
+      '/dashboard/vp-view.html',
+      '/dashboard/rep-view.html',
+      '/dashboard/admin-ops.html'
+    ],
+    allowedAPIs: [
+      '/api/dashboard',
+      '/api/opportunities',
+      '/api/analytics',
+      '/api/commissions',
+      '/api/admin/usage-analytics',
+      '/api/admin/system-health',
+      '/api/admin/financial-metrics',
+      '/api/admin/top-customers',
+      '/api/admin/error-monitoring',
+      '/api/admin/system-alerts',
+      '/api/admin/recent-activity',
+      '/api/admin/endpoint-stats',
+      '/api/admin/live-users',
+      '/api/users',
+      '/auth/me',
+      '/auth/refresh'
+    ],
+    blockedActions: ['POST', 'PUT', 'DELETE', 'PATCH'],
+    displayName: 'Universal Demo',
+    description: 'Read-only access to all dashboards'
+  }
+};
+
+/**
+ * Check if user is a demo account
+ */
+function isDemoUser(user) {
+  return user && (user.role === 'demo_business' || user.role === 'demo_viewer');
+}
+
+/**
+ * Get demo role configuration
+ */
+function getDemoConfig(role) {
+  return DEMO_ROLES[role] || null;
+}
+
+/**
+ * Middleware to enforce demo user restrictions
+ * - Blocks write operations (POST, PUT, DELETE, PATCH)
+ * - Only allows access to specific APIs
+ * - Returns friendly error messages
+ */
+function enforceDemoRestrictions(req, res, next) {
+  if (!req.user || !isDemoUser(req.user)) {
+    return next();
+  }
+
+  const demoConfig = getDemoConfig(req.user.role);
+  if (!demoConfig) {
+    return next();
+  }
+
+  // Block all write operations for demo users
+  if (demoConfig.blockedActions.includes(req.method)) {
+    // Allow password change attempts (they'll fail gracefully with a nice message)
+    if (req.path === '/auth/change-password') {
+      return res.status(403).json({
+        success: false,
+        error: 'Demo accounts cannot change passwords. This is a read-only demo.',
+        code: 'DEMO_RESTRICTED',
+        isDemoAccount: true
+      });
+    }
+
+    // Allow logout
+    if (req.path === '/auth/logout') {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: 'This is a demo account with read-only access. Sign up for full access!',
+      code: 'DEMO_READ_ONLY',
+      isDemoAccount: true,
+      action: req.method,
+      hint: 'Visit /dashboard/request-access.html to request full access'
+    });
+  }
+
+  // Check if API endpoint is allowed
+  const isAllowedAPI = demoConfig.allowedAPIs.some(api => req.path.startsWith(api));
+
+  if (!isAllowedAPI && req.path.startsWith('/api/')) {
+    return res.status(403).json({
+      success: false,
+      error: 'This feature is not available in demo mode.',
+      code: 'DEMO_FEATURE_RESTRICTED',
+      isDemoAccount: true
+    });
+  }
+
+  next();
+}
+
+/**
+ * Middleware to add demo banner info to responses
+ * Adds X-Demo-Mode header so frontend can show banner
+ */
+function addDemoHeaders(req, res, next) {
+  if (req.user && isDemoUser(req.user)) {
+    const demoConfig = getDemoConfig(req.user.role);
+    res.setHeader('X-Demo-Mode', 'true');
+    res.setHeader('X-Demo-Role', req.user.role);
+    res.setHeader('X-Demo-Name', demoConfig?.displayName || 'Demo');
+  }
+  next();
+}
+
+// =====================================================
 // CORS CONFIGURATION
 // =====================================================
 
@@ -471,6 +612,13 @@ module.exports = {
   requireOwnership,
   requireSameAccount,
   checkUserPermission,
+
+  // Demo restrictions
+  isDemoUser,
+  getDemoConfig,
+  enforceDemoRestrictions,
+  addDemoHeaders,
+  DEMO_ROLES,
 
   // Security
   sanitizeInput,

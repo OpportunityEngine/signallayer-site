@@ -20,37 +20,41 @@ async function initializeNavigation() {
     return;
   }
 
+  // Check if this is a demo user
+  const isDemoUser = user.role === 'demo_business' || user.role === 'demo_viewer';
+
   // Define dashboard configurations
+  // Demo roles have specific access patterns
   const dashboards = {
     analytics: {
       name: 'Analytics',
       url: '/dashboard/admin-ops.html',
       icon: '',
-      roles: ['admin']
+      roles: ['admin', 'demo_viewer']  // demo_viewer can see analytics (read-only)
     },
     admin: {
       name: 'Admin',
       url: '/dashboard/user-management.html',
       icon: '',
-      roles: ['admin']
+      roles: ['admin']  // Only true admins can manage users
     },
     manager: {
       name: 'Manager',
       url: '/dashboard/manager-view.html',
       icon: '',
-      roles: ['admin', 'manager', 'customer_admin']
+      roles: ['admin', 'manager', 'customer_admin', 'demo_viewer']
     },
     vp: {
       name: 'Business',
       url: '/dashboard/vp-view.html',
       icon: '',
-      roles: ['admin', 'customer_admin']
+      roles: ['admin', 'customer_admin', 'demo_business', 'demo_viewer']
     },
     rep: {
       name: 'Rep',
       url: '/dashboard/rep-view.html',
       icon: '',
-      roles: ['admin', 'manager', 'rep']
+      roles: ['admin', 'manager', 'rep', 'demo_viewer']
     }
   };
 
@@ -59,14 +63,29 @@ async function initializeNavigation() {
     .filter(([key, config]) => config.roles.includes(user.role))
     .map(([key, config]) => ({ key, ...config }));
 
+  // Demo banner configuration
+  const demoBannerHTML = isDemoUser ? `
+    <div class="demo-banner">
+      <div class="demo-banner-content">
+        <span class="demo-badge">DEMO MODE</span>
+        <span class="demo-text">
+          ${user.role === 'demo_business' ? 'Business Dashboard Preview' : 'Full Platform Preview'} - Read Only
+        </span>
+        <a href="/dashboard/request-access.html" class="demo-cta">Get Full Access</a>
+      </div>
+    </div>
+  ` : '';
+
   // Create navigation HTML
   const navHTML = `
-    <div class="dashboard-nav">
+    ${demoBannerHTML}
+    <div class="dashboard-nav ${isDemoUser ? 'has-demo-banner' : ''}">
       <div class="nav-container">
         <div class="nav-left">
           <div class="nav-logo">
             <div class="logo-icon">$</div>
             <span class="logo-text">Revenue Radar</span>
+            ${isDemoUser ? '<span class="demo-tag">DEMO</span>' : ''}
           </div>
           <div class="nav-tabs">
             ${availableDashboards.map(dash => `
@@ -83,12 +102,14 @@ async function initializeNavigation() {
           <div class="user-menu">
             <span class="user-name">${user.name || user.email}</span>
             <span class="user-role">${formatRole(user.role)}</span>
+            ${isDemoUser ? '' : `
             <button class="settings-btn" onclick="openSettingsModal()" title="Settings">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
               </svg>
             </button>
+            `}
             <button class="logout-btn" onclick="handleLogout()">Logout</button>
           </div>
         </div>
@@ -96,6 +117,84 @@ async function initializeNavigation() {
     </div>
 
     <style>
+      /* Demo Banner Styles */
+      .demo-banner {
+        background: linear-gradient(90deg, #7c3aed 0%, #4f46e5 50%, #7c3aed 100%);
+        background-size: 200% 100%;
+        animation: shimmer 3s ease-in-out infinite;
+        padding: 10px 20px;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 1001;
+        box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
+      }
+
+      @keyframes shimmer {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+      }
+
+      .demo-banner-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .demo-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .demo-text {
+        color: rgba(255, 255, 255, 0.95);
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .demo-cta {
+        background: #fbbf24;
+        color: #1a1a1a;
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .demo-cta:hover {
+        background: #f59e0b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .demo-tag {
+        background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-left: 8px;
+        text-transform: uppercase;
+      }
+
+      .has-demo-banner {
+        top: 42px;  /* Account for demo banner height */
+      }
+
       .dashboard-nav {
         background: linear-gradient(135deg, rgba(17, 21, 37, 0.95) 0%, rgba(15, 19, 32, 0.98) 100%);
         backdrop-filter: blur(20px);
@@ -308,7 +407,9 @@ function formatRole(role) {
     'manager': 'Sales Manager',
     'customer_admin': 'VP/Regional',
     'rep': 'Sales Rep',
-    'viewer': 'Viewer'
+    'viewer': 'Viewer',
+    'demo_business': 'Business Demo',
+    'demo_viewer': 'Demo Viewer'
   };
   return roleNames[role] || role;
 }

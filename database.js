@@ -159,6 +159,9 @@ function initDatabase() {
       // seedDemoData(); // Disabled - demo users don't have passwords
     }
 
+    // Always ensure demo users exist (safe to run on every startup)
+    seedDemoUsers();
+
     return db;
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
@@ -171,6 +174,76 @@ function getDatabase() {
     db = initDatabase();
   }
   return db;
+}
+
+// =====================================================
+// DEMO USER SEEDING
+// =====================================================
+
+/**
+ * Seed demo users for sharing with potential customers and partners
+ * These are READ-ONLY accounts safe to share publicly
+ *
+ * 1. demo_business - "Business Demo" - Shows only VP/Business dashboard
+ *    For: Mom & pop shops, local businesses evaluating the product
+ *    Email: business@demo.revenueradar.com / Password: DemoShop2026!
+ *
+ * 2. demo_viewer - "Universal Demo" - Read-only access to all dashboards
+ *    For: Family, friends, investors, anyone you want to show the full platform
+ *    Email: demo@revenueradar.com / Password: Demo2026!
+ */
+function seedDemoUsers() {
+  const bcrypt = require('bcryptjs');
+
+  const demoUsers = [
+    {
+      email: 'business@demo.revenueradar.com',
+      name: 'Business Demo',
+      password: 'DemoShop2026!',
+      role: 'demo_business',
+      accountName: 'Demo Business Account'
+    },
+    {
+      email: 'demo@revenueradar.com',
+      name: 'Demo Viewer',
+      password: 'Demo2026!',
+      role: 'demo_viewer',
+      accountName: 'Revenue Radar Demo'
+    }
+  ];
+
+  for (const user of demoUsers) {
+    try {
+      // Check if user already exists
+      const existing = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(user.email);
+
+      if (existing) {
+        // Update password hash in case it changed
+        const passwordHash = bcrypt.hashSync(user.password, 10);
+        db.prepare(`
+          UPDATE users
+          SET password_hash = ?, name = ?, role = ?, account_name = ?, is_active = 1
+          WHERE email = ?
+        `).run(passwordHash, user.name, user.role, user.accountName, user.email);
+        console.log(`✅ Demo user updated: ${user.email}`);
+      } else {
+        // Create new demo user
+        const passwordHash = bcrypt.hashSync(user.password, 10);
+        db.prepare(`
+          INSERT INTO users (email, name, password_hash, role, account_name, is_active, created_at)
+          VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        `).run(user.email, user.name, passwordHash, user.role, user.accountName);
+        console.log(`✅ Demo user created: ${user.email}`);
+      }
+    } catch (error) {
+      // Ignore errors if role constraint fails (means we need to migrate)
+      if (error.message.includes('CHECK constraint failed')) {
+        console.log(`⚠️  Demo user ${user.email} role not yet supported, will be created after schema update`);
+      } else {
+        console.error(`❌ Error seeding demo user ${user.email}:`, error.message);
+      }
+    }
+  }
 }
 
 // Seed demo data for testing

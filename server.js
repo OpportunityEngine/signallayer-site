@@ -128,7 +128,7 @@ const backupService = require('./backup-service');  // Database backups
 const healthRoutes = require('./health-routes');  // Health monitoring
 const backupRoutes = require('./backup-routes');  // Backup management
 const authRoutes = require('./auth-routes');  // Authentication routes
-const { requireAuth, requireRole } = require('./auth-middleware');  // Auth middleware
+const { requireAuth, requireRole, enforceDemoRestrictions, optionalAuth, addDemoHeaders } = require('./auth-middleware');  // Auth middleware
 const userManagementRoutes = require('./user-management-routes');  // User management
 const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitoring
 const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin analytics
@@ -1132,6 +1132,29 @@ try {
   console.error('❌ Failed to initialize Revenue Radar database:', error);
   // Don't exit - allow server to run without Revenue Radar features
 }
+
+// ===== Demo User Restriction Middleware =====
+// Apply demo restrictions to all authenticated API routes
+// This must come AFTER auth routes parse the token but BEFORE protected routes
+app.use((req, res, next) => {
+  // Skip for non-authenticated routes
+  if (!req.headers.authorization) {
+    return next();
+  }
+
+  // Use optional auth to parse user without requiring it
+  optionalAuth(req, res, () => {
+    // Apply demo restrictions if user is authenticated
+    if (req.user) {
+      enforceDemoRestrictions(req, res, () => {
+        addDemoHeaders(req, res, next);
+      });
+    } else {
+      next();
+    }
+  });
+});
+console.log('✅ Demo user restrictions middleware initialized');
 
 // ===== New Infrastructure Routes =====
 // Public Signup routes (no authentication - self-service trial signups)
