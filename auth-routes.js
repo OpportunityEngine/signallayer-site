@@ -27,7 +27,7 @@ router.use(sanitizeInput);
  * Login with email and password
  */
 router.post('/login',
-  rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 5, message: 'Too many login attempts' }),
+  rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 20, message: 'Too many login attempts. Please wait a few minutes.' }),
   async (req, res) => {
     try {
       const { email, password } = req.body;
