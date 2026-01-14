@@ -1219,8 +1219,9 @@ app.use('/stripe', stripeRoutes);
 console.log('✅ Stripe payment routes registered at /stripe');
 
 // Business Intelligence routes (opportunities, inventory, payroll, analytics)
-app.use('/api/bi', businessIntelRoutes);
-console.log('✅ Business Intelligence routes registered at /api/bi');
+// Protected by auth middleware to ensure req.user is populated
+app.use('/api/bi', requireAuth, businessIntelRoutes);
+console.log('✅ Business Intelligence routes registered at /api/bi (auth required)');
 
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {

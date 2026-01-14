@@ -746,6 +746,65 @@
           </div>
         </div>
       </div>
+
+      <!-- Inventory Intelligence Section -->
+      <div class="card">
+        <div class="sectionHeader">
+          <div class="sectionTitle">📦 Inventory Intelligence</div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn" onclick="window.location.href='inventory.html'" style="background: var(--panel2); font-size: 13px;">Full Inventory</button>
+            <button class="btn" onclick="runInventoryAnalysis()">Run Analysis</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+
+        <!-- Inventory Stats Row -->
+        <div id="inventoryStatsRow" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; background: var(--panel2); border-bottom: 1px solid var(--border);">
+          <div style="text-align: center;">
+            <div style="font-size: 28px; font-weight: 700; color: var(--text);" id="invTotalItems">-</div>
+            <div style="font-size: 12px; color: var(--muted2);">Total Items</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 28px; font-weight: 700; color: var(--gold);" id="invTotalValue">-</div>
+            <div style="font-size: 12px; color: var(--muted2);">Inventory Value</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 28px; font-weight: 700; color: #ef4444;" id="invLowStock">-</div>
+            <div style="font-size: 12px; color: var(--muted2);">Low Stock Items</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 28px; font-weight: 700; color: #10b981;" id="invHealthScore">-</div>
+            <div style="font-size: 12px; color: var(--muted2);">Health Score</div>
+          </div>
+        </div>
+
+        <!-- Recommendations Cards -->
+        <div style="padding: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: var(--text); font-size: 15px;">🎯 Smart Recommendations</h4>
+            <div style="display: flex; gap: 8px;">
+              <span class="badge" id="invCriticalBadge" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">0 Critical</span>
+              <span class="badge" id="invSavingsBadge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">$0 Savings</span>
+            </div>
+          </div>
+          <div id="inventoryRecommendations" style="display: grid; gap: 12px;">
+            <div style="text-align: center; padding: 32px; color: var(--muted2);">
+              <div style="font-size: 40px; margin-bottom: 12px;">📊</div>
+              <p style="margin: 0 0 16px 0;">Loading inventory recommendations...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stockout Alerts -->
+        <div style="padding: 0 20px 20px;">
+          <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 15px;">⚠️ Stockout Alerts</h4>
+          <div id="stockoutAlerts" style="display: grid; gap: 8px;">
+            <div style="text-align: center; padding: 24px; color: var(--muted2);">
+              <p style="margin: 0;">No stockout alerts at this time.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1280,11 +1339,212 @@
 
         // 7. Load email monitors
         loadEmailMonitors();
+
+        // 8. Load inventory intelligence
+        loadInventoryDashboard();
       } catch (error) {
         // AuthManager already handled redirect
         console.error('VP dashboard auth failed:', error);
       }
     });
+
+    // =====================================================
+    // INVENTORY INTELLIGENCE FUNCTIONS
+    // =====================================================
+
+    async function loadInventoryDashboard() {
+      try {
+        // Load dashboard data with all inventory info
+        const response = await fetch(`${API_BASE}/api/bi/inventory/dashboard`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            renderInventoryStats(result.data);
+            renderInventoryRecommendations(result.data.recommendations || []);
+            renderStockoutAlerts(result.data.stockoutAlerts || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load inventory dashboard:', error);
+        document.getElementById('inventoryRecommendations').innerHTML = `
+          <div style="text-align: center; padding: 32px; color: var(--muted2);">
+            <p>Unable to load inventory data.</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderInventoryStats(data) {
+      const stats = data.stats || {};
+
+      document.getElementById('invTotalItems').textContent = stats.total_items || 0;
+      document.getElementById('invTotalValue').textContent = '$' + (stats.total_value_dollars || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+      document.getElementById('invLowStock').textContent = stats.low_stock_count || 0;
+
+      // Health score
+      const healthScore = data.healthScore || {};
+      document.getElementById('invHealthScore').textContent = healthScore.grade || '-';
+
+      // Update badge colors based on values
+      const lowStockEl = document.getElementById('invLowStock');
+      if ((stats.low_stock_count || 0) > 0) {
+        lowStockEl.style.color = '#ef4444';
+      } else {
+        lowStockEl.style.color = '#10b981';
+      }
+    }
+
+    function renderInventoryRecommendations(recommendations) {
+      const container = document.getElementById('inventoryRecommendations');
+
+      if (!recommendations || recommendations.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 32px; color: var(--muted2);">
+            <div style="font-size: 40px; margin-bottom: 12px;">✅</div>
+            <h4 style="color: var(--text); margin-bottom: 8px;">All Caught Up!</h4>
+            <p style="margin: 0;">No recommendations at this time. Your inventory is well-managed.</p>
+          </div>
+        `;
+        document.getElementById('invCriticalBadge').textContent = '0 Critical';
+        document.getElementById('invSavingsBadge').textContent = '$0 Savings';
+        return;
+      }
+
+      // Count critical and total savings
+      const criticalCount = recommendations.filter(r => r.priority === 'critical').length;
+      const totalSavings = recommendations.reduce((sum, r) => sum + (r.potential_savings_cents || 0), 0);
+
+      document.getElementById('invCriticalBadge').textContent = `${criticalCount} Critical`;
+      document.getElementById('invSavingsBadge').textContent = '$' + (totalSavings / 100).toLocaleString();
+
+      // Show top 5 recommendations
+      const topRecs = recommendations.slice(0, 5);
+
+      container.innerHTML = topRecs.map(rec => {
+        const bgColor = rec.priority === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
+                       rec.priority === 'high' ? 'rgba(251, 191, 36, 0.1)' : 'var(--panel2)';
+        const borderColor = rec.priority === 'critical' ? 'rgba(239, 68, 68, 0.3)' :
+                           rec.priority === 'high' ? 'rgba(251, 191, 36, 0.3)' : 'var(--border)';
+        const typeIcon = getRecommendationIcon(rec.recommendation_type);
+
+        return `
+          <div style="background: ${bgColor}; padding: 16px; border-radius: 10px; border: 1px solid ${borderColor}; display: flex; align-items: flex-start; gap: 12px;">
+            <div style="font-size: 24px; flex-shrink: 0;">${typeIcon}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">${escapeHtml(rec.title)}</div>
+              <div style="font-size: 13px; color: var(--muted2); line-height: 1.5;">${escapeHtml(rec.description)}</div>
+              ${rec.potential_savings_cents > 0 ? `
+                <div style="margin-top: 8px; font-size: 12px; color: #22c55e; font-weight: 600;">
+                  💰 Potential savings: $${(rec.potential_savings_cents / 100).toLocaleString()}
+                </div>
+              ` : ''}
+            </div>
+            ${rec.suggested_quantity > 0 ? `
+              <button onclick="actionInventoryRec(${rec.id}, ${rec.suggested_quantity})" class="btn" style="font-size: 12px; padding: 8px 12px; white-space: nowrap;">
+                Order ${rec.suggested_quantity}
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderStockoutAlerts(alerts) {
+      const container = document.getElementById('stockoutAlerts');
+
+      if (!alerts || alerts.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--muted2);">
+            <p style="margin: 0;">✅ No stockout alerts at this time.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = alerts.slice(0, 5).map(alert => {
+        const urgencyColor = alert.severity === 'critical' ? '#ef4444' :
+                            alert.severity === 'warning' ? '#f59e0b' : '#64748b';
+
+        return `
+          <div style="background: var(--panel2); padding: 12px 16px; border-radius: 8px; border-left: 3px solid ${urgencyColor}; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+            <div>
+              <div style="font-weight: 600; color: var(--text);">${escapeHtml(alert.product_name || alert.sku)}</div>
+              <div style="font-size: 12px; color: var(--muted2);">
+                ${alert.days_until_stockout} days until stockout • Current: ${alert.current_quantity} ${alert.unit || 'units'}
+              </div>
+            </div>
+            <span style="background: ${urgencyColor}20; color: ${urgencyColor}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+              ${alert.severity}
+            </span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getRecommendationIcon(type) {
+      const icons = {
+        'urgent_reorder': '🚨',
+        'discount_opportunity': '💰',
+        'supply_forecast': '📊',
+        'holiday_prep': '🎄',
+        'bulk_opportunity': '📦',
+        'overstock_warning': '📈',
+        'usage_spike': '⚡',
+        'usage_drop': '📉'
+      };
+      return icons[type] || '📋';
+    }
+
+    async function runInventoryAnalysis() {
+      try {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = 'Analyzing...';
+
+        const response = await fetch(`${API_BASE}/api/bi/inventory/analyze`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        if (response.ok) {
+          await loadInventoryDashboard();
+          alert('Analysis complete! Inventory recommendations updated.');
+        }
+      } catch (error) {
+        console.error('Failed to run analysis:', error);
+        alert('Failed to run analysis. Please try again.');
+      } finally {
+        const btn = event.target;
+        btn.disabled = false;
+        btn.textContent = 'Run Analysis';
+      }
+    }
+
+    async function actionInventoryRec(id, quantity) {
+      try {
+        const response = await fetch(`${API_BASE}/api/bi/inventory/recommendations/${id}/action`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({ quantity_ordered: quantity })
+        });
+
+        if (response.ok) {
+          loadInventoryDashboard();
+        }
+      } catch (error) {
+        console.error('Failed to action recommendation:', error);
+      }
+    }
 
     // =====================================================
     // EMAIL MONITOR FUNCTIONS
