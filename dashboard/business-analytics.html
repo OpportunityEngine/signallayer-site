@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Analytics - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0a0f1a 0%, #0d1321 50%, #0a0f1a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 24px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #fbbf24;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+    }
+
+    /* Achievement Banner - Candy Crush Style */
+    .achievement-banner {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 20px;
+      padding: 24px 32px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .achievement-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.1), transparent);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .achievement-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .achievement-icon {
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border-radius: 16px;
+      font-size: 32px;
+      box-shadow: 0 8px 20px rgba(251, 191, 36, 0.3);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .achievement-text h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .achievement-text p {
+      color: #fbbf24;
+      font-size: 14px;
+    }
+
+    .streak-counter {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .streak-flame {
+      font-size: 40px;
+      animation: flicker 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes flicker {
+      0% { transform: scale(1) rotate(-3deg); }
+      100% { transform: scale(1.1) rotate(3deg); }
+    }
+
+    .streak-number {
+      font-size: 48px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .streak-label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Score Card Section */
+    .score-section {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .total-score-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 2px solid rgba(251, 191, 36, 0.3);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .score-label {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fbbf24;
+      margin-bottom: 12px;
+    }
+
+    .total-savings {
+      font-size: 56px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .savings-period {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .level-progress {
+      margin-top: 20px;
+    }
+
+    .level-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .level-bar {
+      height: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .level-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #22c55e);
+      border-radius: 6px;
+      transition: width 1s ease-out;
+      position: relative;
+    }
+
+    .level-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: levelShine 2s infinite;
+    }
+
+    @keyframes levelShine {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .next-level {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #fbbf24;
+    }
+
+    /* Weekly Comparison Cards */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .comparison-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .comparison-card.improved {
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .comparison-card.warning {
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .comparison-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .comparison-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .comparison-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .comparison-badge.up {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .comparison-badge.down {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .comparison-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .comparison-vs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .vs-arrow {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .vs-arrow.up {
+      color: #22c55e;
+    }
+
+    .vs-arrow.down {
+      color: #ef4444;
+    }
+
+    /* Data Entry Section */
+    .data-entry-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .entry-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 20px;
+      padding: 28px;
+    }
+
+    .entry-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .entry-icon {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(251, 191, 36, 0.1);
+      border-radius: 12px;
+      color: #fbbf24;
+    }
+
+    .entry-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .entry-subtitle {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .currency-input {
+      position: relative;
+    }
+
+    .currency-input::before {
+      content: '$';
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .currency-input input {
+      padding-left: 32px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border: none;
+      color: #0a0f1a;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3);
+    }
+
+    /* Charts Section */
+    .charts-section {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .chart-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-dot.payroll {
+      background: #fbbf24;
+    }
+
+    .legend-dot.expenses {
+      background: #3b82f6;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+    }
+
+    /* Expense Breakdown - Donut Style */
+    .breakdown-list {
+      margin-top: 16px;
+    }
+
+    .breakdown-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breakdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .breakdown-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+    }
+
+    .breakdown-label {
+      flex: 1;
+      font-size: 14px;
+      color: #e2e8f0;
+    }
+
+    .breakdown-value {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .breakdown-pct {
+      font-size: 12px;
+      color: #64748b;
+      min-width: 45px;
+      text-align: right;
+    }
+
+    /* Progress Bars with Animation */
+    .progress-bar-animated {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill-animated {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Prime Cost Gauge */
+    .prime-cost-card {
+      text-align: center;
+      padding: 32px;
+    }
+
+    .gauge-container {
+      position: relative;
+      width: 200px;
+      height: 120px;
+      margin: 0 auto 20px;
+    }
+
+    .gauge-value {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 36px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .gauge-label {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .gauge-target {
+      font-size: 13px;
+      color: #22c55e;
+    }
+
+    .gauge-target.warning {
+      color: #fbbf24;
+    }
+
+    .gauge-target.danger {
+      color: #ef4444;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .score-section {
+        grid-template-columns: 1fr;
+      }
+
+      .data-entry-section {
+        grid-template-columns: 1fr;
+      }
+
+      .charts-section {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .achievement-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="container">
+    <a href="/dashboard/" class="back-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Back to Dashboard
+    </a>
+
+    <div class="page-header">
+      <div>
+        <h1>Business Analytics</h1>
+        <p class="subtitle">Track payroll, expenses, and financial performance</p>
+      </div>
+    </div>
+
+    <!-- Achievement Banner (Gamification) -->
+    <div class="achievement-banner">
+      <div class="achievement-content">
+        <div class="achievement-icon">🏆</div>
+        <div class="achievement-text">
+          <h3>Savings Champion!</h3>
+          <p>You've saved more than 85% of businesses this month</p>
+        </div>
+      </div>
+      <div class="streak-counter">
+        <div>
+          <span class="streak-flame">🔥</span>
+        </div>
+        <div>
+          <div class="streak-number" id="streakCount">7</div>
+          <div class="streak-label">Week Streak</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score Section -->
+    <div class="score-section">
+      <div class="total-score-card">
+        <div class="score-label">Total Savings This Year</div>
+        <div class="total-savings" id="totalSavings">$12,847</div>
+        <div class="savings-period">Jan 2026 - Present</div>
+
+        <div class="level-progress">
+          <div class="level-label">
+            <span>Level 4: Cost Crusher</span>
+            <span>Level 5: 65%</span>
+          </div>
+          <div class="level-bar">
+            <div class="level-fill" style="width: 65%;"></div>
+          </div>
+          <div class="next-level">Save $2,153 more to reach Level 5: Budget Boss</div>
+        </div>
+      </div>
+
+      <div class="comparison-grid">
+        <div class="comparison-card improved">
+          <div class="comparison-header">
+            <span class="comparison-title">This Week Payroll</span>
+            <span class="comparison-badge down">-8.2%</span>
+          </div>
+          <div class="comparison-value" id="weekPayroll">$4,250</div>
+          <div class="comparison-vs">
+            vs last week
+            <span class="vs-arrow down">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+              </svg>
+              $380 less
+            </span>
+          </div>
+        </div>
+
+        <div class="comparison-card warning">
+          <div class="comparison-header">
+            <span class="comparison-title">This Week Expenses</span>
+            <span class="comparison-badge up">+12.5%</span>
+          </div>
+          <div class="comparison-value" id="weekExpenses">$6,890</div>
+          <div class="comparison-vs">
+            vs last week
+            <span class="vs-arrow up">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+              </svg>
+              $765 more
+            </span>
+          </div>
+        </div>
+
+        <div class="comparison-card">
+          <div class="comparison-header">
+            <span class="comparison-title">Labor Cost %</span>
+            <span class="comparison-badge down">-2.1%</span>
+          </div>
+          <div class="comparison-value" id="laborPct">28.5%</div>
+          <div class="comparison-vs">
+            Target: 30% ✓
+            <span class="vs-arrow down" style="color: #22c55e;">
+              Under budget
+            </span>
+          </div>
+        </div>
+
+        <div class="comparison-card">
+          <div class="comparison-header">
+            <span class="comparison-title">Prime Cost</span>
+            <span class="comparison-badge">On Target</span>
+          </div>
+          <div class="comparison-value" id="primeCost">62.3%</div>
+          <div class="comparison-vs">
+            Target: 65%
+            <span class="vs-arrow down" style="color: #22c55e;">
+              2.7% under
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Entry Section -->
+    <div class="data-entry-section">
+      <div class="entry-card">
+        <div class="entry-header">
+          <div class="entry-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="entry-title">Enter Payroll</div>
+            <div class="entry-subtitle">Weekly / Bi-weekly payroll entry</div>
+          </div>
+        </div>
+
+        <form id="payrollForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Period Start</label>
+              <input type="date" id="payrollStart" required>
+            </div>
+            <div class="form-group">
+              <label>Period End</label>
+              <input type="date" id="payrollEnd" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Gross Payroll</label>
+            <div class="currency-input">
+              <input type="number" id="grossPayroll" placeholder="0.00" step="0.01" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Employer Taxes</label>
+              <div class="currency-input">
+                <input type="number" id="employerTaxes" placeholder="0.00" step="0.01">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Benefits</label>
+              <div class="currency-input">
+                <input type="number" id="benefits" placeholder="0.00" step="0.01">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Employee Count</label>
+              <input type="number" id="employeeCount" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Total Hours</label>
+              <input type="number" id="totalHours" placeholder="0" step="0.5">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            Save Payroll Entry
+          </button>
+        </form>
+      </div>
+
+      <div class="entry-card">
+        <div class="entry-header">
+          <div class="entry-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="entry-title">Enter Expense</div>
+            <div class="entry-subtitle">Track operational expenses</div>
+          </div>
+        </div>
+
+        <form id="expenseForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Period Start</label>
+              <input type="date" id="expenseStart" required>
+            </div>
+            <div class="form-group">
+              <label>Period End</label>
+              <input type="date" id="expenseEnd" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Category</label>
+            <select id="expenseCategory" required>
+              <option value="">Select category...</option>
+              <option value="cogs">Cost of Goods Sold (COGS)</option>
+              <option value="inventory">Inventory / Supplies</option>
+              <option value="utilities">Utilities</option>
+              <option value="rent">Rent / Lease</option>
+              <option value="insurance">Insurance</option>
+              <option value="marketing">Marketing / Advertising</option>
+              <option value="equipment">Equipment / Maintenance</option>
+              <option value="professional">Professional Services</option>
+              <option value="technology">Technology / Software</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Amount</label>
+            <div class="currency-input">
+              <input type="number" id="expenseAmount" placeholder="0.00" step="0.01" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Vendor / Description</label>
+            <input type="text" id="expenseVendor" placeholder="e.g., Electric bill, Sysco delivery">
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            Save Expense Entry
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Payroll vs Expenses (12 Weeks)</div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-dot payroll"></span>
+              Payroll
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot expenses"></span>
+              Expenses
+            </div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Expense Breakdown</div>
+        </div>
+        <div class="chart-container" style="height: 200px;">
+          <canvas id="breakdownChart"></canvas>
+        </div>
+        <div class="breakdown-list">
+          <div class="breakdown-item">
+            <div class="breakdown-color" style="background: #fbbf24;"></div>
+            <span class="breakdown-label">COGS</span>
+            <span class="breakdown-value">$3,450</span>
+            <span class="breakdown-pct">50.1%</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="breakdown-color" style="background: #3b82f6;"></div>
+            <span class="breakdown-label">Utilities</span>
+            <span class="breakdown-value">$890</span>
+            <span class="breakdown-pct">12.9%</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="breakdown-color" style="background: #22c55e;"></div>
+            <span class="breakdown-label">Rent</span>
+            <span class="breakdown-value">$1,500</span>
+            <span class="breakdown-pct">21.8%</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="breakdown-color" style="background: #8b5cf6;"></div>
+            <span class="breakdown-label">Other</span>
+            <span class="breakdown-value">$1,050</span>
+            <span class="breakdown-pct">15.2%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+
+    if (!authToken) {
+      window.location.href = '/dashboard/login.html';
+    }
+
+    // Set default dates
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    document.getElementById('payrollStart').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('payrollEnd').value = today.toISOString().split('T')[0];
+    document.getElementById('expenseStart').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('expenseEnd').value = today.toISOString().split('T')[0];
+
+    // Payroll form submission
+    document.getElementById('payrollForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        period_type: 'weekly',
+        period_start: document.getElementById('payrollStart').value,
+        period_end: document.getElementById('payrollEnd').value,
+        gross_payroll_cents: Math.round(parseFloat(document.getElementById('grossPayroll').value || 0) * 100),
+        employer_taxes_cents: Math.round(parseFloat(document.getElementById('employerTaxes').value || 0) * 100),
+        benefits_cents: Math.round(parseFloat(document.getElementById('benefits').value || 0) * 100),
+        employee_count: parseInt(document.getElementById('employeeCount').value) || null,
+        hours_worked: parseFloat(document.getElementById('totalHours').value) || null
+      };
+
+      try {
+        const response = await fetch('/api/bi/payroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast('Payroll entry saved!', 'success');
+          document.getElementById('payrollForm').reset();
+          loadAnalytics();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Failed to save payroll', 'error');
+      }
+    });
+
+    // Expense form submission
+    document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        period_type: 'weekly',
+        period_start: document.getElementById('expenseStart').value,
+        period_end: document.getElementById('expenseEnd').value,
+        category: document.getElementById('expenseCategory').value,
+        amount_cents: Math.round(parseFloat(document.getElementById('expenseAmount').value || 0) * 100),
+        vendor_name: document.getElementById('expenseVendor').value,
+        description: document.getElementById('expenseVendor').value
+      };
+
+      try {
+        const response = await fetch('/api/bi/expenses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast('Expense entry saved!', 'success');
+          document.getElementById('expenseForm').reset();
+          loadAnalytics();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Failed to save expense', 'error');
+      }
+    });
+
+    // Initialize Charts
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    const trendChart = new Chart(trendCtx, {
+      type: 'line',
+      data: {
+        labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'],
+        datasets: [
+          {
+            label: 'Payroll',
+            data: [4200, 4350, 4100, 4450, 4300, 4200, 4500, 4380, 4250, 4100, 4630, 4250],
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251, 191, 36, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          },
+          {
+            label: 'Expenses',
+            data: [5800, 6100, 5900, 6300, 6000, 5700, 6200, 6500, 6100, 5800, 6125, 6890],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            titleColor: '#ffffff',
+            bodyColor: '#94a3b8',
+            borderColor: 'rgba(251, 191, 36, 0.3)',
+            borderWidth: 1,
+            padding: 12,
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': $' + context.raw.toLocaleString();
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)'
+            },
+            ticks: {
+              color: '#64748b'
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)'
+            },
+            ticks: {
+              color: '#64748b',
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const breakdownCtx = document.getElementById('breakdownChart').getContext('2d');
+    const breakdownChart = new Chart(breakdownCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['COGS', 'Utilities', 'Rent', 'Other'],
+        datasets: [{
+          data: [50.1, 12.9, 21.8, 15.2],
+          backgroundColor: ['#fbbf24', '#3b82f6', '#22c55e', '#8b5cf6'],
+          borderWidth: 0,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            callbacks: {
+              label: function(context) {
+                return context.label + ': ' + context.raw + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Load analytics data
+    async function loadAnalytics() {
+      try {
+        const response = await fetch('/api/bi/analytics/financial?period=90', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          updateDashboard(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to load analytics:', error);
+      }
+    }
+
+    function updateDashboard(data) {
+      // Update payroll and expense values if we have real data
+      if (data.payroll && data.payroll.total_labor) {
+        document.getElementById('weekPayroll').textContent = '$' + (data.payroll.total_labor / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+
+      if (data.expenses && data.expenses.total) {
+        document.getElementById('weekExpenses').textContent = '$' + (data.expenses.total / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+
+      // Update charts with real weekly trend data
+      if (data.weeklyTrends && data.weeklyTrends.length > 0) {
+        const labels = data.weeklyTrends.map(w => 'W' + w.week.split('-')[1]);
+        const payrollData = data.weeklyTrends.map(w => (w.labor_cents || 0) / 100);
+        const expenseData = data.weeklyTrends.map(w => (w.expenses_cents || 0) / 100);
+
+        trendChart.data.labels = labels;
+        trendChart.data.datasets[0].data = payrollData;
+        trendChart.data.datasets[1].data = expenseData;
+        trendChart.update();
+      }
+    }
+
+    // Simple toast notification
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 16px 24px;
+        background: ${type === 'success' ? 'rgba(34, 197, 94, 0.9)' : type === 'error' ? 'rgba(239, 68, 68, 0.9)' : 'rgba(59, 130, 246, 0.9)'};
+        color: white;
+        border-radius: 12px;
+        font-weight: 500;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Initialize
+    loadAnalytics();
+  </script>
+</body>
+</html>

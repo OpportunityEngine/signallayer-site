@@ -1359,4 +1359,359 @@ router.put('/admin/errors/:id/resolve', (req, res) => {
   }
 });
 
+// ===== MLA BULK IMPORT ENDPOINT =====
+
+// POST /api/mla/bulk-import - Bulk import MLA contracts from Excel/CSV
+router.post('/mla/bulk-import', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { contracts, duplicateHandling = 'skip' } = req.body;
+
+    if (!contracts || !Array.isArray(contracts) || contracts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No contracts provided for import'
+      });
+    }
+
+    const database = db.getDatabase();
+    const results = {
+      imported: 0,
+      updated: 0,
+      skipped: 0,
+      errors: []
+    };
+
+    // Prepare statements
+    const findExisting = database.prepare(`
+      SELECT id FROM mlas WHERE account_name = ? AND vendor_name = ?
+    `);
+
+    const insertMLA = database.prepare(`
+      INSERT INTO mlas (account_name, vendor_name, contract_value_cents, start_date, end_date, status, renewal_likelihood_pct, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+
+    const updateMLA = database.prepare(`
+      UPDATE mlas SET
+        contract_value_cents = ?,
+        start_date = ?,
+        end_date = ?,
+        status = ?,
+        renewal_likelihood_pct = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+
+    // Process each contract
+    for (let i = 0; i < contracts.length; i++) {
+      const contract = contracts[i];
+
+      try {
+        // Validate required fields
+        if (!contract.account_name) {
+          results.errors.push(`Row ${i + 1}: Missing account name`);
+          results.skipped++;
+          continue;
+        }
+
+        // Check for existing record
+        const existing = findExisting.get(contract.account_name, contract.vendor_name || null);
+
+        if (existing) {
+          if (duplicateHandling === 'skip') {
+            results.skipped++;
+            continue;
+          } else if (duplicateHandling === 'update') {
+            updateMLA.run(
+              contract.contract_value_cents || null,
+              contract.start_date || null,
+              contract.end_date || null,
+              contract.status || 'active',
+              contract.renewal_likelihood_pct || null,
+              existing.id
+            );
+            results.updated++;
+          } else {
+            // Create new anyway
+            insertMLA.run(
+              contract.account_name,
+              contract.vendor_name || null,
+              contract.contract_value_cents || null,
+              contract.start_date || null,
+              contract.end_date || null,
+              contract.status || 'active',
+              contract.renewal_likelihood_pct || null
+            );
+            results.imported++;
+          }
+        } else {
+          // Insert new record
+          insertMLA.run(
+            contract.account_name,
+            contract.vendor_name || null,
+            contract.contract_value_cents || null,
+            contract.start_date || null,
+            contract.end_date || null,
+            contract.status || 'active',
+            contract.renewal_likelihood_pct || null
+          );
+          results.imported++;
+        }
+      } catch (rowError) {
+        results.errors.push(`Row ${i + 1}: ${rowError.message}`);
+        results.skipped++;
+      }
+    }
+
+    // Log the import activity
+    db.logTelemetryEvent(user.id, 'mla_bulk_import', {
+      total_contracts: contracts.length,
+      imported: results.imported,
+      updated: results.updated,
+      skipped: results.skipped
+    });
+
+    res.json({
+      success: true,
+      data: results
+    });
+  } catch (error) {
+    console.error('[MLA] Bulk import error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===== NOTIFICATION ENDPOINTS =====
+
+// GET /api/notifications - Get user notifications
+router.get('/notifications', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const database = db.getDatabase();
+
+    // Create notifications table if it doesn't exist
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT DEFAULT 'info',
+        title TEXT NOT NULL,
+        message TEXT,
+        value TEXT,
+        data TEXT,
+        read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read, created_at DESC);
+    `);
+
+    const notifications = database.prepare(`
+      SELECT id, type, title, message, value, data, read, created_at as timestamp
+      FROM notifications
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(user.id, limit, offset);
+
+    // Parse JSON data field
+    const parsed = notifications.map(n => ({
+      ...n,
+      read: Boolean(n.read),
+      data: n.data ? JSON.parse(n.data) : null
+    }));
+
+    res.json({
+      success: true,
+      data: parsed
+    });
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Fetch error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/notifications/unread - Get unread notifications
+router.get('/notifications/unread', (req, res) => {
+  try {
+    const user = getUserContext(req);
+
+    const database = db.getDatabase();
+
+    // Ensure table exists
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT DEFAULT 'info',
+        title TEXT NOT NULL,
+        message TEXT,
+        value TEXT,
+        data TEXT,
+        read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    const notifications = database.prepare(`
+      SELECT id, type, title, message, value, data, read, created_at as timestamp
+      FROM notifications
+      WHERE user_id = ? AND read = 0
+      ORDER BY created_at DESC
+      LIMIT 20
+    `).all(user.id);
+
+    const parsed = notifications.map(n => ({
+      ...n,
+      read: false,
+      data: n.data ? JSON.parse(n.data) : null
+    }));
+
+    res.json({
+      success: true,
+      notifications: parsed,
+      unreadCount: parsed.length
+    });
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Unread fetch error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/notifications/:id/read - Mark notification as read
+router.post('/notifications/:id/read', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { id } = req.params;
+
+    const database = db.getDatabase();
+    database.prepare(`
+      UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?
+    `).run(id, user.id);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Mark read error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/notifications/read-all - Mark all notifications as read
+router.post('/notifications/read-all', (req, res) => {
+  try {
+    const user = getUserContext(req);
+
+    const database = db.getDatabase();
+    database.prepare(`
+      UPDATE notifications SET read = 1 WHERE user_id = ?
+    `).run(user.id);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Mark all read error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/notifications - Create a notification (internal use)
+router.post('/notifications', (req, res) => {
+  try {
+    const { userId, type, title, message, value, data } = req.body;
+
+    if (!userId || !title) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId and title are required'
+      });
+    }
+
+    const database = db.getDatabase();
+
+    // Ensure table exists
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT DEFAULT 'info',
+        title TEXT NOT NULL,
+        message TEXT,
+        value TEXT,
+        data TEXT,
+        read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    const result = database.prepare(`
+      INSERT INTO notifications (user_id, type, title, message, value, data)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      userId,
+      type || 'info',
+      title,
+      message || null,
+      value || null,
+      data ? JSON.stringify(data) : null
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id: result.lastInsertRowid
+      }
+    });
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Create error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Helper function to create notifications (for use by other modules)
+function createNotification(userId, { type, title, message, value, data }) {
+  try {
+    const database = db.getDatabase();
+
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT DEFAULT 'info',
+        title TEXT NOT NULL,
+        message TEXT,
+        value TEXT,
+        data TEXT,
+        read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    const result = database.prepare(`
+      INSERT INTO notifications (user_id, type, title, message, value, data)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      userId,
+      type || 'info',
+      title,
+      message || null,
+      value || null,
+      data ? JSON.stringify(data) : null
+    );
+
+    return result.lastInsertRowid;
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Create helper error:', error);
+    return null;
+  }
+}
+
+// Export for use by other modules
+router.createNotification = createNotification;
+
 module.exports = router;

@@ -868,6 +868,272 @@ Thank you for your understanding.
       text
     });
   }
+
+  /**
+   * Send stockout alert email
+   * @param {string} email - User email
+   * @param {string} name - User name
+   * @param {Array} alerts - Array of stockout alert objects
+   */
+  async sendStockoutAlertEmail(email, name, alerts) {
+    if (!alerts || alerts.length === 0) return { success: true, message: 'No alerts to send' };
+
+    const criticalAlerts = alerts.filter(a => a.severity === 'critical');
+    const highAlerts = alerts.filter(a => a.severity === 'high');
+    const mediumAlerts = alerts.filter(a => a.severity === 'medium');
+
+    const alertRows = alerts.slice(0, 20).map(alert => `
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 12px; font-weight: 600;">${alert.productName || alert.sku}</td>
+        <td style="padding: 12px; text-align: center;">${alert.currentQuantity}</td>
+        <td style="padding: 12px; text-align: center; color: ${alert.severity === 'critical' ? '#dc2626' : alert.severity === 'high' ? '#ea580c' : '#ca8a04'}; font-weight: bold;">
+          ${alert.daysUntilStockout} days
+        </td>
+        <td style="padding: 12px; text-align: center;">${alert.projectedStockoutDate}</td>
+        <td style="padding: 12px; text-align: center;">${alert.suggestedOrderQty}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+          .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 30px; text-align: center; }
+          .logo { font-size: 40px; margin-bottom: 8px; }
+          .header-text { color: #fbbf24; font-size: 24px; font-weight: 800; margin: 0; }
+          .content { padding: 30px; }
+          .alert-summary { display: flex; gap: 15px; margin-bottom: 25px; }
+          .alert-badge { padding: 12px 20px; border-radius: 8px; text-align: center; flex: 1; }
+          .critical { background: #fef2f2; border: 2px solid #dc2626; color: #dc2626; }
+          .high { background: #fff7ed; border: 2px solid #ea580c; color: #ea580c; }
+          .medium { background: #fefce8; border: 2px solid #ca8a04; color: #ca8a04; }
+          .badge-count { font-size: 28px; font-weight: bold; }
+          .badge-label { font-size: 12px; text-transform: uppercase; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #f9fafb; padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; }
+          .footer { background: #f9fafb; padding: 20px 30px; text-align: center; color: #6b7280; font-size: 13px; }
+          .cta-button { display: inline-block; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #1a1a1a; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">⚠️</div>
+            <h1 class="header-text">Inventory Alert</h1>
+          </div>
+          <div class="content">
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">Hi ${name || 'there'},</p>
+            <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+              The following items are running low and will need to be reordered soon to avoid stockouts:
+            </p>
+
+            <div class="alert-summary">
+              <div class="alert-badge critical">
+                <div class="badge-count">${criticalAlerts.length}</div>
+                <div class="badge-label">Critical</div>
+              </div>
+              <div class="alert-badge high">
+                <div class="badge-count">${highAlerts.length}</div>
+                <div class="badge-label">High</div>
+              </div>
+              <div class="alert-badge medium">
+                <div class="badge-count">${mediumAlerts.length}</div>
+                <div class="badge-label">Medium</div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th style="text-align: center;">Current Qty</th>
+                  <th style="text-align: center;">Days Left</th>
+                  <th style="text-align: center;">Stockout Date</th>
+                  <th style="text-align: center;">Suggested Order</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${alertRows}
+              </tbody>
+            </table>
+
+            <div style="text-align: center;">
+              <a href="${APP_URL}/dashboard/inventory.html" class="cta-button">View Full Inventory</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>This is an automated alert from Revenue Radar's Inventory Intelligence system.</p>
+            <p style="margin-top: 10px;">© ${new Date().getFullYear()} Revenue Radar</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+INVENTORY STOCKOUT ALERT
+
+Hi ${name || 'there'},
+
+The following items are running low:
+
+Critical: ${criticalAlerts.length} items
+High: ${highAlerts.length} items
+Medium: ${mediumAlerts.length} items
+
+${alerts.slice(0, 10).map(a => `- ${a.productName || a.sku}: ${a.daysUntilStockout} days left (Current: ${a.currentQuantity}, Order: ${a.suggestedOrderQty})`).join('\n')}
+
+View your full inventory at: ${APP_URL}/dashboard/inventory.html
+
+- Revenue Radar
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `⚠️ Inventory Alert: ${criticalAlerts.length} Critical, ${highAlerts.length} High Priority Items`,
+      html,
+      text
+    });
+  }
+
+  /**
+   * Send daily inventory digest email
+   * @param {string} email - User email
+   * @param {string} name - User name
+   * @param {Object} digest - Digest data with health score, alerts, recommendations
+   */
+  async sendInventoryDigestEmail(email, name, digest) {
+    const { healthScore, stockoutAlerts, recommendations, stats } = digest;
+
+    const gradeColor = healthScore.grade === 'A' ? '#22c55e' :
+                       healthScore.grade === 'B' ? '#84cc16' :
+                       healthScore.grade === 'C' ? '#eab308' :
+                       healthScore.grade === 'D' ? '#f97316' : '#ef4444';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+          .container { max-width: 650px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 30px; text-align: center; }
+          .header-text { color: #fbbf24; font-size: 22px; font-weight: 800; margin: 0; }
+          .content { padding: 30px; }
+          .health-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 25px; }
+          .health-score { font-size: 64px; font-weight: bold; color: ${gradeColor}; }
+          .health-label { font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+          .stats-row { display: flex; gap: 15px; margin-bottom: 25px; }
+          .stat-card { flex: 1; background: #f9fafb; border-radius: 8px; padding: 15px; text-align: center; }
+          .stat-value { font-size: 24px; font-weight: bold; color: #1f2937; }
+          .stat-label { font-size: 12px; color: #6b7280; }
+          .section-title { font-size: 16px; font-weight: 600; color: #374151; margin: 20px 0 12px; border-bottom: 2px solid #fbbf24; padding-bottom: 8px; }
+          .alert-item { padding: 10px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; }
+          .footer { background: #f9fafb; padding: 20px 30px; text-align: center; color: #6b7280; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 class="header-text">📊 Daily Inventory Digest</h1>
+          </div>
+          <div class="content">
+            <p style="color: #666; margin-bottom: 20px;">Good morning ${name || 'there'}! Here's your inventory snapshot:</p>
+
+            <div class="health-card">
+              <div class="health-label">Inventory Health Score</div>
+              <div class="health-score">${healthScore.grade}</div>
+              <div style="font-size: 18px; color: #64748b;">${healthScore.score}/100</div>
+            </div>
+
+            <div class="stats-row">
+              <div class="stat-card">
+                <div class="stat-value">${stats?.total_items || 0}</div>
+                <div class="stat-label">Total Items</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" style="color: #dc2626;">${stats?.critical_count || 0}</div>
+                <div class="stat-label">Critical</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" style="color: #f97316;">${stats?.low_count || 0}</div>
+                <div class="stat-label">Low Stock</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">$${((stats?.total_value_dollars || 0)).toLocaleString()}</div>
+                <div class="stat-label">Total Value</div>
+              </div>
+            </div>
+
+            ${stockoutAlerts && stockoutAlerts.length > 0 ? `
+              <div class="section-title">⚠️ Items Needing Attention (${stockoutAlerts.length})</div>
+              ${stockoutAlerts.slice(0, 5).map(a => `
+                <div class="alert-item">
+                  <span>${a.productName || a.sku}</span>
+                  <span style="color: ${a.severity === 'critical' ? '#dc2626' : '#f97316'}; font-weight: 600;">
+                    ${a.daysUntilStockout} days
+                  </span>
+                </div>
+              `).join('')}
+            ` : '<p style="color: #22c55e;">✓ All items are well-stocked!</p>'}
+
+            ${recommendations && recommendations.length > 0 ? `
+              <div class="section-title">💡 Top Recommendations</div>
+              ${recommendations.slice(0, 3).map(r => `
+                <div class="alert-item">
+                  <span>${r.title || r.product_name}</span>
+                  <span style="color: #22c55e;">Save $${((r.potential_savings_cents || 0) / 100).toFixed(0)}</span>
+                </div>
+              `).join('')}
+            ` : ''}
+
+            <div style="text-align: center; margin-top: 25px;">
+              <a href="${APP_URL}/dashboard/inventory.html" style="display: inline-block; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #1a1a1a; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Open Dashboard
+              </a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>Daily digest from Revenue Radar • ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+DAILY INVENTORY DIGEST - ${new Date().toLocaleDateString()}
+
+Hi ${name || 'there'},
+
+INVENTORY HEALTH: ${healthScore.grade} (${healthScore.score}/100)
+
+Stats:
+- Total Items: ${stats?.total_items || 0}
+- Critical: ${stats?.critical_count || 0}
+- Low Stock: ${stats?.low_count || 0}
+- Total Value: $${(stats?.total_value_dollars || 0).toLocaleString()}
+
+${stockoutAlerts && stockoutAlerts.length > 0 ? `
+Items Needing Attention:
+${stockoutAlerts.slice(0, 5).map(a => `- ${a.productName || a.sku}: ${a.daysUntilStockout} days left`).join('\n')}
+` : 'All items are well-stocked!'}
+
+View dashboard: ${APP_URL}/dashboard/inventory.html
+
+- Revenue Radar
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `📊 Inventory Health: ${healthScore.grade} | ${stockoutAlerts?.length || 0} items need attention`,
+      html,
+      text
+    });
+  }
 }
 
 // Export singleton instance

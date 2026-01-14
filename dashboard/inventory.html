@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Management - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0a0f1a 0%, #0d1321 50%, #0a0f1a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 24px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #fbbf24;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border: none;
+      color: #0a0f1a;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .stat-card.critical {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(15, 19, 32, 0.9) 100%);
+    }
+
+    .stat-card.warning {
+      border-color: rgba(251, 191, 36, 0.4);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .stat-value.critical {
+      color: #ef4444;
+    }
+
+    .stat-value.warning {
+      color: #fbbf24;
+    }
+
+    .stat-value.success {
+      color: #22c55e;
+    }
+
+    .stat-change {
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-change.positive {
+      color: #22c55e;
+    }
+
+    .stat-change.negative {
+      color: #ef4444;
+    }
+
+    /* Recommendations Section */
+    .recommendations-section {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title svg {
+      color: #fbbf24;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge.critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .badge.savings {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    /* Recommendation Cards */
+    .recommendation-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      transition: all 0.2s;
+    }
+
+    .recommendation-card:hover {
+      background: rgba(251, 191, 36, 0.05);
+      border-color: rgba(251, 191, 36, 0.2);
+    }
+
+    .recommendation-card.critical {
+      border-left: 4px solid #ef4444;
+    }
+
+    .recommendation-card.opportunity {
+      border-left: 4px solid #22c55e;
+    }
+
+    .recommendation-card.info {
+      border-left: 4px solid #3b82f6;
+    }
+
+    .recommendation-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      flex-shrink: 0;
+    }
+
+    .recommendation-icon.critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .recommendation-icon.opportunity {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .recommendation-icon.info {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    .recommendation-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .recommendation-title {
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .recommendation-description {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+
+    .recommendation-meta {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .meta-item.savings {
+      color: #22c55e;
+      font-weight: 600;
+    }
+
+    .recommendation-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .action-btn.accept {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .action-btn.accept:hover {
+      background: rgba(34, 197, 94, 0.25);
+    }
+
+    .action-btn.dismiss {
+      background: rgba(255, 255, 255, 0.05);
+      color: #94a3b8;
+    }
+
+    .action-btn.dismiss:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Inventory Table */
+    .inventory-section {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 20px;
+      padding: 28px;
+    }
+
+    .table-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px 12px 44px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 14px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 14px center;
+      background-size: 20px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #fbbf24;
+    }
+
+    .filter-select {
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .inventory-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .inventory-table th {
+      padding: 14px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      color: #94a3b8;
+      font-weight: 500;
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .inventory-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+    }
+
+    .inventory-table tr:hover td {
+      background: rgba(251, 191, 36, 0.03);
+    }
+
+    .stock-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .stock-status.critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .stock-status.low {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+    }
+
+    .stock-status.normal {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .stock-status.overstocked {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    .stock-bar {
+      width: 80px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .stock-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .stock-bar-fill.critical {
+      background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    .stock-bar-fill.low {
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    }
+
+    .stock-bar-fill.normal {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    .stock-bar-fill.overstocked {
+      background: linear-gradient(90deg, #3b82f6, #2563eb);
+    }
+
+    /* Upload Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.98) 0%, rgba(15, 19, 32, 0.98) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: 10px;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    .drop-zone {
+      border: 2px dashed rgba(251, 191, 36, 0.3);
+      border-radius: 16px;
+      padding: 48px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .drop-zone.dragover {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+    }
+
+    .drop-zone-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      color: #fbbf24;
+    }
+
+    .drop-zone h3 {
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone p {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .page-header {
+        flex-direction: column;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .recommendation-card {
+        flex-direction: column;
+      }
+
+      .recommendation-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="container">
+    <a href="/dashboard/" class="back-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Back to Dashboard
+    </a>
+
+    <div class="page-header">
+      <div>
+        <h1>Inventory Management</h1>
+        <p class="subtitle">Smart inventory tracking with AI-powered reorder recommendations</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="downloadTemplate()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Download Template
+        </button>
+        <button class="btn btn-primary" onclick="openUploadModal()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Upload Inventory
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Items</div>
+        <div class="stat-value" id="totalItems">0</div>
+        <div class="stat-change positive">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+          </svg>
+          <span id="itemsChange">+12 this week</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Total Value</div>
+        <div class="stat-value success" id="totalValue">$0</div>
+        <div class="stat-change">On hand inventory</div>
+      </div>
+
+      <div class="stat-card critical" id="criticalCard">
+        <div class="stat-label">Critical / Low Stock</div>
+        <div class="stat-value critical" id="lowStockCount">0</div>
+        <div class="stat-change">Items need attention</div>
+      </div>
+
+      <div class="stat-card warning">
+        <div class="stat-label">Potential Savings</div>
+        <div class="stat-value warning" id="potentialSavings">$0</div>
+        <div class="stat-change">From recommendations</div>
+      </div>
+    </div>
+
+    <!-- Smart Recommendations -->
+    <div class="recommendations-section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+          Smart Recommendations
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <span class="badge critical" id="criticalBadge">0 Critical</span>
+          <span class="badge savings" id="savingsBadge">$0 Savings</span>
+        </div>
+      </div>
+
+      <div id="recommendationsList">
+        <!-- Populated by JS -->
+        <div class="recommendation-card critical">
+          <div class="recommendation-icon critical">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div class="recommendation-content">
+            <div class="recommendation-title">Reorder Now: Grey Goose Vodka 1.75L</div>
+            <div class="recommendation-description">Only 3 days supply remaining based on your usage. Lead time is 5 days - order immediately to avoid stockout.</div>
+            <div class="recommendation-meta">
+              <div class="meta-item">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                3 days supply
+              </div>
+              <div class="meta-item">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+                Recommend: 12 units
+              </div>
+            </div>
+          </div>
+          <div class="recommendation-actions">
+            <button class="action-btn accept">Order Now</button>
+            <button class="action-btn dismiss">Dismiss</button>
+          </div>
+        </div>
+
+        <div class="recommendation-card opportunity">
+          <div class="recommendation-icon opportunity">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="recommendation-content">
+            <div class="recommendation-title">Bulk Discount Available: Tito's Vodka 1L</div>
+            <div class="recommendation-description">Your vendor is offering 30% off on cases of 12+. You have enough supply until June 2026, but buying now saves $847 and extends coverage to December 2026.</div>
+            <div class="recommendation-meta">
+              <div class="meta-item savings">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Save $847
+              </div>
+              <div class="meta-item">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Coverage: Dec 2026
+              </div>
+            </div>
+          </div>
+          <div class="recommendation-actions">
+            <button class="action-btn accept">Buy Now</button>
+            <button class="action-btn dismiss">Skip</button>
+          </div>
+        </div>
+
+        <div class="recommendation-card info">
+          <div class="recommendation-icon info">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="recommendation-content">
+            <div class="recommendation-title">Hold Order: Patron Silver 750ml</div>
+            <div class="recommendation-description">Based on your usage trends, you have enough inventory until March 2027. No need to reorder this week.</div>
+            <div class="recommendation-meta">
+              <div class="meta-item">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                68 days supply
+              </div>
+              <div class="meta-item">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Well stocked
+              </div>
+            </div>
+          </div>
+          <div class="recommendation-actions">
+            <button class="action-btn dismiss">Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="inventory-section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+          Inventory Items
+        </div>
+      </div>
+
+      <div class="table-controls">
+        <input type="text" class="search-input" placeholder="Search items..." id="searchInput">
+        <select class="filter-select" id="categoryFilter">
+          <option value="">All Categories</option>
+          <option value="spirits">Spirits</option>
+          <option value="wine">Wine</option>
+          <option value="beer">Beer</option>
+          <option value="food">Food</option>
+          <option value="supplies">Supplies</option>
+        </select>
+        <select class="filter-select" id="statusFilter">
+          <option value="">All Status</option>
+          <option value="critical">Critical</option>
+          <option value="low">Low Stock</option>
+          <option value="normal">Normal</option>
+          <option value="overstocked">Overstocked</option>
+        </select>
+      </div>
+
+      <div class="table-container">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>SKU</th>
+              <th>Category</th>
+              <th>Quantity</th>
+              <th>Stock Level</th>
+              <th>Status</th>
+              <th>Unit Cost</th>
+              <th>Total Value</th>
+              <th>Vendor</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTableBody">
+            <!-- Demo data - will be replaced by API -->
+            <tr>
+              <td>Grey Goose Vodka 1.75L</td>
+              <td>GG-175</td>
+              <td>Spirits</td>
+              <td>4</td>
+              <td>
+                <div class="stock-bar">
+                  <div class="stock-bar-fill critical" style="width: 15%;"></div>
+                </div>
+              </td>
+              <td><span class="stock-status critical">Critical</span></td>
+              <td>$42.99</td>
+              <td>$171.96</td>
+              <td>Premium Spirits Co</td>
+            </tr>
+            <tr>
+              <td>Tito's Vodka 1L</td>
+              <td>TIT-1L</td>
+              <td>Spirits</td>
+              <td>18</td>
+              <td>
+                <div class="stock-bar">
+                  <div class="stock-bar-fill normal" style="width: 60%;"></div>
+                </div>
+              </td>
+              <td><span class="stock-status normal">Normal</span></td>
+              <td>$24.99</td>
+              <td>$449.82</td>
+              <td>National Distributors</td>
+            </tr>
+            <tr>
+              <td>Patron Silver 750ml</td>
+              <td>PAT-750</td>
+              <td>Spirits</td>
+              <td>32</td>
+              <td>
+                <div class="stock-bar">
+                  <div class="stock-bar-fill overstocked" style="width: 95%;"></div>
+                </div>
+              </td>
+              <td><span class="stock-status overstocked">Overstocked</span></td>
+              <td>$38.99</td>
+              <td>$1,247.68</td>
+              <td>Premium Spirits Co</td>
+            </tr>
+            <tr>
+              <td>Jack Daniel's 1.75L</td>
+              <td>JD-175</td>
+              <td>Spirits</td>
+              <td>8</td>
+              <td>
+                <div class="stock-bar">
+                  <div class="stock-bar-fill low" style="width: 30%;"></div>
+                </div>
+              </td>
+              <td><span class="stock-status low">Low</span></td>
+              <td>$38.99</td>
+              <td>$311.92</td>
+              <td>National Distributors</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Upload Inventory</h2>
+        <button class="modal-close" onclick="closeUploadModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drop-zone" id="modalDropZone">
+        <svg class="drop-zone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <h3>Drop your inventory file here</h3>
+        <p>Excel (.xlsx) or CSV with columns: SKU, Product Name, Quantity, Category, Unit Cost</p>
+        <input type="file" id="modalFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%;" onclick="processUpload()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Upload & Process
+      </button>
+    </div>
+  </div>
+
+  <!-- SheetJS for Excel parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+
+    // Check auth
+    if (!authToken) {
+      window.location.href = '/dashboard/login.html';
+    }
+
+    // Modal functions
+    function openUploadModal() {
+      document.getElementById('uploadModal').classList.add('show');
+    }
+
+    function closeUploadModal() {
+      document.getElementById('uploadModal').classList.remove('show');
+    }
+
+    // Template download
+    function downloadTemplate() {
+      const template = [
+        {
+          'SKU': 'EXAMPLE-001',
+          'Product Name': 'Grey Goose Vodka 1.75L',
+          'Category': 'spirits',
+          'Quantity': 12,
+          'Unit of Measure': 'each',
+          'Min Quantity': 6,
+          'Par Level': 18,
+          'Unit Cost': 42.99,
+          'Vendor Name': 'Premium Spirits Co'
+        }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(template);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+      XLSX.writeFile(wb, 'inventory_template.xlsx');
+    }
+
+    // Drag and drop
+    const dropZone = document.getElementById('modalDropZone');
+    const fileInput = document.getElementById('modalFileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+      }
+    });
+
+    // Process upload
+    async function processUpload() {
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select a file first');
+        return;
+      }
+
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Transform to API format
+        const items = jsonData.map(row => ({
+          sku: row['SKU'] || row['sku'],
+          product_name: row['Product Name'] || row['product_name'],
+          category: row['Category'] || row['category'],
+          quantity: parseFloat(row['Quantity'] || row['quantity'] || 0),
+          unit_of_measure: row['Unit of Measure'] || row['unit_of_measure'] || 'each',
+          min_quantity: parseFloat(row['Min Quantity'] || row['min_quantity'] || 0),
+          par_level: parseFloat(row['Par Level'] || row['par_level'] || 0),
+          unit_cost_cents: Math.round((parseFloat(row['Unit Cost'] || row['unit_cost'] || 0)) * 100),
+          vendor_name: row['Vendor Name'] || row['vendor_name']
+        }));
+
+        // Send to API
+        const response = await fetch('/api/bi/inventory/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ items, file_name: file.name })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`Uploaded successfully! ${result.data.inserted} inserted, ${result.data.updated} updated.`);
+          closeUploadModal();
+          loadInventory();
+        } else {
+          alert('Upload failed: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed: ' + error.message);
+      }
+    }
+
+    // Load inventory data
+    async function loadInventory() {
+      try {
+        const response = await fetch('/api/bi/inventory', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          renderInventoryTable(data.data);
+          updateStats(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to load inventory:', error);
+      }
+    }
+
+    function renderInventoryTable(items) {
+      const tbody = document.getElementById('inventoryTableBody');
+      if (items.length === 0) return;
+
+      tbody.innerHTML = items.map(item => {
+        const stockPct = item.par_level ? Math.min(100, (item.current_quantity / item.par_level) * 100) : 50;
+        const status = item.stock_status || 'normal';
+
+        return `
+          <tr>
+            <td>${escapeHtml(item.product_name || item.sku)}</td>
+            <td>${escapeHtml(item.sku)}</td>
+            <td>${escapeHtml(item.category || '-')}</td>
+            <td>${item.current_quantity}</td>
+            <td>
+              <div class="stock-bar">
+                <div class="stock-bar-fill ${status}" style="width: ${stockPct}%;"></div>
+              </div>
+            </td>
+            <td><span class="stock-status ${status}">${status}</span></td>
+            <td>${item.last_unit_cost_cents ? '$' + (item.last_unit_cost_cents / 100).toFixed(2) : '-'}</td>
+            <td>${item.total_value_dollars ? '$' + item.total_value_dollars.toFixed(2) : '-'}</td>
+            <td>${escapeHtml(item.vendor_name || '-')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateStats(items) {
+      document.getElementById('totalItems').textContent = items.length;
+
+      const totalValue = items.reduce((sum, item) => sum + (item.total_value_dollars || 0), 0);
+      document.getElementById('totalValue').textContent = '$' + totalValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+      const lowStock = items.filter(i => i.stock_status === 'critical' || i.stock_status === 'low').length;
+      document.getElementById('lowStockCount').textContent = lowStock;
+
+      if (lowStock > 0) {
+        document.getElementById('criticalCard').classList.add('critical');
+      } else {
+        document.getElementById('criticalCard').classList.remove('critical');
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Search and filter
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('categoryFilter').addEventListener('change', filterTable);
+    document.getElementById('statusFilter').addEventListener('change', filterTable);
+
+    function filterTable() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const category = document.getElementById('categoryFilter').value;
+      const status = document.getElementById('statusFilter').value;
+
+      const rows = document.querySelectorAll('#inventoryTableBody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const rowCategory = row.cells[2]?.textContent.toLowerCase();
+        const rowStatus = row.querySelector('.stock-status')?.textContent.toLowerCase();
+
+        const matchSearch = !search || text.includes(search);
+        const matchCategory = !category || rowCategory?.includes(category);
+        const matchStatus = !status || rowStatus === status;
+
+        row.style.display = matchSearch && matchCategory && matchStatus ? '' : 'none';
+      });
+    }
+
+    // Load recommendations
+    async function loadRecommendations() {
+      try {
+        // First, trigger recommendation generation
+        await fetch('/api/bi/inventory/recommendations/generate', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        // Then fetch recommendations
+        const response = await fetch('/api/bi/inventory/recommendations', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          renderRecommendations(data.data);
+          updateRecommendationStats(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to load recommendations:', error);
+      }
+    }
+
+    function renderRecommendations(recommendations) {
+      const container = document.getElementById('recommendationsList');
+
+      if (recommendations.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: #64748b;">
+            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 16px; color: #22c55e;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 style="color: #ffffff; margin-bottom: 8px;">All Caught Up!</h3>
+            <p>No recommendations at this time. Your inventory is well-managed.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = recommendations.map(rec => {
+        const { cardClass, iconClass, icon, typeLabel } = getRecommendationStyle(rec);
+        const reasoning = rec.reasoning || {};
+
+        return `
+          <div class="recommendation-card ${cardClass}">
+            <div class="recommendation-icon ${iconClass}">
+              ${icon}
+            </div>
+            <div class="recommendation-content">
+              <div class="recommendation-title">${escapeHtml(rec.title)}</div>
+              <div class="recommendation-description">${escapeHtml(rec.description)}</div>
+              <div class="recommendation-meta">
+                ${rec.potential_savings_cents > 0 ? `
+                  <div class="meta-item savings">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Save $${(rec.potential_savings_cents / 100).toLocaleString()}
+                  </div>
+                ` : ''}
+                ${rec.suggested_quantity > 0 ? `
+                  <div class="meta-item">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    Order: ${rec.suggested_quantity} units
+                  </div>
+                ` : ''}
+                ${reasoning.days_remaining ? `
+                  <div class="meta-item">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    ${reasoning.days_remaining} days supply
+                  </div>
+                ` : ''}
+                ${reasoning.discount_percentage ? `
+                  <div class="meta-item savings">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                    ${reasoning.discount_percentage}% OFF
+                  </div>
+                ` : ''}
+                ${reasoning.holiday ? `
+                  <div class="meta-item">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    ${reasoning.holiday} in ${reasoning.days_until} days
+                  </div>
+                ` : ''}
+                <div class="meta-item">
+                  <span style="background: rgba(100, 116, 139, 0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px;">${typeLabel}</span>
+                </div>
+              </div>
+            </div>
+            <div class="recommendation-actions">
+              ${rec.suggested_quantity > 0 ? `
+                <button class="action-btn accept" onclick="actionRecommendation(${rec.id}, ${rec.suggested_quantity})">
+                  ${rec.recommendation_type === 'urgent_reorder' ? 'Order Now' : 'Buy Now'}
+                </button>
+              ` : ''}
+              <button class="action-btn dismiss" onclick="dismissRecommendation(${rec.id})">
+                ${rec.suggested_quantity > 0 ? 'Skip' : 'Got it'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getRecommendationStyle(rec) {
+      const styles = {
+        'urgent_reorder': {
+          cardClass: 'critical',
+          iconClass: 'critical',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>`,
+          typeLabel: 'URGENT'
+        },
+        'discount_opportunity': {
+          cardClass: 'opportunity',
+          iconClass: 'opportunity',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>`,
+          typeLabel: 'SAVINGS'
+        },
+        'supply_forecast': {
+          cardClass: 'info',
+          iconClass: 'info',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>`,
+          typeLabel: 'FORECAST'
+        },
+        'holiday_prep': {
+          cardClass: 'opportunity',
+          iconClass: 'opportunity',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>`,
+          typeLabel: 'HOLIDAY'
+        },
+        'bulk_opportunity': {
+          cardClass: 'opportunity',
+          iconClass: 'opportunity',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>`,
+          typeLabel: 'BULK'
+        },
+        'overstock_warning': {
+          cardClass: 'info',
+          iconClass: 'info',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>`,
+          typeLabel: 'OVERSTOCK'
+        },
+        'usage_spike': {
+          cardClass: 'critical',
+          iconClass: 'critical',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>`,
+          typeLabel: 'SPIKE'
+        },
+        'usage_drop': {
+          cardClass: 'info',
+          iconClass: 'info',
+          icon: `<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+          </svg>`,
+          typeLabel: 'TREND'
+        }
+      };
+
+      return styles[rec.recommendation_type] || styles['supply_forecast'];
+    }
+
+    function updateRecommendationStats(recommendations) {
+      const critical = recommendations.filter(r => r.priority === 'critical').length;
+      const totalSavings = recommendations.reduce((sum, r) => sum + (r.potential_savings_cents || 0), 0);
+
+      document.getElementById('criticalBadge').textContent = `${critical} Critical`;
+      document.getElementById('savingsBadge').textContent = `$${(totalSavings / 100).toLocaleString()} Savings`;
+      document.getElementById('potentialSavings').textContent = `$${(totalSavings / 100).toLocaleString()}`;
+    }
+
+    async function actionRecommendation(id, quantity) {
+      try {
+        const response = await fetch(`/api/bi/inventory/recommendations/${id}/action`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ quantity_ordered: quantity })
+        });
+
+        if (response.ok) {
+          showToast('Recommendation actioned! Savings recorded.', 'success');
+          loadRecommendations();
+        }
+      } catch (error) {
+        console.error('Failed to action recommendation:', error);
+      }
+    }
+
+    async function dismissRecommendation(id) {
+      try {
+        const response = await fetch(`/api/bi/inventory/recommendations/${id}/dismiss`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          loadRecommendations();
+        }
+      } catch (error) {
+        console.error('Failed to dismiss recommendation:', error);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 16px 24px;
+        background: ${type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(59, 130, 246, 0.9)'};
+        color: white;
+        border-radius: 12px;
+        font-weight: 500;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Add keyframe animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Initialize
+    loadInventory();
+    loadRecommendations();
+  </script>
+</body>
+</html>

@@ -168,6 +168,65 @@ function initDatabase() {
       }
     }
 
+    // Load Business Intelligence schema (inventory, opportunities, payroll, etc.)
+    try {
+      const businessIntelSchemaPath = path.join(__dirname, 'database-schema-business-intel.sql');
+      if (fs.existsSync(businessIntelSchemaPath)) {
+        const businessIntelSchema = fs.readFileSync(businessIntelSchemaPath, 'utf8');
+        db.exec(businessIntelSchema);
+        console.log('✅ Business Intelligence schema loaded');
+      }
+    } catch (biSchemaError) {
+      if (!biSchemaError.message.includes('already exists')) {
+        console.log('⚠️  Business Intelligence schema may already exist (safe to ignore)');
+      }
+    }
+
+    // Run BI schema migrations (for existing databases with old schema)
+    try {
+      // Check if reorder_recommendations needs migration (add title, description columns if missing)
+      const recTableInfo = db.prepare("PRAGMA table_info(reorder_recommendations)").all();
+      const hasTitle = recTableInfo.some(col => col.name === 'title');
+      const hasDescription = recTableInfo.some(col => col.name === 'description');
+
+      if (!hasTitle && recTableInfo.length > 0) {
+        db.exec(`ALTER TABLE reorder_recommendations ADD COLUMN title TEXT`);
+        console.log('✅ Migration: Added title column to reorder_recommendations');
+      }
+      if (!hasDescription && recTableInfo.length > 0) {
+        db.exec(`ALTER TABLE reorder_recommendations ADD COLUMN description TEXT`);
+        console.log('✅ Migration: Added description column to reorder_recommendations');
+      }
+
+      // Check if inventory_usage needs migration (convert from period-based to daily)
+      const usageTableInfo = db.prepare("PRAGMA table_info(inventory_usage)").all();
+      const hasDateColumn = usageTableInfo.some(col => col.name === 'date');
+
+      if (!hasDateColumn && usageTableInfo.length > 0) {
+        // Old schema exists, need to recreate table
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS inventory_usage_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inventory_item_id INTEGER NOT NULL,
+            date DATE NOT NULL,
+            daily_usage REAL NOT NULL DEFAULT 0,
+            quantity_received REAL DEFAULT 0,
+            quantity_wasted REAL DEFAULT 0,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id),
+            UNIQUE(inventory_item_id, date)
+          );
+          DROP TABLE IF EXISTS inventory_usage;
+          ALTER TABLE inventory_usage_new RENAME TO inventory_usage;
+          CREATE INDEX IF NOT EXISTS idx_usage_item_date ON inventory_usage(inventory_item_id, date DESC);
+        `);
+        console.log('✅ Migration: Upgraded inventory_usage table schema');
+      }
+    } catch (migrationError) {
+      console.log('⚠️  BI schema migration check (safe to ignore):', migrationError.message);
+    }
+
     // Create subscriptions table for Stripe integration
     try {
       db.exec(`

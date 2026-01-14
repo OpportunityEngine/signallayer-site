@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Invoice - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0a0f1a 0%, #0d1321 50%, #0a0f1a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 32px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #fbbf24;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 32px;
+    }
+
+    /* Main Upload Card */
+    .upload-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 20px;
+      padding: 40px;
+      margin-bottom: 24px;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(251, 191, 36, 0.3);
+      border-radius: 16px;
+      padding: 60px 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .drop-zone:hover {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .drop-zone.dragover {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+      transform: scale(1.02);
+    }
+
+    .drop-zone.uploading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .drop-zone-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone-subtitle {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone-formats {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .format-badge {
+      padding: 6px 14px;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fbbf24;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    /* Upload Options */
+    .upload-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .upload-options {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .upload-option {
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(100, 116, 139, 0.2);
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-option:hover {
+      border-color: rgba(251, 191, 36, 0.3);
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .upload-option-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .upload-option-title {
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .upload-option-desc {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* Form Section */
+    .form-section {
+      margin-top: 32px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(251, 191, 36, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(251, 191, 36, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: #64748b;
+    }
+
+    /* Progress */
+    .upload-progress {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .upload-progress.active {
+      display: block;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .progress-filename {
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .progress-percent {
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    .progress-bar-container {
+      height: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 50px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      border-radius: 50px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    /* Results Card */
+    .results-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 16px;
+      padding: 32px;
+      display: none;
+    }
+
+    .results-card.active {
+      display: block;
+      animation: slideIn 0.4s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .results-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+
+    .results-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    .results-subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .results-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .results-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .result-stat {
+      text-align: center;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+    }
+
+    .result-stat-value {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: #fbbf24;
+    }
+
+    .result-stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* Opportunities List */
+    .opportunities-list {
+      margin-top: 24px;
+    }
+
+    .opportunities-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: rgba(251, 191, 36, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    .opportunity-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      border-left: 3px solid #fbbf24;
+    }
+
+    .opportunity-info {
+      flex: 1;
+    }
+
+    .opportunity-type {
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .opportunity-desc {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .opportunity-value {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(251, 191, 36, 0.1);
+    }
+
+    /* Recent Uploads */
+    .recent-uploads {
+      margin-top: 32px;
+    }
+
+    .section-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 16px;
+    }
+
+    .upload-history-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(251, 191, 36, 0.1);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+
+    .upload-history-item:hover {
+      border-color: rgba(251, 191, 36, 0.2);
+    }
+
+    .upload-history-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(251, 191, 36, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .upload-history-info {
+      flex: 1;
+    }
+
+    .upload-history-name {
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .upload-history-meta {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .upload-history-status {
+      padding: 6px 12px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .upload-history-status.completed {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .upload-history-status.processing {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    .alert.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="container">
+    <a href="manager-view.html" class="back-link">← Back to Dashboard</a>
+
+    <h1>Upload Invoice</h1>
+    <p class="subtitle">Upload an invoice to discover hidden revenue opportunities</p>
+
+    <div id="alertContainer"></div>
+
+    <div class="upload-card">
+      <!-- Drop Zone -->
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-title">Drag & Drop Your Invoice</div>
+        <div class="drop-zone-subtitle">or click to browse files</div>
+        <div class="drop-zone-formats">
+          <span class="format-badge">PDF</span>
+          <span class="format-badge">Excel (.xlsx)</span>
+          <span class="format-badge">CSV</span>
+        </div>
+      </div>
+      <input type="file" id="fileInput" class="file-input" accept=".pdf,.xlsx,.xls,.csv" multiple onchange="handleFiles(event)">
+
+      <!-- Upload Options -->
+      <div class="upload-options">
+        <div class="upload-option" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-option-icon">💻</div>
+          <div class="upload-option-title">From Computer</div>
+          <div class="upload-option-desc">Browse local files</div>
+        </div>
+        <div class="upload-option" onclick="showAlert('info', 'Email import coming soon!')">
+          <div class="upload-option-icon">📧</div>
+          <div class="upload-option-title">From Email</div>
+          <div class="upload-option-desc">Connect inbox</div>
+        </div>
+        <div class="upload-option" onclick="showAlert('info', 'Cloud import coming soon!')">
+          <div class="upload-option-icon">☁️</div>
+          <div class="upload-option-title">From Cloud</div>
+          <div class="upload-option-desc">Google Drive, Dropbox</div>
+        </div>
+      </div>
+
+      <!-- Optional Form Fields -->
+      <div class="form-section">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Account Name (Optional)</label>
+            <input type="text" class="form-input" id="accountName" placeholder="Customer or company name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vendor Name (Optional)</label>
+            <input type="text" class="form-input" id="vendorName" placeholder="Supplier name">
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="upload-progress" id="uploadProgress">
+        <div class="progress-header">
+          <span class="progress-filename" id="progressFilename">invoice.pdf</span>
+          <span class="progress-percent" id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-status" id="progressStatus">Uploading...</div>
+      </div>
+    </div>
+
+    <!-- Results Card -->
+    <div class="results-card" id="resultsCard">
+      <div class="results-header">
+        <div class="results-icon">✓</div>
+        <div>
+          <div class="results-title">Invoice Processed Successfully!</div>
+          <div class="results-subtitle" id="resultsFilename">invoice.pdf</div>
+        </div>
+      </div>
+
+      <div class="results-stats">
+        <div class="result-stat">
+          <div class="result-stat-value" id="statItems">0</div>
+          <div class="result-stat-label">Line Items</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="statTotal">$0</div>
+          <div class="result-stat-label">Invoice Total</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="statOpportunities">0</div>
+          <div class="result-stat-label">Opportunities</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="statSavings">$0</div>
+          <div class="result-stat-label">Potential Savings</div>
+        </div>
+      </div>
+
+      <div class="opportunities-list" id="opportunitiesList">
+        <div class="opportunities-title">Detected Opportunities</div>
+        <!-- Opportunities will be inserted here -->
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="viewInDashboard()">View in Dashboard</button>
+        <button class="btn btn-secondary" onclick="resetUpload()">Upload Another</button>
+      </div>
+    </div>
+
+    <!-- Recent Uploads -->
+    <div class="recent-uploads">
+      <h2 class="section-title">Recent Uploads</h2>
+      <div id="recentUploadsList">
+        <!-- Will be populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check auth
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    // Drop zone handlers
+    const dropZone = document.getElementById('dropZone');
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      handleFiles({ target: { files: e.dataTransfer.files } });
+    });
+
+    // File handling
+    async function handleFiles(event) {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+
+      // Process first file
+      const file = files[0];
+      await uploadFile(file);
+    }
+
+    async function uploadFile(file) {
+      const allowedExtensions = ['.pdf', '.xlsx', '.xls', '.csv'];
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+
+      if (!allowedExtensions.includes(ext)) {
+        showAlert('error', 'Please upload a PDF, Excel, or CSV file');
+        return;
+      }
+
+      // Show progress
+      const progressEl = document.getElementById('uploadProgress');
+      progressEl.classList.add('active');
+      document.getElementById('progressFilename').textContent = file.name;
+      document.getElementById('dropZone').classList.add('uploading');
+
+      try {
+        // Simulate progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += Math.random() * 20;
+          if (progress > 90) progress = 90;
+          updateProgress(progress, 'Uploading...');
+        }, 300);
+
+        // Create form data
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const accountName = document.getElementById('accountName').value;
+        const vendorName = document.getElementById('vendorName').value;
+
+        if (accountName) formData.append('accountName', accountName);
+        if (vendorName) formData.append('vendorName', vendorName);
+
+        // For PDF, we need to read and convert to base64
+        const fileContent = await readFileAsBase64(file);
+
+        // Call ingest endpoint
+        const response = await fetch('/ingest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            rawText: ext === '.pdf' ? undefined : await readFileAsText(file),
+            pdfBase64: ext === '.pdf' ? fileContent : undefined,
+            fileName: file.name,
+            accountName: accountName || 'Uploaded Invoice',
+            vendorName: vendorName || 'Unknown Vendor'
+          })
+        });
+
+        clearInterval(progressInterval);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const result = await response.json();
+
+        // Complete progress
+        updateProgress(100, 'Processing complete!');
+
+        // Show results after delay
+        setTimeout(() => {
+          showResults(file.name, result);
+        }, 500);
+
+      } catch (error) {
+        console.error('Upload error:', error);
+        showAlert('error', error.message || 'Failed to process invoice');
+        resetProgress();
+      }
+    }
+
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
+
+    function updateProgress(percent, status) {
+      document.getElementById('progressPercent').textContent = Math.round(percent) + '%';
+      document.getElementById('progressBar').style.width = percent + '%';
+      document.getElementById('progressStatus').textContent = status;
+    }
+
+    function resetProgress() {
+      document.getElementById('uploadProgress').classList.remove('active');
+      document.getElementById('dropZone').classList.remove('uploading');
+      document.getElementById('progressBar').style.width = '0%';
+    }
+
+    function showResults(filename, result) {
+      resetProgress();
+      document.getElementById('resultsCard').classList.add('active');
+      document.getElementById('resultsFilename').textContent = filename;
+
+      // Populate stats
+      const items = result.canonical?.items?.length || result.itemsExtracted || 0;
+      const total = result.canonical?.totals?.grandTotal || result.totalCents / 100 || 0;
+      const opportunities = result.opportunities?.length || result.opportunitiesDetected || 0;
+      const savings = result.savingsDetected || 0;
+
+      document.getElementById('statItems').textContent = items;
+      document.getElementById('statTotal').textContent = '$' + total.toLocaleString();
+      document.getElementById('statOpportunities').textContent = opportunities;
+      document.getElementById('statSavings').textContent = '$' + savings.toLocaleString();
+
+      // Populate opportunities list
+      const oppList = document.getElementById('opportunitiesList');
+
+      if (opportunities > 0 && result.opportunities) {
+        let oppHTML = '<div class="opportunities-title">Detected Opportunities</div>';
+        result.opportunities.forEach(opp => {
+          oppHTML += `
+            <div class="opportunity-item">
+              <div class="opportunity-info">
+                <div class="opportunity-type">${opp.type || 'Revenue Opportunity'}</div>
+                <div class="opportunity-desc">${opp.description || 'Potential opportunity detected'}</div>
+              </div>
+              <div class="opportunity-value">$${(opp.value || 0).toLocaleString()}</div>
+            </div>
+          `;
+        });
+        oppList.innerHTML = oppHTML;
+      } else {
+        oppList.innerHTML = `
+          <div class="opportunities-title">No Opportunities Detected</div>
+          <p style="color: #64748b; font-size: 14px;">This invoice looks good! No pricing discrepancies or opportunities found.</p>
+        `;
+      }
+
+      // Add to recent uploads
+      loadRecentUploads();
+    }
+
+    function resetUpload() {
+      document.getElementById('resultsCard').classList.remove('active');
+      document.getElementById('fileInput').value = '';
+      document.getElementById('accountName').value = '';
+      document.getElementById('vendorName').value = '';
+    }
+
+    function viewInDashboard() {
+      window.location.href = 'manager-view.html';
+    }
+
+    // Load recent uploads
+    async function loadRecentUploads() {
+      try {
+        const response = await fetch('/api/runs?limit=5', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const runs = data.runs || [];
+
+          const listEl = document.getElementById('recentUploadsList');
+
+          if (runs.length === 0) {
+            listEl.innerHTML = '<p style="color: #64748b; text-align: center; padding: 20px;">No recent uploads</p>';
+            return;
+          }
+
+          listEl.innerHTML = runs.map(run => `
+            <div class="upload-history-item">
+              <div class="upload-history-icon">📄</div>
+              <div class="upload-history-info">
+                <div class="upload-history-name">${run.file_name || 'Invoice'}</div>
+                <div class="upload-history-meta">${run.account_name || 'Unknown'} • ${new Date(run.created_at).toLocaleDateString()}</div>
+              </div>
+              <span class="upload-history-status ${run.status}">${run.status}</span>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Error loading recent uploads:', error);
+      }
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById('alertContainer');
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+      setTimeout(() => container.innerHTML = '', 4000);
+    }
+
+    // Initial load
+    loadRecentUploads();
+  </script>
+</body>
+</html>

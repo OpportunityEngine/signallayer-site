@@ -134,7 +134,12 @@ const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitori
 const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin analytics
 const signupRoutes = require('./signup-routes');  // Public self-service signup
 const stripeRoutes = require('./stripe-routes');  // Stripe payment integration
+const businessIntelRoutes = require('./business-intel-routes');  // Business Intelligence (opportunities, inventory, payroll)
 const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware');  // Trial enforcement
+const InventoryIntelligence = require('./inventory-intelligence');  // Inventory tracking & price intelligence
+
+// Initialize inventory intelligence for auto-processing
+const inventoryIntelligence = new InventoryIntelligence();
 // --------------------------------------------------------------------
 
 // -------------------- Core app bootstrap --------------------
@@ -1212,6 +1217,10 @@ console.log('✅ Backup management routes registered at /backups');
 // Stripe payment routes (public + authenticated)
 app.use('/stripe', stripeRoutes);
 console.log('✅ Stripe payment routes registered at /stripe');
+
+// Business Intelligence routes (opportunities, inventory, payroll, analytics)
+app.use('/api/bi', businessIntelRoutes);
+console.log('✅ Business Intelligence routes registered at /api/bi');
 
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {
@@ -2436,6 +2445,25 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         };
       }
       // ===== END RULES ENGINE =====
+
+      // ===== INVENTORY INTELLIGENCE INTEGRATION =====
+      let inventoryIntelData = { processed: 0, pricesRecorded: 0, priceAlerts: [] };
+      try {
+        if (canonical && canonical.line_items && canonical.line_items.length > 0) {
+          inventoryIntelData = inventoryIntelligence.processInvoiceForInventory(
+            userId,
+            vendorName,
+            canonical.line_items,
+            canonical.invoice_date || null
+          );
+          console.log(`[INVENTORY INTEL] ✅ Processed ${inventoryIntelData.processed} items, ${inventoryIntelData.pricesRecorded} prices tracked`);
+        }
+      } catch (inventoryError) {
+        console.error('[INVENTORY INTEL] Processing error:', inventoryError.message);
+        inventoryIntelData.error = inventoryError.message;
+      }
+      revenueRadarData.inventoryIntelligence = inventoryIntelData;
+      // ===== END INVENTORY INTELLIGENCE =====
 
       console.log(`[REVENUE RADAR] ✅ Ingestion tracked: run_id=${run_id}, internal_id=${internalRunId}, user=${userEmail}`);
     } catch (revenueRadarError) {

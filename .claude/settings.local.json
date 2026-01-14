@@ -44,7 +44,12 @@
       "Bash(CURLDATA)",
       "Bash({\"email\":\"taylor@revenueradar.com\",\"password\":\"Taylor123!\"})",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiYWRtaW5AcmV2ZW51ZXJhZGFyLmNvbSIsInJvbGUiOiJhZG1pbiIsImFjY291bnROYW1lIjoiU3lzdGVtIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2ODI2MjAzNSwiZXhwIjoxNzY4MzQ4NDM1LCJqdGkiOiI3YWYxNTk2MDU0OTUwOTkxNDNlNmZhNTUzZmQ4YTI0NSJ9.z8ZZwzc0f_3VcoBWQfhvdAi1Ru62QTi1O4ETbjhR4PY\")",
-      "Bash(printf:*)"
+      "Bash(printf:*)",
+      "Bash(timeout 8 npm start:*)",
+      "Bash(xxd:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjUsImVtYWlsIjoidmljdG9yaWFuajIzQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImFjY291bnROYW1lIjoiUmV2ZW51ZSBSYWRhciBBZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NjgyNzM5MzQsImV4cCI6MTc2ODM2MDMzNCwianRpIjoiMGUzNjgyMzkxMjFmYTFmOGVmNmE5YWZiZmVlOTE0ZWMifQ.D1M9rFlr7a7ygMxZJabyGFe6jAz29XL4sAV1ePoBxjU\")",
+      "Bash(git checkout:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && head -20 {}')"
     ]
   }
 }
