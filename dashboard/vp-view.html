@@ -736,6 +736,10 @@
             <div class="quick-action-icon">🧾</div>
             <div class="quick-action-label">Add Expense</div>
           </button>
+          <button onclick="openPayrollUpload()" class="quick-action-tile" style="border: none; cursor: pointer;">
+            <div class="quick-action-icon">📤</div>
+            <div class="quick-action-label">Upload Payroll</div>
+          </button>
         </div>
       </div>
 
@@ -778,12 +782,16 @@
           <!-- Expense Breakdown Chart -->
           <div>
             <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px;">Expense Breakdown</h4>
-            <canvas id="expenseBreakdownChart" height="200"></canvas>
+            <div style="position: relative; height: 200px; width: 100%;">
+              <canvas id="expenseBreakdownChart"></canvas>
+            </div>
           </div>
           <!-- Spending Trend Chart -->
           <div>
             <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px;">Spending Trend</h4>
-            <canvas id="spendingTrendChart" height="200"></canvas>
+            <div style="position: relative; height: 200px; width: 100%;">
+              <canvas id="spendingTrendChart"></canvas>
+            </div>
           </div>
         </div>
 
@@ -1254,8 +1262,92 @@
     </div>
   </div>
 
+  <!-- Payroll Upload Modal -->
+  <div id="payrollUploadModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.9); z-index: 9999; align-items: center; justify-content: center; overflow-y: auto;">
+    <div style="background: var(--panel); border-radius: 12px; padding: 32px; max-width: 600px; width: 90%; margin: 40px auto; border: 1px solid var(--border);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2 style="margin: 0; font-size: 24px; font-weight: 700;">📤 Upload Payroll File</h2>
+        <button onclick="closePayrollUpload()" style="background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
+      </div>
+
+      <!-- Supported Formats Info -->
+      <div style="background: var(--gold-glow); border: 1px solid var(--border-gold); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <h4 style="margin: 0 0 8px 0; color: var(--gold); font-size: 14px;">Supported Formats</h4>
+        <p style="margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6;">
+          Upload payroll exports from <strong style="color: var(--text);">ADP, Toast, Gusto, QuickBooks, Paychex, Square</strong> and more.
+          We accept <strong style="color: var(--text);">.xlsx, .xls, .csv, and .pdf</strong> files.
+        </p>
+      </div>
+
+      <!-- Upload Zone -->
+      <div id="payrollDropZone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px;"
+           ondragover="handlePayrollDragOver(event)" ondragleave="handlePayrollDragLeave(event)" ondrop="handlePayrollDrop(event)" onclick="document.getElementById('payrollFileInput').click()">
+        <div style="font-size: 48px; margin-bottom: 12px;">📁</div>
+        <div style="color: var(--text); font-weight: 600; margin-bottom: 8px;">Drop your payroll file here</div>
+        <div style="color: var(--muted2); font-size: 13px;">or click to browse</div>
+        <input type="file" id="payrollFileInput" accept=".xlsx,.xls,.csv,.pdf" style="display: none;" onchange="handlePayrollFileSelect(event)">
+      </div>
+
+      <!-- Selected File Info -->
+      <div id="payrollFileInfo" style="display: none; background: var(--panel2); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="color: var(--text); font-weight: 600;" id="payrollFileName">-</div>
+            <div style="color: var(--muted2); font-size: 12px;" id="payrollFileSize">-</div>
+          </div>
+          <button onclick="clearPayrollFile()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px;">Remove</button>
+        </div>
+      </div>
+
+      <!-- Payroll Provider Selection -->
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Payroll Provider (Optional)</label>
+        <select id="payrollProvider" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+          <option value="">Auto-detect</option>
+          <option value="adp">ADP</option>
+          <option value="toast">Toast</option>
+          <option value="gusto">Gusto</option>
+          <option value="quickbooks">QuickBooks</option>
+          <option value="paychex">Paychex</option>
+          <option value="square">Square Payroll</option>
+          <option value="other">Other</option>
+        </select>
+        <small style="display: block; color: var(--muted2); margin-top: 4px;">Helps us parse your file more accurately</small>
+      </div>
+
+      <!-- Pay Period (Optional) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+        <div>
+          <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Period Start (Optional)</label>
+          <input type="date" id="payrollUploadStart" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+        </div>
+        <div>
+          <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Period End (Optional)</label>
+          <input type="date" id="payrollUploadEnd" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+        </div>
+      </div>
+
+      <!-- Upload Button -->
+      <div style="display: flex; gap: 12px;">
+        <button onclick="uploadPayrollFile()" id="payrollUploadBtn" class="btn" style="flex: 1;" disabled>
+          Upload & Process
+        </button>
+        <button onclick="closePayrollUpload()" class="btn" style="flex: 1; background: var(--panel2);">Cancel</button>
+      </div>
+
+      <!-- Upload Status -->
+      <div id="payrollUploadStatus" style="margin-top: 16px; display: none;"></div>
+    </div>
+  </div>
+
   <!-- Chart.js for Financial Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS for Excel parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <!-- PDF.js for PDF parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
   <!-- Authentication Manager - Load FIRST -->
   <script src="/dashboard/auth-manager.js"></script>
@@ -2583,6 +2675,476 @@
       // Load financial charts
       setTimeout(loadFinancialCharts, 500);
     });
+
+    // =====================================================
+    // PAYROLL FILE UPLOAD FUNCTIONS
+    // =====================================================
+
+    let selectedPayrollFile = null;
+
+    function openPayrollUpload() {
+      document.getElementById('payrollUploadModal').style.display = 'flex';
+      clearPayrollFile();
+    }
+
+    function closePayrollUpload() {
+      document.getElementById('payrollUploadModal').style.display = 'none';
+      clearPayrollFile();
+    }
+
+    function clearPayrollFile() {
+      selectedPayrollFile = null;
+      document.getElementById('payrollFileInput').value = '';
+      document.getElementById('payrollFileInfo').style.display = 'none';
+      document.getElementById('payrollUploadBtn').disabled = true;
+      document.getElementById('payrollUploadStatus').style.display = 'none';
+    }
+
+    function handlePayrollDragOver(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      document.getElementById('payrollDropZone').style.borderColor = 'var(--gold)';
+      document.getElementById('payrollDropZone').style.background = 'rgba(251, 191, 36, 0.05)';
+    }
+
+    function handlePayrollDragLeave(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      document.getElementById('payrollDropZone').style.borderColor = 'var(--border)';
+      document.getElementById('payrollDropZone').style.background = 'transparent';
+    }
+
+    function handlePayrollDrop(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      document.getElementById('payrollDropZone').style.borderColor = 'var(--border)';
+      document.getElementById('payrollDropZone').style.background = 'transparent';
+
+      const files = event.dataTransfer.files;
+      if (files.length > 0) {
+        processPayrollFile(files[0]);
+      }
+    }
+
+    function handlePayrollFileSelect(event) {
+      const files = event.target.files;
+      if (files.length > 0) {
+        processPayrollFile(files[0]);
+      }
+    }
+
+    function processPayrollFile(file) {
+      const validTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+        'application/vnd.ms-excel', // xls
+        'text/csv',
+        'application/pdf'
+      ];
+      const validExtensions = ['.xlsx', '.xls', '.csv', '.pdf'];
+      const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+
+      if (!validExtensions.includes(ext)) {
+        alert('Please upload an Excel (.xlsx, .xls), CSV, or PDF file.');
+        return;
+      }
+
+      selectedPayrollFile = file;
+      document.getElementById('payrollFileName').textContent = file.name;
+      document.getElementById('payrollFileSize').textContent = formatFileSize(file.size);
+      document.getElementById('payrollFileInfo').style.display = 'block';
+      document.getElementById('payrollUploadBtn').disabled = false;
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    async function uploadPayrollFile() {
+      if (!selectedPayrollFile) {
+        alert('Please select a file first.');
+        return;
+      }
+
+      const statusDiv = document.getElementById('payrollUploadStatus');
+      const uploadBtn = document.getElementById('payrollUploadBtn');
+
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = '<div style="color: var(--gold);">📤 Uploading and processing file...</div>';
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Processing...';
+
+      try {
+        const ext = selectedPayrollFile.name.toLowerCase().substring(selectedPayrollFile.name.lastIndexOf('.'));
+        let payrollData = null;
+
+        // Parse the file based on type
+        if (ext === '.xlsx' || ext === '.xls') {
+          payrollData = await parseExcelPayroll(selectedPayrollFile);
+        } else if (ext === '.csv') {
+          payrollData = await parseCSVPayroll(selectedPayrollFile);
+        } else if (ext === '.pdf') {
+          payrollData = await parsePDFPayroll(selectedPayrollFile);
+        }
+
+        if (!payrollData || payrollData.entries.length === 0) {
+          throw new Error('Could not extract payroll data from file. Please check the format or try a different export.');
+        }
+
+        // Get optional period dates
+        const periodStart = document.getElementById('payrollUploadStart').value;
+        const periodEnd = document.getElementById('payrollUploadEnd').value;
+        const provider = document.getElementById('payrollProvider').value;
+
+        // Send to API
+        const response = await fetch(`${API_BASE}/api/bi/payroll/upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({
+            entries: payrollData.entries,
+            provider: provider || payrollData.detectedProvider,
+            period_start: periodStart || payrollData.periodStart,
+            period_end: periodEnd || payrollData.periodEnd,
+            filename: selectedPayrollFile.name,
+            summary: payrollData.summary
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          statusDiv.innerHTML = `
+            <div style="color: #10b981; font-weight: 600;">✓ Payroll uploaded successfully!</div>
+            <div style="color: var(--muted); font-size: 13px; margin-top: 8px;">
+              Processed ${result.data?.entriesCreated || payrollData.entries.length} payroll entries.
+              ${result.data?.totalAmount ? `Total: $${(result.data.totalAmount / 100).toLocaleString()}` : ''}
+            </div>
+          `;
+          // Refresh charts after successful upload
+          setTimeout(() => {
+            loadFinancialCharts();
+            closePayrollUpload();
+          }, 2000);
+        } else {
+          throw new Error(result.error || 'Failed to upload payroll data');
+        }
+      } catch (error) {
+        console.error('Payroll upload error:', error);
+        statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload & Process';
+      }
+    }
+
+    // Parse Excel payroll files (ADP, Toast, Gusto, etc.)
+    async function parseExcelPayroll(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+            // Detect provider and parse accordingly
+            const parsed = parsePayrollRows(rows, file.name);
+            resolve(parsed);
+          } catch (err) {
+            reject(new Error('Failed to parse Excel file: ' + err.message));
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Parse CSV payroll files
+    async function parseCSVPayroll(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const text = e.target.result;
+            const rows = text.split('\n').map(row => {
+              // Handle quoted CSV values
+              const result = [];
+              let cell = '';
+              let inQuotes = false;
+              for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                if (char === '"') {
+                  inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                  result.push(cell.trim());
+                  cell = '';
+                } else {
+                  cell += char;
+                }
+              }
+              result.push(cell.trim());
+              return result;
+            });
+
+            const parsed = parsePayrollRows(rows, file.name);
+            resolve(parsed);
+          } catch (err) {
+            reject(new Error('Failed to parse CSV file: ' + err.message));
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+      });
+    }
+
+    // Parse PDF payroll files (extract text and try to find amounts)
+    async function parsePDFPayroll(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            if (typeof pdfjsLib === 'undefined') {
+              // Fallback: just extract basic info
+              resolve({
+                entries: [{
+                  description: 'Payroll from PDF',
+                  gross_amount_cents: 0,
+                  needs_manual_entry: true
+                }],
+                detectedProvider: 'pdf',
+                summary: { message: 'PDF files require manual verification. Please review the extracted data.' }
+              });
+              return;
+            }
+
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
+            let fullText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+            }
+
+            // Extract amounts from PDF text
+            const parsed = extractPayrollFromText(fullText, file.name);
+            resolve(parsed);
+          } catch (err) {
+            reject(new Error('Failed to parse PDF: ' + err.message));
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Common payroll parsing logic for Excel/CSV rows
+    function parsePayrollRows(rows, filename) {
+      const entries = [];
+      let detectedProvider = null;
+      let periodStart = null;
+      let periodEnd = null;
+
+      // Try to detect provider from filename or headers
+      const lowerFilename = filename.toLowerCase();
+      if (lowerFilename.includes('adp')) detectedProvider = 'adp';
+      else if (lowerFilename.includes('toast')) detectedProvider = 'toast';
+      else if (lowerFilename.includes('gusto')) detectedProvider = 'gusto';
+      else if (lowerFilename.includes('quickbooks') || lowerFilename.includes('qb')) detectedProvider = 'quickbooks';
+      else if (lowerFilename.includes('paychex')) detectedProvider = 'paychex';
+      else if (lowerFilename.includes('square')) detectedProvider = 'square';
+
+      // Find header row and important columns
+      let headerRow = -1;
+      let colMap = {};
+
+      const possibleHeaders = {
+        employee: ['employee', 'name', 'employee name', 'worker', 'team member'],
+        gross: ['gross', 'gross pay', 'gross wages', 'total gross', 'earnings', 'total earnings', 'gross amount'],
+        net: ['net', 'net pay', 'net wages', 'take home', 'net amount'],
+        hours: ['hours', 'hours worked', 'total hours', 'reg hours', 'regular hours'],
+        date: ['date', 'pay date', 'check date', 'period end', 'period ending'],
+        department: ['department', 'dept', 'location', 'store']
+      };
+
+      for (let i = 0; i < Math.min(rows.length, 20); i++) {
+        const row = rows[i];
+        if (!row) continue;
+
+        const rowLower = row.map(cell => String(cell || '').toLowerCase().trim());
+
+        // Check if this looks like a header row
+        let matchCount = 0;
+        for (const [key, variants] of Object.entries(possibleHeaders)) {
+          for (let j = 0; j < rowLower.length; j++) {
+            if (variants.some(v => rowLower[j].includes(v))) {
+              colMap[key] = j;
+              matchCount++;
+              break;
+            }
+          }
+        }
+
+        if (matchCount >= 2) {
+          headerRow = i;
+          break;
+        }
+      }
+
+      // If no header found, try to parse as simple table
+      if (headerRow === -1) {
+        // Look for rows with dollar amounts
+        for (const row of rows) {
+          if (!row) continue;
+          for (let j = 0; j < row.length; j++) {
+            const cell = String(row[j] || '');
+            const match = cell.match(/\$?([\d,]+\.?\d*)/);
+            if (match) {
+              const amount = parseFloat(match[1].replace(/,/g, ''));
+              if (amount > 100 && amount < 1000000) { // Reasonable payroll amount
+                entries.push({
+                  description: row[0] || 'Payroll entry',
+                  gross_amount_cents: Math.round(amount * 100)
+                });
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        // Parse data rows after header
+        for (let i = headerRow + 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.every(cell => !cell)) continue;
+
+          const entry = {
+            employee_name: colMap.employee !== undefined ? String(row[colMap.employee] || '') : null,
+            gross_amount_cents: 0,
+            net_amount_cents: 0,
+            hours: 0,
+            department: colMap.department !== undefined ? String(row[colMap.department] || '') : null
+          };
+
+          // Parse gross amount
+          if (colMap.gross !== undefined) {
+            const grossStr = String(row[colMap.gross] || '');
+            const match = grossStr.match(/\$?([\d,]+\.?\d*)/);
+            if (match) {
+              entry.gross_amount_cents = Math.round(parseFloat(match[1].replace(/,/g, '')) * 100);
+            }
+          }
+
+          // Parse net amount
+          if (colMap.net !== undefined) {
+            const netStr = String(row[colMap.net] || '');
+            const match = netStr.match(/\$?([\d,]+\.?\d*)/);
+            if (match) {
+              entry.net_amount_cents = Math.round(parseFloat(match[1].replace(/,/g, '')) * 100);
+            }
+          }
+
+          // Parse hours
+          if (colMap.hours !== undefined) {
+            const hoursStr = String(row[colMap.hours] || '');
+            const match = hoursStr.match(/([\d.]+)/);
+            if (match) {
+              entry.hours = parseFloat(match[1]);
+            }
+          }
+
+          // Parse date for period info
+          if (colMap.date !== undefined && !periodEnd) {
+            const dateStr = String(row[colMap.date] || '');
+            const dateMatch = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+            if (dateMatch) {
+              const year = dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3];
+              periodEnd = `${year}-${dateMatch[1].padStart(2, '0')}-${dateMatch[2].padStart(2, '0')}`;
+            }
+          }
+
+          // Only add entries with valid amounts
+          if (entry.gross_amount_cents > 0 || entry.net_amount_cents > 0) {
+            entries.push(entry);
+          }
+        }
+      }
+
+      // Calculate summary
+      const totalGross = entries.reduce((sum, e) => sum + (e.gross_amount_cents || 0), 0);
+      const totalHours = entries.reduce((sum, e) => sum + (e.hours || 0), 0);
+
+      return {
+        entries,
+        detectedProvider,
+        periodStart,
+        periodEnd,
+        summary: {
+          employeeCount: entries.length,
+          totalGrossCents: totalGross,
+          totalHours: totalHours,
+          avgGrossCents: entries.length > 0 ? Math.round(totalGross / entries.length) : 0
+        }
+      };
+    }
+
+    // Extract payroll data from PDF text
+    function extractPayrollFromText(text, filename) {
+      const entries = [];
+      let detectedProvider = null;
+
+      // Detect provider from text
+      const lowerText = text.toLowerCase();
+      if (lowerText.includes('adp')) detectedProvider = 'adp';
+      else if (lowerText.includes('toast')) detectedProvider = 'toast';
+      else if (lowerText.includes('gusto')) detectedProvider = 'gusto';
+      else if (lowerText.includes('quickbooks')) detectedProvider = 'quickbooks';
+      else if (lowerText.includes('paychex')) detectedProvider = 'paychex';
+
+      // Look for dollar amounts that could be payroll totals
+      const amountPattern = /(?:gross|net|total|pay|wages|earnings)[:\s]*\$?([\d,]+\.?\d*)/gi;
+      let match;
+      while ((match = amountPattern.exec(text)) !== null) {
+        const amount = parseFloat(match[1].replace(/,/g, ''));
+        if (amount > 100 && amount < 1000000) {
+          entries.push({
+            description: match[0].substring(0, 50),
+            gross_amount_cents: Math.round(amount * 100)
+          });
+        }
+      }
+
+      // If no structured data found, look for any large dollar amounts
+      if (entries.length === 0) {
+        const simplePattern = /\$([\d,]+\.?\d*)/g;
+        while ((match = simplePattern.exec(text)) !== null) {
+          const amount = parseFloat(match[1].replace(/,/g, ''));
+          if (amount > 500 && amount < 500000) {
+            entries.push({
+              description: 'Payroll amount from PDF',
+              gross_amount_cents: Math.round(amount * 100)
+            });
+          }
+        }
+      }
+
+      const totalGross = entries.reduce((sum, e) => sum + (e.gross_amount_cents || 0), 0);
+
+      return {
+        entries,
+        detectedProvider,
+        summary: {
+          extractedAmounts: entries.length,
+          totalGrossCents: totalGross,
+          source: 'pdf'
+        }
+      };
+    }
   </script>
 </body>
 </html>

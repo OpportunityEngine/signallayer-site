@@ -1003,6 +1003,141 @@ router.post('/expenses', (req, res) => {
   }
 });
 
+// POST /api/bi/payroll/upload - Upload parsed payroll file data
+router.post('/payroll/upload', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { provider, period_start, period_end, employees, file_name, totals } = req.body;
+
+    if (!employees || !Array.isArray(employees) || employees.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'employees array is required with at least one employee record'
+      });
+    }
+
+    const database = db.getDatabase();
+
+    // Calculate totals from employee data if not provided
+    const calculatedTotals = {
+      gross: 0,
+      net: 0,
+      hours: 0,
+      employeeCount: employees.length
+    };
+
+    employees.forEach(emp => {
+      if (emp.gross) calculatedTotals.gross += parseFloat(emp.gross) || 0;
+      if (emp.net) calculatedTotals.net += parseFloat(emp.net) || 0;
+      if (emp.hours) calculatedTotals.hours += parseFloat(emp.hours) || 0;
+    });
+
+    // Use provided totals or calculated ones
+    const finalTotals = totals || calculatedTotals;
+
+    // Create payroll entry from upload
+    const grossCents = Math.round((finalTotals.gross || calculatedTotals.gross) * 100);
+    const periodStart = period_start || new Date().toISOString().split('T')[0];
+    const periodEnd = period_end || periodStart;
+
+    // Estimate employer taxes (approximately 7.65% for FICA)
+    const employerTaxesCents = Math.round(grossCents * 0.0765);
+
+    const result = database.prepare(`
+      INSERT INTO payroll_entries (
+        user_id, period_type, period_start, period_end,
+        gross_payroll_cents, employer_taxes_cents, benefits_cents,
+        total_labor_cost_cents, employee_count, hours_worked,
+        overtime_hours, overtime_cost_cents, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      user.id,
+      'weekly', // Default to weekly
+      periodStart,
+      periodEnd,
+      grossCents,
+      employerTaxesCents,
+      0, // benefits_cents - would need to be parsed from file
+      grossCents + employerTaxesCents,
+      finalTotals.employeeCount || employees.length,
+      Math.round(finalTotals.hours || calculatedTotals.hours),
+      0, // overtime_hours - would need special parsing
+      0, // overtime_cost_cents
+      `Uploaded from ${provider || 'unknown'} file: ${file_name || 'payroll_upload'}`
+    );
+
+    // Store individual employee records for detailed reporting
+    const insertEmployee = database.prepare(`
+      INSERT OR REPLACE INTO payroll_employee_records (
+        user_id, payroll_entry_id, employee_name, department,
+        gross_cents, net_cents, hours_worked, pay_date
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // Check if table exists, create if not
+    try {
+      database.exec(`
+        CREATE TABLE IF NOT EXISTS payroll_employee_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          payroll_entry_id INTEGER NOT NULL,
+          employee_name TEXT,
+          department TEXT,
+          gross_cents INTEGER DEFAULT 0,
+          net_cents INTEGER DEFAULT 0,
+          hours_worked REAL DEFAULT 0,
+          pay_date TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          FOREIGN KEY (payroll_entry_id) REFERENCES payroll_entries(id)
+        )
+      `);
+    } catch (tableErr) {
+      // Table might already exist
+    }
+
+    let employeesInserted = 0;
+    employees.forEach(emp => {
+      try {
+        insertEmployee.run(
+          user.id,
+          result.lastInsertRowid,
+          emp.employee || emp.name || 'Unknown',
+          emp.department || null,
+          Math.round((parseFloat(emp.gross) || 0) * 100),
+          Math.round((parseFloat(emp.net) || 0) * 100),
+          parseFloat(emp.hours) || 0,
+          emp.date || periodStart
+        );
+        employeesInserted++;
+      } catch (empErr) {
+        console.warn('[BI] Employee insert warning:', empErr.message);
+      }
+    });
+
+    console.log(`[BI] Payroll upload: ${employeesInserted} employees, $${(grossCents/100).toFixed(2)} gross from ${provider || 'unknown'}`);
+
+    res.json({
+      success: true,
+      data: {
+        payroll_entry_id: result.lastInsertRowid,
+        employees_imported: employeesInserted,
+        totals: {
+          gross_dollars: (grossCents / 100).toFixed(2),
+          employee_count: finalTotals.employeeCount || employees.length,
+          hours_worked: Math.round(finalTotals.hours || calculatedTotals.hours),
+          total_labor_cost_dollars: ((grossCents + employerTaxesCents) / 100).toFixed(2)
+        },
+        provider: provider || 'unknown',
+        period: { start: periodStart, end: periodEnd }
+      }
+    });
+  } catch (error) {
+    console.error('[BI] Payroll upload error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/bi/expenses - Get expense entries
 router.get('/expenses', (req, res) => {
   try {
