@@ -8,8 +8,25 @@ const router = express.Router();
 const db = require('./database');
 const { requireAuth } = require('./auth-middleware');
 
-// Initialize Stripe with API key
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Initialize Stripe with API key (conditional - gracefully handle missing key)
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  console.log('✅ Stripe configured');
+} else {
+  console.log('⚠️ Stripe not configured - STRIPE_SECRET_KEY not set');
+}
+
+// Helper to check if Stripe is available
+const requireStripe = (req, res, next) => {
+  if (!stripe) {
+    return res.status(503).json({
+      success: false,
+      error: 'Payment processing is not configured. Please contact support.'
+    });
+  }
+  next();
+};
 
 // Pricing Plans Configuration
 const PRICING_PLANS = {
@@ -108,7 +125,7 @@ router.get('/config', (req, res) => {
  * POST /stripe/create-checkout-session
  * Creates a Stripe Checkout session for subscription purchase
  */
-router.post('/create-checkout-session', requireAuth, async (req, res) => {
+router.post('/create-checkout-session', requireAuth, requireStripe, async (req, res) => {
   try {
     const { planId, interval = 'month' } = req.body;
     const user = req.user;
@@ -211,7 +228,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
  * POST /stripe/create-portal-session
  * Creates a Stripe Customer Portal session for managing subscription
  */
-router.post('/create-portal-session', requireAuth, async (req, res) => {
+router.post('/create-portal-session', requireAuth, requireStripe, async (req, res) => {
   try {
     const user = req.user;
     const subscription = db.getSubscriptionByUserId(user.id);
@@ -245,7 +262,7 @@ router.post('/create-portal-session', requireAuth, async (req, res) => {
  * GET /stripe/subscription
  * Get current user's subscription status
  */
-router.get('/subscription', requireAuth, async (req, res) => {
+router.get('/subscription', requireAuth, requireStripe, async (req, res) => {
   try {
     const user = req.user;
     const subscription = db.getSubscriptionByUserId(user.id);
@@ -295,7 +312,7 @@ router.get('/subscription', requireAuth, async (req, res) => {
  * GET /stripe/invoices
  * Get user's payment history
  */
-router.get('/invoices', requireAuth, async (req, res) => {
+router.get('/invoices', requireAuth, requireStripe, async (req, res) => {
   try {
     const payments = db.getPaymentHistory(req.user.id, 20);
 
@@ -323,7 +340,7 @@ router.get('/invoices', requireAuth, async (req, res) => {
  * POST /stripe/cancel-subscription
  * Cancel subscription (at period end by default)
  */
-router.post('/cancel-subscription', requireAuth, async (req, res) => {
+router.post('/cancel-subscription', requireAuth, requireStripe, async (req, res) => {
   try {
     const { immediate = false } = req.body;
     const subscription = db.getSubscriptionByUserId(req.user.id);
@@ -373,6 +390,10 @@ router.post('/cancel-subscription', requireAuth, async (req, res) => {
  * IMPORTANT: Use raw body parser for signature verification
  */
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe) {
+    return res.status(503).send('Stripe not configured');
+  }
+
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
