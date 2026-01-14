@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0a0f1a 0%, #0d1321 50%, #0a0f1a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .logo-text {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 48px;
+      font-weight: 900;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      font-size: 20px;
+      color: #94a3b8;
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    /* Billing Toggle */
+    .billing-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 8px;
+      border-radius: 50px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .billing-option {
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #64748b;
+    }
+
+    .billing-option.active {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .billing-option:hover:not(.active) {
+      color: #e2e8f0;
+    }
+
+    .save-badge {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Pricing Cards */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 1024px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
+
+    .pricing-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 24px;
+      padding: 40px 32px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(251, 191, 36, 0.3);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .pricing-card.popular {
+      border: 2px solid #fbbf24;
+      transform: scale(1.05);
+    }
+
+    .pricing-card.popular:hover {
+      transform: scale(1.05) translateY(-8px);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000;
+      padding: 8px 24px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .plan-name {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .plan-description {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .plan-price {
+      margin-bottom: 32px;
+    }
+
+    .price-amount {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 56px;
+      font-weight: 900;
+      color: #ffffff;
+    }
+
+    .price-amount .currency {
+      font-size: 28px;
+      vertical-align: top;
+      color: #94a3b8;
+    }
+
+    .price-period {
+      color: #64748b;
+      font-size: 16px;
+    }
+
+    .yearly-price {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .features-list {
+      list-style: none;
+      margin-bottom: 32px;
+    }
+
+    .features-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .features-list li::before {
+      content: '✓';
+      color: #22c55e;
+      font-weight: 700;
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      background: rgba(34, 197, 94, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+
+    .cta-button {
+      width: 100%;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .cta-button.primary {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000;
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .cta-button.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(251, 191, 36, 0.4);
+    }
+
+    .cta-button.secondary {
+      background: transparent;
+      border: 2px solid rgba(251, 191, 36, 0.5);
+      color: #fbbf24;
+    }
+
+    .cta-button.secondary:hover {
+      background: rgba(251, 191, 36, 0.1);
+      border-color: #fbbf24;
+    }
+
+    .cta-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Trial Banner */
+    .trial-banner {
+      text-align: center;
+      margin-top: 48px;
+      padding: 32px;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .trial-banner h3 {
+      color: #22c55e;
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .trial-banner p {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    /* FAQ Section */
+    .faq-section {
+      margin-top: 80px;
+    }
+
+    .faq-section h2 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 48px;
+      color: #ffffff;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .faq-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .faq-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(251, 191, 36, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .faq-item h4 {
+      color: #ffffff;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .faq-item p {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* Back Link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 24px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #fbbf24;
+    }
+
+    /* Loading State */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(251, 191, 36, 0.2);
+      border-top-color: #fbbf24;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Alert Messages */
+    .alert {
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .alert.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="container">
+    <a href="login.html" class="back-link">← Back to Dashboard</a>
+
+    <header class="header">
+      <a href="/" class="logo">
+        <div class="logo-icon">$</div>
+        <span class="logo-text">Revenue Radar</span>
+      </a>
+
+      <h1>Simple, Transparent Pricing</h1>
+      <p>Choose the plan that fits your team. All plans include a 14-day free trial.</p>
+
+      <div class="billing-toggle">
+        <div class="billing-option active" data-interval="month">Monthly</div>
+        <div class="billing-option" data-interval="year">
+          Yearly <span class="save-badge">Save 20%</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="alertContainer"></div>
+
+    <div id="pricingContainer" class="loading">
+      <div class="spinner"></div>
+      <p>Loading pricing plans...</p>
+    </div>
+
+    <div class="trial-banner">
+      <h3>🎉 Start Your Free Trial Today</h3>
+      <p>No credit card required. Get full access for 14 days and 20 invoice analyses.</p>
+    </div>
+
+    <section class="faq-section">
+      <h2>Frequently Asked Questions</h2>
+
+      <div class="faq-grid">
+        <div class="faq-item">
+          <h4>Can I change plans later?</h4>
+          <p>Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate the difference.</p>
+        </div>
+
+        <div class="faq-item">
+          <h4>What payment methods do you accept?</h4>
+          <p>We accept all major credit cards (Visa, Mastercard, American Express) through our secure Stripe payment processor.</p>
+        </div>
+
+        <div class="faq-item">
+          <h4>Is there a contract or commitment?</h4>
+          <p>No long-term contracts. Monthly plans can be canceled anytime. Yearly plans include a 30-day money-back guarantee.</p>
+        </div>
+
+        <div class="faq-item">
+          <h4>What happens when my trial ends?</h4>
+          <p>You'll be prompted to choose a plan. If you don't subscribe, your account becomes read-only (you can still view your data).</p>
+        </div>
+
+        <div class="faq-item">
+          <h4>Do you offer discounts for nonprofits?</h4>
+          <p>Yes! We offer 50% off for registered nonprofits and educational institutions. Contact us to apply.</p>
+        </div>
+
+        <div class="faq-item">
+          <h4>Can I get a demo before signing up?</h4>
+          <p>Absolutely! Schedule a live demo with our team, or try our demo account: demo@revenueradar.com / Demo2026!</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // State
+    let selectedInterval = 'month';
+    let plans = [];
+    let stripePublishableKey = '';
+    let isAuthenticated = false;
+
+    // Check URL params for success/cancel
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      showAlert('success', '🎉 Subscription activated! Welcome to Revenue Radar.');
+    } else if (urlParams.get('canceled') === 'true') {
+      showAlert('error', 'Checkout was canceled. No charges were made.');
+    }
+
+    // Initialize
+    async function init() {
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      isAuthenticated = !!token;
+
+      // Fetch pricing plans
+      await fetchPlans();
+
+      // Fetch Stripe config
+      await fetchStripeConfig();
+
+      // Set up billing toggle
+      setupBillingToggle();
+    }
+
+    async function fetchPlans() {
+      try {
+        const response = await fetch('/stripe/plans');
+        const data = await response.json();
+
+        if (data.success) {
+          plans = data.plans;
+          renderPlans();
+        } else {
+          showAlert('error', 'Failed to load pricing plans');
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+        // Use fallback plans
+        plans = [
+          {
+            id: 'starter',
+            name: 'Starter',
+            description: 'Perfect for small teams getting started',
+            monthlyPrice: 4900,
+            yearlyPrice: 47000,
+            features: [
+              '1 user included',
+              '100 invoices/month',
+              'Email autopilot (1 inbox)',
+              'Basic opportunity detection',
+              'Rep dashboard access',
+              'Email support'
+            ]
+          },
+          {
+            id: 'professional',
+            name: 'Professional',
+            description: 'For growing sales teams',
+            monthlyPrice: 14900,
+            yearlyPrice: 143000,
+            features: [
+              '5 users included',
+              'Unlimited invoices',
+              'Email autopilot (5 inboxes)',
+              'Advanced rules engine',
+              'Commission tracking',
+              'SPIF contests',
+              'Manager dashboard',
+              'Priority support'
+            ],
+            popular: true
+          },
+          {
+            id: 'enterprise',
+            name: 'Enterprise',
+            description: 'For large organizations',
+            monthlyPrice: 39900,
+            yearlyPrice: 383000,
+            features: [
+              'Unlimited users',
+              'Unlimited invoices',
+              'Unlimited email inboxes',
+              'MLA contract management',
+              'Custom integrations',
+              'API access',
+              'White-labeling',
+              'Dedicated success manager',
+              'SLA guarantee'
+            ]
+          }
+        ];
+        renderPlans();
+      }
+    }
+
+    async function fetchStripeConfig() {
+      try {
+        const response = await fetch('/stripe/config');
+        const data = await response.json();
+        stripePublishableKey = data.publishableKey;
+      } catch (error) {
+        console.error('Error fetching Stripe config:', error);
+      }
+    }
+
+    function setupBillingToggle() {
+      const options = document.querySelectorAll('.billing-option');
+      options.forEach(option => {
+        option.addEventListener('click', () => {
+          options.forEach(o => o.classList.remove('active'));
+          option.classList.add('active');
+          selectedInterval = option.dataset.interval;
+          renderPlans();
+        });
+      });
+    }
+
+    function renderPlans() {
+      const container = document.getElementById('pricingContainer');
+
+      const plansHTML = plans.map(plan => {
+        const price = selectedInterval === 'year' ? plan.yearlyPrice : plan.monthlyPrice;
+        const displayPrice = (price / 100).toFixed(0);
+        const yearlyTotal = (plan.yearlyPrice / 100).toFixed(0);
+        const monthlySavings = ((plan.monthlyPrice * 12 - plan.yearlyPrice) / 100).toFixed(0);
+
+        return `
+          <div class="pricing-card ${plan.popular ? 'popular' : ''}">
+            ${plan.popular ? '<div class="popular-badge">Most Popular</div>' : ''}
+
+            <h3 class="plan-name">${plan.name}</h3>
+            <p class="plan-description">${plan.description}</p>
+
+            <div class="plan-price">
+              <div class="price-amount">
+                <span class="currency">$</span>${displayPrice}
+              </div>
+              <div class="price-period">per ${selectedInterval === 'year' ? 'year' : 'month'}</div>
+              ${selectedInterval === 'year' ? `<div class="yearly-price">Save $${monthlySavings}/year</div>` : `<div class="yearly-price">or $${yearlyTotal}/year (save 20%)</div>`}
+            </div>
+
+            <ul class="features-list">
+              ${plan.features.map(f => `<li>${f}</li>`).join('')}
+            </ul>
+
+            <button class="cta-button ${plan.popular ? 'primary' : 'secondary'}"
+                    onclick="selectPlan('${plan.id}')"
+                    ${!stripePublishableKey ? 'disabled' : ''}>
+              ${isAuthenticated ? 'Get Started' : 'Start Free Trial'}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `<div class="pricing-grid">${plansHTML}</div>`;
+    }
+
+    async function selectPlan(planId) {
+      if (!isAuthenticated) {
+        // Redirect to signup with plan preselected
+        window.location.href = `signup.html?plan=${planId}&interval=${selectedInterval}`;
+        return;
+      }
+
+      // Create checkout session
+      try {
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        const response = await fetch('/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            planId,
+            interval: selectedInterval
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.url) {
+          // Redirect to Stripe Checkout
+          window.location.href = data.url;
+        } else {
+          showAlert('error', data.error || 'Failed to start checkout');
+        }
+      } catch (error) {
+        console.error('Checkout error:', error);
+        showAlert('error', 'Failed to start checkout. Please try again.');
+      }
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById('alertContainer');
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 5000);
+    }
+
+    // Initialize on page load
+    init();
+  </script>
+</body>
+</html>

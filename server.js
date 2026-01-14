@@ -133,6 +133,7 @@ const userManagementRoutes = require('./user-management-routes');  // User manag
 const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitoring
 const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin analytics
 const signupRoutes = require('./signup-routes');  // Public self-service signup
+const stripeRoutes = require('./stripe-routes');  // Stripe payment integration
 const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware');  // Trial enforcement
 // --------------------------------------------------------------------
 
@@ -1084,6 +1085,29 @@ async function findLeadsForAccount({ accountName, postalCode, allowPublic = true
 }
 const app = express();
 
+// HTTPS enforcement in production
+if (process.env.NODE_ENV === 'production' && process.env.FORCE_HTTPS !== 'false') {
+  app.use((req, res, next) => {
+    // Check for forwarded protocol (behind load balancer/proxy)
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+
+    if (protocol !== 'https') {
+      // Redirect to HTTPS
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+
+    // Set security headers
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+    next();
+  });
+  console.log('✅ HTTPS enforcement enabled for production');
+}
+
 // CORS configuration - flexible for development and production
 app.use(cors({
   origin: function(origin, callback) {
@@ -1184,6 +1208,10 @@ console.log('✅ Health monitoring routes registered at /health');
 // Backup management routes (admin only)
 app.use('/backups', backupRoutes);
 console.log('✅ Backup management routes registered at /backups');
+
+// Stripe payment routes (public + authenticated)
+app.use('/stripe', stripeRoutes);
+console.log('✅ Stripe payment routes registered at /stripe');
 
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {

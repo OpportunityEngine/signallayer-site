@@ -153,6 +153,87 @@ function initDatabase() {
       }
     }
 
+    // Load Email Autopilot schema
+    try {
+      const emailAutopilotSchemaPath = path.join(__dirname, 'database-schema-email-autopilot.sql');
+      if (fs.existsSync(emailAutopilotSchemaPath)) {
+        const emailSchema = fs.readFileSync(emailAutopilotSchemaPath, 'utf8');
+        db.exec(emailSchema);
+        console.log('✅ Email Autopilot schema loaded');
+      }
+    } catch (emailSchemaError) {
+      // Tables may already exist
+      if (!emailSchemaError.message.includes('already exists')) {
+        console.log('⚠️  Email Autopilot schema may already exist (safe to ignore)');
+      }
+    }
+
+    // Create subscriptions table for Stripe integration
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            stripe_customer_id TEXT UNIQUE,
+            stripe_subscription_id TEXT UNIQUE,
+            plan_id TEXT NOT NULL,
+            plan_name TEXT NOT NULL,
+            status TEXT DEFAULT 'active' CHECK(status IN ('trialing', 'active', 'past_due', 'canceled', 'unpaid', 'incomplete')),
+            current_period_start DATETIME,
+            current_period_end DATETIME,
+            cancel_at_period_end INTEGER DEFAULT 0,
+            canceled_at DATETIME,
+            trial_end DATETIME,
+            quantity INTEGER DEFAULT 1,
+            amount_cents INTEGER,
+            currency TEXT DEFAULT 'usd',
+            interval TEXT DEFAULT 'month' CHECK(interval IN ('month', 'year')),
+            metadata_json TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer ON subscriptions(stripe_customer_id);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+      `);
+      console.log('✅ Subscriptions table created for Stripe integration');
+    } catch (subError) {
+      if (!subError.message.includes('already exists')) {
+        console.log('⚠️  Subscriptions table may already exist (safe to ignore)');
+      }
+    }
+
+    // Create payment_history table for tracking all payments
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS payment_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subscription_id INTEGER,
+            stripe_payment_intent_id TEXT UNIQUE,
+            stripe_invoice_id TEXT,
+            amount_cents INTEGER NOT NULL,
+            currency TEXT DEFAULT 'usd',
+            status TEXT DEFAULT 'succeeded' CHECK(status IN ('pending', 'succeeded', 'failed', 'refunded')),
+            description TEXT,
+            receipt_url TEXT,
+            failure_reason TEXT,
+            refund_reason TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_payment_history_user ON payment_history(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_payment_history_status ON payment_history(status);
+      `);
+      console.log('✅ Payment history table created');
+    } catch (payError) {
+      if (!payError.message.includes('already exists')) {
+        console.log('⚠️  Payment history table may already exist (safe to ignore)');
+      }
+    }
+
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
     // Seed demo data if database is empty (only in development)
@@ -1888,6 +1969,210 @@ function incrementEmailMonitorStats(monitorId, invoicesCreated) {
   `).run(invoicesCreated, monitorId);
 }
 
+// =====================================================
+// SUBSCRIPTION & PAYMENT FUNCTIONS
+// =====================================================
+
+/**
+ * Create a new subscription
+ * @param {Object} data - Subscription data
+ * @returns {number} Subscription ID
+ */
+function createSubscription(data) {
+  const result = db.prepare(`
+    INSERT INTO subscriptions (
+      user_id, stripe_customer_id, stripe_subscription_id,
+      plan_id, plan_name, status,
+      current_period_start, current_period_end,
+      trial_end, quantity, amount_cents, currency, interval,
+      metadata_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.userId,
+    data.stripeCustomerId,
+    data.stripeSubscriptionId,
+    data.planId,
+    data.planName,
+    data.status || 'active',
+    data.currentPeriodStart,
+    data.currentPeriodEnd,
+    data.trialEnd || null,
+    data.quantity || 1,
+    data.amountCents,
+    data.currency || 'usd',
+    data.interval || 'month',
+    JSON.stringify(data.metadata || {})
+  );
+
+  // Update user's subscription status
+  db.prepare(`
+    UPDATE users
+    SET subscription_status = ?, is_trial = 0, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(data.status || 'active', data.userId);
+
+  console.log(`[SUBSCRIPTION] Created subscription for user ${data.userId}: ${data.planName}`);
+  return result.lastInsertRowid;
+}
+
+/**
+ * Get subscription by user ID
+ * @param {number} userId
+ * @returns {Object|null} Subscription
+ */
+function getSubscriptionByUserId(userId) {
+  return db.prepare(`
+    SELECT * FROM subscriptions
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).get(userId);
+}
+
+/**
+ * Get subscription by Stripe subscription ID
+ * @param {string} stripeSubscriptionId
+ * @returns {Object|null} Subscription
+ */
+function getSubscriptionByStripeId(stripeSubscriptionId) {
+  return db.prepare(`
+    SELECT * FROM subscriptions
+    WHERE stripe_subscription_id = ?
+  `).get(stripeSubscriptionId);
+}
+
+/**
+ * Update subscription
+ * @param {string} stripeSubscriptionId
+ * @param {Object} updates
+ */
+function updateSubscription(stripeSubscriptionId, updates) {
+  const fields = [];
+  const values = [];
+
+  if (updates.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.currentPeriodStart !== undefined) {
+    fields.push('current_period_start = ?');
+    values.push(updates.currentPeriodStart);
+  }
+  if (updates.currentPeriodEnd !== undefined) {
+    fields.push('current_period_end = ?');
+    values.push(updates.currentPeriodEnd);
+  }
+  if (updates.cancelAtPeriodEnd !== undefined) {
+    fields.push('cancel_at_period_end = ?');
+    values.push(updates.cancelAtPeriodEnd ? 1 : 0);
+  }
+  if (updates.canceledAt !== undefined) {
+    fields.push('canceled_at = ?');
+    values.push(updates.canceledAt);
+  }
+  if (updates.quantity !== undefined) {
+    fields.push('quantity = ?');
+    values.push(updates.quantity);
+  }
+  if (updates.amountCents !== undefined) {
+    fields.push('amount_cents = ?');
+    values.push(updates.amountCents);
+  }
+
+  fields.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(stripeSubscriptionId);
+
+  db.prepare(`
+    UPDATE subscriptions
+    SET ${fields.join(', ')}
+    WHERE stripe_subscription_id = ?
+  `).run(...values);
+
+  // Update user's subscription status if changed
+  if (updates.status) {
+    const sub = getSubscriptionByStripeId(stripeSubscriptionId);
+    if (sub) {
+      db.prepare(`
+        UPDATE users
+        SET subscription_status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(updates.status, sub.user_id);
+    }
+  }
+}
+
+/**
+ * Cancel subscription
+ * @param {string} stripeSubscriptionId
+ * @param {boolean} immediate - Cancel immediately or at period end
+ */
+function cancelSubscription(stripeSubscriptionId, immediate = false) {
+  const updates = {
+    canceledAt: new Date().toISOString(),
+    status: immediate ? 'canceled' : undefined,
+    cancelAtPeriodEnd: !immediate
+  };
+
+  updateSubscription(stripeSubscriptionId, updates);
+  console.log(`[SUBSCRIPTION] Subscription ${stripeSubscriptionId} canceled (immediate: ${immediate})`);
+}
+
+/**
+ * Record a payment
+ * @param {Object} data - Payment data
+ * @returns {number} Payment ID
+ */
+function recordPayment(data) {
+  const result = db.prepare(`
+    INSERT INTO payment_history (
+      user_id, subscription_id, stripe_payment_intent_id, stripe_invoice_id,
+      amount_cents, currency, status, description, receipt_url, failure_reason
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.userId,
+    data.subscriptionId || null,
+    data.stripePaymentIntentId,
+    data.stripeInvoiceId || null,
+    data.amountCents,
+    data.currency || 'usd',
+    data.status || 'succeeded',
+    data.description || null,
+    data.receiptUrl || null,
+    data.failureReason || null
+  );
+
+  console.log(`[PAYMENT] Recorded payment of $${(data.amountCents / 100).toFixed(2)} for user ${data.userId}`);
+  return result.lastInsertRowid;
+}
+
+/**
+ * Get payment history for a user
+ * @param {number} userId
+ * @param {number} limit
+ * @returns {Array} Payment history
+ */
+function getPaymentHistory(userId, limit = 20) {
+  return db.prepare(`
+    SELECT * FROM payment_history
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).all(userId, limit);
+}
+
+/**
+ * Update user subscription status directly
+ * @param {number} userId
+ * @param {string} status - trial, active, expired, cancelled
+ */
+function updateUserSubscriptionStatus(userId, status) {
+  db.prepare(`
+    UPDATE users
+    SET subscription_status = ?, is_trial = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(status, status === 'trial' ? 1 : 0, userId);
+}
+
 module.exports = {
   initDatabase,
   getDatabase,
@@ -1962,5 +2247,15 @@ module.exports = {
   updateEmailMonitorError,
   isEmailAlreadyProcessed,
   logEmailProcessing,
-  incrementEmailMonitorStats
+  incrementEmailMonitorStats,
+
+  // Subscription & Payment functions
+  createSubscription,
+  getSubscriptionByUserId,
+  getSubscriptionByStripeId,
+  updateSubscription,
+  cancelSubscription,
+  recordPayment,
+  getPaymentHistory,
+  updateUserSubscriptionStatus
 };

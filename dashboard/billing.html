@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0a0f1a 0%, #0d1321 50%, #0a0f1a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 32px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #fbbf24;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 32px;
+      color: #ffffff;
+    }
+
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.1);
+    }
+
+    .card-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .status-badge {
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-badge.active {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+    }
+
+    .status-badge.trial {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+    }
+
+    .status-badge.canceled, .status-badge.expired {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .status-badge.past_due {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+    }
+
+    .plan-info {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .plan-info {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .plan-stat {
+      text-align: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+    }
+
+    .plan-stat-value {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #fbbf24;
+    }
+
+    .plan-stat-label {
+      color: #64748b;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .features-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .features-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .features-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .features-list li::before {
+      content: '✓';
+      color: #22c55e;
+      font-weight: 700;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(251, 191, 36, 0.1);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    /* Trial Banner */
+    .trial-banner {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .trial-banner h3 {
+      color: #3b82f6;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .trial-banner p {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .trial-progress {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 50px;
+      height: 12px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+
+    .trial-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      border-radius: 50px;
+      transition: width 0.3s ease;
+    }
+
+    .trial-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 12px;
+    }
+
+    .trial-stat {
+      text-align: center;
+    }
+
+    .trial-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .trial-stat-label {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* Invoices Table */
+    .invoices-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .invoices-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(251, 191, 36, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.15);
+    }
+
+    .invoices-table td {
+      padding: 16px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .invoices-table tr:hover {
+      background: rgba(251, 191, 36, 0.03);
+    }
+
+    .invoice-status {
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .invoice-status.succeeded {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .invoice-status.failed {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .receipt-link {
+      color: #fbbf24;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .receipt-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .alert.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(251, 191, 36, 0.2);
+      border-top-color: #fbbf24;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="container">
+    <a href="manager-view.html" class="back-link">← Back to Dashboard</a>
+
+    <h1>Billing & Subscription</h1>
+
+    <div id="alertContainer"></div>
+
+    <div id="content" class="loading">
+      <div class="spinner"></div>
+      <p style="color: #64748b;">Loading billing information...</p>
+    </div>
+  </div>
+
+  <script>
+    // Check URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      showAlert('success', '🎉 Your subscription has been activated!');
+    }
+
+    // Initialize
+    async function init() {
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        // Fetch subscription info
+        const subResponse = await fetch('/stripe/subscription', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const subData = await subResponse.json();
+
+        // Fetch invoices
+        const invResponse = await fetch('/stripe/invoices', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const invData = await invResponse.json();
+
+        renderBilling(subData, invData.invoices || []);
+      } catch (error) {
+        console.error('Error loading billing:', error);
+        document.getElementById('content').innerHTML = `
+          <div class="alert error">Failed to load billing information. Please try again.</div>
+        `;
+      }
+    }
+
+    function renderBilling(subData, invoices) {
+      const container = document.getElementById('content');
+
+      if (subData.isTrial) {
+        // Show trial info
+        const daysLeft = subData.trialDaysLeft || 0;
+        const invoicesLeft = subData.trialInvoicesLeft || 0;
+        const daysProgress = Math.max(0, 100 - (daysLeft / 30 * 100));
+        const invoicesProgress = Math.max(0, 100 - (invoicesLeft / 20 * 100));
+
+        container.innerHTML = `
+          <div class="trial-banner">
+            <h3>🚀 Free Trial Active</h3>
+            <p>You're on the free trial. Upgrade anytime to unlock full features.</p>
+
+            <div class="trial-stats">
+              <div class="trial-stat">
+                <div class="trial-stat-value">${daysLeft}</div>
+                <div class="trial-stat-label">Days Remaining</div>
+              </div>
+              <div class="trial-stat">
+                <div class="trial-stat-value">${invoicesLeft}</div>
+                <div class="trial-stat-label">Invoices Remaining</div>
+              </div>
+            </div>
+
+            <div class="trial-progress">
+              <div class="trial-progress-bar" style="width: ${Math.max(daysProgress, invoicesProgress)}%"></div>
+            </div>
+
+            <div class="button-group" style="justify-content: center;">
+              <button class="btn btn-primary" onclick="window.location.href='pricing.html'">
+                Upgrade Now
+              </button>
+            </div>
+          </div>
+        `;
+      } else if (subData.subscription) {
+        // Show active subscription
+        const sub = subData.subscription;
+        const nextBilling = new Date(sub.currentPeriodEnd).toLocaleDateString('en-US', {
+          month: 'long', day: 'numeric', year: 'numeric'
+        });
+
+        container.innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Current Plan: ${sub.planName}</h2>
+              <span class="status-badge ${sub.status}">${sub.cancelAtPeriodEnd ? 'Canceling' : sub.status}</span>
+            </div>
+
+            <div class="plan-info">
+              <div class="plan-stat">
+                <div class="plan-stat-value">$${(sub.amount / 100).toFixed(0)}</div>
+                <div class="plan-stat-label">per ${sub.interval}</div>
+              </div>
+              <div class="plan-stat">
+                <div class="plan-stat-value">${nextBilling}</div>
+                <div class="plan-stat-label">${sub.cancelAtPeriodEnd ? 'Access Until' : 'Next Billing Date'}</div>
+              </div>
+              <div class="plan-stat">
+                <div class="plan-stat-value">${sub.features?.length || 0}</div>
+                <div class="plan-stat-label">Features Included</div>
+              </div>
+            </div>
+
+            ${sub.features ? `
+              <ul class="features-list">
+                ${sub.features.map(f => `<li>${f}</li>`).join('')}
+              </ul>
+            ` : ''}
+
+            <div class="button-group">
+              <button class="btn btn-secondary" onclick="openBillingPortal()">
+                Manage Subscription
+              </button>
+              ${!sub.cancelAtPeriodEnd ? `
+                <button class="btn btn-danger" onclick="cancelSubscription()">
+                  Cancel Subscription
+                </button>
+              ` : ''}
+            </div>
+
+            ${sub.cancelAtPeriodEnd ? `
+              <p style="margin-top: 16px; color: #ef4444; font-size: 14px;">
+                Your subscription will end on ${nextBilling}. You'll retain access until then.
+              </p>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        // No subscription - show upgrade prompt
+        container.innerHTML = `
+          <div class="card" style="text-align: center;">
+            <h2 class="card-title" style="margin-bottom: 16px;">No Active Subscription</h2>
+            <p style="color: #94a3b8; margin-bottom: 24px;">
+              Your trial has expired. Subscribe to continue using Revenue Radar.
+            </p>
+            <button class="btn btn-primary" onclick="window.location.href='pricing.html'">
+              View Plans & Subscribe
+            </button>
+          </div>
+        `;
+      }
+
+      // Add payment history
+      if (invoices.length > 0) {
+        container.innerHTML += `
+          <div class="card">
+            <h2 class="card-title" style="margin-bottom: 24px;">Payment History</h2>
+
+            <table class="invoices-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${invoices.map(inv => `
+                  <tr>
+                    <td>${new Date(inv.date).toLocaleDateString()}</td>
+                    <td>${inv.description || 'Subscription'}</td>
+                    <td>$${(inv.amount / 100).toFixed(2)}</td>
+                    <td><span class="invoice-status ${inv.status}">${inv.status}</span></td>
+                    <td>${inv.receiptUrl ? `<a href="${inv.receiptUrl}" target="_blank" class="receipt-link">View</a>` : '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+
+    async function openBillingPortal() {
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+
+      try {
+        const response = await fetch('/stripe/create-portal-session', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.url) {
+          window.location.href = data.url;
+        } else {
+          showAlert('error', data.error || 'Failed to open billing portal');
+        }
+      } catch (error) {
+        showAlert('error', 'Failed to open billing portal');
+      }
+    }
+
+    async function cancelSubscription() {
+      if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your billing period.')) {
+        return;
+      }
+
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+
+      try {
+        const response = await fetch('/stripe/cancel-subscription', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ immediate: false })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showAlert('success', 'Subscription canceled. You will retain access until the end of your billing period.');
+          setTimeout(() => init(), 2000);
+        } else {
+          showAlert('error', data.error || 'Failed to cancel subscription');
+        }
+      } catch (error) {
+        showAlert('error', 'Failed to cancel subscription');
+      }
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById('alertContainer');
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 5000);
+    }
+
+    // Initialize
+    init();
+  </script>
+</body>
+</html>

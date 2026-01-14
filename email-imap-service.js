@@ -363,6 +363,7 @@ class EmailIMAPService {
 
   /**
    * Process invoice PDF attachments
+   * Integrates with the /ingest endpoint for full invoice processing
    * @param {Object} emailData - Parsed email data
    * @param {Object} monitor - Email monitor configuration
    * @returns {Promise<Object>} Processing result
@@ -370,30 +371,86 @@ class EmailIMAPService {
   async processInvoiceAttachments(emailData, monitor) {
     const invoiceIds = [];
     let invoicesCreated = 0;
+    const pdfParse = require('pdf-parse');
 
     try {
       for (const attachment of emailData.attachments) {
         if (attachment.contentType === 'application/pdf' || attachment.filename?.toLowerCase().endsWith('.pdf')) {
           console.log(`[EMAIL IMAP] Processing PDF attachment: ${attachment.filename}`);
 
-          // Save PDF temporarily
-          const tempDir = path.join(__dirname, 'temp-invoices');
-          await fs.mkdir(tempDir, { recursive: true });
+          try {
+            // Parse PDF content
+            const pdfData = await pdfParse(attachment.content);
+            const pdfText = pdfData.text;
 
-          const tempFilePath = path.join(tempDir, `${Date.now()}-${attachment.filename}`);
-          await fs.writeFile(tempFilePath, attachment.content);
+            console.log(`[EMAIL IMAP] Extracted ${pdfText.length} characters from PDF`);
 
-          // TODO: Integrate with existing invoice ingestion system
-          // For now, we'll just log that we found an invoice
-          console.log(`[EMAIL IMAP] ✓ Invoice PDF saved: ${tempFilePath}`);
+            // Extract vendor/account info from email
+            const senderDomain = emailData.from?.value?.[0]?.address?.split('@')[1] || '';
+            const vendorName = this.extractVendorName(senderDomain, emailData.subject, pdfText);
+            const accountName = monitor.account_name;
 
-          // Here you would call your existing invoice processing logic
-          // const invoiceId = await processInvoicePDF(tempFilePath, monitor.user_id);
-          // invoiceIds.push(invoiceId);
-          // invoicesCreated++;
+            // Build invoice payload for /ingest
+            const invoicePayload = {
+              rawText: pdfText,
+              vendorName: vendorName,
+              accountName: accountName,
+              fileName: attachment.filename,
+              source: 'email_autopilot',
+              monitorId: monitor.id,
+              emailSubject: emailData.subject,
+              emailFrom: emailData.from?.value?.[0]?.address,
+              emailDate: emailData.date?.toISOString()
+            };
 
-          // Clean up temp file
-          await fs.unlink(tempFilePath).catch(() => {});
+            // Call internal ingest function (no HTTP needed)
+            const result = await this.ingestInvoice(invoicePayload, monitor);
+
+            if (result.success) {
+              invoiceIds.push(result.runId);
+              invoicesCreated++;
+
+              // Log activity
+              db.logEmailActivity(
+                monitor.id,
+                'invoice_processed',
+                `Processed invoice from ${vendorName}: ${attachment.filename}`,
+                'info',
+                {
+                  runId: result.runId,
+                  opportunities: result.opportunitiesDetected || 0,
+                  fileName: attachment.filename
+                }
+              );
+
+              // Update monitor stats
+              db.updateEmailMonitorStats(monitor.id, {
+                totalInvoicesFound: 1,
+                totalOpportunitiesDetected: result.opportunitiesDetected || 0,
+                totalSavingsDetectedCents: result.savingsDetectedCents || 0
+              });
+
+              console.log(`[EMAIL IMAP] ✓ Invoice processed successfully: ${result.runId}`);
+            } else {
+              console.error(`[EMAIL IMAP] Invoice processing failed: ${result.error}`);
+              db.logEmailActivity(
+                monitor.id,
+                'error',
+                `Failed to process invoice ${attachment.filename}: ${result.error}`,
+                'error',
+                { fileName: attachment.filename, error: result.error }
+              );
+            }
+          } catch (pdfError) {
+            console.error(`[EMAIL IMAP] PDF parsing error for ${attachment.filename}:`, pdfError.message);
+            db.logEmailActivity(
+              monitor.id,
+              'error',
+              `Failed to parse PDF ${attachment.filename}: ${pdfError.message}`,
+              'warning',
+              { fileName: attachment.filename, error: pdfError.message }
+            );
+          }
         }
       }
 
@@ -409,6 +466,208 @@ class EmailIMAPService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Extract vendor name from email metadata
+   * @param {string} domain - Sender email domain
+   * @param {string} subject - Email subject
+   * @param {string} pdfText - PDF content
+   * @returns {string} Vendor name
+   */
+  extractVendorName(domain, subject, pdfText) {
+    // Try to extract from domain first
+    if (domain) {
+      const domainParts = domain.split('.');
+      if (domainParts.length >= 2) {
+        const name = domainParts[domainParts.length - 2];
+        if (name && name.length > 2 && !['mail', 'email', 'smtp', 'noreply'].includes(name.toLowerCase())) {
+          return name.charAt(0).toUpperCase() + name.slice(1);
+        }
+      }
+    }
+
+    // Try to extract from subject
+    const subjectMatch = subject?.match(/invoice\s+from\s+([^\s]+)/i);
+    if (subjectMatch) {
+      return subjectMatch[1];
+    }
+
+    // Try to extract from PDF content (first capitalized word after "from" or company name patterns)
+    const pdfMatch = pdfText?.match(/(?:from|vendor|supplier|billed by)[:\s]+([A-Z][a-zA-Z\s&]+)/i);
+    if (pdfMatch) {
+      return pdfMatch[1].trim().slice(0, 50);
+    }
+
+    return 'Unknown Vendor';
+  }
+
+  /**
+   * Internal invoice ingestion - calls the same logic as /ingest endpoint
+   * @param {Object} payload - Invoice data
+   * @param {Object} monitor - Email monitor
+   * @returns {Promise<Object>} Ingestion result
+   */
+  async ingestInvoice(payload, monitor) {
+    try {
+      const runId = `email-${monitor.id}-${Date.now()}`;
+
+      // Get user from monitor
+      const user = db.getDatabase().prepare('SELECT * FROM users WHERE id = ?').get(monitor.created_by_user_id);
+
+      if (!user) {
+        return { success: false, error: 'Monitor user not found' };
+      }
+
+      // Store ingestion run
+      db.getDatabase().prepare(`
+        INSERT INTO ingestion_runs (run_id, user_id, account_name, vendor_name, file_name, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 'processing', CURRENT_TIMESTAMP)
+      `).run(runId, user.id, payload.accountName, payload.vendorName, payload.fileName);
+
+      // Parse invoice items from text (basic extraction)
+      const items = this.extractInvoiceItems(payload.rawText);
+
+      // Store invoice items
+      let totalCents = 0;
+      for (const item of items) {
+        db.getDatabase().prepare(`
+          INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(runId, item.description, item.quantity, item.unitPriceCents, item.totalCents, item.category || 'general');
+        totalCents += item.totalCents || 0;
+      }
+
+      // Run rules engine to detect opportunities
+      let opportunitiesDetected = 0;
+      try {
+        const rules = db.evaluateRulesForInvoice(payload.accountName, items);
+        opportunitiesDetected = rules?.opportunitiesCreated || 0;
+      } catch (rulesError) {
+        console.error('[EMAIL IMAP] Rules engine error:', rulesError.message);
+      }
+
+      // Mark run as complete
+      db.getDatabase().prepare(`
+        UPDATE ingestion_runs
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+        WHERE run_id = ?
+      `).run(runId);
+
+      // Update user's invoice count if on trial
+      if (user.is_trial) {
+        db.getDatabase().prepare(`
+          UPDATE users
+          SET trial_invoices_used = trial_invoices_used + 1
+          WHERE id = ?
+        `).run(user.id);
+      }
+
+      // Track vendor for future price comparisons
+      db.trackVendor(monitor.id, payload.vendorName, {
+        vendorEmail: payload.emailFrom,
+        invoiceAmountCents: totalCents
+      });
+
+      return {
+        success: true,
+        runId,
+        itemsExtracted: items.length,
+        totalCents,
+        opportunitiesDetected,
+        savingsDetectedCents: 0 // TODO: Implement savings detection
+      };
+    } catch (error) {
+      console.error('[EMAIL IMAP] Ingest error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Extract invoice items from raw text
+   * Basic extraction - can be enhanced with AI later
+   * @param {string} text - Raw invoice text
+   * @returns {Array} Extracted items
+   */
+  extractInvoiceItems(text) {
+    const items = [];
+
+    // Common invoice line item patterns
+    const patterns = [
+      // Pattern: Qty  Description  Unit Price  Total
+      /(\d+)\s+(.{10,50})\s+\$?([\d,]+\.?\d*)\s+\$?([\d,]+\.?\d*)/g,
+      // Pattern: Description  Qty  Price
+      /([A-Za-z].{10,50}?)\s+(\d+)\s+\$?([\d,]+\.?\d*)/g,
+      // Pattern: SKU/Item#  Description  Price
+      /([A-Z0-9-]{3,15})\s+(.{10,40})\s+\$?([\d,]+\.?\d*)/g
+    ];
+
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const quantity = parseInt(match[1]) || 1;
+        const description = match[2]?.trim() || 'Item';
+        const price = parseFloat((match[3] || match[4] || '0').replace(/,/g, ''));
+
+        if (price > 0 && description.length > 3) {
+          items.push({
+            description: description.slice(0, 200),
+            quantity,
+            unitPriceCents: Math.round(price * 100 / quantity),
+            totalCents: Math.round(price * 100),
+            category: this.categorizeItem(description)
+          });
+        }
+      }
+
+      if (items.length > 0) break; // Use first successful pattern
+    }
+
+    // If no items found, create a single line item from total
+    if (items.length === 0) {
+      const totalMatch = text.match(/(?:total|amount due|balance)[:\s]*\$?([\d,]+\.?\d*)/i);
+      if (totalMatch) {
+        const total = parseFloat(totalMatch[1].replace(/,/g, ''));
+        if (total > 0) {
+          items.push({
+            description: 'Invoice Total',
+            quantity: 1,
+            unitPriceCents: Math.round(total * 100),
+            totalCents: Math.round(total * 100),
+            category: 'general'
+          });
+        }
+      }
+    }
+
+    return items;
+  }
+
+  /**
+   * Categorize an item based on description
+   * @param {string} description
+   * @returns {string} Category
+   */
+  categorizeItem(description) {
+    const desc = description.toLowerCase();
+
+    if (desc.includes('food') || desc.includes('produce') || desc.includes('meat') || desc.includes('dairy')) {
+      return 'food_supplies';
+    }
+    if (desc.includes('equipment') || desc.includes('machine') || desc.includes('tool')) {
+      return 'equipment';
+    }
+    if (desc.includes('service') || desc.includes('labor') || desc.includes('maintenance')) {
+      return 'services';
+    }
+    if (desc.includes('shipping') || desc.includes('freight') || desc.includes('delivery')) {
+      return 'shipping';
+    }
+    if (desc.includes('license') || desc.includes('subscription') || desc.includes('software')) {
+      return 'software';
+    }
+
+    return 'general';
   }
 
   /**

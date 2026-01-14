@@ -308,6 +308,10 @@ class Config {
     return process.env.STRIPE_PUBLISHABLE_KEY;
   }
 
+  get stripeWebhookSecret() {
+    return process.env.STRIPE_WEBHOOK_SECRET;
+  }
+
   // Notifications
   get slackWebhookUrl() {
     return process.env.SLACK_WEBHOOK_URL;
