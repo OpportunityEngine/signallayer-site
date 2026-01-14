@@ -874,7 +874,7 @@ class NotificationSystem {
 
   async fetchNewNotifications() {
     try {
-      const authToken = localStorage.getItem('authToken');
+      const authToken = localStorage.getItem('accessToken');
       if (!authToken) return;
 
       const response = await fetch('/api/notifications/unread', {
@@ -924,7 +924,7 @@ class NotificationSystem {
 
   connectSSE() {
     try {
-      const authToken = localStorage.getItem('authToken');
+      const authToken = localStorage.getItem('accessToken');
       if (!authToken) return;
 
       this.eventSource = new EventSource(`/api/notifications/stream?token=${authToken}`);

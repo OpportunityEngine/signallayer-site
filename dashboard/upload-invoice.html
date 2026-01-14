@@ -672,7 +672,7 @@
 
   <script>
     // Check auth
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = localStorage.getItem('accessToken');
     if (!token) {
       window.location.href = 'login.html';
     }

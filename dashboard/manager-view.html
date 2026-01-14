@@ -1142,7 +1142,11 @@
 
     async function loadEmailServiceStatus() {
       try {
-        const response = await fetch('/api/email-service/status');
+        const response = await fetch('/api/email-service/status', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -1251,7 +1255,11 @@
 
     async function loadDetectedSavings() {
       try {
-        const response = await fetch('/api/detected-savings?days=30');
+        const response = await fetch('/api/detected-savings?days=30', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -1273,7 +1281,11 @@
 
     async function loadActivityFeed() {
       try {
-        const response = await fetch('/api/email-monitors-activity?limit=20');
+        const response = await fetch('/api/email-monitors-activity?limit=20', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -1796,7 +1808,11 @@
 
     async function loadRules() {
       try {
-        const response = await fetch('/api/rules');
+        const response = await fetch('/api/rules', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
         const result = await response.json();
 
         if (!result.success) {

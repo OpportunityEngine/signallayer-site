@@ -1037,6 +1037,88 @@ router.get('/expenses', (req, res) => {
   }
 });
 
+// GET /api/bi/financial-summary - Get financial summary for dashboard charts
+router.get('/financial-summary', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { days = 30 } = req.query;
+
+    const database = db.getDatabase();
+
+    // Get totals for the period
+    const payrollTotal = database.prepare(`
+      SELECT COALESCE(SUM(gross_payroll_cents), 0) as total
+      FROM payroll_entries
+      WHERE user_id = ?
+        AND period_start >= date('now', '-' || ? || ' days')
+    `).get(user.id, days);
+
+    const expensesTotal = database.prepare(`
+      SELECT COALESCE(SUM(amount_cents), 0) as total
+      FROM expense_entries
+      WHERE user_id = ?
+        AND period_start >= date('now', '-' || ? || ' days')
+    `).get(user.id, days);
+
+    // Get savings from detected issues
+    const savingsTotal = database.prepare(`
+      SELECT COALESCE(SUM(delta_cents), 0) as total
+      FROM flagged_issues
+      WHERE company_id = ?
+        AND status = 'resolved'
+        AND created_at >= date('now', '-' || ? || ' days')
+    `).get(user.company_id || 'demo', days);
+
+    // Get expense breakdown by category
+    const breakdown = database.prepare(`
+      SELECT category, SUM(amount_cents) as amount
+      FROM expense_entries
+      WHERE user_id = ?
+        AND period_start >= date('now', '-' || ? || ' days')
+      GROUP BY category
+      ORDER BY amount DESC
+    `).all(user.id, days);
+
+    // Add payroll as a category
+    if (payrollTotal.total > 0) {
+      breakdown.unshift({ category: 'Payroll', amount: payrollTotal.total });
+    }
+
+    // Get daily spending trend
+    const trend = database.prepare(`
+      SELECT
+        period_start as date,
+        SUM(amount_cents) as amount
+      FROM expense_entries
+      WHERE user_id = ?
+        AND period_start >= date('now', '-' || ? || ' days')
+      GROUP BY period_start
+      ORDER BY period_start
+    `).all(user.id, days);
+
+    res.json({
+      success: true,
+      data: {
+        totals: {
+          expenses: expensesTotal.total + payrollTotal.total,
+          payroll: payrollTotal.total,
+          inventory: 0, // Placeholder for inventory spend
+          savings: savingsTotal.total
+        },
+        breakdown,
+        trend: trend.map(t => ({
+          date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          amount: t.amount
+        })),
+        budget: [] // Budget comparison would require budget settings table
+      }
+    });
+  } catch (error) {
+    console.error('[BI] Financial summary error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/bi/analytics/financial - Get financial analytics
 router.get('/analytics/financial', (req, res) => {
   try {

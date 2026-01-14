@@ -406,7 +406,7 @@
 
     // Initialize
     async function init() {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('accessToken');
 
       if (!token) {
         window.location.href = 'login.html';
@@ -574,7 +574,7 @@
     }
 
     async function openBillingPortal() {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('accessToken');
 
       try {
         const response = await fetch('/stripe/create-portal-session', {
@@ -602,7 +602,7 @@
         return;
       }
 
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('accessToken');
 
       try {
         const response = await fetch('/stripe/cancel-subscription', {

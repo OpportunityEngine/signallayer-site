@@ -512,7 +512,7 @@
     // Initialize
     async function init() {
       // Check if user is authenticated
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('accessToken');
       isAuthenticated = !!token;
 
       // Fetch pricing plans
@@ -667,7 +667,7 @@
 
       // Create checkout session
       try {
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('accessToken');
         const response = await fetch('/stripe/create-checkout-session', {
           method: 'POST',
           headers: {
