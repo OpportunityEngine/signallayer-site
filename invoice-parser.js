@@ -191,10 +191,10 @@ function extractLineItems(text) {
     }
   }
 
-  // Add categories to all items
+  // Add categories to all items (preserve if already set by vendor-specific extractor)
   return items.map(item => ({
     ...item,
-    category: categorizeItem(item.description),
+    category: item.category || categorizeItem(item.description),
     sku: item.sku || extractSku(item.description)
   }));
 }
@@ -369,29 +369,104 @@ function extractVendorSpecificFormat(text) {
   const textLower = text.toLowerCase();
 
   // ===== CINTAS FORMAT =====
-  // Cintas uniform invoices have employee subtotals that are most reliable
+  // Cintas uniform invoices have:
+  // 1. Employee subtotals (e.g., "CHARLES SHAW SUBTOTAL - 1.01")
+  // 2. Facility items (mats, mops, wipes)
+  // 3. Fee items (EMBLEM ADVANTAGE, UNIFORM ADVANTAGE, PREP ADVANTAGE, SERVICE CHARGE)
+  // 4. Department subtotals (BULK SUBTOTAL, IT SUBTOTAL)
   if (textLower.includes('cintas') || /X\d{5}/.test(text)) {
-    // Best approach: Extract employee subtotals (most reliable)
-    const subtotalPattern = /([A-Z][A-Z\s]+?)\s+SUBTOTAL\s*-?\s*([\d,\.]+)/g;
+
+    // 1. Extract employee subtotals (most reliable for uniform services)
+    const subtotalPattern = /([A-Z][A-Z\s,\.\-']+?)\s+SUBTOTAL\s*-?\s*([\d,\.]+)/g;
     let match;
+    const seenEmployees = new Set();
 
     while ((match = subtotalPattern.exec(text)) !== null) {
       const empName = match[1].trim();
       const subtotal = parsePrice(match[2]);
 
-      if (subtotal > 0 && empName.length >= 3 && !empName.includes('INVOICE')) {
+      // Skip if it's a department/bulk subtotal or already seen
+      const empNameUpper = empName.toUpperCase();
+      if (subtotal > 0 && empName.length >= 3 &&
+          !empNameUpper.includes('INVOICE') &&
+          !empNameUpper.includes('BULK') &&
+          !empNameUpper.startsWith('IT ') &&
+          !empNameUpper.startsWith('DEPT') &&
+          !seenEmployees.has(empNameUpper)) {
+        seenEmployees.add(empNameUpper);
         items.push({
           description: `Uniform Service - ${empName}`,
           quantity: 1,
           unitPriceCents: subtotal,
           totalCents: subtotal,
           sku: null,
-          category: 'services'
+          category: 'uniform_service'
         });
       }
     }
 
-    // If we found employee subtotals, return those (cleaner than individual items)
+    // 2. Extract facility items (mats, mops, towels at the beginning before employee items)
+    // Pattern: X##### DESCRIPTION 01 F QTY PRICE TOTAL
+    const facilityPattern = /^(X\d{4,6})\s+([A-Z0-9\s\/\-"]+?)\s+01\s+F\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)\s+N$/gm;
+    let facilityMatch;
+    while ((facilityMatch = facilityPattern.exec(text)) !== null) {
+      const sku = facilityMatch[1];
+      const desc = facilityMatch[2].trim();
+      const qty = parseInt(facilityMatch[3]) || 1;
+      const unitPrice = parsePrice(facilityMatch[4]);
+      const lineTotal = parsePrice(facilityMatch[5]);
+
+      // Only include facility items (mats, mops, towels, wipes) not employee garments
+      const descLower = desc.toLowerCase();
+      if (lineTotal > 0 &&
+          (descLower.includes('mat') || descLower.includes('mop') ||
+           descLower.includes('towel') || descLower.includes('wipe') ||
+           descLower.includes('xtrac'))) {
+        items.push({
+          description: desc,
+          quantity: qty,
+          unitPriceCents: unitPrice,
+          totalCents: lineTotal,
+          sku: sku,
+          category: 'facility_services'
+        });
+      }
+    }
+
+    // 3. Extract Cintas fee/advantage items
+    // These appear as: "EMBLEM ADVANTAGE 170.85 N" or "SERVICE CHARGE 4.18 N"
+    const feePatterns = [
+      /EMBLEM\s+ADVANTAGE\s+([\d,\.]+)/gi,
+      /UNIFORM\s+ADVANTAGE\s+([\d,\.]+)/gi,
+      /PREP\s+ADVANTAGE\s+([\d,\.]+)/gi,
+      /SERVICE\s+CHARGE\s+([\d,\.]+)/gi
+    ];
+
+    const feeNames = ['Emblem Advantage Fee', 'Uniform Advantage Fee', 'Prep Advantage Fee', 'Service Charge'];
+
+    for (let i = 0; i < feePatterns.length; i++) {
+      let feeMatch;
+      let totalForFee = 0;
+      const pattern = feePatterns[i];
+      pattern.lastIndex = 0; // Reset regex
+
+      while ((feeMatch = pattern.exec(text)) !== null) {
+        totalForFee += parsePrice(feeMatch[1]);
+      }
+
+      if (totalForFee > 0) {
+        items.push({
+          description: feeNames[i],
+          quantity: 1,
+          unitPriceCents: totalForFee,
+          totalCents: totalForFee,
+          sku: null,
+          category: 'fees'
+        });
+      }
+    }
+
+    // If we found items, return them
     if (items.length > 0) {
       return items;
     }
@@ -502,7 +577,9 @@ function extractTotals(text) {
   };
 
   // Grand total patterns (most specific to least)
+  // Cintas uses "TOTAL USD" format
   const totalPatterns = [
+    /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,2})/i,  // Cintas format
     /(?:grand\s*total|total\s*amount|amount\s*due|balance\s*due|total\s*due)[:\s]*\$?([\d,]+\.?\d{0,2})/i,
     /(?:^|\s)total[:\s]+\$?([\d,]+\.?\d{2})(?:\s|$)/im,
     /\$?([\d,]+\.?\d{2})\s*(?:total|due)(?:\s|$)/i
