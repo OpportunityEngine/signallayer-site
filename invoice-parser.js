@@ -97,17 +97,33 @@ function extractLineItems(text) {
   const seenDescriptions = new Set();
   let strategyUsed = null;
 
-  // Strategy 1: Structured table format (most reliable)
-  // QTY | DESCRIPTION | UNIT PRICE | TOTAL
-  const tableItems = extractTableFormat(text);
-  if (tableItems.length > 0) {
-    strategyUsed = 'table_format';
-    tableItems.forEach(item => {
-      if (!seenDescriptions.has(item.description.toLowerCase())) {
-        seenDescriptions.add(item.description.toLowerCase());
-        items.push({ ...item, extractionStrategy: strategyUsed, confidence: 0.9 });
+  // Strategy 0: Vendor-specific formats (highest priority)
+  // Cintas, Sysco, US Foods, etc. have specific invoice formats
+  const vendorItems = extractVendorSpecificFormat(text);
+  if (vendorItems.length > 0) {
+    strategyUsed = 'vendor_specific';
+    vendorItems.forEach(item => {
+      const key = `${item.description}|${item.totalCents}`.toLowerCase();
+      if (!seenDescriptions.has(key)) {
+        seenDescriptions.add(key);
+        items.push({ ...item, extractionStrategy: strategyUsed, confidence: 0.95 });
       }
     });
+  }
+
+  // Strategy 1: Structured table format (most reliable)
+  // QTY | DESCRIPTION | UNIT PRICE | TOTAL
+  if (items.length === 0) {
+    const tableItems = extractTableFormat(text);
+    if (tableItems.length > 0) {
+      strategyUsed = 'table_format';
+      tableItems.forEach(item => {
+        if (!seenDescriptions.has(item.description.toLowerCase())) {
+          seenDescriptions.add(item.description.toLowerCase());
+          items.push({ ...item, extractionStrategy: strategyUsed, confidence: 0.9 });
+        }
+      });
+    }
   }
 
   // Strategy 2: Line-by-line with price at end
@@ -138,7 +154,22 @@ function extractLineItems(text) {
     }
   }
 
-  // Strategy 4: Price-anchor extraction (find prices, work backwards)
+  // Strategy 4: Browser-extension style extraction (same logic as chrome extension)
+  if (items.length === 0) {
+    const browserItems = extractBrowserExtensionStyle(text);
+    if (browserItems.length > 0) {
+      strategyUsed = 'browser_extension_style';
+      browserItems.forEach(item => {
+        const key = `${item.description}|${item.totalCents}`.toLowerCase();
+        if (!seenDescriptions.has(key)) {
+          seenDescriptions.add(key);
+          items.push({ ...item, extractionStrategy: strategyUsed, confidence: 0.7 });
+        }
+      });
+    }
+  }
+
+  // Strategy 5: Price-anchor extraction (find prices, work backwards)
   if (items.length === 0) {
     const priceItems = extractPriceAnchored(text);
     if (priceItems.length > 0) {
@@ -152,7 +183,7 @@ function extractLineItems(text) {
     }
   }
 
-  // Strategy 5: Fallback - extract total as single item
+  // Strategy 6: Fallback - extract total as single item
   if (items.length === 0) {
     const totalItem = extractTotalAsItem(text);
     if (totalItem) {
@@ -323,6 +354,131 @@ function extractPriceAnchored(text) {
         }
       }
     }
+  }
+
+  return items;
+}
+
+/**
+ * Strategy 0: Vendor-specific format extraction
+ * Handles known vendor invoice formats (Cintas, Sysco, US Foods, etc.)
+ * Uses the same logic approach as the browser extension for consistency
+ */
+function extractVendorSpecificFormat(text) {
+  const items = [];
+  const textLower = text.toLowerCase();
+
+  // ===== CINTAS FORMAT =====
+  // Cintas uniform invoices have employee subtotals that are most reliable
+  if (textLower.includes('cintas') || /X\d{5}/.test(text)) {
+    // Best approach: Extract employee subtotals (most reliable)
+    const subtotalPattern = /([A-Z][A-Z\s]+?)\s+SUBTOTAL\s*-?\s*([\d,\.]+)/g;
+    let match;
+
+    while ((match = subtotalPattern.exec(text)) !== null) {
+      const empName = match[1].trim();
+      const subtotal = parsePrice(match[2]);
+
+      if (subtotal > 0 && empName.length >= 3 && !empName.includes('INVOICE')) {
+        items.push({
+          description: `Uniform Service - ${empName}`,
+          quantity: 1,
+          unitPriceCents: subtotal,
+          totalCents: subtotal,
+          sku: null,
+          category: 'services'
+        });
+      }
+    }
+
+    // If we found employee subtotals, return those (cleaner than individual items)
+    if (items.length > 0) {
+      return items;
+    }
+  }
+
+  // ===== SYSCO / US FOODS / FOOD DISTRIBUTOR FORMAT =====
+  if (textLower.includes('sysco') || textLower.includes('us foods') || textLower.includes('food service') || textLower.includes('produce')) {
+    const foodPattern = /(\d{6,8})\s+([A-Za-z][A-Za-z0-9\s\-\/\.,]{5,50}?)\s+(\d+)\s*\/\s*([A-Z0-9]+)\s+(\d+)\s+\$?([\d,\.]+)\s+\$?([\d,\.]+)/g;
+    let match;
+
+    while ((match = foodPattern.exec(text)) !== null) {
+      const sku = match[1];
+      const desc = cleanDescription(match[2]);
+      const qty = parseInt(match[5]) || 1;
+      const unitPrice = parsePrice(match[6]);
+      const lineTotal = parsePrice(match[7]);
+
+      if (desc.length >= 3 && lineTotal > 0) {
+        items.push({
+          description: desc,
+          quantity: qty,
+          unitPriceCents: unitPrice,
+          totalCents: lineTotal,
+          sku: sku,
+          category: 'food_supplies'
+        });
+      }
+    }
+
+    if (items.length > 0) return items;
+  }
+
+  return items;
+}
+
+/**
+ * Browser-extension style extraction
+ * Same logic as chrome-extension/background.js for consistency
+ */
+function extractBrowserExtensionStyle(text) {
+  const items = [];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length >= 6);
+
+  // Price pattern: $12.34 or 12.34
+  const moneyRe = /\$?([\d,]+\.?\d{2})\b/;
+
+  for (const line of lines) {
+    // Skip total/header lines
+    if (isLikelyTotalLine(line) || isLikelyHeaderLine(line)) continue;
+
+    const m = line.match(moneyRe);
+    if (!m) continue;
+
+    const price = parsePrice(m[1]);
+    if (price <= 0 || price > 10000000) continue;
+
+    // Infer quantity
+    let quantity = 1;
+    const mult = line.match(/\b(\d+)\s*[xX]\b/);
+    if (mult) quantity = parseInt(mult[1], 10) || 1;
+
+    const qtyMatch = line.match(/\bqty[:\s]*(\d+)\b/i) || line.match(/\bquantity[:\s]*(\d+)\b/i);
+    if (qtyMatch) quantity = parseInt(qtyMatch[1], 10) || 1;
+
+    // Extract description: text before the price
+    let desc = line.substring(0, line.indexOf(m[0])).trim();
+
+    // Clean up description
+    desc = desc
+      .replace(/\b\d+\s*[xX]\b/, '') // Remove "2 x"
+      .replace(/\bqty[:\s]*\d+\b/i, '') // Remove "qty 2"
+      .replace(/\bquantity[:\s]*\d+\b/i, '') // Remove "quantity 2"
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (desc.length < 3) continue;
+    if (isLikelyTotalLine(desc)) continue;
+
+    items.push({
+      description: desc,
+      quantity: quantity,
+      unitPriceCents: Math.round(price / quantity),
+      totalCents: price,
+      sku: extractSku(desc)
+    });
+
+    if (items.length >= 200) break;
   }
 
   return items;
