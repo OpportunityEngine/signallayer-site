@@ -504,6 +504,7 @@ class EmailIMAPService {
 
   /**
    * Internal invoice ingestion - calls the same logic as /ingest endpoint
+   * Uses the UNIFIED INVOICE PARSER for consistent extraction across all entry points
    * @param {Object} payload - Invoice data
    * @param {Object} monitor - Email monitor
    * @returns {Promise<Object>} Ingestion result
@@ -525,8 +526,25 @@ class EmailIMAPService {
         VALUES (?, ?, ?, ?, ?, 'processing', CURRENT_TIMESTAMP)
       `).run(runId, user.id, payload.accountName, payload.vendorName, payload.fileName);
 
-      // Parse invoice items from text (basic extraction)
-      const items = this.extractInvoiceItems(payload.rawText);
+      // ===== USE UNIFIED INVOICE PARSER =====
+      // This ensures consistent extraction across upload, email, and browser extension
+      const invoiceParser = require('./invoice-parser');
+      const parsedInvoice = invoiceParser.parseInvoice(payload.rawText);
+
+      console.log(`[EMAIL IMAP] Unified parser: ${parsedInvoice.items.length} items, confidence: ${(parsedInvoice.confidence.overall * 100).toFixed(1)}%`);
+
+      // Use parsed items, fall back to legacy extraction if parser finds nothing
+      const items = parsedInvoice.items.length > 0
+        ? parsedInvoice.items.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents,
+            totalCents: item.totalCents,
+            category: item.category,
+            sku: item.sku,
+            confidence: item.confidence
+          }))
+        : this.extractInvoiceItems(payload.rawText); // Legacy fallback
 
       // Store invoice items
       let totalCents = 0;
@@ -538,11 +556,32 @@ class EmailIMAPService {
         totalCents += item.totalCents || 0;
       }
 
-      // Run rules engine to detect opportunities
-      let opportunitiesDetected = 0;
+      // Store opportunities detected by unified parser
+      const parserOpportunities = parsedInvoice.opportunities || [];
+      for (const opp of parserOpportunities) {
+        try {
+          db.getDatabase().prepare(`
+            INSERT INTO opportunities (
+              account_name, vendor_name, opportunity_type, description,
+              estimated_value_cents, status, source, created_at
+            ) VALUES (?, ?, ?, ?, ?, 'new', 'email_autopilot', CURRENT_TIMESTAMP)
+          `).run(
+            payload.accountName,
+            payload.vendorName,
+            opp.type,
+            opp.description,
+            opp.amount || 0
+          );
+        } catch (oppErr) {
+          console.warn('[EMAIL IMAP] Failed to store opportunity:', oppErr.message);
+        }
+      }
+
+      // Run rules engine to detect additional opportunities
+      let opportunitiesDetected = parserOpportunities.length;
       try {
         const rules = db.evaluateRulesForInvoice(payload.accountName, items);
-        opportunitiesDetected = rules?.opportunitiesCreated || 0;
+        opportunitiesDetected += rules?.opportunitiesCreated || 0;
       } catch (rulesError) {
         console.error('[EMAIL IMAP] Rules engine error:', rulesError.message);
       }

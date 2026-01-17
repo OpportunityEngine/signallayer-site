@@ -1930,18 +1930,46 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       }
     }
 
+    // ===== UNIFIED INVOICE PARSER =====
+    // Use the unified parser for consistent extraction across all entry points
+    const invoiceParser = require('./invoice-parser');
+    const parsedInvoice = invoiceParser.parseInvoice(raw_text);
+
+    console.log(`[INGEST] Unified parser results: ${parsedInvoice.items.length} items, confidence: ${(parsedInvoice.confidence.overall * 100).toFixed(1)}%`);
+
+    // Build extracted object - prefer parsed items over payload items
     const extracted = {
-      items: safeArray(payload?.items),
+      items: parsedInvoice.items.length > 0 ? parsedInvoice.items.map(item => ({
+        sku: item.sku || '',
+        description: item.description,
+        quantity: String(item.quantity),
+        unitPrice: String(item.unitPriceCents / 100),
+        totalPrice: String(item.totalCents / 100),
+        category: item.category
+      })) : safeArray(payload?.items),
       raw_text: raw_text,
       tableHtml: safeArray(payload?.tableHtml),
-      meta: { source_ref: body.source_ref || null }
+      meta: { source_ref: body.source_ref || null },
+      // Include unified parser results
+      parsedInvoice: {
+        totals: parsedInvoice.totals,
+        vendor: parsedInvoice.vendor,
+        customer: parsedInvoice.customer,
+        metadata: parsedInvoice.metadata,
+        confidence: parsedInvoice.confidence,
+        opportunities: parsedInvoice.opportunities,
+        validation: parsedInvoice.validation,
+        parseTimeMs: parsedInvoice.parseTimeMs
+      }
     };
 
     writeRunJson(run_id, "raw_capture.json", body);
+    writeRunJson(run_id, "parsed_invoice.json", parsedInvoice);
 
-    let accountName = payload.accountName || body.accountName || "";
+    // Use parsed customer name if available, otherwise fall back to payload
+    let accountName = parsedInvoice.customer?.name || payload.accountName || body.accountName || "";
 
-    // If accountName is empty, try to extract from raw_text
+    // If accountName is empty, try to extract from raw_text (legacy fallback)
     if (!accountName && raw_text) {
       // Look for customer name in SHIP TO or BILL TO sections (not the vendor)
       // Priority: SHIP TO > BILL TO > SOLD TO
