@@ -3663,6 +3663,17 @@ app.post("/find-leads", async (req, res) => {
 // 404 Handler - Must come after all route definitions
 app.use((req, res) => {
   console.log(`[404] ${req.method} ${req.path}`);
+
+  // For browser requests (HTML), serve a nice 404 page
+  const acceptsHtml = req.accepts('html');
+  if (acceptsHtml && !req.path.startsWith('/api/') && !req.path.startsWith('/auth/')) {
+    const notFoundPage = path.join(__dirname, 'dashboard', '404.html');
+    if (fs.existsSync(notFoundPage)) {
+      return res.status(404).sendFile(notFoundPage);
+    }
+  }
+
+  // For API requests, return JSON
   res.status(404).json({
     ok: false,
     error: 'Not Found',
