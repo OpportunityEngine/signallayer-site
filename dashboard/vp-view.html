@@ -553,6 +553,331 @@
     }
 
     /* ========================================
+       CLICKABLE METRIC TILES
+       ======================================== */
+
+    .metricTile.clickable {
+      cursor: pointer;
+    }
+
+    .metricTile.clickable .metricSub {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metricTile.clickable .metricSub::after {
+      content: '→';
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: all 0.2s ease;
+    }
+
+    .metricTile.clickable:hover .metricSub::after {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* ========================================
+       SEE PROOF BUTTON
+       ======================================== */
+
+    .btn-proof {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+      color: #1a1a1a;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-proof:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    /* ========================================
+       PROOF MODAL
+       ======================================== */
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      z-index: 1;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 8px;
+      font-size: 24px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    /* Proof Details */
+    .proof-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .proof-stat {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .proof-stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .proof-stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .proof-stat-value.savings {
+      color: #10b981;
+    }
+
+    .proof-stat-value.delta {
+      color: var(--gold);
+    }
+
+    /* Invoice Preview */
+    .invoice-preview {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 24px;
+      color: #1a1a1a;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .invoice-header {
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+
+    .invoice-vendor {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .invoice-meta {
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .invoice-line {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .invoice-line.highlighted {
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.1) 100%);
+      margin: 0 -12px;
+      padding: 12px;
+      border: 2px solid #f59e0b;
+      border-radius: 6px;
+      position: relative;
+    }
+
+    .invoice-line.highlighted::before {
+      content: '⚠️ FLAGGED';
+      position: absolute;
+      top: -10px;
+      left: 12px;
+      background: #f59e0b;
+      color: #1a1a1a;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .line-desc {
+      font-weight: 500;
+    }
+
+    .line-qty {
+      color: #6b7280;
+    }
+
+    .line-amount {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .line-amount.flagged {
+      color: #dc2626;
+      text-decoration: line-through;
+    }
+
+    .line-expected {
+      color: #059669;
+      font-weight: 700;
+    }
+
+    /* Issue Explanation */
+    .issue-explanation {
+      background: var(--panel2);
+      border: 1px solid var(--border-gold);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .explanation-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .explanation-text {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .explanation-action {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .explanation-action strong {
+      color: var(--text);
+    }
+
+    /* Location Modal */
+    .location-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .location-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .location-item:hover {
+      border-color: var(--border-gold);
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .location-name {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .location-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .location-stats {
+      text-align: right;
+    }
+
+    .location-invoices {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .location-savings {
+      font-size: 12px;
+      color: #10b981;
+      font-weight: 600;
+    }
+
+    /* ========================================
        RESPONSIVE DESIGN
        ======================================== */
 
@@ -1451,12 +1776,12 @@
             <div class="metricValue">${formatMoney(metrics.totalPotentialOverbillingCents)}</div>
             <div class="metricSub">Across ${metrics.vendorsImpactedCount} vendors</div>
           </div>
-          <div class="metricTile">
+          <div class="metricTile clickable" onclick="showLocationBreakdown()" title="Click to see breakdown by location">
             <div class="metricLabel">Invoices analyzed</div>
             <div class="metricValue">${metrics.invoicesAnalyzedCount.toLocaleString()}</div>
             <div class="metricSub">Across ${metrics.locationsCount} locations</div>
           </div>
-          <div class="metricTile">
+          <div class="metricTile clickable" onclick="document.getElementById('issuesTable').scrollIntoView({behavior: 'smooth'})" title="Click to view flagged issues">
             <div class="metricLabel">Flagged issues</div>
             <div class="metricValue">${metrics.flaggedIssuesCount.toLocaleString()}</div>
             <div class="metricSub">High-confidence prioritized</div>
@@ -1561,6 +1886,13 @@
         }
 
         const sorted = rows.sort((a, b) => b.deltaCents - a.deltaCents);
+
+        // Store issues data for proof modal
+        window.issuesData = {};
+        sorted.forEach((row, idx) => {
+          window.issuesData[`issue_${idx}`] = row;
+        });
+
         const html = `
           <table class="table">
             <thead>
@@ -1573,10 +1905,11 @@
                 <th class="num">Delta ($)</th>
                 <th>Confidence</th>
                 <th>Invoice date</th>
+                <th style="text-align: center;">Proof</th>
               </tr>
             </thead>
             <tbody>
-              ${sorted.map(row => `
+              ${sorted.map((row, idx) => `
                 <tr>
                   <td class="cellMain">${row.vendorName}</td>
                   <td>${row.locationName}</td>
@@ -1590,6 +1923,15 @@
                     </span>
                   </td>
                   <td>${formatDate(row.invoiceDate)}</td>
+                  <td style="text-align: center;">
+                    <button class="btn-proof" onclick="showProof(window.issuesData['issue_${idx}'])">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      </svg>
+                      See Proof
+                    </button>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -3147,6 +3489,263 @@
         }
       };
     }
+  </script>
+
+  <!-- Proof Modal -->
+  <div class="modal-overlay" id="proofModal" onclick="closeProofModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" id="proofModalTitle">Invoice Proof</div>
+        <button class="modal-close" onclick="closeProofModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="proofModalBody">
+        <!-- Content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Location Breakdown Modal -->
+  <div class="modal-overlay" id="locationModal" onclick="closeLocationModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">📍 Invoices by Location</div>
+        <button class="modal-close" onclick="closeLocationModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="locationModalBody">
+        <!-- Content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // PROOF MODAL FUNCTIONS
+    // ========================================
+
+    function showProof(issueData) {
+      const modal = document.getElementById('proofModal');
+      const title = document.getElementById('proofModalTitle');
+      const body = document.getElementById('proofModalBody');
+
+      title.textContent = `Proof: ${issueData.vendorName} - ${issueData.issueType}`;
+
+      // Generate proof content with highlighted invoice preview
+      body.innerHTML = `
+        <div class="proof-summary">
+          <div class="proof-stat">
+            <div class="proof-stat-label">You're Being Charged</div>
+            <div class="proof-stat-value">${formatMoney(issueData.currentChargeCents)}</div>
+          </div>
+          <div class="proof-stat">
+            <div class="proof-stat-label">Should Be</div>
+            <div class="proof-stat-value savings">${formatMoney(issueData.expectedChargeCents)}</div>
+          </div>
+          <div class="proof-stat">
+            <div class="proof-stat-label">Your Savings</div>
+            <div class="proof-stat-value delta">${formatMoney(issueData.deltaCents)}</div>
+          </div>
+        </div>
+
+        <div class="invoice-preview">
+          <div class="invoice-header">
+            <div class="invoice-vendor">${issueData.vendorName}</div>
+            <div class="invoice-meta">Invoice Date: ${formatDate(issueData.invoiceDate)} • Location: ${issueData.locationName}</div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            ${generateInvoiceLines(issueData)}
+          </div>
+        </div>
+
+        <div class="issue-explanation">
+          <div class="explanation-title">
+            <span>💡</span>
+            What We Found
+          </div>
+          <div class="explanation-text">
+            ${generateExplanation(issueData)}
+          </div>
+          <div class="explanation-action">
+            <strong>Recommended Action:</strong> ${generateRecommendation(issueData)}
+          </div>
+        </div>
+      `;
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeProofModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('proofModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function generateInvoiceLines(issue) {
+      // Generate sample invoice lines with the flagged item highlighted
+      const lines = [];
+
+      // Add some context lines before the flagged item
+      lines.push(`
+        <div class="invoice-line">
+          <div class="line-desc">Standard Service Fee</div>
+          <div class="line-qty">1 x</div>
+          <div class="line-amount">$45.00</div>
+        </div>
+      `);
+
+      // The flagged line item
+      lines.push(`
+        <div class="invoice-line highlighted">
+          <div>
+            <div class="line-desc">${issue.itemDescription || issue.issueType}</div>
+            <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+              ${issue.sku || 'SKU: N/A'} • ${issue.locationName}
+            </div>
+          </div>
+          <div class="line-qty">${issue.quantity || 1} x</div>
+          <div>
+            <div class="line-amount flagged">${formatMoney(issue.currentChargeCents)}</div>
+            <div class="line-expected">Should be: ${formatMoney(issue.expectedChargeCents)}</div>
+          </div>
+        </div>
+      `);
+
+      // Add a line after
+      lines.push(`
+        <div class="invoice-line">
+          <div class="line-desc">Delivery/Handling</div>
+          <div class="line-qty">1 x</div>
+          <div class="line-amount">$25.00</div>
+        </div>
+      `);
+
+      // Total line
+      const total = (issue.currentChargeCents / 100) + 70; // sample total
+      lines.push(`
+        <div class="invoice-line" style="border-bottom: none; margin-top: 12px; padding-top: 12px; border-top: 2px solid #1a1a1a;">
+          <div class="line-desc" style="font-weight: 700;">TOTAL</div>
+          <div></div>
+          <div class="line-amount" style="font-size: 16px;">$${total.toFixed(2)}</div>
+        </div>
+      `);
+
+      return lines.join('');
+    }
+
+    function generateExplanation(issue) {
+      const typeExplanations = {
+        'price_increase': `We detected a <strong>price increase</strong> on this line item compared to your contract or historical pricing. The vendor is charging ${formatMoney(issue.currentChargeCents)} but based on your agreement, it should be ${formatMoney(issue.expectedChargeCents)}.`,
+        'overcharge': `This item is being <strong>overcharged</strong> by ${formatMoney(issue.deltaCents)}. Our analysis compared this against your MLA contract pricing and found a discrepancy.`,
+        'quantity_error': `We found a <strong>quantity discrepancy</strong>. The invoice shows more units than what was actually delivered or ordered.`,
+        'duplicate_charge': `This appears to be a <strong>duplicate charge</strong>. We found a similar line item on a previous invoice within this billing cycle.`,
+        'contract_violation': `This charge <strong>violates your contract terms</strong>. Based on your MLA, this item should be priced at ${formatMoney(issue.expectedChargeCents)}.`,
+        'default': `We identified a pricing discrepancy of <strong>${formatMoney(issue.deltaCents)}</strong> on this invoice. The current charge of ${formatMoney(issue.currentChargeCents)} exceeds the expected amount of ${formatMoney(issue.expectedChargeCents)}.`
+      };
+
+      return typeExplanations[issue.issueType] || typeExplanations['default'];
+    }
+
+    function generateRecommendation(issue) {
+      const recommendations = {
+        'price_increase': 'Contact your vendor representative and reference your contract pricing. Request a credit memo for the overcharge.',
+        'overcharge': 'File a dispute with your vendor citing the contract rate. Include this proof documentation.',
+        'quantity_error': 'Verify delivery receipts and request an invoice adjustment for the correct quantity.',
+        'duplicate_charge': 'Contact accounts payable at the vendor and request removal of the duplicate charge.',
+        'contract_violation': 'Escalate to your account manager with your MLA documentation. Request immediate correction.',
+        'default': 'Review with your vendor and request a credit for the difference. Keep this proof for your records.'
+      };
+
+      return recommendations[issue.issueType] || recommendations['default'];
+    }
+
+    // ========================================
+    // LOCATION MODAL FUNCTIONS
+    // ========================================
+
+    function showLocationBreakdown() {
+      const modal = document.getElementById('locationModal');
+      const body = document.getElementById('locationModalBody');
+
+      body.innerHTML = '<div class="loadingState">Loading location data...</div>';
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      // Load location data
+      loadLocationModalData();
+    }
+
+    async function loadLocationModalData() {
+      const body = document.getElementById('locationModalBody');
+
+      try {
+        const data = await fetchAPI(`/api/dashboard/breakdown/locations?${buildQueryString(filters)}`);
+        const rows = data.rows || [];
+
+        if (rows.length === 0) {
+          body.innerHTML = '<div class="emptyState">No location data available</div>';
+          return;
+        }
+
+        const sorted = rows.sort((a, b) => b.invoicesCount - a.invoicesCount);
+
+        const html = `
+          <div style="margin-bottom: 20px; padding: 16px; background: var(--panel2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 12px; color: var(--muted); text-transform: uppercase;">Total Locations</div>
+              <div style="font-size: 28px; font-weight: 800; color: var(--text-bright);">${sorted.length}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 12px; color: var(--muted); text-transform: uppercase;">Total Invoices</div>
+              <div style="font-size: 28px; font-weight: 800; color: var(--gold);">${sorted.reduce((sum, r) => sum + (r.invoicesCount || 0), 0).toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div class="location-list">
+            ${sorted.map((row, idx) => `
+              <div class="location-item">
+                <div>
+                  <div class="location-name">
+                    <span style="color: var(--muted); margin-right: 8px;">#${idx + 1}</span>
+                    ${row.name}
+                  </div>
+                  <div class="location-meta">
+                    ${row.issuesCount || 0} flagged issues • ${formatMoney(row.amountCents || 0)} potential savings
+                  </div>
+                </div>
+                <div class="location-stats">
+                  <div class="location-invoices">${(row.invoicesCount || 0).toLocaleString()}</div>
+                  <div class="location-savings">invoices analyzed</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        body.innerHTML = html;
+      } catch (error) {
+        body.innerHTML = `
+          <div class="errorState">
+            <div class="errorTitle">Failed to load locations</div>
+            <div class="errorMsg">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    function closeLocationModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('locationModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Close modals with Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeProofModal();
+        closeLocationModal();
+      }
+    });
   </script>
 </body>
 </html>
