@@ -5,20 +5,35 @@ const db = require('./database');
 
 const router = express.Router();
 
-// Middleware to extract user from request (for now, use demo user or header)
+// Middleware to extract user from request
 function getUserContext(req) {
-  // In production, this would extract from JWT token or session
-  // For now, check header or default to demo user
-  const userEmail = req.headers['x-user-email'] || 'you@demo.com';
-  let user = db.getUserByEmail(userEmail);
-
-  if (!user) {
-    // Create user if doesn't exist
-    const userId = db.createOrUpdateUser(userEmail, userEmail.split('@')[0], 'rep');
-    user = db.getUserById(userId);
+  // First check if user is set by JWT auth middleware
+  if (req.user && req.user.id) {
+    // Get full user data from database
+    const fullUser = db.getUserById(req.user.id);
+    if (fullUser) {
+      return fullUser;
+    }
+    // If user not found in DB, return the JWT user data
+    return req.user;
   }
 
-  return user;
+  // Fallback: check x-user-email header (for backwards compatibility)
+  const userEmail = req.headers['x-user-email'];
+  if (userEmail) {
+    const user = db.getUserByEmail(userEmail);
+    if (user) {
+      return user;
+    }
+  }
+
+  // Last resort: return a demo user object (read-only operations)
+  return {
+    id: 0,
+    email: 'demo@revenueradar.com',
+    name: 'Demo User',
+    role: 'demo_viewer'
+  };
 }
 
 // ===== SPIF ENDPOINTS =====
