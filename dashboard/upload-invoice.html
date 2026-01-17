@@ -743,6 +743,21 @@
         const fileContent = await readFileAsBase64(file);
 
         // Call ingest endpoint
+        // For PDFs, send base64 with prefix so server knows to parse it
+        // For text files (CSV/Excel), send raw text directly
+        let rawTextPayload;
+        if (ext === '.pdf') {
+          rawTextPayload = 'PDF_FILE_BASE64:' + fileContent;
+        } else {
+          rawTextPayload = await readFileAsText(file);
+        }
+
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+        updateProgress(50, 'Sending to server...');
+
         const response = await fetch('/ingest', {
           method: 'POST',
           headers: {
@@ -750,19 +765,29 @@
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            rawText: ext === '.pdf' ? undefined : await readFileAsText(file),
-            pdfBase64: ext === '.pdf' ? fileContent : undefined,
+            raw_text: rawTextPayload,
+            source_type: 'upload',
             fileName: file.name,
             accountName: accountName || 'Uploaded Invoice',
             vendorName: vendorName || 'Unknown Vendor'
-          })
+          }),
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         clearInterval(progressInterval);
 
+        updateProgress(75, 'Processing response...');
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Upload failed');
+          let errorMessage = 'Upload failed';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || `Server error (${response.status})`;
+          } catch (e) {
+            errorMessage = `Server error (${response.status})`;
+          }
+          throw new Error(errorMessage);
         }
 
         const result = await response.json();
@@ -776,8 +801,17 @@
         }, 500);
 
       } catch (error) {
+        clearInterval(progressInterval);
         console.error('Upload error:', error);
-        showAlert('error', error.message || 'Failed to process invoice');
+
+        let errorMsg = 'Failed to process invoice';
+        if (error.name === 'AbortError') {
+          errorMsg = 'Upload timed out. Please try again or use a smaller file.';
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+
+        showAlert('error', errorMsg);
         resetProgress();
       }
     }
