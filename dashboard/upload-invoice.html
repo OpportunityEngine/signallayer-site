@@ -863,38 +863,77 @@
       document.getElementById('resultsCard').classList.add('active');
       document.getElementById('resultsFilename').textContent = filename;
 
-      // Populate stats
-      const items = result.canonical?.items?.length || result.itemsExtracted || 0;
-      const total = result.canonical?.totals?.grandTotal || result.totalCents / 100 || 0;
-      const opportunities = result.opportunities?.length || result.opportunitiesDetected || 0;
-      const savings = result.savingsDetected || 0;
+      console.log('[Results] Full response:', result);
+
+      // Populate stats - check multiple possible locations for data
+      // Items can be in: extracted.items, canonical.line_items, or debug.extractedItemsCount
+      const items = result.extracted?.items?.length ||
+                    result.canonical?.line_items?.length ||
+                    result.debug?.extractedItemsCount ||
+                    0;
+
+      // Total can be in: extracted.parsedInvoice.totals, canonical totals, or calculated from items
+      let total = 0;
+      if (result.extracted?.parsedInvoice?.totals?.totalCents) {
+        total = result.extracted.parsedInvoice.totals.totalCents / 100;
+      } else if (result.canonical?.total_amount_cents) {
+        total = result.canonical.total_amount_cents / 100;
+      } else if (result.extracted?.items?.length > 0) {
+        // Calculate from items if no total found
+        total = result.extracted.items.reduce((sum, item) => {
+          const itemTotal = parseFloat(item.totalPrice) || parseFloat(item.unitPrice) || 0;
+          return sum + itemTotal;
+        }, 0);
+      }
+
+      // Opportunities from parsed invoice
+      const opportunities = result.extracted?.parsedInvoice?.opportunities?.length ||
+                           result.debug?.revenueRadar?.rulesEngine?.opportunities_created ||
+                           0;
+
+      // Calculate potential savings from opportunities
+      let savings = 0;
+      if (result.extracted?.parsedInvoice?.opportunities) {
+        savings = result.extracted.parsedInvoice.opportunities.reduce((sum, opp) => {
+          return sum + ((opp.amount || 0) / 100);
+        }, 0);
+      }
+
+      console.log('[Results] Parsed:', { items, total, opportunities, savings });
 
       document.getElementById('statItems').textContent = items;
-      document.getElementById('statTotal').textContent = '$' + total.toLocaleString();
+      document.getElementById('statTotal').textContent = '$' + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById('statOpportunities').textContent = opportunities;
-      document.getElementById('statSavings').textContent = '$' + savings.toLocaleString();
+      document.getElementById('statSavings').textContent = '$' + savings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
       // Populate opportunities list
       const oppList = document.getElementById('opportunitiesList');
+      const oppData = result.extracted?.parsedInvoice?.opportunities || result.opportunities || [];
 
-      if (opportunities > 0 && result.opportunities) {
+      if (oppData.length > 0) {
         let oppHTML = '<div class="opportunities-title">Detected Opportunities</div>';
-        result.opportunities.forEach(opp => {
+        oppData.forEach(opp => {
+          const value = (opp.amount || opp.value || 0) / 100;
           oppHTML += `
             <div class="opportunity-item">
               <div class="opportunity-info">
                 <div class="opportunity-type">${opp.type || 'Revenue Opportunity'}</div>
-                <div class="opportunity-desc">${opp.description || 'Potential opportunity detected'}</div>
+                <div class="opportunity-desc">${opp.description || opp.suggestion || 'Potential opportunity detected'}</div>
               </div>
-              <div class="opportunity-value">$${(opp.value || 0).toLocaleString()}</div>
+              <div class="opportunity-value">$${value.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
             </div>
           `;
         });
         oppList.innerHTML = oppHTML;
+      } else if (items > 0) {
+        oppList.innerHTML = `
+          <div class="opportunities-title">Invoice Processed</div>
+          <p style="color: #64748b; font-size: 14px;">Successfully extracted ${items} line items totaling $${total.toLocaleString(undefined, {minimumFractionDigits: 2})}. No pricing discrepancies found.</p>
+        `;
       } else {
         oppList.innerHTML = `
-          <div class="opportunities-title">No Opportunities Detected</div>
-          <p style="color: #64748b; font-size: 14px;">This invoice looks good! No pricing discrepancies or opportunities found.</p>
+          <div class="opportunities-title">Processing Complete</div>
+          <p style="color: #64748b; font-size: 14px;">Invoice received. Check the dashboard for detailed analysis.</p>
         `;
       }
 
