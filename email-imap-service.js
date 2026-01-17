@@ -547,14 +547,22 @@ class EmailIMAPService {
         : this.extractInvoiceItems(payload.rawText); // Legacy fallback
 
       // Store invoice items
-      let totalCents = 0;
+      let itemsTotalCents = 0;
       for (const item of items) {
         db.getDatabase().prepare(`
           INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `).run(runId, item.description, item.quantity, item.unitPriceCents, item.totalCents, item.category || 'general');
-        totalCents += item.totalCents || 0;
+        itemsTotalCents += item.totalCents || 0;
       }
+
+      // Use parser's extracted total if available (more accurate for vendors like Cintas)
+      // Fall back to summed items total if parser didn't find a total
+      const totalCents = parsedInvoice.totals?.totalCents > 0
+        ? parsedInvoice.totals.totalCents
+        : itemsTotalCents;
+
+      console.log(`[EMAIL IMAP] Invoice total: $${(totalCents/100).toFixed(2)} (parser: $${(parsedInvoice.totals?.totalCents/100 || 0).toFixed(2)}, items sum: $${(itemsTotalCents/100).toFixed(2)})`);
 
       // Store opportunities detected by unified parser
       const parserOpportunities = parsedInvoice.opportunities || [];
@@ -602,8 +610,12 @@ class EmailIMAPService {
         `).run(user.id);
       }
 
+      // Use vendor name from parser if available (more accurate)
+      const vendorName = parsedInvoice.vendor?.name || payload.vendorName;
+      const customerName = parsedInvoice.customer?.name || payload.accountName;
+
       // Track vendor for future price comparisons
-      db.trackVendor(monitor.id, payload.vendorName, {
+      db.trackVendor(monitor.id, vendorName, {
         vendorEmail: payload.emailFrom,
         invoiceAmountCents: totalCents
       });
@@ -614,7 +626,12 @@ class EmailIMAPService {
         itemsExtracted: items.length,
         totalCents,
         opportunitiesDetected,
-        savingsDetectedCents: 0 // TODO: Implement savings detection
+        savingsDetectedCents: 0,
+        // Include parser metadata for debugging/analytics
+        parserConfidence: parsedInvoice.confidence?.overall || 0,
+        extractionStrategy: parsedInvoice.items[0]?.extractionStrategy || 'unknown',
+        vendorDetected: vendorName,
+        customerDetected: customerName
       };
     } catch (error) {
       console.error('[EMAIL IMAP] Ingest error:', error);
