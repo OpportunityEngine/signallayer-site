@@ -1195,14 +1195,13 @@ router.get('/financial-summary', (req, res) => {
         AND period_start >= date('now', '-' || ? || ' days')
     `).get(user.id, days);
 
-    // Get savings from detected issues
+    // Get savings from cost_savings table
     const savingsTotal = database.prepare(`
-      SELECT COALESCE(SUM(delta_cents), 0) as total
-      FROM flagged_issues
-      WHERE company_id = ?
-        AND status = 'resolved'
-        AND created_at >= date('now', '-' || ? || ' days')
-    `).get(user.company_id || 'demo', days);
+      SELECT COALESCE(SUM(savings_cents), 0) as total
+      FROM cost_savings
+      WHERE user_id = ?
+        AND realized_date >= date('now', '-' || ? || ' days')
+    `).get(user.id, days);
 
     // Get expense breakdown by category
     const breakdown = database.prepare(`
