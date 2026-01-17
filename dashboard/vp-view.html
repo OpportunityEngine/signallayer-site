@@ -627,6 +627,8 @@
       color: var(--text);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
     }
 
     .quick-action-tile:hover {
@@ -728,15 +730,15 @@
             <div class="quick-action-icon">📧</div>
             <div class="quick-action-label">Connect Email</div>
           </a>
-          <button onclick="openPayrollEntry()" class="quick-action-tile" style="border: none; cursor: pointer;">
+          <button onclick="openPayrollEntry()" class="quick-action-tile">
             <div class="quick-action-icon">💵</div>
             <div class="quick-action-label">Add Payroll</div>
           </button>
-          <button onclick="openExpenseEntry()" class="quick-action-tile" style="border: none; cursor: pointer;">
+          <button onclick="openExpenseEntry()" class="quick-action-tile">
             <div class="quick-action-icon">🧾</div>
             <div class="quick-action-label">Add Expense</div>
           </button>
-          <button onclick="openPayrollUpload()" class="quick-action-tile" style="border: none; cursor: pointer;">
+          <button onclick="openPayrollUpload()" class="quick-action-tile">
             <div class="quick-action-icon">📤</div>
             <div class="quick-action-label">Upload Payroll</div>
           </button>
