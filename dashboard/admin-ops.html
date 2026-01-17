@@ -780,12 +780,18 @@
     </div>
 
     <!-- Signup Requests Section -->
-    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
       <h2 class="section-title">
         Access Requests
         <span id="pendingBadge" style="display: inline-block; padding: 2px 8px; background: #ef4444; color: white; border-radius: 10px; font-size: 12px; margin-left: 8px; font-weight: 700;">0</span>
       </h2>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <!-- Bulk Actions (shown when pending requests exist) -->
+        <div id="bulkActions" style="display: none; margin-right: 12px;">
+          <button onclick="bulkApproveAll()" class="action-btn approve" style="padding: 6px 12px; font-size: 12px;">
+            ✓ Approve All Pending
+          </button>
+        </div>
         <button onclick="filterRequests('pending')" class="filter-btn active" id="filterPending">Pending</button>
         <button onclick="filterRequests('approved')" class="filter-btn" id="filterApproved">Approved</button>
         <button onclick="filterRequests('denied')" class="filter-btn" id="filterDenied">Denied</button>
@@ -797,18 +803,19 @@
         <table class="table" id="requestsTable">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Company</th>
-              <th>Role</th>
-              <th>Requested</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th style="width: 20%;">Name</th>
+              <th style="width: 20%;">Email</th>
+              <th style="width: 12%;">Company</th>
+              <th style="width: 8%;">Role</th>
+              <th style="width: 8%;">Quality</th>
+              <th style="width: 12%;">Requested</th>
+              <th style="width: 8%;">Status</th>
+              <th style="width: 12%;">Actions</th>
             </tr>
           </thead>
           <tbody id="requestTableBody">
             <tr>
-              <td colspan="7" class="loading">Loading requests...</td>
+              <td colspan="8" class="loading">Loading requests...</td>
             </tr>
           </tbody>
         </table>
@@ -1552,11 +1559,15 @@
         if (response.ok && data.success) {
           signupRequests = data.data.requests || [];
 
-          // Update pending badge
+          // Update pending badge and bulk actions
           const pendingCount = data.data.counts?.pending || 0;
           const badge = document.getElementById('pendingBadge');
           badge.textContent = pendingCount;
           badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+
+          // Show/hide bulk actions button
+          const bulkActions = document.getElementById('bulkActions');
+          bulkActions.style.display = pendingCount > 1 ? 'block' : 'none';
 
           renderSignupRequests();
         } else {
@@ -1564,7 +1575,7 @@
           console.error('Signup requests API error:', data);
           document.getElementById('requestTableBody').innerHTML = `
             <tr>
-              <td colspan="7" style="text-align: center; color: #ef4444; padding: 40px;">
+              <td colspan="8" style="text-align: center; color: #ef4444; padding: 40px;">
                 Failed to load requests: ${data.error || 'Unknown error'}
               </td>
             </tr>
@@ -1574,7 +1585,7 @@
         console.error('Error loading signup requests:', error);
         document.getElementById('requestTableBody').innerHTML = `
           <tr>
-            <td colspan="7" style="text-align: center; color: #ef4444; padding: 40px;">
+            <td colspan="8" style="text-align: center; color: #ef4444; padding: 40px;">
               Error: ${error.message}
             </td>
           </tr>
@@ -1588,7 +1599,7 @@
       if (signupRequests.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align: center; color: #64748b; padding: 40px;">
+            <td colspan="8" style="text-align: center; color: #64748b; padding: 40px;">
               No ${currentRequestFilter === 'all' ? '' : currentRequestFilter} requests found
             </td>
           </tr>
@@ -1596,15 +1607,25 @@
         return;
       }
 
-      tbody.innerHTML = signupRequests.map(req => `
+      tbody.innerHTML = signupRequests.map(req => {
+        // Calculate quality score
+        const qualityScore = calculateQualityScore(req);
+        const qualityBadge = getQualityBadge(qualityScore);
+
+        return `
         <tr>
           <td>
             <strong style="color: #e2e8f0;">${escapeHtml(req.name)}</strong>
-            ${req.linkedin_url ? `<br><a href="${escapeHtml(req.linkedin_url)}" target="_blank" style="font-size: 11px; color: #3b82f6;">LinkedIn</a>` : ''}
+            ${req.linkedin_url ? `<br><a href="${escapeHtml(req.linkedin_url)}" target="_blank" style="font-size: 11px; color: #3b82f6;">LinkedIn ↗</a>` : ''}
+            ${req.reason ? `<br><span style="font-size: 11px; color: #64748b; cursor: help;" title="${escapeHtml(req.reason)}">📝 Has reason</span>` : ''}
           </td>
-          <td style="color: #94a3b8;">${escapeHtml(req.email)}</td>
+          <td style="color: #94a3b8;">
+            ${escapeHtml(req.email)}
+            ${isCompanyEmail(req.email) ? `<br><span style="font-size: 10px; color: #10b981;">✓ Company email</span>` : ''}
+          </td>
           <td style="color: #94a3b8;">${escapeHtml(req.company_name || '-')}</td>
           <td style="text-transform: capitalize;">${req.requested_role}</td>
+          <td>${qualityBadge}</td>
           <td style="color: #64748b; font-size: 12px;">
             ${new Date(req.created_at).toLocaleDateString()}<br>
             ${new Date(req.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -1621,7 +1642,7 @@
             `}
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     }
 
     function filterRequests(status) {
@@ -1775,6 +1796,82 @@ Login URL: ${window.location.origin}/dashboard/login.html
         btn.disabled = false;
         btn.textContent = 'Deny';
       }
+    }
+
+    // =====================================================
+    // QUALITY SCORING & BULK ACTIONS
+    // =====================================================
+
+    function isCompanyEmail(email) {
+      if (!email) return false;
+      const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
+      const domain = email.split('@')[1]?.toLowerCase();
+      return domain && !freeProviders.includes(domain);
+    }
+
+    function calculateQualityScore(req) {
+      let score = 0;
+      // +1 for LinkedIn URL
+      if (req.linkedin_url) score++;
+      // +1 for detailed reason (>30 chars)
+      if (req.reason && req.reason.length > 30) score++;
+      // +1 for company email (not gmail, yahoo, etc)
+      if (isCompanyEmail(req.email)) score++;
+      // +1 for company name provided
+      if (req.company_name) score++;
+      return score;
+    }
+
+    function getQualityBadge(score) {
+      if (score >= 3) {
+        return `<span style="display: inline-block; padding: 2px 8px; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 4px; font-size: 11px; font-weight: 600;">★★★ High</span>`;
+      } else if (score === 2) {
+        return `<span style="display: inline-block; padding: 2px 8px; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 11px; font-weight: 600;">★★ Good</span>`;
+      } else if (score === 1) {
+        return `<span style="display: inline-block; padding: 2px 8px; background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-radius: 4px; font-size: 11px; font-weight: 600;">★ Fair</span>`;
+      } else {
+        return `<span style="display: inline-block; padding: 2px 8px; background: rgba(100, 116, 139, 0.2); color: #64748b; border-radius: 4px; font-size: 11px; font-weight: 600;">Basic</span>`;
+      }
+    }
+
+    async function bulkApproveAll() {
+      const pendingRequests = signupRequests.filter(r => r.status === 'pending');
+      if (pendingRequests.length === 0) {
+        alert('No pending requests to approve.');
+        return;
+      }
+
+      const confirm = window.confirm(`Are you sure you want to approve all ${pendingRequests.length} pending requests?\n\nEach user will receive their role as requested and be notified via email.`);
+      if (!confirm) return;
+
+      let approved = 0;
+      let failed = 0;
+
+      for (const req of pendingRequests) {
+        try {
+          authToken = window.AuthManager.getToken();
+          const response = await fetch(`/signup/api/requests/${req.id}/approve`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ role: req.requested_role, notes: 'Bulk approved' })
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            approved++;
+          } else {
+            failed++;
+          }
+        } catch (error) {
+          failed++;
+        }
+      }
+
+      alert(`Bulk approval complete!\n✓ Approved: ${approved}\n✗ Failed: ${failed}`);
+      loadSignupRequests();
     }
 
     function escapeHtml(text) {

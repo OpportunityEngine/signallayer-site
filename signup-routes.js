@@ -16,9 +16,118 @@ const dbModule = require('./database');
 const emailService = require('./email-service');
 const authService = require('./auth-service');
 const { sanitizeInput } = require('./auth-middleware');
+const config = require('./config');
 
 // Helper to get raw database for direct queries
 const getDb = () => dbModule.getDatabase();
+
+// =====================================================
+// SLACK NOTIFICATIONS (for faster admin response)
+// =====================================================
+
+async function sendSlackNotification(message) {
+  if (!config.slackWebhookUrl) return;
+
+  try {
+    const https = require('https');
+    const url = new URL(config.slackWebhookUrl);
+
+    const payload = JSON.stringify({
+      text: message.text,
+      blocks: message.blocks
+    });
+
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    return new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        res.on('data', () => {});
+        res.on('end', () => resolve(true));
+      });
+      req.on('error', (e) => {
+        console.error('[SLACK] Notification failed:', e.message);
+        resolve(false); // Don't fail the main request
+      });
+      req.write(payload);
+      req.end();
+    });
+  } catch (error) {
+    console.error('[SLACK] Notification error:', error.message);
+    return false;
+  }
+}
+
+function buildSignupSlackMessage(data) {
+  const qualityScore = (data.linkedin_url ? 1 : 0) +
+                       (data.reason && data.reason.length > 30 ? 1 : 0) +
+                       (data.email && !['gmail.com', 'yahoo.com', 'hotmail.com'].some(d => data.email.includes(d)) ? 1 : 0) +
+                       (data.company_name ? 1 : 0);
+
+  const qualityEmoji = qualityScore >= 3 ? '🌟' : qualityScore >= 2 ? '⭐' : qualityScore >= 1 ? '✨' : '📋';
+  const qualityLabel = qualityScore >= 3 ? 'High Quality' : qualityScore >= 2 ? 'Good' : qualityScore >= 1 ? 'Fair' : 'Basic';
+
+  const APP_URL = process.env.APP_URL || 'https://king-prawn-app-pc8hi.ondigitalocean.app';
+
+  return {
+    text: `New Access Request: ${data.name} from ${data.company_name || 'Unknown Company'}`,
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: `${qualityEmoji} New Access Request`,
+          emoji: true
+        }
+      },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*Name:*\n${data.name}` },
+          { type: 'mrkdwn', text: `*Email:*\n${data.email}` },
+          { type: 'mrkdwn', text: `*Company:*\n${data.company_name || 'Not provided'}` },
+          { type: 'mrkdwn', text: `*Role:*\n${data.requested_role || 'rep'}` }
+        ]
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Quality Score:* ${qualityLabel} (${qualityScore}/4)${data.linkedin_url ? '\n✓ LinkedIn provided' : ''}${data.reason ? '\n✓ Has reason' : ''}`
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '✓ Approve', emoji: true },
+            style: 'primary',
+            url: `${APP_URL}/signup/approve/${data.approval_token}`
+          },
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '✗ Deny', emoji: true },
+            style: 'danger',
+            url: `${APP_URL}/signup/deny/${data.denial_token}`
+          },
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '📋 View in Dashboard', emoji: true },
+            url: `${APP_URL}/dashboard/admin-ops.html`
+          }
+        ]
+      }
+    ]
+  };
+}
 
 // Apply input sanitization to all routes
 router.use(sanitizeInput);
@@ -509,6 +618,23 @@ router.post('/request-access', async (req, res) => {
       await emailService.sendAccessRequestConfirmation(normalizedEmail, name.trim());
     } catch (emailError) {
       console.error('[SIGNUP] Failed to send confirmation:', emailError);
+    }
+
+    // Send Slack notification for faster response (if configured)
+    try {
+      const slackMessage = buildSignupSlackMessage({
+        name: name.trim(),
+        email: normalizedEmail,
+        company_name: companyName ? companyName.trim() : null,
+        requested_role: role,
+        reason: reason || null,
+        linkedin_url: linkedinUrl || null,
+        approval_token: approvalToken,
+        denial_token: denialToken
+      });
+      sendSlackNotification(slackMessage); // Fire and forget
+    } catch (slackError) {
+      console.error('[SIGNUP] Failed to send Slack notification:', slackError);
     }
 
     res.status(201).json({
