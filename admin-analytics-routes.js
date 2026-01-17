@@ -11,7 +11,8 @@
 
 const express = require('express');
 const router = express.Router();
-const db = require('./database');
+const database = require('./database');
+const db = database.getDatabase();
 const { requireAuth, requireRole } = require('./auth-middleware');
 
 // All routes require admin or demo_viewer role
@@ -28,44 +29,68 @@ router.use(requireRole('admin', 'demo_viewer'));
  */
 router.get('/usage-analytics', (req, res) => {
   try {
-    // User statistics
-    const userStats = db.prepare(`
-      SELECT
-        COUNT(*) as total_users,
-        SUM(CASE WHEN role = 'rep' THEN 1 ELSE 0 END) as total_reps,
-        SUM(CASE WHEN role = 'manager' OR role = 'customer_admin' THEN 1 ELSE 0 END) as total_managers,
-        SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as total_admins
-      FROM users
-      WHERE is_active = 1
-    `).get();
+    // User statistics (with fallback)
+    let userStats = { total_users: 0, total_reps: 0, total_managers: 0, total_admins: 0 };
+    try {
+      userStats = db.prepare(`
+        SELECT
+          COUNT(*) as total_users,
+          SUM(CASE WHEN role = 'rep' THEN 1 ELSE 0 END) as total_reps,
+          SUM(CASE WHEN role = 'manager' OR role = 'customer_admin' THEN 1 ELSE 0 END) as total_managers,
+          SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as total_admins
+        FROM users
+        WHERE is_active = 1 OR is_active IS NULL
+      `).get() || userStats;
+    } catch (e) {
+      console.log('[ADMIN] User stats query failed:', e.message);
+    }
 
-    // Active users (based on last_login_at)
+    // Active users (based on last_login_at or last_active)
     const now = new Date();
     const day24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
     const days7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const activeUsers24h = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ?').get(day24Ago).count;
-    const activeUsers7d = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ?').get(days7Ago).count;
-    const activeUsers30d = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ?').get(days30Ago).count;
+    let activeUsers24h = 0, activeUsers7d = 0, activeUsers30d = 0;
+    try {
+      // Try last_login_at first, fallback to last_active
+      const result24h = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ? OR last_active >= ?').get(day24Ago, day24Ago);
+      const result7d = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ? OR last_active >= ?').get(days7Ago, days7Ago);
+      const result30d = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ? OR last_active >= ?').get(days30Ago, days30Ago);
+      activeUsers24h = result24h?.count || 0;
+      activeUsers7d = result7d?.count || 0;
+      activeUsers30d = result30d?.count || 0;
+    } catch (e) {
+      console.log('[ADMIN] Active users query failed:', e.message);
+    }
 
-    // Invoice statistics
-    const invoiceStats = db.prepare(`
-      SELECT
-        COUNT(*) as total_invoices,
-        SUM(CASE WHEN created_at >= date('now', 'start of month') THEN 1 ELSE 0 END) as invoices_this_month,
-        SUM(CASE WHEN date(created_at) = date('now') THEN 1 ELSE 0 END) as invoices_today
-      FROM invoices
-    `).get();
+    // Invoice statistics (with fallback if table doesn't exist)
+    let invoiceStats = { total_invoices: 0, invoices_this_month: 0, invoices_today: 0 };
+    try {
+      invoiceStats = db.prepare(`
+        SELECT
+          COUNT(*) as total_invoices,
+          SUM(CASE WHEN created_at >= date('now', 'start of month') THEN 1 ELSE 0 END) as invoices_this_month,
+          SUM(CASE WHEN date(created_at) = date('now') THEN 1 ELSE 0 END) as invoices_today
+        FROM invoices
+      `).get() || invoiceStats;
+    } catch (e) {
+      console.log('[ADMIN] Invoices table not found or query failed:', e.message);
+    }
 
-    // Opportunity statistics
-    const oppStats = db.prepare(`
-      SELECT
-        COUNT(*) as total_opportunities,
-        SUM(CASE WHEN source = 'email_monitor' THEN 1 ELSE 0 END) as opps_from_email,
-        SUM(CASE WHEN source = 'sku_rule' THEN 1 ELSE 0 END) as opps_from_rules
-      FROM opportunities
-    `).get();
+    // Opportunity statistics (with fallback)
+    let oppStats = { total_opportunities: 0, opps_from_email: 0, opps_from_rules: 0 };
+    try {
+      oppStats = db.prepare(`
+        SELECT
+          COUNT(*) as total_opportunities,
+          SUM(CASE WHEN source = 'email_monitor' THEN 1 ELSE 0 END) as opps_from_email,
+          SUM(CASE WHEN source = 'sku_rule' THEN 1 ELSE 0 END) as opps_from_rules
+        FROM opportunities
+      `).get() || oppStats;
+    } catch (e) {
+      console.log('[ADMIN] Opportunities query failed:', e.message);
+    }
 
     // Telemetry event statistics
     let telemetryStats = { total_events: 0, events_24h: 0, unique_users_24h: 0 };
@@ -80,22 +105,22 @@ router.get('/usage-analytics', (req, res) => {
       `).get(day24Ago);
 
       telemetryStats = {
-        total_events: telemetryTotal.count,
-        events_24h: telemetry24h.events,
-        unique_users_24h: telemetry24h.unique_users
+        total_events: telemetryTotal?.count || 0,
+        events_24h: telemetry24h?.events || 0,
+        unique_users_24h: telemetry24h?.unique_users || 0
       };
     } catch (e) {
-      // Telemetry table may not exist in older versions
-      console.log('Telemetry table not found:', e.message);
+      // Telemetry table may not exist
+      console.log('[ADMIN] Telemetry table not found:', e.message);
     }
 
     res.json({
       success: true,
       data: {
-        totalUsers: userStats.total_users,
-        totalReps: userStats.total_reps,
-        totalManagers: userStats.total_managers,
-        totalAdmins: userStats.total_admins,
+        totalUsers: userStats.total_users || 0,
+        totalReps: userStats.total_reps || 0,
+        totalManagers: userStats.total_managers || 0,
+        totalAdmins: userStats.total_admins || 0,
         activeUsers24h: activeUsers24h,
         activeUsers7d: activeUsers7d,
         activeUsers30d: activeUsers30d,
@@ -673,5 +698,143 @@ router.get('/live-users', (req, res) => {
     });
   }
 });
+
+// =====================================================
+// SYSTEM HEALTH
+// =====================================================
+
+/**
+ * GET /api/admin/system-health
+ * Get overall system health status
+ */
+router.get('/system-health', (req, res) => {
+  try {
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      checks: {}
+    };
+
+    // Database connectivity check
+    try {
+      const dbCheck = db.prepare('SELECT 1 as test').get();
+      health.checks.database = {
+        status: dbCheck ? 'healthy' : 'degraded',
+        message: dbCheck ? 'Database connected' : 'Database query failed'
+      };
+    } catch (e) {
+      health.checks.database = { status: 'unhealthy', message: e.message };
+      health.status = 'degraded';
+    }
+
+    // User count check
+    try {
+      const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1 OR is_active IS NULL').get();
+      health.checks.users = {
+        status: 'healthy',
+        count: userCount?.count || 0,
+        message: `${userCount?.count || 0} active users`
+      };
+    } catch (e) {
+      health.checks.users = { status: 'unknown', message: 'Could not count users' };
+    }
+
+    // Recent activity check (last 24 hours)
+    const day24Ago = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    let recentLogins = 0;
+    try {
+      const loginCheck = db.prepare('SELECT COUNT(*) as count FROM users WHERE last_login_at >= ?').get(day24Ago);
+      recentLogins = loginCheck?.count || 0;
+      health.checks.activity = {
+        status: recentLogins > 0 ? 'healthy' : 'warning',
+        recentLogins: recentLogins,
+        message: recentLogins > 0 ? `${recentLogins} users logged in (24h)` : 'No recent logins'
+      };
+    } catch (e) {
+      health.checks.activity = { status: 'unknown', message: 'Could not check activity' };
+    }
+
+    // Email monitors check
+    try {
+      const monitorCheck = db.prepare(`
+        SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+          SUM(CASE WHEN last_error IS NOT NULL AND is_active = 1 THEN 1 ELSE 0 END) as with_errors
+        FROM email_monitors
+      `).get();
+
+      const hasErrors = (monitorCheck?.with_errors || 0) > 0;
+      health.checks.emailMonitors = {
+        status: hasErrors ? 'warning' : 'healthy',
+        total: monitorCheck?.total || 0,
+        active: monitorCheck?.active || 0,
+        withErrors: monitorCheck?.with_errors || 0,
+        message: hasErrors
+          ? `${monitorCheck.with_errors} monitor(s) with errors`
+          : `${monitorCheck?.active || 0} active monitors`
+      };
+
+      if (hasErrors && health.status === 'healthy') {
+        health.status = 'warning';
+      }
+    } catch (e) {
+      health.checks.emailMonitors = { status: 'unknown', message: 'Could not check email monitors' };
+    }
+
+    // Pending opportunities check
+    try {
+      const oppCheck = db.prepare(`
+        SELECT COUNT(*) as count FROM opportunities WHERE status = 'pending'
+      `).get();
+      health.checks.opportunities = {
+        status: 'healthy',
+        pending: oppCheck?.count || 0,
+        message: `${oppCheck?.count || 0} pending opportunities`
+      };
+    } catch (e) {
+      health.checks.opportunities = { status: 'unknown', message: 'Could not check opportunities' };
+    }
+
+    // Memory and uptime (Node.js process)
+    const memUsage = process.memoryUsage();
+    health.checks.memory = {
+      status: 'healthy',
+      heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+      heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+      rssMB: Math.round(memUsage.rss / 1024 / 1024),
+      message: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB heap used`
+    };
+
+    health.checks.uptime = {
+      status: 'healthy',
+      seconds: Math.round(process.uptime()),
+      message: `Uptime: ${formatUptime(process.uptime())}`
+    };
+
+    res.json({
+      success: true,
+      data: health
+    });
+
+  } catch (error) {
+    console.error('[ADMIN-ANALYTICS] System health error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check system health'
+    });
+  }
+});
+
+// Helper function to format uptime
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
 
 module.exports = router;
