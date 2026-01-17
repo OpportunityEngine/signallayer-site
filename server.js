@@ -1905,15 +1905,27 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       try {
         const base64Data = raw_text.substring("PDF_FILE_BASE64:".length);
         const pdfBuffer = Buffer.from(base64Data, 'base64');
+        console.log(`[INGEST] PDF buffer size: ${pdfBuffer.length} bytes`);
 
-        // Use pdf-parse to extract text
+        // Use pdf-parse to extract text with timeout
         const pdfParse = require('pdf-parse');
-        const pdfData = await pdfParse(pdfBuffer);
+
+        // Add 30-second timeout to PDF parsing to prevent hanging
+        const pdfParseWithTimeout = async (buffer, timeoutMs) => {
+          return Promise.race([
+            pdfParse(buffer),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('PDF parsing timed out')), timeoutMs)
+            )
+          ]);
+        };
+
+        const pdfData = await pdfParseWithTimeout(pdfBuffer, 30000);
 
         raw_text = pdfData.text;
         console.log(`[INGEST] ✓ Extracted ${raw_text.length} chars from PDF file`);
       } catch (pdfError) {
-        console.error("[INGEST] PDF extraction failed:", pdfError);
+        console.error("[INGEST] PDF extraction failed:", pdfError.message || pdfError);
         raw_text = ""; // Fall back to empty if extraction fails
       }
     }
@@ -2052,13 +2064,30 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       let out = _leadsCacheGet(key);
 
       if (!out) {
-        console.log("[AUTO_LEADS] Cache miss, running computeLeadsForAccount...");
-        const computed = await computeLeadsForAccount({
-          accountName,
-          postalCode: postal,
-          addressHint,
-          run_id: run_id
-        });
+        console.log("[AUTO_LEADS] Cache miss, running computeLeadsForAccount with 10s timeout...");
+
+        // Add timeout wrapper to prevent hanging
+        const computeWithTimeout = async (timeoutMs) => {
+          return Promise.race([
+            computeLeadsForAccount({
+              accountName,
+              postalCode: postal,
+              addressHint,
+              run_id: run_id
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Lead computation timed out')), timeoutMs)
+            )
+          ]);
+        };
+
+        let computed;
+        try {
+          computed = await computeWithTimeout(10000); // 10 second timeout
+        } catch (timeoutErr) {
+          console.log("[AUTO_LEADS] Timed out, returning empty leads");
+          computed = { ok: false, source: 'timeout', leads: [], message: 'Timed out' };
+        }
 
         console.log("[AUTO_LEADS] Compute result:", {
           ok: computed.ok,

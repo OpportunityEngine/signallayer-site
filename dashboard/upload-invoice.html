@@ -720,43 +720,50 @@
       document.getElementById('progressFilename').textContent = file.name;
       document.getElementById('dropZone').classList.add('uploading');
 
+      // Define progressInterval outside try block so it's accessible in catch
+      let progressInterval = null;
+
       try {
-        // Simulate progress
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-          progress += Math.random() * 20;
-          if (progress > 90) progress = 90;
-          updateProgress(progress, 'Uploading...');
-        }, 300);
-
-        // Create form data
-        const formData = new FormData();
-        formData.append('file', file);
-
         const accountName = document.getElementById('accountName').value;
         const vendorName = document.getElementById('vendorName').value;
 
-        if (accountName) formData.append('accountName', accountName);
-        if (vendorName) formData.append('vendorName', vendorName);
-
-        // For PDF, we need to read and convert to base64
+        // Read file first
+        updateProgress(10, 'Reading file...');
         const fileContent = await readFileAsBase64(file);
 
-        // Call ingest endpoint
-        // For PDFs, send base64 with prefix so server knows to parse it
-        // For text files (CSV/Excel), send raw text directly
+        // Determine payload based on file type
         let rawTextPayload;
         if (ext === '.pdf') {
           rawTextPayload = 'PDF_FILE_BASE64:' + fileContent;
+          updateProgress(20, 'Preparing PDF for processing...');
         } else {
           rawTextPayload = await readFileAsText(file);
+          updateProgress(20, 'Preparing file...');
         }
 
-        // Create abort controller for timeout
+        // Create abort controller for timeout (90 seconds for large PDFs)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-        updateProgress(50, 'Sending to server...');
+        // Start progress animation
+        let progress = 25;
+        const progressMessages = [
+          'Uploading to server...',
+          'Parsing document...',
+          'Extracting data...',
+          'Analyzing content...',
+          'Processing invoice...'
+        ];
+        let msgIndex = 0;
+
+        progressInterval = setInterval(() => {
+          progress += Math.random() * 8;
+          if (progress > 85) progress = 85;
+          updateProgress(progress, progressMessages[msgIndex % progressMessages.length]);
+          msgIndex++;
+        }, 800);
+
+        console.log('[Upload] Sending to /ingest endpoint...');
 
         const response = await fetch('/ingest', {
           method: 'POST',
@@ -775,9 +782,10 @@
         });
 
         clearTimeout(timeoutId);
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
 
-        updateProgress(75, 'Processing response...');
+        console.log('[Upload] Response received, status:', response.status);
+        updateProgress(90, 'Processing response...');
 
         if (!response.ok) {
           let errorMessage = 'Upload failed';
@@ -791,6 +799,7 @@
         }
 
         const result = await response.json();
+        console.log('[Upload] Successfully processed:', result.status);
 
         // Complete progress
         updateProgress(100, 'Processing complete!');
@@ -801,12 +810,12 @@
         }, 500);
 
       } catch (error) {
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
         console.error('Upload error:', error);
 
         let errorMsg = 'Failed to process invoice';
         if (error.name === 'AbortError') {
-          errorMsg = 'Upload timed out. Please try again or use a smaller file.';
+          errorMsg = 'Upload timed out after 90 seconds. Please try a smaller file or check your connection.';
         } else if (error.message) {
           errorMsg = error.message;
         }

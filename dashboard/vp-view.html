@@ -828,6 +828,159 @@
       color: var(--text);
     }
 
+    /* Clickable Breakdown Rows */
+    .breakdownRow.clickable-row {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .breakdownRow.clickable-row:hover {
+      background: rgba(251, 191, 36, 0.08);
+      transform: translateX(4px);
+    }
+
+    .breakdownRow.clickable-row:hover .breakdownName {
+      color: var(--gold);
+    }
+
+    .drill-arrow {
+      opacity: 0;
+      transition: all 0.2s ease;
+      margin-left: 4px;
+    }
+
+    .breakdownRow.clickable-row:hover .drill-arrow {
+      opacity: 1;
+    }
+
+    /* Drill-down Modal Styles */
+    .drilldown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .drilldown-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .drilldown-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .drilldown-stats {
+      display: flex;
+      gap: 24px;
+    }
+
+    .drilldown-stat {
+      text-align: right;
+    }
+
+    .drilldown-stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    .drilldown-stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .drilldown-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .drilldown-tab {
+      padding: 8px 16px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .drilldown-tab:hover {
+      border-color: var(--border-gold);
+      color: var(--text);
+    }
+
+    .drilldown-tab.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #1a1a1a;
+    }
+
+    .drilldown-issues {
+      display: grid;
+      gap: 12px;
+    }
+
+    .drilldown-issue {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 16px;
+      align-items: center;
+      padding: 16px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .drilldown-issue:hover {
+      border-color: var(--border-gold);
+    }
+
+    .issue-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .issue-type {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .issue-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .issue-amount {
+      text-align: right;
+    }
+
+    .issue-current {
+      font-size: 14px;
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
+    .issue-delta {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
     /* Location Modal */
     .location-list {
       display: grid;
@@ -1802,6 +1955,10 @@
       }
     }
 
+    // Store vendor/location data for drill-down
+    window.vendorsData = {};
+    window.locationsData = {};
+
     // Load vendor breakdown
     async function loadVendors() {
       try {
@@ -1814,15 +1971,21 @@
         }
 
         const sorted = rows.sort((a, b) => b.amountCents - a.amountCents).slice(0, 10);
+
+        // Store for drill-down
+        sorted.forEach((row, idx) => {
+          window.vendorsData[`vendor_${idx}`] = row;
+        });
+
         const html = sorted.map((row, idx) => `
-          <div class="breakdownRow">
+          <div class="breakdownRow clickable-row" onclick="showVendorDrilldown(window.vendorsData['vendor_${idx}'])" title="Click to see all issues from ${row.name}">
             <div class="breakdownLeft">
               <div class="breakdownRank">${idx + 1}</div>
               <div class="breakdownName">${row.name}</div>
             </div>
             <div class="breakdownRight">
               <div class="breakdownAmount">${formatMoney(row.amountCents)}</div>
-              <div class="breakdownMeta">${row.issuesCount} issues • ${row.invoicesCount} invoices</div>
+              <div class="breakdownMeta">${row.issuesCount} issues • ${row.invoicesCount} invoices <span class="drill-arrow">→</span></div>
             </div>
           </div>
         `).join('');
@@ -1850,15 +2013,21 @@
         }
 
         const sorted = rows.sort((a, b) => b.amountCents - a.amountCents).slice(0, 10);
+
+        // Store for drill-down
+        sorted.forEach((row, idx) => {
+          window.locationsData[`location_${idx}`] = row;
+        });
+
         const html = sorted.map((row, idx) => `
-          <div class="breakdownRow">
+          <div class="breakdownRow clickable-row" onclick="showLocationDrilldown(window.locationsData['location_${idx}'])" title="Click to see all issues at ${row.name}">
             <div class="breakdownLeft">
               <div class="breakdownRank">${idx + 1}</div>
               <div class="breakdownName">${row.name}</div>
             </div>
             <div class="breakdownRight">
               <div class="breakdownAmount">${formatMoney(row.amountCents)}</div>
-              <div class="breakdownMeta">${row.issuesCount} issues • ${row.invoicesCount} invoices</div>
+              <div class="breakdownMeta">${row.issuesCount} issues • ${row.invoicesCount} invoices <span class="drill-arrow">→</span></div>
             </div>
           </div>
         `).join('');
@@ -3517,6 +3686,19 @@
     </div>
   </div>
 
+  <!-- Vendor/Location Drill-down Modal -->
+  <div class="modal-overlay" id="drilldownModal" onclick="closeDrilldownModal(event)">
+    <div class="modal-content" style="max-width: 1000px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" id="drilldownModalTitle">Vendor Details</div>
+        <button class="modal-close" onclick="closeDrilldownModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="drilldownModalBody">
+        <!-- Content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
   <script>
     // ========================================
     // PROOF MODAL FUNCTIONS
@@ -3744,8 +3926,182 @@
       if (e.key === 'Escape') {
         closeProofModal();
         closeLocationModal();
+        closeDrilldownModal();
       }
     });
+
+    // ========================================
+    // VENDOR/LOCATION DRILL-DOWN FUNCTIONS
+    // ========================================
+
+    async function showVendorDrilldown(vendorData) {
+      const modal = document.getElementById('drilldownModal');
+      const title = document.getElementById('drilldownModalTitle');
+      const body = document.getElementById('drilldownModalBody');
+
+      title.innerHTML = `<span style="color: var(--muted);">🏢</span> ${vendorData.name}`;
+      body.innerHTML = '<div class="loadingState">Loading vendor details...</div>';
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      // Load issues for this vendor
+      await loadDrilldownContent('vendor', vendorData);
+    }
+
+    async function showLocationDrilldown(locationData) {
+      const modal = document.getElementById('drilldownModal');
+      const title = document.getElementById('drilldownModalTitle');
+      const body = document.getElementById('drilldownModalBody');
+
+      title.innerHTML = `<span style="color: var(--muted);">📍</span> ${locationData.name}`;
+      body.innerHTML = '<div class="loadingState">Loading location details...</div>';
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      // Load issues for this location
+      await loadDrilldownContent('location', locationData);
+    }
+
+    async function loadDrilldownContent(type, data) {
+      const body = document.getElementById('drilldownModalBody');
+
+      try {
+        // Fetch issues filtered by vendor or location
+        const filterParam = type === 'vendor' ? `vendorName=${encodeURIComponent(data.name)}` : `locationName=${encodeURIComponent(data.name)}`;
+        const issuesData = await fetchAPI(`/api/dashboard/issues?${buildQueryString(filters)}&${filterParam}`);
+        const issues = issuesData.rows || [];
+
+        // Calculate summary stats
+        const totalSavings = issues.reduce((sum, i) => sum + (i.deltaCents || 0), 0);
+        const highConfidence = issues.filter(i => i.confidence === 'HIGH').length;
+
+        // Build drill-down content
+        body.innerHTML = `
+          <div class="drilldown-header">
+            <div>
+              <div class="drilldown-title">${data.name}</div>
+              <div class="drilldown-subtitle">
+                ${type === 'vendor' ? 'Vendor' : 'Location'} • ${data.invoicesCount || 0} invoices analyzed
+              </div>
+            </div>
+            <div class="drilldown-stats">
+              <div class="drilldown-stat">
+                <div class="drilldown-stat-value">${formatMoney(data.amountCents || totalSavings)}</div>
+                <div class="drilldown-stat-label">Potential Savings</div>
+              </div>
+              <div class="drilldown-stat">
+                <div class="drilldown-stat-value" style="color: var(--text);">${issues.length}</div>
+                <div class="drilldown-stat-label">Flagged Issues</div>
+              </div>
+              <div class="drilldown-stat">
+                <div class="drilldown-stat-value" style="color: #10b981;">${highConfidence}</div>
+                <div class="drilldown-stat-label">High Confidence</div>
+              </div>
+            </div>
+          </div>
+
+          ${issues.length > 0 ? `
+            <div class="drilldown-tabs">
+              <button class="drilldown-tab active" onclick="filterDrilldownIssues('all', this)">All Issues (${issues.length})</button>
+              <button class="drilldown-tab" onclick="filterDrilldownIssues('high', this)">High Confidence (${highConfidence})</button>
+              <button class="drilldown-tab" onclick="filterDrilldownIssues('price', this)">Price Issues</button>
+              <button class="drilldown-tab" onclick="filterDrilldownIssues('overcharge', this)">Overcharges</button>
+            </div>
+
+            <div class="drilldown-issues" id="drilldownIssuesList">
+              ${renderDrilldownIssues(issues)}
+            </div>
+          ` : `
+            <div class="emptyState" style="padding: 48px;">
+              <div style="font-size: 48px; margin-bottom: 16px;">✨</div>
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Issues Found</div>
+              <div style="color: var(--muted);">All invoices from this ${type} are within expected pricing.</div>
+            </div>
+          `}
+        `;
+
+        // Store issues for filtering
+        window.currentDrilldownIssues = issues;
+      } catch (error) {
+        body.innerHTML = `
+          <div class="errorState">
+            <div class="errorTitle">Failed to load details</div>
+            <div class="errorMsg">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    function renderDrilldownIssues(issues) {
+      if (!issues || issues.length === 0) {
+        return '<div class="emptyState">No issues match this filter</div>';
+      }
+
+      return issues.map((issue, idx) => `
+        <div class="drilldown-issue" data-confidence="${issue.confidence}" data-type="${issue.issueType}">
+          <div class="issue-info">
+            <div class="issue-type">
+              ${formatIssueType(issue.issueType)}
+              <span class="badge ${issue.confidence === 'HIGH' ? 'badge-good' : 'badge-neutral'}" style="margin-left: 8px;">
+                ${issue.confidence}
+              </span>
+            </div>
+            <div class="issue-meta">
+              ${issue.vendorName || ''} ${issue.locationName ? '• ' + issue.locationName : ''} • Invoice: ${formatDate(issue.invoiceDate)}
+            </div>
+          </div>
+          <div class="issue-amount">
+            <div class="issue-current">${formatMoney(issue.currentChargeCents)}</div>
+            <div class="issue-delta">Save ${formatMoney(issue.deltaCents)}</div>
+          </div>
+          <button class="btn-proof" onclick="showProofFromDrilldown(${idx})">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            See Proof
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function filterDrilldownIssues(filter, btn) {
+      // Update active tab
+      document.querySelectorAll('.drilldown-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+
+      const issues = window.currentDrilldownIssues || [];
+      let filtered = issues;
+
+      switch (filter) {
+        case 'high':
+          filtered = issues.filter(i => i.confidence === 'HIGH');
+          break;
+        case 'price':
+          filtered = issues.filter(i => i.issueType?.includes('price') || i.issueType?.includes('increase'));
+          break;
+        case 'overcharge':
+          filtered = issues.filter(i => i.issueType?.includes('overcharge') || i.issueType?.includes('charge'));
+          break;
+      }
+
+      document.getElementById('drilldownIssuesList').innerHTML = renderDrilldownIssues(filtered);
+    }
+
+    function showProofFromDrilldown(idx) {
+      const issues = window.currentDrilldownIssues || [];
+      if (issues[idx]) {
+        showProof(issues[idx]);
+      }
+    }
+
+    function closeDrilldownModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('drilldownModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
   </script>
 </body>
 </html>
