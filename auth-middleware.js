@@ -367,12 +367,19 @@ setInterval(() => {
  */
 const DEMO_ROLES = {
   demo_business: {
-    allowedDashboards: ['/dashboard/vp-view.html'],
+    allowedDashboards: ['/dashboard/vp-view.html', '/dashboard/inventory.html'],
     allowedAPIs: [
       '/api/dashboard',
       '/api/opportunities',
       '/api/analytics',
       '/api/commissions',
+      '/api/bi/financial-summary',
+      '/api/bi/opportunities',
+      '/api/bi/savings',
+      '/api/bi/inventory',
+      '/api/bi/payroll',
+      '/api/bi/expenses',
+      '/api/bi/achievements',
       '/auth/me',
       '/auth/refresh'
     ],
@@ -385,13 +392,25 @@ const DEMO_ROLES = {
       '/dashboard/manager-view.html',
       '/dashboard/vp-view.html',
       '/dashboard/rep-view.html',
-      '/dashboard/admin-ops.html'
+      '/dashboard/admin-ops.html',
+      '/dashboard/inventory.html',
+      '/dashboard/business-analytics.html'
     ],
     allowedAPIs: [
       '/api/dashboard',
       '/api/opportunities',
       '/api/analytics',
       '/api/commissions',
+      '/api/bi/financial-summary',
+      '/api/bi/opportunities',
+      '/api/bi/savings',
+      '/api/bi/inventory',
+      '/api/bi/payroll',
+      '/api/bi/expenses',
+      '/api/bi/achievements',
+      '/api/bi/suppliers',
+      '/api/bi/price-alerts',
+      '/api/bi/analytics',
       '/api/admin/usage-analytics',
       '/api/admin/system-health',
       '/api/admin/financial-metrics',
