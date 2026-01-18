@@ -1779,6 +1779,7 @@
       background: linear-gradient(90deg, transparent, var(--gold), transparent);
       opacity: 0;
       transition: opacity 0.4s;
+      pointer-events: none;
     }
 
     .quick-action-tile::after {
@@ -1788,6 +1789,7 @@
       background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.03) 0%, transparent 70%);
       opacity: 0;
       transition: opacity 0.4s;
+      pointer-events: none;
     }
 
     .quick-action-tile:hover {
@@ -3048,10 +3050,10 @@
               </div>
             </div>
           </div>
-          <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-left: auto; position: relative; z-index: 10;">
             <span style="color: var(--muted); font-size: 12px;">Set up automatic invoice scanning</span>
-            <button class="btn" onclick="openSetupGuide()" style="background: var(--panel2); font-size: 12px; padding: 8px 14px;">How It Works</button>
-            <button class="btn" onclick="openAddEmailMonitor()" style="font-size: 12px; padding: 8px 14px;">Configure</button>
+            <button class="btn" onclick="openSetupGuide()" style="background: var(--panel2); font-size: 12px; padding: 8px 14px; position: relative; z-index: 10; cursor: pointer;">How It Works</button>
+            <button class="btn" onclick="openAddEmailMonitor()" style="font-size: 12px; padding: 8px 14px; position: relative; z-index: 10; cursor: pointer;">Configure</button>
           </div>
         </div>
       </div>
