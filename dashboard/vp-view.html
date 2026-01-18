@@ -1655,6 +1655,576 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ========================================
+       COMMAND CENTER STYLES
+       ======================================== */
+
+    /* Compact Quick Actions Row */
+    .quick-actions-compact {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .quick-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 8px;
+      color: #fbbf24;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .quick-action-btn:hover {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%);
+      border-color: rgba(251, 191, 36, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .quick-action-btn .icon {
+      font-size: 16px;
+    }
+
+    /* Command Center Grid */
+    .command-center-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .command-stat {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .command-stat:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .command-stat.highlight {
+      border-color: rgba(251, 191, 36, 0.3);
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(17, 21, 37, 0.9) 100%);
+    }
+
+    .command-stat.success {
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .command-stat.warning {
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .command-stat.danger {
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .command-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .command-stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+
+    .command-stat-value.gold { color: #fbbf24; }
+    .command-stat-value.green { color: #22c55e; }
+    .command-stat-value.red { color: #ef4444; }
+    .command-stat-value.blue { color: #3b82f6; }
+
+    .command-stat-sub {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .command-stat-trend {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 8px;
+    }
+
+    .command-stat-trend.up {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .command-stat-trend.down {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    /* Location Performance Grid */
+    .location-performance {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .location-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      transition: all 0.2s;
+    }
+
+    .location-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .location-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .location-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .location-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+
+    .location-badge.hot {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .location-badge.warm {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+    }
+
+    .location-badge.good {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .location-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .location-stat {
+      text-align: center;
+    }
+
+    .location-stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .location-stat-label {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    /* Opportunity Pipeline */
+    .opportunity-pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .pipeline-stage {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .pipeline-stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .pipeline-stage-icon {
+      font-size: 18px;
+    }
+
+    .pipeline-stage-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    .pipeline-stage-count {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .pipeline-stage-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #22c55e;
+      margin-top: 4px;
+    }
+
+    /* Action Items */
+    .action-items {
+      margin-top: 16px;
+    }
+
+    .action-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-left: 3px solid #fbbf24;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+
+    .action-item:hover {
+      background: rgba(15, 23, 42, 0.7);
+      border-color: var(--border-hover);
+    }
+
+    .action-item.urgent {
+      border-left-color: #ef4444;
+    }
+
+    .action-item.high {
+      border-left-color: #f59e0b;
+    }
+
+    .action-item.medium {
+      border-left-color: #3b82f6;
+    }
+
+    .action-item-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(251, 191, 36, 0.1);
+      border-radius: 8px;
+      font-size: 18px;
+    }
+
+    .action-item-content {
+      flex: 1;
+    }
+
+    .action-item-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .action-item-meta {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .action-item-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .action-item-btn {
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border: none;
+      border-radius: 6px;
+      color: #0a0f1a;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-item-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    @media (max-width: 900px) {
+      .command-center-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .opportunity-pipeline {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .quick-actions-compact {
+        justify-content: center;
+      }
+    }
+
+    /* Actions Executed & Results Tracking */
+    .actions-results-section {
+      margin-top: 24px;
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .actions-results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .actions-results-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .actions-results-title h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .actions-results-title .verified-badge {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .actions-results-summary {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .actions-summary-stat {
+      text-align: center;
+    }
+
+    .actions-summary-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    .actions-summary-label {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .actions-results-grid {
+      display: grid;
+      gap: 12px;
+      padding: 16px 20px;
+    }
+
+    .action-result-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 16px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+
+    .action-result-card:hover {
+      border-color: rgba(34, 197, 94, 0.3);
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .action-result-icon {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 10px;
+      font-size: 20px;
+    }
+
+    .action-result-details {
+      flex: 1;
+    }
+
+    .action-result-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+
+    .action-result-recommendation {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .action-result-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .action-result-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .action-result-impact {
+      text-align: right;
+      min-width: 120px;
+    }
+
+    .action-result-savings {
+      font-size: 20px;
+      font-weight: 800;
+      color: #22c55e;
+      line-height: 1.2;
+    }
+
+    .action-result-verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 4px;
+    }
+
+    .action-result-timeline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .timeline-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .timeline-progress {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .timeline-label {
+      font-size: 10px;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    .actions-total-impact {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%);
+      border-top: 1px solid var(--border);
+    }
+
+    .total-impact-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .total-impact-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    .total-impact-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34, 197, 94, 0.15);
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    .total-impact-badge span {
+      font-size: 12px;
+      font-weight: 600;
+      color: #22c55e;
+    }
   </style>
 </head>
 <body>
@@ -1702,44 +2272,14 @@
         <span id="trialStatusText" class="trial-banner-text"></span>
       </div>
 
-      <!-- Metrics Row -->
-      <div class="card">
-        <div class="metricsRow" id="metricsRow">
-          <div class="loadingState">Loading metrics...</div>
-        </div>
-      </div>
-
-      <!-- Quick Action Tiles -->
-      <div class="card" style="padding: 16px;">
-        <div class="sectionHeader" style="margin-bottom: 16px;">
-          <div class="sectionTitle">⚡ Quick Actions</div>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-          <a href="inventory.html" class="quick-action-tile">
-            <div class="quick-action-icon">📦</div>
-            <div class="quick-action-label">Inventory</div>
-          </a>
-          <a href="upload-invoice.html" class="quick-action-tile">
-            <div class="quick-action-icon">📄</div>
-            <div class="quick-action-label">Upload Invoice</div>
-          </a>
-          <a href="connect-email.html" class="quick-action-tile">
-            <div class="quick-action-icon">📧</div>
-            <div class="quick-action-label">Connect Email</div>
-          </a>
-          <button onclick="openPayrollEntry()" class="quick-action-tile">
-            <div class="quick-action-icon">💵</div>
-            <div class="quick-action-label">Add Payroll</div>
-          </button>
-          <button onclick="openExpenseEntry()" class="quick-action-tile">
-            <div class="quick-action-icon">🧾</div>
-            <div class="quick-action-label">Add Expense</div>
-          </button>
-          <button onclick="openPayrollUpload()" class="quick-action-tile">
-            <div class="quick-action-icon">📤</div>
-            <div class="quick-action-label">Upload Payroll</div>
-          </button>
-        </div>
+      <!-- Compact Quick Actions Row -->
+      <div class="quick-actions-compact">
+        <a href="inventory.html" class="quick-action-btn"><span class="icon">📦</span> Inventory</a>
+        <a href="upload-invoice.html" class="quick-action-btn"><span class="icon">📄</span> Upload Invoice</a>
+        <a href="connect-email.html" class="quick-action-btn"><span class="icon">📧</span> Connect Email</a>
+        <button onclick="openPayrollEntry()" class="quick-action-btn"><span class="icon">💵</span> Add Payroll</button>
+        <button onclick="openExpenseEntry()" class="quick-action-btn"><span class="icon">🧾</span> Add Expense</button>
+        <button onclick="openPayrollUpload()" class="quick-action-btn"><span class="icon">📤</span> Upload Payroll</button>
       </div>
 
       <!-- Financial Overview Section -->
@@ -1774,6 +2314,34 @@
                 <div class="streak-number" id="streakCount">7</div>
                 <div class="streak-label">Week Streak</div>
               </div>
+            </div>
+          </div>
+
+          <!-- Command Center Grid - Overbilling Metrics -->
+          <div class="command-center-grid" style="margin-top: 20px;">
+            <div class="command-stat highlight">
+              <div class="command-stat-label">Total Potential Overbilling</div>
+              <div class="command-stat-value gold" id="ccTotalOverbilling">$8,247</div>
+              <div class="command-stat-sub">Across all invoices</div>
+              <div class="command-stat-trend up">↑ $1,200 this week</div>
+            </div>
+            <div class="command-stat">
+              <div class="command-stat-label">Invoices Analyzed</div>
+              <div class="command-stat-value blue" id="ccInvoicesAnalyzed">247</div>
+              <div class="command-stat-sub">Last 30 days</div>
+              <div class="command-stat-trend up">↑ 23 new</div>
+            </div>
+            <div class="command-stat warning">
+              <div class="command-stat-label">Flagged Issues</div>
+              <div class="command-stat-value red" id="ccFlaggedIssues">18</div>
+              <div class="command-stat-sub">Requiring attention</div>
+              <div class="command-stat-trend down">↓ 4 resolved</div>
+            </div>
+            <div class="command-stat success">
+              <div class="command-stat-label">Avg Projected Impact</div>
+              <div class="command-stat-value green" id="ccAvgImpact">$458</div>
+              <div class="command-stat-sub">Per flagged invoice</div>
+              <div class="command-stat-trend up">↑ 12% vs last month</div>
             </div>
           </div>
 
@@ -1917,6 +2485,281 @@
           <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px;">Budget vs Actual</h4>
           <div id="budgetComparison" style="display: grid; gap: 12px;">
             <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Location Performance Breakdown -->
+        <div style="padding: 0 20px 20px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px;">
+          <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; display: flex; align-items: center; gap: 8px;">
+            📍 Location Performance
+            <span style="font-size: 11px; font-weight: 500; color: #64748b; background: var(--panel2); padding: 2px 8px; border-radius: 10px;">By Savings</span>
+          </h4>
+          <div class="location-performance" id="locationPerformance">
+            <div class="location-card">
+              <div class="location-header">
+                <span class="location-name">Downtown Location</span>
+                <span class="location-badge hot">🔥 Top Saver</span>
+              </div>
+              <div class="location-stats">
+                <div class="location-stat">
+                  <div class="location-stat-value" style="color: #22c55e;">$4,280</div>
+                  <div class="location-stat-label">Saved</div>
+                </div>
+                <div class="location-stat">
+                  <div class="location-stat-value">12</div>
+                  <div class="location-stat-label">Issues Found</div>
+                </div>
+              </div>
+            </div>
+            <div class="location-card">
+              <div class="location-header">
+                <span class="location-name">Westside Branch</span>
+                <span class="location-badge warm">⚠️ Needs Review</span>
+              </div>
+              <div class="location-stats">
+                <div class="location-stat">
+                  <div class="location-stat-value" style="color: #22c55e;">$2,450</div>
+                  <div class="location-stat-label">Saved</div>
+                </div>
+                <div class="location-stat">
+                  <div class="location-stat-value">8</div>
+                  <div class="location-stat-label">Issues Found</div>
+                </div>
+              </div>
+            </div>
+            <div class="location-card">
+              <div class="location-header">
+                <span class="location-name">Airport Store</span>
+                <span class="location-badge good">✓ On Track</span>
+              </div>
+              <div class="location-stats">
+                <div class="location-stat">
+                  <div class="location-stat-value" style="color: #22c55e;">$1,517</div>
+                  <div class="location-stat-label">Saved</div>
+                </div>
+                <div class="location-stat">
+                  <div class="location-stat-value">5</div>
+                  <div class="location-stat-label">Issues Found</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opportunity Pipeline -->
+        <div style="padding: 0 20px 20px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px;">
+          <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; display: flex; align-items: center; gap: 8px;">
+            🎯 Opportunity Pipeline
+            <span style="font-size: 11px; font-weight: 500; color: #64748b; background: var(--panel2); padding: 2px 8px; border-radius: 10px;">Savings Potential</span>
+          </h4>
+          <div class="opportunity-pipeline" id="opportunityPipeline">
+            <div class="pipeline-stage">
+              <div class="pipeline-stage-header">
+                <span class="pipeline-stage-icon">🔍</span>
+                <span class="pipeline-stage-title">Detected</span>
+              </div>
+              <div class="pipeline-stage-count" id="pipelineDetected">24</div>
+              <div class="pipeline-stage-value">$12,400</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="pipeline-stage-header">
+                <span class="pipeline-stage-icon">📋</span>
+                <span class="pipeline-stage-title">Reviewing</span>
+              </div>
+              <div class="pipeline-stage-count" id="pipelineReviewing">12</div>
+              <div class="pipeline-stage-value">$6,800</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="pipeline-stage-header">
+                <span class="pipeline-stage-icon">⚡</span>
+                <span class="pipeline-stage-title">In Progress</span>
+              </div>
+              <div class="pipeline-stage-count" id="pipelineInProgress">8</div>
+              <div class="pipeline-stage-value">$4,200</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="pipeline-stage-header">
+                <span class="pipeline-stage-icon">✅</span>
+                <span class="pipeline-stage-title">Recovered</span>
+              </div>
+              <div class="pipeline-stage-count" id="pipelineRecovered">47</div>
+              <div class="pipeline-stage-value" style="color: #22c55e;">$8,247</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Items / Next Steps -->
+        <div style="padding: 0 20px 20px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px;">
+          <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              ⚡ Action Items
+              <span style="font-size: 11px; font-weight: 600; color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 2px 8px; border-radius: 10px;">5 Pending</span>
+            </span>
+            <button class="btn" style="background: var(--panel2); font-size: 11px; padding: 6px 12px;">View All</button>
+          </h4>
+          <div class="action-items" id="actionItems">
+            <div class="action-item urgent">
+              <div class="action-item-icon" style="background: rgba(239, 68, 68, 0.1);">🚨</div>
+              <div class="action-item-content">
+                <div class="action-item-title">Review Sysco invoice discrepancy</div>
+                <div class="action-item-meta">Downtown • Invoice #4521 • Due today</div>
+              </div>
+              <div class="action-item-value">$847</div>
+              <button class="action-item-btn">Review</button>
+            </div>
+            <div class="action-item high">
+              <div class="action-item-icon" style="background: rgba(245, 158, 11, 0.1);">📞</div>
+              <div class="action-item-content">
+                <div class="action-item-title">Call US Foods rep about price lock</div>
+                <div class="action-item-meta">Westside • Contract renewal • Due in 2 days</div>
+              </div>
+              <div class="action-item-value">$1,200</div>
+              <button class="action-item-btn">Schedule</button>
+            </div>
+            <div class="action-item medium">
+              <div class="action-item-icon" style="background: rgba(59, 130, 246, 0.1);">📊</div>
+              <div class="action-item-content">
+                <div class="action-item-title">Compare produce vendor quotes</div>
+                <div class="action-item-meta">All locations • 3 quotes received • Due this week</div>
+              </div>
+              <div class="action-item-value">$2,100</div>
+              <button class="action-item-btn">Compare</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions Executed & Results Tracking -->
+        <div style="padding: 0 20px 20px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px;">
+          <div class="actions-results-section">
+            <div class="actions-results-header">
+              <div class="actions-results-title">
+                <h3>💰 Smart Recommendations Executed</h3>
+                <span class="verified-badge">Invoice Verified</span>
+              </div>
+              <div class="actions-results-summary">
+                <div class="actions-summary-stat">
+                  <div class="actions-summary-value" id="actionsExecutedCount">12</div>
+                  <div class="actions-summary-label">Actions Taken</div>
+                </div>
+                <div class="actions-summary-stat">
+                  <div class="actions-summary-value" id="actionsSuccessRate">92%</div>
+                  <div class="actions-summary-label">Success Rate</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions-results-grid" id="actionsResultsGrid">
+              <!-- Action Result 1 -->
+              <div class="action-result-card">
+                <div class="action-result-icon">🔄</div>
+                <div class="action-result-details">
+                  <div class="action-result-name">Switched to bulk ordering for chicken breast</div>
+                  <div class="action-result-recommendation">Smart Recommendation: "Order 40lb cases instead of 10lb for 18% savings"</div>
+                  <div class="action-result-meta">
+                    <span>📍 Downtown Location</span>
+                    <span>📅 Executed Jan 3, 2026</span>
+                    <span>📄 Verified on 3 invoices</span>
+                  </div>
+                  <div class="action-result-timeline">
+                    <span class="timeline-label">Tracking: 4 weeks</span>
+                    <div class="timeline-bar">
+                      <div class="timeline-progress" style="width: 100%;"></div>
+                    </div>
+                    <span class="timeline-label">Complete</span>
+                  </div>
+                </div>
+                <div class="action-result-impact">
+                  <div class="action-result-savings">+$1,847</div>
+                  <div class="action-result-verified">✓ Verified Savings</div>
+                </div>
+              </div>
+
+              <!-- Action Result 2 -->
+              <div class="action-result-card">
+                <div class="action-result-icon">📦</div>
+                <div class="action-result-details">
+                  <div class="action-result-name">Changed produce delivery to 2x/week</div>
+                  <div class="action-result-recommendation">Smart Recommendation: "Reduce delivery frequency to cut fees by $120/week"</div>
+                  <div class="action-result-meta">
+                    <span>📍 All Locations</span>
+                    <span>📅 Executed Dec 15, 2025</span>
+                    <span>📄 Verified on 8 invoices</span>
+                  </div>
+                  <div class="action-result-timeline">
+                    <span class="timeline-label">Tracking: 5 weeks</span>
+                    <div class="timeline-bar">
+                      <div class="timeline-progress" style="width: 100%;"></div>
+                    </div>
+                    <span class="timeline-label">Complete</span>
+                  </div>
+                </div>
+                <div class="action-result-impact">
+                  <div class="action-result-savings">+$2,340</div>
+                  <div class="action-result-verified">✓ Verified Savings</div>
+                </div>
+              </div>
+
+              <!-- Action Result 3 -->
+              <div class="action-result-card">
+                <div class="action-result-icon">💲</div>
+                <div class="action-result-details">
+                  <div class="action-result-name">Negotiated price match with Sysco</div>
+                  <div class="action-result-recommendation">Smart Recommendation: "US Foods offering 12% lower price on dairy - negotiate match"</div>
+                  <div class="action-result-meta">
+                    <span>📍 Westside Branch</span>
+                    <span>📅 Executed Jan 8, 2026</span>
+                    <span>📄 Verified on 2 invoices</span>
+                  </div>
+                  <div class="action-result-timeline">
+                    <span class="timeline-label">Tracking: 2 weeks</span>
+                    <div class="timeline-bar">
+                      <div class="timeline-progress" style="width: 50%;"></div>
+                    </div>
+                    <span class="timeline-label">In Progress</span>
+                  </div>
+                </div>
+                <div class="action-result-impact">
+                  <div class="action-result-savings">+$680</div>
+                  <div class="action-result-verified">✓ Partial Verified</div>
+                </div>
+              </div>
+
+              <!-- Action Result 4 -->
+              <div class="action-result-card">
+                <div class="action-result-icon">🎯</div>
+                <div class="action-result-details">
+                  <div class="action-result-name">Adjusted par levels based on sales data</div>
+                  <div class="action-result-recommendation">Smart Recommendation: "Reduce beef order by 15% - consistent overstock detected"</div>
+                  <div class="action-result-meta">
+                    <span>📍 Airport Store</span>
+                    <span>📅 Executed Dec 20, 2025</span>
+                    <span>📄 Verified on 6 invoices</span>
+                  </div>
+                  <div class="action-result-timeline">
+                    <span class="timeline-label">Tracking: 4 weeks</span>
+                    <div class="timeline-bar">
+                      <div class="timeline-progress" style="width: 100%;"></div>
+                    </div>
+                    <span class="timeline-label">Complete</span>
+                  </div>
+                </div>
+                <div class="action-result-impact">
+                  <div class="action-result-savings">+$1,420</div>
+                  <div class="action-result-verified">✓ Verified Savings</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions-total-impact">
+              <div>
+                <div class="total-impact-label">Total Verified Impact from Your Actions</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Measured from invoice data after executing recommendations</div>
+              </div>
+              <div class="total-impact-badge">
+                <span class="total-impact-value" id="totalActionsImpact">$6,287</span>
+                <span>↑ Real savings</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
