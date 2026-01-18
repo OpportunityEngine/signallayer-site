@@ -4297,7 +4297,7 @@
     async function loadIntentSignals() {
       try {
         const response = await fetch('/api/intent-signals/feed?limit=50', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
         });
 
         if (response.ok) {
@@ -4482,7 +4482,7 @@
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
           },
           body: JSON.stringify({ status: 'contacted' })
         });
@@ -4520,7 +4520,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
           },
           body: JSON.stringify({
             keywords: ['restaurant equipment', 'commercial kitchen', 'food service supplies', 'pos system'],
@@ -4567,7 +4567,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
           },
           body: JSON.stringify({
             config_name: configName,
@@ -4612,7 +4612,7 @@
     async function loadIntentSignalsSummary() {
       try {
         const response = await fetch('/api/intent-signals/summary', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
         });
 
         if (response.ok) {
