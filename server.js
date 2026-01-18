@@ -1235,6 +1235,17 @@ const intentSignalRoutes = require('./intent-signal-routes');
 app.use('/api/intent-signals', requireAuth, intentSignalRoutes);
 console.log('✅ Intent Signal routes registered at /api/intent-signals (auth required)');
 
+// Intent Signal Background Service - monitors configs and generates signals
+const IntentSignalService = require('./intent-signal-service');
+const intentSignalService = new IntentSignalService(db);
+// Start the service after a short delay to ensure DB is ready
+setTimeout(() => {
+  intentSignalService.startAll().catch(err => {
+    console.error('Failed to start Intent Signal Service:', err);
+  });
+}, 3000);
+console.log('✅ Intent Signal Service initialized (starting in 3s)');
+
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {
   const start = Date.now();
