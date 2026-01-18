@@ -2450,7 +2450,7 @@
           <span class="tile-label">Upload Invoice</span>
           <span class="tile-value" id="tileInvoiceCount">12 This Week</span>
         </a>
-        <div class="quick-action-tile actions" onclick="scrollToActionItems()">
+        <div class="quick-action-tile actions" onclick="openActionItemsModal()">
           <span class="tile-badge" id="actionItemsBadge">5 Pending</span>
           <span class="tile-icon">⚡</span>
           <span class="tile-label">Action Items</span>
@@ -2460,7 +2460,7 @@
 
       <!-- Second Row: Results & Performance Tiles -->
       <div class="quick-actions-grid" style="margin-top: -4px;">
-        <div class="quick-action-tile results" onclick="scrollToActionsExecuted()">
+        <div class="quick-action-tile results" onclick="openActionsExecutedModal()">
           <span class="tile-icon">💰</span>
           <span class="tile-label">Smart Actions Executed</span>
           <span class="tile-value" style="color: #22c55e;" id="tileActionsExecuted">$6,287 Saved</span>
@@ -2794,180 +2794,6 @@
           </div>
         </div>
 
-        <!-- Action Items / Next Steps -->
-        <div style="padding: 0 20px 20px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px;">
-          <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
-            <span style="display: flex; align-items: center; gap: 8px;">
-              ⚡ Action Items
-              <span style="font-size: 11px; font-weight: 600; color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 2px 8px; border-radius: 10px;">5 Pending</span>
-            </span>
-            <button class="btn" style="background: var(--panel2); font-size: 11px; padding: 6px 12px;">View All</button>
-          </h4>
-          <div class="action-items" id="actionItems">
-            <div class="action-item urgent">
-              <div class="action-item-icon" style="background: rgba(239, 68, 68, 0.1);">🚨</div>
-              <div class="action-item-content">
-                <div class="action-item-title">Review Sysco invoice discrepancy</div>
-                <div class="action-item-meta">Downtown • Invoice #4521 • Due today</div>
-              </div>
-              <div class="action-item-value">$847</div>
-              <button class="action-item-btn">Review</button>
-            </div>
-            <div class="action-item high">
-              <div class="action-item-icon" style="background: rgba(245, 158, 11, 0.1);">📞</div>
-              <div class="action-item-content">
-                <div class="action-item-title">Call US Foods rep about price lock</div>
-                <div class="action-item-meta">Westside • Contract renewal • Due in 2 days</div>
-              </div>
-              <div class="action-item-value">$1,200</div>
-              <button class="action-item-btn">Schedule</button>
-            </div>
-            <div class="action-item medium">
-              <div class="action-item-icon" style="background: rgba(59, 130, 246, 0.1);">📊</div>
-              <div class="action-item-content">
-                <div class="action-item-title">Compare produce vendor quotes</div>
-                <div class="action-item-meta">All locations • 3 quotes received • Due this week</div>
-              </div>
-              <div class="action-item-value">$2,100</div>
-              <button class="action-item-btn">Compare</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Actions Executed & Results Tracking -->
-        <div style="padding: 0 20px 20px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px;">
-          <div class="actions-results-section">
-            <div class="actions-results-header">
-              <div class="actions-results-title">
-                <h3>💰 Smart Recommendations Executed</h3>
-                <span class="verified-badge">Invoice Verified</span>
-              </div>
-              <div class="actions-results-summary">
-                <div class="actions-summary-stat">
-                  <div class="actions-summary-value" id="actionsExecutedCount">12</div>
-                  <div class="actions-summary-label">Actions Taken</div>
-                </div>
-                <div class="actions-summary-stat">
-                  <div class="actions-summary-value" id="actionsSuccessRate">92%</div>
-                  <div class="actions-summary-label">Success Rate</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="actions-results-grid" id="actionsResultsGrid">
-              <!-- Action Result 1 -->
-              <div class="action-result-card">
-                <div class="action-result-icon">🔄</div>
-                <div class="action-result-details">
-                  <div class="action-result-name">Switched to bulk ordering for chicken breast</div>
-                  <div class="action-result-recommendation">Smart Recommendation: "Order 40lb cases instead of 10lb for 18% savings"</div>
-                  <div class="action-result-meta">
-                    <span>📍 Downtown Location</span>
-                    <span>📅 Executed Jan 3, 2026</span>
-                    <span>📄 Verified on 3 invoices</span>
-                  </div>
-                  <div class="action-result-timeline">
-                    <span class="timeline-label">Tracking: 4 weeks</span>
-                    <div class="timeline-bar">
-                      <div class="timeline-progress" style="width: 100%;"></div>
-                    </div>
-                    <span class="timeline-label">Complete</span>
-                  </div>
-                </div>
-                <div class="action-result-impact">
-                  <div class="action-result-savings">+$1,847</div>
-                  <div class="action-result-verified">✓ Verified Savings</div>
-                </div>
-              </div>
-
-              <!-- Action Result 2 -->
-              <div class="action-result-card">
-                <div class="action-result-icon">📦</div>
-                <div class="action-result-details">
-                  <div class="action-result-name">Changed produce delivery to 2x/week</div>
-                  <div class="action-result-recommendation">Smart Recommendation: "Reduce delivery frequency to cut fees by $120/week"</div>
-                  <div class="action-result-meta">
-                    <span>📍 All Locations</span>
-                    <span>📅 Executed Dec 15, 2025</span>
-                    <span>📄 Verified on 8 invoices</span>
-                  </div>
-                  <div class="action-result-timeline">
-                    <span class="timeline-label">Tracking: 5 weeks</span>
-                    <div class="timeline-bar">
-                      <div class="timeline-progress" style="width: 100%;"></div>
-                    </div>
-                    <span class="timeline-label">Complete</span>
-                  </div>
-                </div>
-                <div class="action-result-impact">
-                  <div class="action-result-savings">+$2,340</div>
-                  <div class="action-result-verified">✓ Verified Savings</div>
-                </div>
-              </div>
-
-              <!-- Action Result 3 -->
-              <div class="action-result-card">
-                <div class="action-result-icon">💲</div>
-                <div class="action-result-details">
-                  <div class="action-result-name">Negotiated price match with Sysco</div>
-                  <div class="action-result-recommendation">Smart Recommendation: "US Foods offering 12% lower price on dairy - negotiate match"</div>
-                  <div class="action-result-meta">
-                    <span>📍 Westside Branch</span>
-                    <span>📅 Executed Jan 8, 2026</span>
-                    <span>📄 Verified on 2 invoices</span>
-                  </div>
-                  <div class="action-result-timeline">
-                    <span class="timeline-label">Tracking: 2 weeks</span>
-                    <div class="timeline-bar">
-                      <div class="timeline-progress" style="width: 50%;"></div>
-                    </div>
-                    <span class="timeline-label">In Progress</span>
-                  </div>
-                </div>
-                <div class="action-result-impact">
-                  <div class="action-result-savings">+$680</div>
-                  <div class="action-result-verified">✓ Partial Verified</div>
-                </div>
-              </div>
-
-              <!-- Action Result 4 -->
-              <div class="action-result-card">
-                <div class="action-result-icon">🎯</div>
-                <div class="action-result-details">
-                  <div class="action-result-name">Adjusted par levels based on sales data</div>
-                  <div class="action-result-recommendation">Smart Recommendation: "Reduce beef order by 15% - consistent overstock detected"</div>
-                  <div class="action-result-meta">
-                    <span>📍 Airport Store</span>
-                    <span>📅 Executed Dec 20, 2025</span>
-                    <span>📄 Verified on 6 invoices</span>
-                  </div>
-                  <div class="action-result-timeline">
-                    <span class="timeline-label">Tracking: 4 weeks</span>
-                    <div class="timeline-bar">
-                      <div class="timeline-progress" style="width: 100%;"></div>
-                    </div>
-                    <span class="timeline-label">Complete</span>
-                  </div>
-                </div>
-                <div class="action-result-impact">
-                  <div class="action-result-savings">+$1,420</div>
-                  <div class="action-result-verified">✓ Verified Savings</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="actions-total-impact">
-              <div>
-                <div class="total-impact-label">Total Verified Impact from Your Actions</div>
-                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Measured from invoice data after executing recommendations</div>
-              </div>
-              <div class="total-impact-badge">
-                <span class="total-impact-value" id="totalActionsImpact">$6,287</span>
-                <span>↑ Real savings</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Payroll & Expense Entry Section -->
@@ -3944,19 +3770,37 @@
       }
     }
 
-    // Scroll to Action Items section
-    function scrollToActionItems() {
-      const actionItemsSection = document.getElementById('actionItems');
-      if (actionItemsSection) {
-        actionItemsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Open Action Items Modal
+    function openActionItemsModal() {
+      const modal = document.getElementById('actionItemsModal');
+      if (modal) {
+        modal.classList.add('active');
       }
     }
 
-    // Scroll to Actions Executed section
-    function scrollToActionsExecuted() {
-      const section = document.querySelector('.actions-results-section');
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Close Action Items Modal
+    function closeActionItemsModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('actionItemsModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Open Actions Executed Modal
+    function openActionsExecutedModal() {
+      const modal = document.getElementById('actionsExecutedModal');
+      if (modal) {
+        modal.classList.add('active');
+      }
+    }
+
+    // Close Actions Executed Modal
+    function closeActionsExecutedModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('actionsExecutedModal');
+      if (modal) {
+        modal.classList.remove('active');
       }
     }
 
@@ -5518,6 +5362,214 @@
       </div>
       <div class="modal-body" id="drilldownModalBody">
         <!-- Content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Items Modal -->
+  <div class="modal-overlay" id="actionItemsModal" onclick="closeActionItemsModal(event)">
+    <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 10px;">
+          <span>⚡</span> Action Items
+          <span style="font-size: 11px; font-weight: 600; color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 2px 8px; border-radius: 10px;" id="modalActionBadge">5 Pending</span>
+        </div>
+        <button class="modal-close" onclick="closeActionItemsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="action-items" id="modalActionItems">
+          <div class="action-item urgent">
+            <div class="action-item-icon" style="background: rgba(239, 68, 68, 0.1);">🚨</div>
+            <div class="action-item-content">
+              <div class="action-item-title">Review Sysco invoice discrepancy</div>
+              <div class="action-item-meta">Downtown • Invoice #4521 • Due today</div>
+            </div>
+            <div class="action-item-value">$847</div>
+            <button class="action-item-btn">Review</button>
+          </div>
+          <div class="action-item high">
+            <div class="action-item-icon" style="background: rgba(245, 158, 11, 0.1);">📞</div>
+            <div class="action-item-content">
+              <div class="action-item-title">Call US Foods rep about price lock</div>
+              <div class="action-item-meta">Westside • Contract renewal • Due in 2 days</div>
+            </div>
+            <div class="action-item-value">$1,200</div>
+            <button class="action-item-btn">Schedule</button>
+          </div>
+          <div class="action-item medium">
+            <div class="action-item-icon" style="background: rgba(59, 130, 246, 0.1);">📊</div>
+            <div class="action-item-content">
+              <div class="action-item-title">Compare produce vendor quotes</div>
+              <div class="action-item-meta">All locations • 3 quotes received • Due this week</div>
+            </div>
+            <div class="action-item-value">$2,100</div>
+            <button class="action-item-btn">Compare</button>
+          </div>
+          <div class="action-item low">
+            <div class="action-item-icon" style="background: rgba(100, 116, 139, 0.1);">📝</div>
+            <div class="action-item-content">
+              <div class="action-item-title">Update vendor contact list</div>
+              <div class="action-item-meta">All locations • Routine task • Due next week</div>
+            </div>
+            <div class="action-item-value">--</div>
+            <button class="action-item-btn">Update</button>
+          </div>
+          <div class="action-item low">
+            <div class="action-item-icon" style="background: rgba(100, 116, 139, 0.1);">📋</div>
+            <div class="action-item-content">
+              <div class="action-item-title">Review quarterly contract terms</div>
+              <div class="action-item-meta">Downtown • Q1 review • Due next week</div>
+            </div>
+            <div class="action-item-value">--</div>
+            <button class="action-item-btn">Review</button>
+          </div>
+        </div>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 13px; color: var(--muted);">Total Potential Savings: <span style="color: #22c55e; font-weight: 700;">$4,147</span></div>
+          <button class="btn" style="background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: #1a1a1a; border: none;">View All Action Items</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smart Actions Executed Modal -->
+  <div class="modal-overlay" id="actionsExecutedModal" onclick="closeActionsExecutedModal(event)">
+    <div class="modal-content" style="max-width: 1000px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 10px;">
+          <span>💰</span> Smart Recommendations Executed
+          <span class="verified-badge" style="font-size: 10px; background: rgba(34, 197, 94, 0.15); color: #22c55e; padding: 4px 10px; border-radius: 20px; font-weight: 700;">Invoice Verified</span>
+        </div>
+        <button class="modal-close" onclick="closeActionsExecutedModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="actions-results-summary" style="display: flex; gap: 24px; margin-bottom: 24px; padding: 16px; background: var(--panel2); border-radius: 12px;">
+          <div class="actions-summary-stat" style="text-align: center;">
+            <div class="actions-summary-value" style="font-size: 32px; font-weight: 800; color: var(--gold);" id="modalActionsCount">12</div>
+            <div class="actions-summary-label" style="font-size: 11px; color: var(--muted); text-transform: uppercase;">Actions Taken</div>
+          </div>
+          <div class="actions-summary-stat" style="text-align: center;">
+            <div class="actions-summary-value" style="font-size: 32px; font-weight: 800; color: #22c55e;" id="modalSuccessRate">92%</div>
+            <div class="actions-summary-label" style="font-size: 11px; color: var(--muted); text-transform: uppercase;">Success Rate</div>
+          </div>
+          <div class="actions-summary-stat" style="text-align: center; flex: 1;">
+            <div class="actions-summary-value" style="font-size: 32px; font-weight: 800; color: #22c55e;" id="modalTotalSavings">$6,287</div>
+            <div class="actions-summary-label" style="font-size: 11px; color: var(--muted); text-transform: uppercase;">Total Verified Savings</div>
+          </div>
+        </div>
+
+        <div class="actions-results-grid" id="modalActionsResultsGrid">
+          <!-- Action Result 1 -->
+          <div class="action-result-card">
+            <div class="action-result-icon">🔄</div>
+            <div class="action-result-details">
+              <div class="action-result-name">Switched to bulk ordering for chicken breast</div>
+              <div class="action-result-recommendation">Smart Recommendation: "Order 40lb cases instead of 10lb for 18% savings"</div>
+              <div class="action-result-meta">
+                <span>📍 Downtown Location</span>
+                <span>📅 Executed Jan 3, 2026</span>
+                <span>📄 Verified on 3 invoices</span>
+              </div>
+              <div class="action-result-timeline">
+                <span class="timeline-label">Tracking: 4 weeks</span>
+                <div class="timeline-bar">
+                  <div class="timeline-progress" style="width: 100%;"></div>
+                </div>
+                <span class="timeline-label">Complete</span>
+              </div>
+            </div>
+            <div class="action-result-impact">
+              <div class="action-result-savings">+$1,847</div>
+              <div class="action-result-verified">✓ Verified Savings</div>
+            </div>
+          </div>
+
+          <!-- Action Result 2 -->
+          <div class="action-result-card">
+            <div class="action-result-icon">📦</div>
+            <div class="action-result-details">
+              <div class="action-result-name">Changed produce delivery to 2x/week</div>
+              <div class="action-result-recommendation">Smart Recommendation: "Reduce delivery frequency to cut fees by $120/week"</div>
+              <div class="action-result-meta">
+                <span>📍 All Locations</span>
+                <span>📅 Executed Dec 15, 2025</span>
+                <span>📄 Verified on 8 invoices</span>
+              </div>
+              <div class="action-result-timeline">
+                <span class="timeline-label">Tracking: 5 weeks</span>
+                <div class="timeline-bar">
+                  <div class="timeline-progress" style="width: 100%;"></div>
+                </div>
+                <span class="timeline-label">Complete</span>
+              </div>
+            </div>
+            <div class="action-result-impact">
+              <div class="action-result-savings">+$2,340</div>
+              <div class="action-result-verified">✓ Verified Savings</div>
+            </div>
+          </div>
+
+          <!-- Action Result 3 -->
+          <div class="action-result-card">
+            <div class="action-result-icon">💲</div>
+            <div class="action-result-details">
+              <div class="action-result-name">Negotiated price match with Sysco</div>
+              <div class="action-result-recommendation">Smart Recommendation: "US Foods offering 12% lower price on dairy - negotiate match"</div>
+              <div class="action-result-meta">
+                <span>📍 Westside Branch</span>
+                <span>📅 Executed Jan 8, 2026</span>
+                <span>📄 Verified on 2 invoices</span>
+              </div>
+              <div class="action-result-timeline">
+                <span class="timeline-label">Tracking: 2 weeks</span>
+                <div class="timeline-bar">
+                  <div class="timeline-progress" style="width: 50%;"></div>
+                </div>
+                <span class="timeline-label">In Progress</span>
+              </div>
+            </div>
+            <div class="action-result-impact">
+              <div class="action-result-savings">+$680</div>
+              <div class="action-result-verified">✓ Partial Verified</div>
+            </div>
+          </div>
+
+          <!-- Action Result 4 -->
+          <div class="action-result-card">
+            <div class="action-result-icon">🎯</div>
+            <div class="action-result-details">
+              <div class="action-result-name">Adjusted par levels based on sales data</div>
+              <div class="action-result-recommendation">Smart Recommendation: "Reduce beef order by 15% - consistent overstock detected"</div>
+              <div class="action-result-meta">
+                <span>📍 Airport Store</span>
+                <span>📅 Executed Dec 20, 2025</span>
+                <span>📄 Verified on 6 invoices</span>
+              </div>
+              <div class="action-result-timeline">
+                <span class="timeline-label">Tracking: 4 weeks</span>
+                <div class="timeline-bar">
+                  <div class="timeline-progress" style="width: 100%;"></div>
+                </div>
+                <span class="timeline-label">Complete</span>
+              </div>
+            </div>
+            <div class="action-result-impact">
+              <div class="action-result-savings">+$1,420</div>
+              <div class="action-result-verified">✓ Verified Savings</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-total-impact" style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div class="total-impact-label" style="font-size: 14px; font-weight: 700; color: var(--text);">Total Verified Impact from Your Actions</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Measured from invoice data after executing recommendations</div>
+          </div>
+          <div class="total-impact-badge" style="display: flex; align-items: center; gap: 8px;">
+            <span class="total-impact-value" style="font-size: 28px; font-weight: 800; color: #22c55e;">$6,287</span>
+            <span style="color: #22c55e; font-size: 12px;">↑ Real savings</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
