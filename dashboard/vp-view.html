@@ -451,6 +451,62 @@
       box-shadow: none;
     }
 
+    /* Compact Header Action Buttons */
+    .header-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(12, 16, 25, 0.9) 100%);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .header-action-btn:hover {
+      border-color: var(--border-gold);
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(212, 175, 55, 0.08) 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    }
+
+    .header-action-btn .btn-icon {
+      font-size: 14px;
+    }
+
+    .header-action-btn .btn-badge {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 8px;
+      margin-left: 2px;
+    }
+
+    .header-action-btn.upload:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+
+    .header-action-btn.actions:hover {
+      border-color: rgba(251, 191, 36, 0.5);
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+    }
+
+    .header-action-btn.actions .btn-badge {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+    }
+
     /* ========================================
        FORM INPUTS
        ======================================== */
@@ -1936,6 +1992,22 @@
       text-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
     }
 
+    .quick-action-tile.settings {
+      background: linear-gradient(165deg, rgba(20, 22, 28, 0.97) 0%, rgba(15, 17, 22, 0.99) 100%);
+      border-color: rgba(148, 163, 184, 0.2);
+    }
+    .quick-action-tile.settings::before {
+      background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.6), transparent);
+    }
+    .quick-action-tile.settings:hover {
+      border-color: rgba(148, 163, 184, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(148, 163, 184, 0.1);
+    }
+    .quick-action-tile.settings .tile-value {
+      color: #94a3b8;
+      text-shadow: 0 0 25px rgba(148, 163, 184, 0.4);
+    }
+
     @keyframes pulse-badge {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.05); }
@@ -2505,6 +2577,17 @@
           </label>
           <button class="btn" onclick="loadDashboard()">Apply Filters</button>
 
+          <!-- Compact Quick Actions -->
+          <a href="upload-invoice.html" class="header-action-btn upload">
+            <span class="btn-icon">📄</span>
+            <span>Upload Invoice</span>
+          </a>
+          <button class="header-action-btn actions" onclick="openActionItemsModal()">
+            <span class="btn-icon">⚡</span>
+            <span>Action Items</span>
+            <span class="btn-badge" id="headerActionBadge">5</span>
+          </button>
+
           <!-- Demo Mode Toggle (Admin Only) -->
           <div id="demoToggleContainer" class="demo-toggle-container" style="display: none;">
             <div class="demo-toggle-wrapper">
@@ -2528,7 +2611,7 @@
         <span id="trialStatusText" class="trial-banner-text"></span>
       </div>
 
-      <!-- Premium Quick Actions Tiles -->
+      <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
       <div class="quick-actions-grid">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-icon">📦</span>
@@ -2539,33 +2622,13 @@
           <span class="tile-icon">📊</span>
           <span class="tile-label">Analytics</span>
           <span class="tile-value" id="tileSavingsFound">$8,247 Found</span>
+          <span class="tile-subtitle">+ Location Performance</span>
         </a>
-        <a href="upload-invoice.html" class="quick-action-tile">
-          <span class="tile-icon">📄</span>
-          <span class="tile-label">Upload Invoice</span>
-          <span class="tile-value" id="tileInvoiceCount">12 This Week</span>
-        </a>
-        <div class="quick-action-tile actions" onclick="openActionItemsModal()">
-          <span class="tile-badge" id="actionItemsBadge">5 Pending</span>
-          <span class="tile-icon">⚡</span>
-          <span class="tile-label">Action Items</span>
-          <span class="tile-value" id="tileActionValue">$4,147 Potential</span>
-        </div>
-      </div>
-
-      <!-- Second Row: Results & Performance Tiles -->
-      <div class="quick-actions-grid" style="margin-top: -4px;">
         <div class="quick-action-tile results" onclick="openActionsExecutedModal()">
           <span class="tile-icon">💰</span>
           <span class="tile-label">Smart Actions Executed</span>
           <span class="tile-value" style="color: #22c55e;" id="tileActionsExecuted">$6,287 Saved</span>
           <span class="tile-subtitle" id="tileActionsCount">12 actions • 92% success</span>
-        </div>
-        <div class="quick-action-tile locations" onclick="scrollToLocationPerformance()">
-          <span class="tile-icon">📍</span>
-          <span class="tile-label">Location Performance</span>
-          <span class="tile-value" id="tileTopLocation">Downtown #1</span>
-          <span class="tile-subtitle" id="tileLocationSavings">$4,280 saved this month</span>
         </div>
         <div class="quick-action-tile pipeline" onclick="scrollToOpportunityPipeline()">
           <span class="tile-icon">🎯</span>
@@ -2573,14 +2636,9 @@
           <span class="tile-value" id="tilePipelineTotal">$31,647</span>
           <span class="tile-subtitle" id="tilePipelineCount">91 opportunities tracked</span>
         </div>
-        <a href="connect-email.html" class="quick-action-tile">
-          <span class="tile-icon">📧</span>
-          <span class="tile-label">Connect Email</span>
-          <span class="tile-value" id="tileEmailStatus">Auto-Import</span>
-        </a>
       </div>
 
-      <!-- Third Row: Events & Catering Tiles -->
+      <!-- Row 2: Events, Catering & Quick Entries -->
       <div class="quick-actions-grid" style="margin-top: -4px;">
         <a href="private-events.html" class="quick-action-tile events">
           <span class="tile-icon">🎉</span>
@@ -2596,16 +2654,28 @@
         </a>
         <button onclick="openManualPayrollModal()" class="quick-action-tile payroll">
           <span class="tile-icon">💵</span>
-          <span class="tile-label">Manual Payroll Entry</span>
+          <span class="tile-label">Payroll Entry</span>
           <span class="tile-value" id="tilePayrollValue">Quick Entry</span>
           <span class="tile-subtitle" id="tilePayrollLast">Last: --</span>
         </button>
         <button onclick="openManualExpenseModal()" class="quick-action-tile expense">
           <span class="tile-icon">🧾</span>
-          <span class="tile-label">Manual Expense Entry</span>
+          <span class="tile-label">Expense Entry</span>
           <span class="tile-value" id="tileExpenseValue">Quick Entry</span>
           <span class="tile-subtitle" id="tileExpenseLast">Last: --</span>
         </button>
+      </div>
+
+      <!-- Row 3: Connect Email -->
+      <div class="quick-actions-grid" style="margin-top: -4px; grid-template-columns: 1fr;">
+        <a href="connect-email.html" class="quick-action-tile" style="flex-direction: row; justify-content: flex-start; gap: 16px; padding: 16px 24px;">
+          <span class="tile-icon" style="font-size: 28px; margin: 0;">📧</span>
+          <div style="text-align: left;">
+            <span class="tile-label" style="font-size: 14px;">Connect Email for Invoice Autopilot</span>
+            <span class="tile-value" id="tileEmailStatus" style="font-size: 13px; margin-top: 2px;">Auto-Import</span>
+          </div>
+          <span style="margin-left: auto; color: var(--muted); font-size: 12px;">Set up automatic invoice scanning →</span>
+        </a>
       </div>
 
       <!-- Financial Overview Section -->
@@ -3520,7 +3590,14 @@
     // Fetch JSON from API
     async function fetchAPI(endpoint) {
       try {
-        const res = await fetch(`${API_BASE}${endpoint}`);
+        const token = localStorage.getItem('accessToken');
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch(`${API_BASE}${endpoint}`, { headers });
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`HTTP ${res.status}: ${text}`);
