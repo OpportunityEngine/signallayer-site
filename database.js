@@ -307,6 +307,83 @@ function initDatabase() {
       }
     }
 
+    // Migrate email_monitors table - add missing columns for error tracking
+    try {
+      const emailMonitorsInfo = db.prepare("PRAGMA table_info(email_monitors)").all();
+
+      // Add missing columns if table exists
+      if (emailMonitorsInfo.length > 0) {
+        const hasLastError = emailMonitorsInfo.some(col => col.name === 'last_error');
+        const hasLastCheckedAt = emailMonitorsInfo.some(col => col.name === 'last_checked_at');
+        const hasLastSuccessAt = emailMonitorsInfo.some(col => col.name === 'last_success_at');
+        const hasCheckFreqMins = emailMonitorsInfo.some(col => col.name === 'check_frequency_minutes');
+        const hasImapUser = emailMonitorsInfo.some(col => col.name === 'imap_user');
+        const hasImapPasswordEncrypted = emailMonitorsInfo.some(col => col.name === 'imap_password_encrypted');
+        const hasImapSecure = emailMonitorsInfo.some(col => col.name === 'imap_secure');
+        const hasFolderName = emailMonitorsInfo.some(col => col.name === 'folder_name');
+        const hasEmailsProcessedCount = emailMonitorsInfo.some(col => col.name === 'emails_processed_count');
+        const hasInvoicesCreatedCount = emailMonitorsInfo.some(col => col.name === 'invoices_created_count');
+        const hasName = emailMonitorsInfo.some(col => col.name === 'name');
+
+        if (!hasLastError) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN last_error TEXT`);
+          console.log('✅ Migration: Added last_error column to email_monitors');
+        }
+        if (!hasLastCheckedAt) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN last_checked_at DATETIME`);
+          console.log('✅ Migration: Added last_checked_at column to email_monitors');
+        }
+        if (!hasLastSuccessAt) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN last_success_at DATETIME`);
+          console.log('✅ Migration: Added last_success_at column to email_monitors');
+        }
+        if (!hasCheckFreqMins) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN check_frequency_minutes INTEGER DEFAULT 15`);
+          console.log('✅ Migration: Added check_frequency_minutes column to email_monitors');
+        }
+        if (!hasImapUser) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN imap_user TEXT`);
+          // Copy username to imap_user for existing records
+          db.exec(`UPDATE email_monitors SET imap_user = username WHERE imap_user IS NULL`);
+          console.log('✅ Migration: Added imap_user column to email_monitors');
+        }
+        if (!hasImapPasswordEncrypted) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN imap_password_encrypted TEXT`);
+          // Copy encrypted_password to imap_password_encrypted for existing records
+          db.exec(`UPDATE email_monitors SET imap_password_encrypted = encrypted_password WHERE imap_password_encrypted IS NULL`);
+          console.log('✅ Migration: Added imap_password_encrypted column to email_monitors');
+        }
+        if (!hasImapSecure) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN imap_secure INTEGER DEFAULT 1`);
+          console.log('✅ Migration: Added imap_secure column to email_monitors');
+        }
+        if (!hasFolderName) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN folder_name TEXT DEFAULT 'INBOX'`);
+          console.log('✅ Migration: Added folder_name column to email_monitors');
+        }
+        if (!hasEmailsProcessedCount) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN emails_processed_count INTEGER DEFAULT 0`);
+          console.log('✅ Migration: Added emails_processed_count column to email_monitors');
+        }
+        if (!hasInvoicesCreatedCount) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN invoices_created_count INTEGER DEFAULT 0`);
+          console.log('✅ Migration: Added invoices_created_count column to email_monitors');
+        }
+        if (!hasName) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN name TEXT`);
+          // Copy monitor_name to name for existing records
+          db.exec(`UPDATE email_monitors SET name = monitor_name WHERE name IS NULL`);
+          console.log('✅ Migration: Added name column to email_monitors');
+        }
+
+        // Disable demo email monitor that has invalid credentials
+        db.exec(`UPDATE email_monitors SET is_active = 0 WHERE encrypted_password = 'ENCRYPTED_DEMO_PASSWORD'`);
+        console.log('✅ Migration: Disabled demo email monitor with invalid credentials');
+      }
+    } catch (emailMigrationError) {
+      console.log('⚠️  Email monitors migration (safe to ignore):', emailMigrationError.message);
+    }
+
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
     // Seed demo data if database is empty (only in development)
