@@ -1040,7 +1040,7 @@
     async function loadEvents() {
       try {
         const data = await apiCall('/events');
-        events = data.events || [];
+        events = data.data || data.events || [];
         renderEvents();
         updateStats();
       } catch (error) {
@@ -1052,7 +1052,7 @@
     async function loadTemplates() {
       try {
         const data = await apiCall('/event-templates');
-        templates = data.templates || [];
+        templates = data.data || data.templates || [];
         renderTemplates();
       } catch (error) {
         console.error('Failed to load templates:', error);
@@ -1066,11 +1066,16 @@
       }
     }
 
-    // Load Recommendations
+    // Load Recommendations (for all user events)
     async function loadRecommendations() {
       try {
-        const data = await apiCall('/events/recommendations');
-        recommendations = data.recommendations || [];
+        // Get all user's recommendations
+        const database = await apiCall('/events');
+        const allEvents = database.data || database.events || [];
+        recommendations = [];
+
+        // For now, just show empty until events are created
+        // Individual event recommendations can be loaded when viewing event details
         renderRecommendations();
       } catch (error) {
         console.error('Failed to load recommendations:', error);

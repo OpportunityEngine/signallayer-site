@@ -991,7 +991,7 @@
     async function loadOrders() {
       try {
         const data = await apiCall('/catering');
-        orders = data.orders || [];
+        orders = data.data || data.orders || [];
         renderOrders();
         updateStats();
         updateProfitOverview();
