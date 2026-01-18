@@ -2014,6 +2014,58 @@
       text-shadow: 0 0 25px rgba(148, 163, 184, 0.4);
     }
 
+    /* Email Banner Tile - Cyan/Blue Theme */
+    .quick-action-tile.email-banner {
+      background: linear-gradient(165deg, rgba(8, 18, 28, 0.97) 0%, rgba(5, 12, 20, 0.99) 100%);
+      border-color: rgba(6, 182, 212, 0.2);
+      min-height: auto;
+    }
+    .quick-action-tile.email-banner::before {
+      background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.6), transparent);
+    }
+    .quick-action-tile.email-banner:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(6, 182, 212, 0.08);
+      transform: translateY(-3px);
+    }
+
+    /* Email Monitor Stats Styling */
+    .email-monitor-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .email-monitor-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.15);
+      border-radius: 10px;
+      padding: 8px 14px;
+    }
+    .email-monitor-item .monitor-email {
+      font-size: 13px;
+      font-weight: 600;
+      color: #06b6d4;
+    }
+    .email-monitor-item .monitor-stats {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--muted2);
+    }
+    .email-monitor-item .monitor-stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .email-monitor-item .monitor-stat-value {
+      color: var(--text);
+      font-weight: 600;
+    }
+
     @keyframes pulse-badge {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.05); }
@@ -2587,9 +2639,6 @@
           <a href="upload-invoice.html" class="header-action-btn upload">
             <span>Upload Invoice</span>
           </a>
-          <a href="upload-payroll.html" class="header-action-btn payroll">
-            <span>Upload Payroll</span>
-          </a>
           <button class="header-action-btn actions" onclick="openActionItemsModal()">
             <span>Action Items</span>
             <span class="btn-badge" id="headerActionBadge">5</span>
@@ -2647,8 +2696,13 @@
         </div>
       </div>
 
-      <!-- Row 2: Events & Catering -->
-      <div class="quick-actions-grid" style="margin-top: -4px; grid-template-columns: repeat(2, 1fr);">
+      <!-- Row 2: Upload Payroll, Events & Catering -->
+      <div class="quick-actions-grid" style="margin-top: -4px; grid-template-columns: repeat(3, 1fr);">
+        <a href="upload-payroll.html" class="quick-action-tile payroll">
+          <span class="tile-label">Upload Payroll</span>
+          <span class="tile-value" id="tilePayrollStatus">Import POS Data</span>
+          <span class="tile-subtitle">Toast, Square, Clover & more</span>
+        </a>
         <a href="private-events.html" class="quick-action-tile events">
           <span class="tile-label">Private Events</span>
           <span class="tile-value" id="tileEventsCount">3 Upcoming</span>
@@ -2661,15 +2715,24 @@
         </a>
       </div>
 
-      <!-- Row 3: Connect Email -->
+      <!-- Row 3: Connect Email Banner with Stats -->
       <div class="quick-actions-grid" style="margin-top: -4px; grid-template-columns: 1fr;">
-        <a href="connect-email.html" class="quick-action-tile" style="flex-direction: row; justify-content: flex-start; gap: 16px; padding: 16px 24px;">
-          <div style="text-align: left;">
+        <div class="quick-action-tile email-banner" style="flex-direction: row; justify-content: flex-start; gap: 20px; padding: 20px 28px; cursor: default;">
+          <div style="text-align: left; flex: 1;">
             <span class="tile-label" style="font-size: 14px;">Connect Email for Invoice Autopilot</span>
-            <span class="tile-value" id="tileEmailStatus" style="font-size: 13px; margin-top: 2px;">Auto-Import</span>
+            <div id="emailMonitorStats" style="margin-top: 10px;">
+              <!-- Default empty state - will be populated by JS -->
+              <div class="email-monitor-empty" style="color: var(--muted2); font-size: 13px;">
+                No email monitors configured yet
+              </div>
+            </div>
           </div>
-          <span style="margin-left: auto; color: var(--muted); font-size: 12px;">Set up automatic invoice scanning</span>
-        </a>
+          <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+            <span style="color: var(--muted); font-size: 12px;">Set up automatic invoice scanning</span>
+            <button class="btn" onclick="openSetupGuide()" style="background: var(--panel2); font-size: 12px; padding: 8px 14px;">How It Works</button>
+            <a href="connect-email.html" class="btn" style="font-size: 12px; padding: 8px 14px;">Configure</a>
+          </div>
+        </div>
       </div>
 
       <!-- Financial Overview Section -->
@@ -3931,6 +3994,7 @@
 
         // 7. Load email monitors
         loadEmailMonitors();
+        updateEmailMonitorTileBanner();
 
         // 8. Load inventory intelligence
         loadInventoryDashboard();
@@ -4275,6 +4339,63 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // Update the email monitor stats in the dashboard tile banner
+    async function updateEmailMonitorTileBanner() {
+      try {
+        const response = await fetch(`${API_BASE}/api/email-monitors`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        const statsContainer = document.getElementById('emailMonitorStats');
+        if (!statsContainer) return;
+
+        if (response.ok) {
+          const result = await response.json();
+          const monitors = result.data || result.monitors || [];
+
+          if (!monitors || monitors.length === 0) {
+            statsContainer.innerHTML = `
+              <div class="email-monitor-empty" style="color: var(--muted2); font-size: 13px;">
+                No email monitors configured yet
+              </div>
+            `;
+            return;
+          }
+
+          // Build the monitor list HTML
+          const monitorsHtml = monitors.map(monitor => {
+            const statusDot = monitor.is_active
+              ? '<span style="width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 6px #10b981;"></span>'
+              : '<span style="width: 6px; height: 6px; background: #6b7280; border-radius: 50%;"></span>';
+
+            const lastChecked = monitor.last_checked_at ? formatRelativeTime(monitor.last_checked_at) : 'Never';
+            const invoiceCount = monitor.invoices_created_count || 0;
+
+            return `
+              <div class="email-monitor-item">
+                ${statusDot}
+                <span class="monitor-email">${escapeHtml(monitor.email_address)}</span>
+                <div class="monitor-stats">
+                  <span class="monitor-stat">
+                    <span class="monitor-stat-value">${invoiceCount}</span> invoices
+                  </span>
+                  <span class="monitor-stat">
+                    Last: <span class="monitor-stat-value">${lastChecked}</span>
+                  </span>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          statsContainer.innerHTML = `<div class="email-monitor-list">${monitorsHtml}</div>`;
+        }
+      } catch (error) {
+        console.error('Failed to load email monitor stats for tile:', error);
+      }
     }
 
     function openAddEmailMonitor() {
