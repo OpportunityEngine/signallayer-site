@@ -399,6 +399,21 @@ function initDatabase() {
       }
     }
 
+    // Initialize COGS Coding schema (invoice expense categorization)
+    try {
+      const cogsSchemaPath = path.join(__dirname, 'database-schema-cogs-coding.sql');
+      if (fs.existsSync(cogsSchemaPath)) {
+        const cogsSchema = fs.readFileSync(cogsSchemaPath, 'utf8');
+        db.exec(cogsSchema);
+        console.log('✅ COGS Coding schema initialized');
+      }
+    } catch (cogsError) {
+      // Tables may already exist
+      if (!cogsError.message.includes('already exists')) {
+        console.log('⚠️  COGS Coding schema (safe to ignore):', cogsError.message);
+      }
+    }
+
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
     // Seed demo data if database is empty (only in development)

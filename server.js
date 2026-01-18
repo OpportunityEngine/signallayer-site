@@ -449,6 +449,181 @@ function extractZipFromText(s) {
   return m ? m[1] : "";
 }
 
+// =====================================================
+// COGS CODING - Auto-categorize invoice items
+// =====================================================
+
+/**
+ * Process invoice line items for COGS coding
+ * - Matches SKUs to categories based on user's mappings
+ * - Stores coded items in cogs_coded_items table
+ * - Updates price history for price tracking
+ * - Queues unmatched items for manual categorization
+ */
+async function processInvoiceForCOGS(userId, runId, lineItems) {
+  if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) return;
+
+  const database = db.getDatabase();
+
+  // Get user's SKU mappings
+  const mappings = database.prepare(`
+    SELECT m.*, c.category_code, c.category_name
+    FROM cogs_sku_mappings m
+    JOIN cogs_categories c ON m.category_id = c.id
+    WHERE m.user_id = ? AND m.is_active = 1
+    ORDER BY m.match_type ASC
+  `).all(userId);
+
+  if (mappings.length === 0) {
+    // No mappings configured, queue items for learning
+    const learningStmt = database.prepare(`
+      INSERT OR IGNORE INTO cogs_learning_queue (user_id, sku, product_name, unit_price_cents, occurrence_count, total_spend_cents)
+      VALUES (?, ?, ?, ?, 1, ?)
+      ON CONFLICT(user_id, sku) DO UPDATE SET
+        occurrence_count = occurrence_count + 1,
+        total_spend_cents = total_spend_cents + excluded.total_spend_cents,
+        last_seen_at = datetime('now')
+    `);
+
+    for (const item of lineItems) {
+      const sku = item.sku || item.item_code || '';
+      const productName = item.raw_description || item.description || '';
+      const unitPrice = item.unit_price?.amount || 0;
+      const totalPrice = item.total_price?.amount || 0;
+
+      if (sku || productName) {
+        try {
+          learningStmt.run(userId, sku || productName.substring(0, 50), productName, unitPrice, totalPrice);
+        } catch (e) {
+          // Ignore learning queue errors
+        }
+      }
+    }
+    return;
+  }
+
+  // Build regex cache for pattern matching
+  const regexMappings = mappings.filter(m => m.match_type === 'regex').map(m => {
+    try {
+      return { ...m, regex: new RegExp(m.sku_pattern, 'i') };
+    } catch (e) {
+      return null;
+    }
+  }).filter(Boolean);
+
+  // Prepare statements
+  const insertCodedItem = database.prepare(`
+    INSERT INTO cogs_coded_items (user_id, category_id, run_id, sku, product_name, quantity, unit_price_cents, total_price_cents, matched_by_mapping_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const updatePriceHistory = database.prepare(`
+    INSERT INTO cogs_price_history (user_id, sku, product_name, unit_price_cents, source_run_id)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const updateMappingPrice = database.prepare(`
+    UPDATE cogs_sku_mappings SET last_price_cents = ?, updated_at = datetime('now') WHERE id = ?
+  `);
+
+  const learningStmt = database.prepare(`
+    INSERT OR IGNORE INTO cogs_learning_queue (user_id, sku, product_name, unit_price_cents, occurrence_count, total_spend_cents)
+    VALUES (?, ?, ?, ?, 1, ?)
+    ON CONFLICT(user_id, sku) DO UPDATE SET
+      occurrence_count = occurrence_count + 1,
+      total_spend_cents = total_spend_cents + excluded.total_spend_cents,
+      last_seen_at = datetime('now')
+  `);
+
+  let matchedCount = 0;
+  let unmatchedCount = 0;
+
+  for (const item of lineItems) {
+    const sku = item.sku || item.item_code || '';
+    const productName = item.raw_description || item.description || '';
+    const quantity = item.quantity || 1;
+    const unitPrice = item.unit_price?.amount || 0;
+    const totalPrice = item.total_price?.amount || (unitPrice * quantity);
+
+    const searchKey = sku || productName;
+    if (!searchKey) continue;
+
+    // Find matching mapping
+    let matchedMapping = null;
+
+    // 1. Try exact match first
+    matchedMapping = mappings.find(m =>
+      m.match_type === 'exact' &&
+      m.sku_pattern.toLowerCase() === searchKey.toLowerCase()
+    );
+
+    // 2. Try starts_with match
+    if (!matchedMapping) {
+      matchedMapping = mappings.find(m =>
+        m.match_type === 'starts_with' &&
+        searchKey.toLowerCase().startsWith(m.sku_pattern.toLowerCase())
+      );
+    }
+
+    // 3. Try contains match
+    if (!matchedMapping) {
+      matchedMapping = mappings.find(m =>
+        m.match_type === 'contains' &&
+        searchKey.toLowerCase().includes(m.sku_pattern.toLowerCase())
+      );
+    }
+
+    // 4. Try regex match
+    if (!matchedMapping) {
+      for (const rm of regexMappings) {
+        if (rm.regex.test(searchKey)) {
+          matchedMapping = rm;
+          break;
+        }
+      }
+    }
+
+    if (matchedMapping) {
+      // Store coded item
+      try {
+        insertCodedItem.run(
+          userId,
+          matchedMapping.category_id,
+          runId,
+          sku,
+          productName,
+          quantity,
+          unitPrice,
+          totalPrice,
+          matchedMapping.id
+        );
+
+        // Update price history if we have a unit price
+        if (unitPrice > 0) {
+          updatePriceHistory.run(userId, sku || productName.substring(0, 100), productName, unitPrice, runId);
+          updateMappingPrice.run(unitPrice, matchedMapping.id);
+        }
+
+        matchedCount++;
+      } catch (e) {
+        console.warn('[COGS] Failed to store coded item:', e.message);
+      }
+    } else {
+      // Queue for manual categorization
+      try {
+        learningStmt.run(userId, sku || productName.substring(0, 50), productName, unitPrice, totalPrice);
+        unmatchedCount++;
+      } catch (e) {
+        // Ignore learning queue errors
+      }
+    }
+  }
+
+  if (matchedCount > 0 || unmatchedCount > 0) {
+    console.log(`[COGS CODING] Processed invoice: ${matchedCount} items coded, ${unmatchedCount} queued for review`);
+  }
+}
+
 let intel = {
   addDetection: () => {},
   listDetections: () => [],
@@ -1245,6 +1420,12 @@ setTimeout(() => {
   });
 }, 3000);
 console.log('✅ Intent Signal Service initialized (starting in 3s)');
+
+// COGS Coding routes (invoice expense categorization)
+// Protected by auth middleware to ensure req.user is populated
+const cogsRoutes = require('./cogs-coding-routes');
+app.use('/api/cogs', requireAuth, cogsRoutes);
+console.log('✅ COGS Coding routes registered at /api/cogs (auth required)');
 
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {
@@ -2408,6 +2589,14 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
           } catch (itemError) {
             console.warn('[REVENUE RADAR] Failed to store invoice item:', itemError.message);
           }
+        }
+
+        // ===== COGS CODING INTEGRATION =====
+        // Auto-categorize invoice items based on SKU mappings and track price history
+        try {
+          await processInvoiceForCOGS(userId, internalRunId, canonical.line_items);
+        } catch (cogsError) {
+          console.warn('[COGS CODING] Failed to process invoice items:', cogsError.message);
         }
       }
 

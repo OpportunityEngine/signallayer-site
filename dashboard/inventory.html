@@ -594,6 +594,536 @@
       color: #64748b;
     }
 
+    /* ========================================
+       COGS CODING SECTION STYLES
+       ======================================== */
+
+    .cogs-section {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 20px;
+      padding: 28px;
+      margin-top: 32px;
+    }
+
+    .cogs-header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+
+    .cogs-description {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cogs-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .cogs-stat {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .cogs-stat.warning {
+      border-color: rgba(251, 191, 36, 0.3);
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .cogs-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .cogs-stat.warning .cogs-stat-value {
+      color: #fbbf24;
+    }
+
+    .cogs-stat-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .cogs-categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .cogs-category-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cogs-category-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .cogs-category-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--category-color, #6366f1);
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .category-code {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--category-color, #6366f1);
+    }
+
+    .category-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      flex: 1;
+    }
+
+    .category-spend {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .category-meta {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .category-budget-bar {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+
+    .category-budget-fill {
+      height: 100%;
+      background: var(--category-color, #6366f1);
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+
+    .category-budget-fill.warning {
+      background: #fbbf24;
+    }
+
+    .category-budget-fill.danger {
+      background: #ef4444;
+    }
+
+    .uncategorized-alert {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .alert-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(251, 191, 36, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fbbf24;
+      flex-shrink: 0;
+    }
+
+    .alert-content {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .alert-description {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .quick-add-sku {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .quick-add-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .quick-add-form {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .quick-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+
+    .quick-input:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+
+    .quick-select {
+      min-width: 180px;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+
+    .recent-mappings {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .mappings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .view-all-btn {
+      background: none;
+      border: none;
+      color: #6366f1;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .view-all-btn:hover {
+      color: #818cf8;
+    }
+
+    .mappings-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .mapping-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 12px;
+    }
+
+    .mapping-item:last-child {
+      border-bottom: none;
+    }
+
+    .mapping-sku {
+      font-family: monospace;
+      font-size: 13px;
+      color: #94a3b8;
+      width: 100px;
+    }
+
+    .mapping-product {
+      flex: 1;
+      font-size: 14px;
+      color: #e2e8f0;
+    }
+
+    .mapping-category {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .mapping-price {
+      font-size: 13px;
+      color: #22c55e;
+      min-width: 80px;
+      text-align: right;
+    }
+
+    .mapping-delete {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+    }
+
+    .mapping-delete:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Modal Enhancements */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      font-family: monospace;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+
+    .color-picker {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .color-picker input[type="color"] {
+      width: 50px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #categoryColorHex {
+      font-family: monospace;
+      color: #94a3b8;
+    }
+
+    .full-width-select {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+
+    .import-instructions {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+
+    .import-instructions p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin: 0;
+    }
+
+    .import-instructions code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .modal-description {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .uncategorized-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .uncategorized-item {
+      display: flex;
+      align-items: center;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      gap: 16px;
+    }
+
+    .uncategorized-item-info {
+      flex: 1;
+    }
+
+    .uncategorized-item-name {
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .uncategorized-item-meta {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .uncategorized-item-spend {
+      font-size: 16px;
+      font-weight: 600;
+      color: #22c55e;
+      min-width: 100px;
+      text-align: right;
+    }
+
+    .uncategorized-item-select {
+      min-width: 160px;
+    }
+
+    .uncategorized-item-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .loading-placeholder {
+      min-height: 100px;
+      position: relative;
+    }
+
+    .shimmer {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .cogs-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .cogs-stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-add-form {
+        flex-direction: column;
+      }
+
+      .quick-select {
+        width: 100%;
+      }
+
+      .uncategorized-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
     /* Responsive */
     @media (max-width: 1024px) {
       .stats-grid {
@@ -902,6 +1432,216 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- COGS Coding Section -->
+    <div class="cogs-section" id="cogsSection">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+          Invoice COGS Coding
+        </div>
+        <div class="cogs-header-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openAddCategoryModal()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Category
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openBulkSkuModal()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Import SKUs
+          </button>
+        </div>
+      </div>
+
+      <p class="cogs-description">
+        Map your product SKUs to expense categories. When invoices are scanned via Email Autopilot,
+        items will be automatically coded to the correct COGS category based on your mappings.
+      </p>
+
+      <!-- COGS Summary Stats -->
+      <div class="cogs-stats-grid">
+        <div class="cogs-stat">
+          <div class="cogs-stat-value" id="cogsMonthTotal">$0</div>
+          <div class="cogs-stat-label">Month-to-Date Spend</div>
+        </div>
+        <div class="cogs-stat">
+          <div class="cogs-stat-value" id="cogsCategoriesCount">0</div>
+          <div class="cogs-stat-label">Active Categories</div>
+        </div>
+        <div class="cogs-stat">
+          <div class="cogs-stat-value" id="cogsSkuCount">0</div>
+          <div class="cogs-stat-label">Mapped SKUs</div>
+        </div>
+        <div class="cogs-stat warning" id="cogsUncategorizedStat">
+          <div class="cogs-stat-value" id="cogsUncategorized">0</div>
+          <div class="cogs-stat-label">Need Coding</div>
+        </div>
+      </div>
+
+      <!-- Category Cards Grid -->
+      <div class="cogs-categories-grid" id="cogsCategoriesGrid">
+        <!-- Populated by JavaScript -->
+        <div class="cogs-category-card loading-placeholder">
+          <div class="shimmer"></div>
+        </div>
+      </div>
+
+      <!-- Uncategorized Items Alert -->
+      <div class="uncategorized-alert" id="uncategorizedAlert" style="display: none;">
+        <div class="alert-icon">
+          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div class="alert-content">
+          <div class="alert-title"><span id="uncategorizedCount">0</span> items need coding</div>
+          <div class="alert-description">Review and categorize these items to keep your COGS reports accurate</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openUncategorizedModal()">Review Items</button>
+      </div>
+
+      <!-- Quick Add SKU -->
+      <div class="quick-add-sku">
+        <div class="quick-add-title">Quick Add SKU Mapping</div>
+        <div class="quick-add-form">
+          <input type="text" class="quick-input" id="quickSku" placeholder="SKU # or Product Name">
+          <select class="quick-select" id="quickCategory">
+            <option value="">Select Category</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="quickAddSku()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent SKU Mappings -->
+      <div class="recent-mappings">
+        <div class="mappings-header">
+          <span>Recent SKU Mappings</span>
+          <button class="view-all-btn" onclick="openAllMappingsModal()">View All</button>
+        </div>
+        <div class="mappings-list" id="recentMappingsList">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Category Modal -->
+  <div class="modal-overlay" id="addCategoryModal">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Add COGS Category</h2>
+        <button class="modal-close" onclick="closeAddCategoryModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="addCategoryForm" onsubmit="saveCategory(event)">
+        <div class="form-group">
+          <label>Category Code (3-6 letters)</label>
+          <input type="text" id="categoryCode" maxlength="6" placeholder="e.g., PROD, MEAT, BEV" required style="text-transform: uppercase;">
+        </div>
+        <div class="form-group">
+          <label>Category Name</label>
+          <input type="text" id="categoryName" placeholder="e.g., Produce, Meat & Poultry" required>
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-picker">
+            <input type="color" id="categoryColor" value="#6366f1">
+            <span id="categoryColorHex">#6366f1</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Monthly Budget (Optional)</label>
+          <input type="number" id="categoryBudget" placeholder="e.g., 5000" step="100">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Create Category</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bulk SKU Import Modal -->
+  <div class="modal-overlay" id="bulkSkuModal">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Import SKU Mappings</h2>
+        <button class="modal-close" onclick="closeBulkSkuModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="import-instructions">
+        <p>Enter SKUs one per line, or paste from a spreadsheet. Format: <code>SKU, Product Name (optional)</code></p>
+      </div>
+      <div class="form-group">
+        <label>Select Category</label>
+        <select id="bulkCategory" class="full-width-select" required>
+          <option value="">Choose a category...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>SKU List</label>
+        <textarea id="bulkSkuList" rows="10" placeholder="12345
+67890, Tomatoes Roma
+ABC123, Chicken Breast
+..."></textarea>
+      </div>
+      <div style="display: flex; gap: 12px;">
+        <button class="btn btn-secondary" style="flex: 1;" onclick="closeBulkSkuModal()">Cancel</button>
+        <button class="btn btn-primary" style="flex: 1;" onclick="importBulkSkus()">Import SKUs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Uncategorized Items Modal -->
+  <div class="modal-overlay" id="uncategorizedModal">
+    <div class="modal" style="max-width: 900px; max-height: 85vh;">
+      <div class="modal-header">
+        <h2 class="modal-title">Items Needing Coding</h2>
+        <button class="modal-close" onclick="closeUncategorizedModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <p class="modal-description">These items from your invoices haven't been categorized yet. Assign categories and optionally create mappings for future invoices.</p>
+      <div class="uncategorized-list" id="uncategorizedList">
+        <!-- Populated by JavaScript -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeUncategorizedModal()">Close</button>
+        <button class="btn btn-primary" onclick="saveBulkCategorizations()">Save All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Detail Modal -->
+  <div class="modal-overlay" id="categoryDetailModal">
+    <div class="modal" style="max-width: 800px; max-height: 85vh;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="categoryDetailTitle">Category Details</h2>
+        <button class="modal-close" onclick="closeCategoryDetailModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div id="categoryDetailContent">
+        <!-- Populated by JavaScript -->
       </div>
     </div>
   </div>
@@ -1673,6 +2413,708 @@
     }
 
     initialize();
+
+    // ========================================
+    // COGS CODING FUNCTIONALITY
+    // ========================================
+
+    let cogsCategories = [];
+    let cogsUncategorizedItems = [];
+    let cogsMappings = [];
+
+    // Load COGS data
+    async function loadCogsData() {
+      try {
+        // Load categories, summary, and recent mappings in parallel
+        const [categoriesRes, summaryRes, mappingsRes, uncategorizedRes] = await Promise.all([
+          fetch('/api/cogs/categories', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch('/api/cogs/summary', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch('/api/cogs/mappings?limit=10', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch('/api/cogs/uncategorized', { headers: { 'Authorization': `Bearer ${authToken}` } })
+        ]);
+
+        const [categoriesData, summaryData, mappingsData, uncategorizedData] = await Promise.all([
+          categoriesRes.json(),
+          summaryRes.json(),
+          mappingsRes.json(),
+          uncategorizedRes.json()
+        ]);
+
+        if (categoriesData.success) {
+          cogsCategories = categoriesData.data;
+          renderCogsCategoryCards(cogsCategories);
+          populateCategorySelects(cogsCategories);
+        }
+
+        if (summaryData.success) {
+          updateCogsStats(summaryData.data);
+        }
+
+        if (mappingsData.success) {
+          cogsMappings = mappingsData.data;
+          renderRecentMappings(cogsMappings);
+        }
+
+        if (uncategorizedData.success) {
+          cogsUncategorizedItems = uncategorizedData.data;
+          updateUncategorizedAlert(cogsUncategorizedItems);
+        }
+
+      } catch (error) {
+        console.error('Failed to load COGS data:', error);
+        // Load demo COGS data for demo mode
+        if (isDemoMode()) {
+          loadDemoCogsData();
+        }
+      }
+    }
+
+    // Demo COGS data for preview
+    function loadDemoCogsData() {
+      const demoCategories = [
+        { id: 1, category_code: 'PROD', category_name: 'Produce', color_hex: '#22c55e', budget_cents: 500000, mtd_spend_cents: 324500, sku_count: 45 },
+        { id: 2, category_code: 'MEAT', category_name: 'Meat & Poultry', color_hex: '#ef4444', budget_cents: 800000, mtd_spend_cents: 695000, sku_count: 28 },
+        { id: 3, category_code: 'DAIRY', category_name: 'Dairy Products', color_hex: '#3b82f6', budget_cents: 300000, mtd_spend_cents: 198500, sku_count: 32 },
+        { id: 4, category_code: 'BEV', category_name: 'Beverages', color_hex: '#f59e0b', budget_cents: 1200000, mtd_spend_cents: 876400, sku_count: 67 },
+        { id: 5, category_code: 'DRY', category_name: 'Dry Goods', color_hex: '#8b5cf6', budget_cents: 400000, mtd_spend_cents: 287600, sku_count: 54 },
+        { id: 6, category_code: 'SUPP', category_name: 'Supplies', color_hex: '#64748b', budget_cents: 200000, mtd_spend_cents: 145200, sku_count: 23 }
+      ];
+
+      const demoMappings = [
+        { id: 1, sku_pattern: 'LIME-CS', product_name: 'Fresh Limes (Case)', category_code: 'PROD', category_name: 'Produce', color_hex: '#22c55e', last_price_cents: 4500, match_type: 'exact' },
+        { id: 2, sku_pattern: 'TOM-ROMA', product_name: 'Roma Tomatoes 25lb', category_code: 'PROD', category_name: 'Produce', color_hex: '#22c55e', last_price_cents: 3250, match_type: 'exact' },
+        { id: 3, sku_pattern: 'CHICK-BRST', product_name: 'Chicken Breast 40lb', category_code: 'MEAT', category_name: 'Meat & Poultry', color_hex: '#ef4444', last_price_cents: 12500, match_type: 'exact' },
+        { id: 4, sku_pattern: 'MILK-2%', product_name: '2% Milk Gallon', category_code: 'DAIRY', category_name: 'Dairy Products', color_hex: '#3b82f6', last_price_cents: 399, match_type: 'exact' },
+        { id: 5, sku_pattern: 'GG-175', product_name: 'Grey Goose Vodka 1.75L', category_code: 'BEV', category_name: 'Beverages', color_hex: '#f59e0b', last_price_cents: 4299, match_type: 'exact' }
+      ];
+
+      const demoUncategorized = [
+        { id: 1, product_name: 'Organic Mixed Greens', sku: 'ORG-MXG-5LB', total_spend_cents: 18750, occurrence_count: 5, last_seen: '2026-01-17' },
+        { id: 2, product_name: 'Premium Olive Oil', sku: 'OIL-EVOO-GAL', total_spend_cents: 24500, occurrence_count: 3, last_seen: '2026-01-16' },
+        { id: 3, product_name: 'Imported Parmesan', sku: 'PARM-IMP-5LB', total_spend_cents: 8900, occurrence_count: 2, last_seen: '2026-01-15' }
+      ];
+
+      cogsCategories = demoCategories;
+      cogsMappings = demoMappings;
+      cogsUncategorizedItems = demoUncategorized;
+
+      renderCogsCategoryCards(demoCategories);
+      populateCategorySelects(demoCategories);
+      renderRecentMappings(demoMappings);
+      updateUncategorizedAlert(demoUncategorized);
+
+      // Update stats
+      const totalSpend = demoCategories.reduce((sum, c) => sum + c.mtd_spend_cents, 0);
+      const totalSkus = demoCategories.reduce((sum, c) => sum + c.sku_count, 0);
+      document.getElementById('cogsMonthTotal').textContent = '$' + (totalSpend / 100).toLocaleString();
+      document.getElementById('cogsCategoriesCount').textContent = demoCategories.length;
+      document.getElementById('cogsSkuCount').textContent = totalSkus;
+      document.getElementById('cogsUncategorized').textContent = demoUncategorized.length;
+    }
+
+    // Render category cards
+    function renderCogsCategoryCards(categories) {
+      const grid = document.getElementById('cogsCategoriesGrid');
+
+      if (categories.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #64748b;">
+            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 16px; opacity: 0.5;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+            <h3 style="color: #ffffff; margin-bottom: 8px;">No Categories Yet</h3>
+            <p>Create your first COGS category to start coding invoices.</p>
+            <button class="btn btn-primary btn-sm" style="margin-top: 16px;" onclick="openAddCategoryModal()">Add Category</button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = categories.map(cat => {
+        const spend = (cat.mtd_spend_cents || 0) / 100;
+        const budget = (cat.budget_cents || 0) / 100;
+        const budgetPct = budget > 0 ? Math.min(100, (spend / budget) * 100) : 0;
+        const budgetClass = budgetPct >= 100 ? 'danger' : budgetPct >= 80 ? 'warning' : '';
+
+        return `
+          <div class="cogs-category-card" style="--category-color: ${cat.color_hex || '#6366f1'};" onclick="openCategoryDetail(${cat.id})">
+            <div class="category-header">
+              <span class="category-code" style="color: ${cat.color_hex || '#6366f1'};">${escapeHtml(cat.category_code)}</span>
+              <span class="category-name">${escapeHtml(cat.category_name)}</span>
+            </div>
+            <div class="category-spend">$${spend.toLocaleString()}</div>
+            <div class="category-meta">
+              <span>${cat.sku_count || 0} SKUs</span>
+              ${budget > 0 ? `<span>${budgetPct.toFixed(0)}% of budget</span>` : '<span>No budget set</span>'}
+            </div>
+            ${budget > 0 ? `
+              <div class="category-budget-bar">
+                <div class="category-budget-fill ${budgetClass}" style="width: ${budgetPct}%; background: ${cat.color_hex || '#6366f1'};"></div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Update COGS stats
+    function updateCogsStats(summary) {
+      const totalSpend = summary.categories?.reduce((sum, c) => sum + (c.mtd_spend_cents || 0), 0) || 0;
+      const totalSkus = summary.total_mappings || 0;
+      const uncategorizedCount = summary.uncategorized_count || 0;
+
+      document.getElementById('cogsMonthTotal').textContent = '$' + (totalSpend / 100).toLocaleString();
+      document.getElementById('cogsCategoriesCount').textContent = summary.categories?.length || 0;
+      document.getElementById('cogsSkuCount').textContent = totalSkus;
+      document.getElementById('cogsUncategorized').textContent = uncategorizedCount;
+    }
+
+    // Populate category select dropdowns
+    function populateCategorySelects(categories) {
+      const quickSelect = document.getElementById('quickCategory');
+      const bulkSelect = document.getElementById('bulkCategory');
+
+      const options = categories.map(cat =>
+        `<option value="${cat.id}" data-color="${cat.color_hex}">${cat.category_code} - ${cat.category_name}</option>`
+      ).join('');
+
+      quickSelect.innerHTML = '<option value="">Select Category</option>' + options;
+      bulkSelect.innerHTML = '<option value="">Choose a category...</option>' + options;
+    }
+
+    // Render recent mappings
+    function renderRecentMappings(mappings) {
+      const list = document.getElementById('recentMappingsList');
+
+      if (mappings.length === 0) {
+        list.innerHTML = `
+          <div style="padding: 24px; text-align: center; color: #64748b;">
+            No SKU mappings yet. Add your first one above!
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = mappings.map(m => `
+        <div class="mapping-item">
+          <span class="mapping-sku">${escapeHtml(m.sku_pattern)}</span>
+          <span class="mapping-product">${escapeHtml(m.product_name || 'Unknown Product')}</span>
+          <span class="mapping-category" style="background: ${m.color_hex || '#6366f1'}20; color: ${m.color_hex || '#6366f1'};">
+            ${escapeHtml(m.category_code || m.category_name)}
+          </span>
+          ${m.last_price_cents ? `<span class="mapping-price">$${(m.last_price_cents / 100).toFixed(2)}</span>` : '<span class="mapping-price">-</span>'}
+          <button class="mapping-delete" onclick="deleteMapping(${m.id}, event)" title="Delete mapping">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // Update uncategorized alert
+    function updateUncategorizedAlert(items) {
+      const alert = document.getElementById('uncategorizedAlert');
+      const stat = document.getElementById('cogsUncategorizedStat');
+
+      if (items.length > 0) {
+        alert.style.display = 'flex';
+        document.getElementById('uncategorizedCount').textContent = items.length;
+        stat.classList.add('warning');
+      } else {
+        alert.style.display = 'none';
+        stat.classList.remove('warning');
+      }
+    }
+
+    // Modal functions
+    function openAddCategoryModal() {
+      document.getElementById('addCategoryModal').classList.add('show');
+      document.getElementById('categoryCode').value = '';
+      document.getElementById('categoryName').value = '';
+      document.getElementById('categoryColor').value = '#6366f1';
+      document.getElementById('categoryColorHex').textContent = '#6366f1';
+      document.getElementById('categoryBudget').value = '';
+    }
+
+    function closeAddCategoryModal() {
+      document.getElementById('addCategoryModal').classList.remove('show');
+    }
+
+    function openBulkSkuModal() {
+      document.getElementById('bulkSkuModal').classList.add('show');
+      document.getElementById('bulkSkuList').value = '';
+      document.getElementById('bulkCategory').value = '';
+    }
+
+    function closeBulkSkuModal() {
+      document.getElementById('bulkSkuModal').classList.remove('show');
+    }
+
+    function openUncategorizedModal() {
+      document.getElementById('uncategorizedModal').classList.add('show');
+      renderUncategorizedItems();
+    }
+
+    function closeUncategorizedModal() {
+      document.getElementById('uncategorizedModal').classList.remove('show');
+    }
+
+    function openCategoryDetailModal() {
+      document.getElementById('categoryDetailModal').classList.add('show');
+    }
+
+    function closeCategoryDetailModal() {
+      document.getElementById('categoryDetailModal').classList.remove('show');
+    }
+
+    // Color picker update
+    document.getElementById('categoryColor').addEventListener('input', function(e) {
+      document.getElementById('categoryColorHex').textContent = e.target.value;
+    });
+
+    // Save new category
+    async function saveCategory(event) {
+      event.preventDefault();
+
+      const data = {
+        category_code: document.getElementById('categoryCode').value.toUpperCase(),
+        category_name: document.getElementById('categoryName').value,
+        color_hex: document.getElementById('categoryColor').value,
+        budget_cents: document.getElementById('categoryBudget').value ? parseInt(document.getElementById('categoryBudget').value) * 100 : null
+      };
+
+      if (isDemoMode()) {
+        // Demo mode - simulate save
+        const newCategory = {
+          id: cogsCategories.length + 1,
+          ...data,
+          mtd_spend_cents: 0,
+          sku_count: 0
+        };
+        cogsCategories.push(newCategory);
+        renderCogsCategoryCards(cogsCategories);
+        populateCategorySelects(cogsCategories);
+        closeAddCategoryModal();
+        showToast(`Category "${data.category_name}" created (demo mode)`, 'success');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/cogs/categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeAddCategoryModal();
+          showToast(`Category "${data.category_name}" created successfully`, 'success');
+          loadCogsData();
+        } else {
+          showToast('Failed to create category: ' + result.error, 'error');
+        }
+      } catch (error) {
+        console.error('Failed to save category:', error);
+        showToast('Failed to create category', 'error');
+      }
+    }
+
+    // Quick add SKU mapping
+    async function quickAddSku() {
+      const sku = document.getElementById('quickSku').value.trim();
+      const categoryId = document.getElementById('quickCategory').value;
+
+      if (!sku || !categoryId) {
+        showToast('Please enter SKU and select a category', 'error');
+        return;
+      }
+
+      if (isDemoMode()) {
+        // Demo mode - simulate add
+        const category = cogsCategories.find(c => c.id === parseInt(categoryId));
+        const newMapping = {
+          id: cogsMappings.length + 1,
+          sku_pattern: sku.toUpperCase(),
+          product_name: sku,
+          category_code: category?.category_code,
+          category_name: category?.category_name,
+          color_hex: category?.color_hex,
+          match_type: 'exact'
+        };
+        cogsMappings.unshift(newMapping);
+        renderRecentMappings(cogsMappings.slice(0, 10));
+        document.getElementById('quickSku').value = '';
+        document.getElementById('quickCategory').value = '';
+        showToast(`SKU "${sku}" mapped to ${category?.category_name} (demo mode)`, 'success');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/cogs/mappings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            category_id: parseInt(categoryId),
+            sku_pattern: sku,
+            match_type: 'exact'
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          document.getElementById('quickSku').value = '';
+          document.getElementById('quickCategory').value = '';
+          showToast('SKU mapping added successfully', 'success');
+          loadCogsData();
+        } else {
+          showToast('Failed to add mapping: ' + result.error, 'error');
+        }
+      } catch (error) {
+        console.error('Failed to add SKU mapping:', error);
+        showToast('Failed to add SKU mapping', 'error');
+      }
+    }
+
+    // Bulk import SKUs
+    async function importBulkSkus() {
+      const categoryId = document.getElementById('bulkCategory').value;
+      const skuList = document.getElementById('bulkSkuList').value.trim();
+
+      if (!categoryId || !skuList) {
+        showToast('Please select a category and enter SKUs', 'error');
+        return;
+      }
+
+      // Parse SKU list (one per line, optional comma-separated product name)
+      const lines = skuList.split('\n').filter(l => l.trim());
+      const mappings = lines.map(line => {
+        const parts = line.split(',').map(p => p.trim());
+        return {
+          sku_pattern: parts[0],
+          product_name: parts[1] || null
+        };
+      });
+
+      if (isDemoMode()) {
+        // Demo mode - simulate import
+        const category = cogsCategories.find(c => c.id === parseInt(categoryId));
+        showToast(`${mappings.length} SKUs imported to ${category?.category_name} (demo mode)`, 'success');
+        closeBulkSkuModal();
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/cogs/mappings/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            category_id: parseInt(categoryId),
+            mappings: mappings
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeBulkSkuModal();
+          showToast(`${result.data.imported} SKUs imported successfully`, 'success');
+          loadCogsData();
+        } else {
+          showToast('Failed to import SKUs: ' + result.error, 'error');
+        }
+      } catch (error) {
+        console.error('Failed to import SKUs:', error);
+        showToast('Failed to import SKUs', 'error');
+      }
+    }
+
+    // Delete mapping
+    async function deleteMapping(mappingId, event) {
+      event.stopPropagation();
+
+      if (!confirm('Delete this SKU mapping?')) return;
+
+      if (isDemoMode()) {
+        cogsMappings = cogsMappings.filter(m => m.id !== mappingId);
+        renderRecentMappings(cogsMappings.slice(0, 10));
+        showToast('Mapping deleted (demo mode)', 'success');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/cogs/mappings/${mappingId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          showToast('Mapping deleted', 'success');
+          loadCogsData();
+        }
+      } catch (error) {
+        console.error('Failed to delete mapping:', error);
+      }
+    }
+
+    // Open category detail
+    async function openCategoryDetail(categoryId) {
+      const category = cogsCategories.find(c => c.id === categoryId);
+      if (!category) return;
+
+      document.getElementById('categoryDetailTitle').textContent = category.category_name;
+      document.getElementById('categoryDetailModal').classList.add('show');
+
+      // Build category detail content
+      const spend = (category.mtd_spend_cents || 0) / 100;
+      const budget = (category.budget_cents || 0) / 100;
+      const budgetPct = budget > 0 ? (spend / budget) * 100 : 0;
+
+      let content = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+          <div class="cogs-stat">
+            <div class="cogs-stat-value" style="color: ${category.color_hex};">$${spend.toLocaleString()}</div>
+            <div class="cogs-stat-label">MTD Spend</div>
+          </div>
+          <div class="cogs-stat">
+            <div class="cogs-stat-value">${category.sku_count || 0}</div>
+            <div class="cogs-stat-label">Mapped SKUs</div>
+          </div>
+          <div class="cogs-stat">
+            <div class="cogs-stat-value">${budget > 0 ? budgetPct.toFixed(0) + '%' : 'N/A'}</div>
+            <div class="cogs-stat-label">Budget Used</div>
+          </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <h4 style="color: #ffffff; margin-bottom: 12px;">Category Code</h4>
+          <span class="mapping-category" style="background: ${category.color_hex}20; color: ${category.color_hex}; font-size: 14px; padding: 6px 12px;">
+            ${category.category_code}
+          </span>
+        </div>
+      `;
+
+      // Load mappings for this category
+      if (!isDemoMode()) {
+        try {
+          const response = await fetch(`/api/cogs/mappings?category_id=${categoryId}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          const data = await response.json();
+
+          if (data.success && data.data.length > 0) {
+            content += `
+              <h4 style="color: #ffffff; margin-bottom: 12px;">SKU Mappings (${data.data.length})</h4>
+              <div class="recent-mappings" style="max-height: 300px; overflow-y: auto;">
+                <div class="mappings-list">
+                  ${data.data.map(m => `
+                    <div class="mapping-item">
+                      <span class="mapping-sku">${escapeHtml(m.sku_pattern)}</span>
+                      <span class="mapping-product">${escapeHtml(m.product_name || '-')}</span>
+                      ${m.last_price_cents ? `<span class="mapping-price">$${(m.last_price_cents / 100).toFixed(2)}</span>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          }
+        } catch (error) {
+          console.error('Failed to load category mappings:', error);
+        }
+      } else {
+        // Demo mode - show demo mappings
+        const categoryMappings = cogsMappings.filter(m => m.category_code === category.category_code);
+        if (categoryMappings.length > 0) {
+          content += `
+            <h4 style="color: #ffffff; margin-bottom: 12px;">SKU Mappings (${categoryMappings.length})</h4>
+            <div class="recent-mappings" style="max-height: 300px; overflow-y: auto;">
+              <div class="mappings-list">
+                ${categoryMappings.map(m => `
+                  <div class="mapping-item">
+                    <span class="mapping-sku">${escapeHtml(m.sku_pattern)}</span>
+                    <span class="mapping-product">${escapeHtml(m.product_name || '-')}</span>
+                    ${m.last_price_cents ? `<span class="mapping-price">$${(m.last_price_cents / 100).toFixed(2)}</span>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      content += `
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="editCategory(${categoryId})">Edit Category</button>
+          <button class="btn btn-secondary" style="color: #ef4444;" onclick="deleteCategory(${categoryId})">Delete</button>
+        </div>
+      `;
+
+      document.getElementById('categoryDetailContent').innerHTML = content;
+    }
+
+    // Render uncategorized items in modal
+    function renderUncategorizedItems() {
+      const list = document.getElementById('uncategorizedList');
+
+      if (cogsUncategorizedItems.length === 0) {
+        list.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: #64748b;">
+            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 16px; color: #22c55e;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 style="color: #ffffff; margin-bottom: 8px;">All Caught Up!</h3>
+            <p>All invoice items have been categorized.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const categoryOptions = cogsCategories.map(c =>
+        `<option value="${c.id}">${c.category_code} - ${c.category_name}</option>`
+      ).join('');
+
+      list.innerHTML = cogsUncategorizedItems.map(item => `
+        <div class="uncategorized-item" data-item-id="${item.id}">
+          <div class="uncategorized-item-info">
+            <div class="uncategorized-item-name">${escapeHtml(item.product_name)}</div>
+            <div class="uncategorized-item-meta">SKU: ${escapeHtml(item.sku || 'N/A')} | ${item.occurrence_count} occurrences</div>
+          </div>
+          <div class="uncategorized-item-spend">$${((item.total_spend_cents || 0) / 100).toLocaleString()}</div>
+          <select class="quick-select uncategorized-item-select" data-item-id="${item.id}">
+            <option value="">Select category...</option>
+            ${categoryOptions}
+          </select>
+          <label class="uncategorized-item-checkbox">
+            <input type="checkbox" data-item-id="${item.id}" checked>
+            Create mapping
+          </label>
+        </div>
+      `).join('');
+    }
+
+    // Save bulk categorizations
+    async function saveBulkCategorizations() {
+      const items = [];
+      const itemElements = document.querySelectorAll('.uncategorized-item');
+
+      itemElements.forEach(el => {
+        const itemId = el.dataset.itemId;
+        const categoryId = el.querySelector('select').value;
+        const createMapping = el.querySelector('input[type="checkbox"]').checked;
+
+        if (categoryId) {
+          items.push({
+            item_id: parseInt(itemId),
+            category_id: parseInt(categoryId),
+            create_mapping: createMapping
+          });
+        }
+      });
+
+      if (items.length === 0) {
+        showToast('Please select categories for at least one item', 'error');
+        return;
+      }
+
+      if (isDemoMode()) {
+        cogsUncategorizedItems = cogsUncategorizedItems.filter(
+          item => !items.some(i => i.item_id === item.id)
+        );
+        updateUncategorizedAlert(cogsUncategorizedItems);
+        closeUncategorizedModal();
+        showToast(`${items.length} items categorized (demo mode)`, 'success');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/cogs/bulk-categorize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ items })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeUncategorizedModal();
+          showToast(`${result.data.categorized} items categorized successfully`, 'success');
+          loadCogsData();
+        } else {
+          showToast('Failed to save categorizations: ' + result.error, 'error');
+        }
+      } catch (error) {
+        console.error('Failed to save categorizations:', error);
+        showToast('Failed to save categorizations', 'error');
+      }
+    }
+
+    // Edit category (placeholder - can expand later)
+    function editCategory(categoryId) {
+      showToast('Edit category feature coming soon', 'info');
+    }
+
+    // Delete category
+    async function deleteCategory(categoryId) {
+      const category = cogsCategories.find(c => c.id === categoryId);
+      if (!confirm(`Delete category "${category?.category_name}"? This will not delete associated SKU mappings.`)) return;
+
+      if (isDemoMode()) {
+        cogsCategories = cogsCategories.filter(c => c.id !== categoryId);
+        renderCogsCategoryCards(cogsCategories);
+        populateCategorySelects(cogsCategories);
+        closeCategoryDetailModal();
+        showToast('Category deleted (demo mode)', 'success');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/cogs/categories/${categoryId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+          closeCategoryDetailModal();
+          showToast('Category deleted', 'success');
+          loadCogsData();
+        }
+      } catch (error) {
+        console.error('Failed to delete category:', error);
+        showToast('Failed to delete category', 'error');
+      }
+    }
+
+    // View all mappings modal (placeholder)
+    function openAllMappingsModal() {
+      showToast('Full mappings view coming soon', 'info');
+    }
+
+    // Initialize COGS section
+    function initializeCogs() {
+      // Always try to load real data first, fall back to demo
+      loadCogsData().catch(() => {
+        if (isDemoMode()) {
+          loadDemoCogsData();
+        }
+      });
+    }
+
+    // Call COGS initialization after main initialize
+    setTimeout(initializeCogs, 100);
   </script>
 </body>
 </html>
