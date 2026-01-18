@@ -12,34 +12,50 @@
        ======================================== */
 
     :root {
-      /* Premium Dark Palette */
-      --bg: #0a0f1a;
-      --bg-gradient: linear-gradient(135deg, #0a0f1a 0%, #0f172a 100%);
-      --panel: #111525;
-      --panel2: #0f1320;
-      --panel-glass: rgba(17, 21, 37, 0.7);
+      /* Executive Premium Dark Palette - Deeper & More Prestigious */
+      --bg: #050810;
+      --bg-secondary: #080c14;
+      --bg-gradient: linear-gradient(145deg, #050810 0%, #0a0e18 50%, #080c14 100%);
+      --panel: #0c1019;
+      --panel2: #0a0d15;
+      --panel-elevated: #0e121c;
+      --panel-glass: rgba(12, 16, 25, 0.85);
 
-      /* Borders & Dividers */
-      --border: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(251, 191, 36, 0.25);
-      --border-gold: rgba(251, 191, 36, 0.3);
+      /* Refined Borders & Dividers */
+      --border: rgba(255, 255, 255, 0.05);
+      --border-subtle: rgba(255, 255, 255, 0.03);
+      --border-hover: rgba(212, 175, 55, 0.3);
+      --border-gold: rgba(212, 175, 55, 0.25);
 
-      /* Text */
-      --text: rgba(255, 255, 255, 0.95);
-      --text-bright: #ffffff;
-      --muted: rgba(255, 255, 255, 0.7);
-      --muted2: rgba(255, 255, 255, 0.5);
+      /* Premium Text Hierarchy */
+      --text: rgba(255, 255, 255, 0.92);
+      --text-bright: #f8fafc;
+      --text-heading: #ffffff;
+      --muted: rgba(255, 255, 255, 0.65);
+      --muted2: rgba(255, 255, 255, 0.45);
+      --muted3: rgba(255, 255, 255, 0.3);
 
-      /* Gold Accents */
-      --gold: #fbbf24;
-      --gold-dark: #f59e0b;
-      --gold-darker: #d97706;
-      --gold-glow: rgba(251, 191, 36, 0.15);
+      /* Refined Gold Accents - More Executive/Prestigious */
+      --gold: #d4af37;
+      --gold-light: #e6c55a;
+      --gold-dark: #b8972f;
+      --gold-darker: #9a7b24;
+      --gold-glow: rgba(212, 175, 55, 0.12);
+      --gold-shimmer: linear-gradient(135deg, #d4af37 0%, #e6c55a 50%, #d4af37 100%);
 
-      /* Status Colors */
-      --good: rgba(120, 255, 190, 0.18);
-      --warn: rgba(255, 210, 120, 0.18);
-      --error: rgba(255, 90, 90, 0.18);
+      /* Status Colors - Refined */
+      --good: rgba(74, 222, 128, 0.15);
+      --good-text: #4ade80;
+      --warn: rgba(251, 191, 36, 0.15);
+      --warn-text: #fbbf24;
+      --error: rgba(248, 113, 113, 0.15);
+      --error-text: #f87171;
+
+      /* Premium Shadows */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+      --shadow-glow: 0 0 40px rgba(212, 175, 55, 0.08);
     }
 
     /* ========================================
@@ -64,8 +80,9 @@
       font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: var(--bg);
       background-image:
-        radial-gradient(ellipse at top, rgba(30, 41, 59, 0.3) 0%, transparent 50%),
-        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+        radial-gradient(ellipse at top left, rgba(212, 175, 55, 0.03) 0%, transparent 40%),
+        radial-gradient(ellipse at top right, rgba(15, 23, 42, 0.5) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom, rgba(5, 8, 16, 0.95) 0%, transparent 60%);
       background-attachment: fixed;
       color: var(--text);
       line-height: 1.5;
@@ -1674,19 +1691,20 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
-      background: linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.98) 100%);
-      border: 1px solid rgba(51, 65, 85, 0.5);
-      border-radius: 16px;
+      padding: 28px 18px;
+      background: linear-gradient(165deg, rgba(12, 16, 25, 0.97) 0%, rgba(8, 12, 20, 0.99) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 20px;
       color: #e2e8f0;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
-      min-height: 120px;
+      min-height: 130px;
       position: relative;
       overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
     }
 
     .quick-action-tile::before {
@@ -1695,178 +1713,227 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.5), transparent);
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.4s;
+    }
+
+    .quick-action-tile::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.03) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s;
     }
 
     .quick-action-tile:hover {
-      border-color: rgba(251, 191, 36, 0.4);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(251, 191, 36, 0.1);
+      border-color: rgba(212, 175, 55, 0.35);
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(212, 175, 55, 0.08);
     }
 
-    .quick-action-tile:hover::before {
+    .quick-action-tile:hover::before,
+    .quick-action-tile:hover::after {
       opacity: 1;
     }
 
     .quick-action-tile .tile-icon {
-      font-size: 32px;
-      margin-bottom: 12px;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      font-size: 36px;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+      transition: transform 0.3s ease;
+    }
+
+    .quick-action-tile:hover .tile-icon {
+      transform: scale(1.08);
     }
 
     .quick-action-tile .tile-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(148, 163, 184, 0.9);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
     }
 
     .quick-action-tile .tile-value {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 800;
-      color: #fbbf24;
-      margin-top: 4px;
+      color: var(--gold);
+      margin-top: 6px;
+      text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
     }
 
+    /* Analytics Tile - Emerald Theme */
     .quick-action-tile.analytics {
-      background: linear-gradient(145deg, rgba(15, 35, 30, 0.95) 0%, rgba(10, 25, 20, 0.98) 100%);
-      border-color: rgba(34, 197, 94, 0.3);
+      background: linear-gradient(165deg, rgba(8, 25, 18, 0.97) 0%, rgba(5, 18, 12, 0.99) 100%);
+      border-color: rgba(16, 185, 129, 0.2);
     }
-
+    .quick-action-tile.analytics::before {
+      background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.6), transparent);
+    }
     .quick-action-tile.analytics:hover {
-      border-color: rgba(34, 197, 94, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(34, 197, 94, 0.15);
+      border-color: rgba(16, 185, 129, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(16, 185, 129, 0.12);
     }
-
     .quick-action-tile.analytics .tile-value {
-      color: #22c55e;
+      color: #10b981;
+      text-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
     }
 
+    /* Actions Tile - Gold Theme */
     .quick-action-tile.actions {
-      background: linear-gradient(145deg, rgba(35, 25, 15, 0.95) 0%, rgba(25, 18, 10, 0.98) 100%);
-      border-color: rgba(251, 191, 36, 0.3);
+      background: linear-gradient(165deg, rgba(25, 18, 8, 0.97) 0%, rgba(18, 12, 5, 0.99) 100%);
+      border-color: rgba(212, 175, 55, 0.2);
     }
-
+    .quick-action-tile.actions::before {
+      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.6), transparent);
+    }
     .quick-action-tile.actions:hover {
-      border-color: rgba(251, 191, 36, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(251, 191, 36, 0.15);
+      border-color: rgba(212, 175, 55, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(212, 175, 55, 0.12);
     }
-
     .quick-action-tile.actions .tile-badge {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      background: linear-gradient(135deg, #ef4444, #dc2626);
+      top: 14px;
+      right: 14px;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
       color: white;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 5px 10px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
       animation: pulse-badge 2s infinite;
     }
 
     .quick-action-tile .tile-subtitle {
       font-size: 11px;
-      color: #64748b;
-      margin-top: 4px;
+      color: rgba(100, 116, 139, 0.9);
+      margin-top: 6px;
+      letter-spacing: 0.3px;
     }
 
+    /* Results Tile - Success Green Theme */
     .quick-action-tile.results {
-      background: linear-gradient(145deg, rgba(15, 30, 25, 0.95) 0%, rgba(10, 20, 18, 0.98) 100%);
-      border-color: rgba(34, 197, 94, 0.25);
+      background: linear-gradient(165deg, rgba(8, 22, 16, 0.97) 0%, rgba(5, 15, 10, 0.99) 100%);
+      border-color: rgba(34, 197, 94, 0.2);
     }
-
+    .quick-action-tile.results::before {
+      background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.6), transparent);
+    }
     .quick-action-tile.results:hover {
-      border-color: rgba(34, 197, 94, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(34, 197, 94, 0.1);
+    }
+    .quick-action-tile.results .tile-value {
+      color: #22c55e;
+      text-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
     }
 
+    /* Locations Tile - Blue Theme */
     .quick-action-tile.locations {
-      background: linear-gradient(145deg, rgba(20, 25, 40, 0.95) 0%, rgba(15, 18, 30, 0.98) 100%);
-      border-color: rgba(59, 130, 246, 0.25);
+      background: linear-gradient(165deg, rgba(10, 18, 35, 0.97) 0%, rgba(6, 12, 25, 0.99) 100%);
+      border-color: rgba(59, 130, 246, 0.2);
     }
-
+    .quick-action-tile.locations::before {
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.6), transparent);
+    }
     .quick-action-tile.locations:hover {
-      border-color: rgba(59, 130, 246, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.12);
+      border-color: rgba(59, 130, 246, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(59, 130, 246, 0.1);
     }
-
     .quick-action-tile.locations .tile-value {
       color: #3b82f6;
+      text-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
     }
 
+    /* Pipeline Tile - Purple Theme */
     .quick-action-tile.pipeline {
-      background: linear-gradient(145deg, rgba(30, 20, 35, 0.95) 0%, rgba(22, 15, 28, 0.98) 100%);
-      border-color: rgba(168, 85, 247, 0.25);
+      background: linear-gradient(165deg, rgba(22, 12, 30, 0.97) 0%, rgba(15, 8, 22, 0.99) 100%);
+      border-color: rgba(139, 92, 246, 0.2);
     }
-
+    .quick-action-tile.pipeline::before {
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.6), transparent);
+    }
     .quick-action-tile.pipeline:hover {
-      border-color: rgba(168, 85, 247, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.12);
+      border-color: rgba(139, 92, 246, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(139, 92, 246, 0.1);
     }
-
     .quick-action-tile.pipeline .tile-value {
-      color: #a855f7;
+      color: #8b5cf6;
+      text-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
     }
 
+    /* Events Tile - Violet Theme */
     .quick-action-tile.events {
-      background: linear-gradient(145deg, rgba(30, 20, 40, 0.95) 0%, rgba(22, 15, 32, 0.98) 100%);
-      border-color: rgba(168, 85, 247, 0.3);
+      background: linear-gradient(165deg, rgba(25, 15, 35, 0.97) 0%, rgba(18, 10, 26, 0.99) 100%);
+      border-color: rgba(168, 85, 247, 0.2);
     }
-
+    .quick-action-tile.events::before {
+      background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.6), transparent);
+    }
     .quick-action-tile.events:hover {
-      border-color: rgba(168, 85, 247, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.12);
+      border-color: rgba(168, 85, 247, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(168, 85, 247, 0.1);
     }
-
     .quick-action-tile.events .tile-value {
       color: #a855f7;
+      text-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
     }
 
+    /* Catering Tile - Rose/Pink Theme */
     .quick-action-tile.catering {
-      background: linear-gradient(145deg, rgba(35, 20, 25, 0.95) 0%, rgba(28, 15, 20, 0.98) 100%);
-      border-color: rgba(236, 72, 153, 0.3);
+      background: linear-gradient(165deg, rgba(30, 12, 22, 0.97) 0%, rgba(22, 8, 16, 0.99) 100%);
+      border-color: rgba(236, 72, 153, 0.2);
     }
-
+    .quick-action-tile.catering::before {
+      background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.6), transparent);
+    }
     .quick-action-tile.catering:hover {
-      border-color: rgba(236, 72, 153, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(236, 72, 153, 0.12);
+      border-color: rgba(236, 72, 153, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(236, 72, 153, 0.1);
     }
-
     .quick-action-tile.catering .tile-value {
       color: #ec4899;
+      text-shadow: 0 0 25px rgba(236, 72, 153, 0.4);
     }
 
+    /* Payroll Tile - Teal/Success Theme */
     .quick-action-tile.payroll {
-      background: linear-gradient(145deg, rgba(25, 35, 20, 0.95) 0%, rgba(18, 28, 15, 0.98) 100%);
-      border-color: rgba(34, 197, 94, 0.3);
+      background: linear-gradient(165deg, rgba(8, 25, 20, 0.97) 0%, rgba(5, 18, 14, 0.99) 100%);
+      border-color: rgba(20, 184, 166, 0.2);
     }
-
+    .quick-action-tile.payroll::before {
+      background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.6), transparent);
+    }
     .quick-action-tile.payroll:hover {
-      border-color: rgba(34, 197, 94, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(34, 197, 94, 0.12);
+      border-color: rgba(20, 184, 166, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(20, 184, 166, 0.1);
     }
-
     .quick-action-tile.payroll .tile-value {
-      color: #22c55e;
+      color: #14b8a6;
+      text-shadow: 0 0 25px rgba(20, 184, 166, 0.4);
     }
 
+    /* Expense Tile - Amber/Gold Theme */
     .quick-action-tile.expense {
-      background: linear-gradient(145deg, rgba(35, 30, 20, 0.95) 0%, rgba(28, 22, 15, 0.98) 100%);
-      border-color: rgba(251, 191, 36, 0.3);
+      background: linear-gradient(165deg, rgba(28, 22, 10, 0.97) 0%, rgba(20, 15, 6, 0.99) 100%);
+      border-color: rgba(245, 158, 11, 0.2);
     }
-
+    .quick-action-tile.expense::before {
+      background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.6), transparent);
+    }
     .quick-action-tile.expense:hover {
-      border-color: rgba(251, 191, 36, 0.5);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(251, 191, 36, 0.12);
+      border-color: rgba(245, 158, 11, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(245, 158, 11, 0.1);
     }
-
     .quick-action-tile.expense .tile-value {
-      color: #fbbf24;
+      color: #f59e0b;
+      text-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
     }
 
     @keyframes pulse-badge {

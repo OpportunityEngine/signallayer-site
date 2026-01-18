@@ -12,23 +12,24 @@
        ======================================== */
 
     :root {
-      --bg: #0a0f1a;
-      --panel: #111525;
-      --panel2: #0f1320;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(236, 72, 153, 0.25);
-      --border-pink: rgba(236, 72, 153, 0.3);
-      --text: rgba(255, 255, 255, 0.95);
-      --text-bright: #ffffff;
-      --muted: rgba(255, 255, 255, 0.7);
-      --muted2: rgba(255, 255, 255, 0.5);
+      /* Executive Premium Dark Palette */
+      --bg: #050810;
+      --panel: #0c1019;
+      --panel2: #0a0d15;
+      --border: rgba(255, 255, 255, 0.05);
+      --border-hover: rgba(236, 72, 153, 0.3);
+      --border-pink: rgba(236, 72, 153, 0.25);
+      --text: rgba(255, 255, 255, 0.92);
+      --text-bright: #f8fafc;
+      --muted: rgba(255, 255, 255, 0.65);
+      --muted2: rgba(255, 255, 255, 0.45);
       --pink: #ec4899;
       --pink-dark: #db2777;
-      --pink-glow: rgba(236, 72, 153, 0.15);
-      --gold: #fbbf24;
-      --good: rgba(120, 255, 190, 0.18);
-      --warn: rgba(255, 210, 120, 0.18);
-      --error: rgba(255, 90, 90, 0.18);
+      --pink-glow: rgba(236, 72, 153, 0.12);
+      --gold: #d4af37;
+      --good: rgba(74, 222, 128, 0.15);
+      --warn: rgba(251, 191, 36, 0.15);
+      --error: rgba(248, 113, 113, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,8 +43,9 @@
       font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
       background: var(--bg);
       background-image:
-        radial-gradient(ellipse at top, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+        radial-gradient(ellipse at top left, rgba(236, 72, 153, 0.04) 0%, transparent 40%),
+        radial-gradient(ellipse at top right, rgba(15, 23, 42, 0.5) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom, rgba(5, 8, 16, 0.95) 0%, transparent 60%);
       background-attachment: fixed;
       color: var(--text);
       line-height: 1.5;
@@ -689,9 +691,14 @@
         <h1>Catering Orders</h1>
         <p class="subtitle">Manage catering orders, track profitability, and optimize operations</p>
       </div>
-      <button class="btn-primary" onclick="openNewOrderModal()">
-        <span>+</span> New Order
-      </button>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="private-events.html" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+          <span>🎉</span> View Events
+        </a>
+        <button class="btn-primary" onclick="openNewOrderModal()">
+          <span>+</span> New Order
+        </button>
+      </div>
     </div>
 
     <!-- Stats Row -->
@@ -952,7 +959,7 @@
     let orders = [];
     let editingOrderId = null;
     let menuRowCount = 0;
-    let authToken = localStorage.getItem('authToken');
+    let authToken = localStorage.getItem('accessToken');
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
