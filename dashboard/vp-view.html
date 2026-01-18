@@ -1275,6 +1275,386 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.5; transform: scale(0.8); }
     }
+
+    /* ========================================
+       BUSINESS ANALYTICS EMBEDDED STYLES
+       ======================================== */
+
+    /* Achievement Banner */
+    .achievement-banner {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .achievement-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.1), transparent);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .achievement-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .achievement-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border-radius: 12px;
+      font-size: 24px;
+      box-shadow: 0 6px 16px rgba(251, 191, 36, 0.3);
+      animation: pulse-icon 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-icon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .achievement-text h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0 0 4px 0;
+    }
+
+    .achievement-text p {
+      color: #fbbf24;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .streak-counter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .streak-flame {
+      font-size: 32px;
+      animation: flicker 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes flicker {
+      0% { transform: scale(1) rotate(-3deg); }
+      100% { transform: scale(1.1) rotate(3deg); }
+    }
+
+    .streak-number {
+      font-size: 36px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .streak-label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Analytics Score Section */
+    .analytics-score-section {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .total-score-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 2px solid rgba(251, 191, 36, 0.3);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .score-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fbbf24;
+      margin-bottom: 8px;
+    }
+
+    .total-savings {
+      font-size: 42px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .savings-period {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    .level-progress {
+      margin-top: 16px;
+    }
+
+    .level-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .level-bar {
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .level-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #22c55e);
+      border-radius: 5px;
+      transition: width 1s ease-out;
+      position: relative;
+    }
+
+    .level-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: levelShine 2s infinite;
+    }
+
+    @keyframes levelShine {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .next-level {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #fbbf24;
+    }
+
+    /* Comparison Grid */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .comparison-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .comparison-card.improved {
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .comparison-card.warning {
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .comparison-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .comparison-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .comparison-badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .comparison-badge.up {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .comparison-badge.down {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .comparison-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .comparison-vs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .vs-arrow {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .vs-arrow.up { color: #22c55e; }
+    .vs-arrow.down { color: #ef4444; }
+
+    /* Analytics Charts */
+    .analytics-charts-section {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .analytics-chart-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .legend-dot.payroll { background: #fbbf24; }
+    .legend-dot.expenses { background: #ef4444; }
+
+    .breakdown-list {
+      margin-top: 16px;
+    }
+
+    .breakdown-item {
+      display: grid;
+      grid-template-columns: 8px 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breakdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .breakdown-color {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .breakdown-label {
+      font-size: 13px;
+      color: #e2e8f0;
+    }
+
+    .breakdown-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .breakdown-pct {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    @media (max-width: 900px) {
+      .analytics-score-section {
+        grid-template-columns: 1fr;
+      }
+      .analytics-charts-section {
+        grid-template-columns: 1fr;
+      }
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1339,10 +1719,6 @@
             <div class="quick-action-icon">📦</div>
             <div class="quick-action-label">Inventory</div>
           </a>
-          <a href="business-analytics.html" class="quick-action-tile">
-            <div class="quick-action-icon">📊</div>
-            <div class="quick-action-label">Analytics</div>
-          </a>
           <a href="upload-invoice.html" class="quick-action-tile">
             <div class="quick-action-icon">📄</div>
             <div class="quick-action-label">Upload Invoice</div>
@@ -1366,7 +1742,7 @@
         </div>
       </div>
 
-      <!-- Financial Overview Charts -->
+      <!-- Financial Overview Section -->
       <div class="card">
         <div class="sectionHeader">
           <div class="sectionTitle">📈 Financial Overview</div>
@@ -1380,8 +1756,100 @@
         </div>
         <div class="divider"></div>
 
-        <!-- Summary Stats -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; background: var(--panel2); border-bottom: 1px solid var(--border);">
+        <div style="padding: 20px;">
+          <!-- Achievement Banner (Gamification) -->
+          <div class="achievement-banner">
+            <div class="achievement-content">
+              <div class="achievement-icon">🏆</div>
+              <div class="achievement-text">
+                <h3>Savings Champion!</h3>
+                <p>You've saved more than 85% of businesses this month</p>
+              </div>
+            </div>
+            <div class="streak-counter">
+              <div>
+                <span class="streak-flame">🔥</span>
+              </div>
+              <div>
+                <div class="streak-number" id="streakCount">7</div>
+                <div class="streak-label">Week Streak</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Score Section with Savings & KPIs -->
+          <div class="analytics-score-section">
+            <div class="total-score-card">
+              <div class="score-label">Total Savings This Year</div>
+              <div class="total-savings" id="totalSavings">$12,847</div>
+              <div class="savings-period">Jan 2026 - Present</div>
+
+              <div class="level-progress">
+                <div class="level-label">
+                  <span>Level 4: Cost Crusher</span>
+                  <span>Level 5: 65%</span>
+                </div>
+                <div class="level-bar">
+                  <div class="level-fill" style="width: 65%;"></div>
+                </div>
+                <div class="next-level">Save $2,153 more to reach Level 5: Budget Boss</div>
+              </div>
+            </div>
+
+            <div class="comparison-grid">
+              <div class="comparison-card improved">
+                <div class="comparison-header">
+                  <span class="comparison-title">This Week Payroll</span>
+                  <span class="comparison-badge down">-8.2%</span>
+                </div>
+                <div class="comparison-value" id="weekPayroll">$4,250</div>
+                <div class="comparison-vs">
+                  vs last week
+                  <span class="vs-arrow down">↓ $380 less</span>
+                </div>
+              </div>
+
+              <div class="comparison-card warning">
+                <div class="comparison-header">
+                  <span class="comparison-title">This Week Expenses</span>
+                  <span class="comparison-badge up">+12.5%</span>
+                </div>
+                <div class="comparison-value" id="weekExpenses">$6,890</div>
+                <div class="comparison-vs">
+                  vs last week
+                  <span class="vs-arrow up">↑ $765 more</span>
+                </div>
+              </div>
+
+              <div class="comparison-card">
+                <div class="comparison-header">
+                  <span class="comparison-title">Labor Cost %</span>
+                  <span class="comparison-badge down">-2.1%</span>
+                </div>
+                <div class="comparison-value" id="laborPct">28.5%</div>
+                <div class="comparison-vs">
+                  Target: 30% ✓
+                  <span class="vs-arrow down" style="color: #22c55e;">Under budget</span>
+                </div>
+              </div>
+
+              <div class="comparison-card">
+                <div class="comparison-header">
+                  <span class="comparison-title">Prime Cost</span>
+                  <span class="comparison-badge">On Target</span>
+                </div>
+                <div class="comparison-value" id="primeCost">62.3%</div>
+                <div class="comparison-vs">
+                  Target: 65%
+                  <span class="vs-arrow down" style="color: #22c55e;">2.7% under</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Stats (Original) -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; background: var(--panel2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
           <div style="text-align: center;">
             <div style="font-size: 11px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Total Expenses</div>
             <div style="font-size: 24px; font-weight: 700; color: #ef4444;" id="chartTotalExpenses">$0</div>
@@ -1400,20 +1868,46 @@
           </div>
         </div>
 
-        <!-- Charts Grid -->
+        <!-- Charts Grid (Original + Enhanced) -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px;">
-          <!-- Expense Breakdown Chart -->
-          <div>
-            <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px;">Expense Breakdown</h4>
-            <div style="position: relative; height: 200px; width: 100%;">
-              <canvas id="expenseBreakdownChart"></canvas>
-            </div>
-          </div>
           <!-- Spending Trend Chart -->
           <div>
             <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px;">Spending Trend</h4>
             <div style="position: relative; height: 200px; width: 100%;">
               <canvas id="spendingTrendChart"></canvas>
+            </div>
+          </div>
+          <!-- Expense Breakdown Chart -->
+          <div>
+            <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px;">Expense Breakdown</h4>
+            <div style="position: relative; height: 160px; width: 100%;">
+              <canvas id="expenseBreakdownChart"></canvas>
+            </div>
+            <div class="breakdown-list" style="margin-top: 12px;">
+              <div class="breakdown-item">
+                <div class="breakdown-color" style="background: #fbbf24;"></div>
+                <span class="breakdown-label">COGS</span>
+                <span class="breakdown-value" id="cogsCost">$3,450</span>
+                <span class="breakdown-pct" id="cogsPct">50.1%</span>
+              </div>
+              <div class="breakdown-item">
+                <div class="breakdown-color" style="background: #3b82f6;"></div>
+                <span class="breakdown-label">Utilities</span>
+                <span class="breakdown-value" id="utilitiesCost">$890</span>
+                <span class="breakdown-pct" id="utilitiesPct">12.9%</span>
+              </div>
+              <div class="breakdown-item">
+                <div class="breakdown-color" style="background: #22c55e;"></div>
+                <span class="breakdown-label">Rent</span>
+                <span class="breakdown-value" id="rentCost">$1,500</span>
+                <span class="breakdown-pct" id="rentPct">21.8%</span>
+              </div>
+              <div class="breakdown-item">
+                <div class="breakdown-color" style="background: #8b5cf6;"></div>
+                <span class="breakdown-label">Other</span>
+                <span class="breakdown-value" id="otherCost">$1,050</span>
+                <span class="breakdown-pct" id="otherPct">15.2%</span>
+              </div>
             </div>
           </div>
         </div>
