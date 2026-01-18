@@ -135,6 +135,7 @@ const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin anal
 const signupRoutes = require('./signup-routes');  // Public self-service signup
 const stripeRoutes = require('./stripe-routes');  // Stripe payment integration
 const businessIntelRoutes = require('./business-intel-routes');  // Business Intelligence (opportunities, inventory, payroll)
+const eventCateringRoutes = require('./event-catering-routes');  // Private Events & Catering
 const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware');  // Trial enforcement
 const InventoryIntelligence = require('./inventory-intelligence');  // Inventory tracking & price intelligence
 
@@ -1222,6 +1223,11 @@ console.log('✅ Stripe payment routes registered at /stripe');
 // Protected by auth middleware to ensure req.user is populated
 app.use('/api/bi', requireAuth, businessIntelRoutes);
 console.log('✅ Business Intelligence routes registered at /api/bi (auth required)');
+
+// Private Events & Catering routes (event planning, recommendations, catering orders)
+// Protected by auth middleware to ensure req.user is populated
+app.use('/api', requireAuth, eventCateringRoutes);
+console.log('✅ Private Events & Catering routes registered at /api (auth required)');
 
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {

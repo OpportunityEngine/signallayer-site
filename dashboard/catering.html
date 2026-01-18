@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catering Orders - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       PREMIUM CATERING PAGE
+       Revenue Radar - Catering Orders
+       ======================================== */
+
+    :root {
+      --bg: #0a0f1a;
+      --panel: #111525;
+      --panel2: #0f1320;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(236, 72, 153, 0.25);
+      --border-pink: rgba(236, 72, 153, 0.3);
+      --text: rgba(255, 255, 255, 0.95);
+      --text-bright: #ffffff;
+      --muted: rgba(255, 255, 255, 0.7);
+      --muted2: rgba(255, 255, 255, 0.5);
+      --pink: #ec4899;
+      --pink-dark: #db2777;
+      --pink-glow: rgba(236, 72, 153, 0.15);
+      --gold: #fbbf24;
+      --good: rgba(120, 255, 190, 0.18);
+      --warn: rgba(255, 210, 120, 0.18);
+      --error: rgba(255, 90, 90, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at top, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Header */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted2);
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--pink); }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text-bright);
+      margin-bottom: 8px;
+    }
+
+    .subtitle { color: var(--muted); font-size: 14px; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--pink) 0%, var(--pink-dark) 100%);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(236, 72, 153, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
+    }
+
+    /* Stats Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--pink) 0%, var(--pink-dark) 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-pink);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(236, 72, 153, 0.15);
+    }
+
+    .stat-card:hover::before { opacity: 1; }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--text-bright);
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .stat-value.pink { color: var(--pink); }
+    .stat-value.green { color: #22c55e; }
+    .stat-value.gold { color: var(--gold); }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 4px;
+    }
+
+    /* Cards */
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: all 0.3s;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title .icon { font-size: 20px; }
+
+    /* Profit Calculator */
+    .profit-calculator {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 20px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .profit-item {
+      text-align: center;
+    }
+
+    .profit-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .profit-value {
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .profit-value.cost { color: #ef4444; }
+    .profit-value.revenue { color: var(--pink); }
+    .profit-value.profit { color: #22c55e; }
+    .profit-value.margin { color: var(--gold); }
+
+    .profit-value.margin.warning { color: #f59e0b; }
+    .profit-value.margin.good { color: #22c55e; }
+
+    /* Orders Table */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table th, .table td {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 12px;
+      vertical-align: middle;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.2);
+      text-align: left;
+    }
+
+    .table tbody tr {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .table tbody tr:hover {
+      background: rgba(236, 72, 153, 0.05);
+    }
+
+    .order-name {
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+
+    .order-company {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-draft {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+    }
+
+    .badge-quoted {
+      background: rgba(168, 85, 247, 0.2);
+      color: #a855f7;
+    }
+
+    .badge-confirmed {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+    }
+
+    .badge-preparing {
+      background: var(--warn);
+      color: rgba(255, 210, 120, 0.95);
+    }
+
+    .badge-delivered {
+      background: rgba(236, 72, 153, 0.2);
+      color: var(--pink);
+    }
+
+    .badge-completed {
+      background: var(--good);
+      color: rgba(120, 255, 190, 0.95);
+    }
+
+    .margin-cell {
+      font-weight: 800;
+    }
+
+    .margin-cell.good { color: #22c55e; }
+    .margin-cell.warning { color: #f59e0b; }
+    .margin-cell.bad { color: #ef4444; }
+
+    .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* Filter Row */
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .select, .input {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .select:hover, .select:focus,
+    .input:hover, .input:focus {
+      border-color: var(--border-pink);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; margin-bottom: 24px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 24px;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      max-width: 900px;
+      width: 100%;
+      position: relative;
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 24px;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { padding: 24px; }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group.full { grid-column: span 2; }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--border-pink);
+      box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+    }
+
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    /* Live Profit Calculator in Modal */
+    .live-profit {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .live-profit-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-profit-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .live-profit-item {
+      text-align: center;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+    }
+
+    .live-profit-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .live-profit-value {
+      font-size: 20px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    /* Menu Builder */
+    .menu-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .menu-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .menu-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+      border-color: var(--border-pink);
+      background: rgba(236, 72, 153, 0.1);
+    }
+
+    .btn-remove {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .btn-remove:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Staff Suggestion */
+    .staff-suggestion {
+      background: rgba(236, 72, 153, 0.1);
+      border: 1px solid var(--border-pink);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .staff-suggestion-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--pink);
+      margin-bottom: 8px;
+    }
+
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .staff-item {
+      text-align: center;
+      padding: 10px;
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .staff-count {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .staff-role {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--border-pink);
+      background: rgba(236, 72, 153, 0.1);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .profit-calculator { grid-template-columns: repeat(2, 1fr); }
+      .live-profit-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: span 1; }
+      .page-header { flex-direction: column; gap: 16px; }
+      .staff-grid { grid-template-columns: 1fr; }
+      .menu-row { grid-template-columns: 1fr; gap: 8px; }
+    }
+
+    /* Loading */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--pink);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="vp-view.html" class="back-link">
+      <span>&larr;</span> Back to Dashboard
+    </a>
+
+    <div class="page-header">
+      <div>
+        <h1>Catering Orders</h1>
+        <p class="subtitle">Manage catering orders, track profitability, and optimize operations</p>
+      </div>
+      <button class="btn-primary" onclick="openNewOrderModal()">
+        <span>+</span> New Order
+      </button>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Active Orders</div>
+        <div class="stat-value pink" id="statActive">0</div>
+        <div class="stat-sub" id="statNextDelivery">No deliveries scheduled</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">This Month Revenue</div>
+        <div class="stat-value green" id="statRevenue">$0</div>
+        <div class="stat-sub" id="statOrderCount">0 orders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Profit</div>
+        <div class="stat-value green" id="statProfit">$0</div>
+        <div class="stat-sub">this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Margin</div>
+        <div class="stat-value gold" id="statMargin">0%</div>
+        <div class="stat-sub">across all orders</div>
+      </div>
+    </div>
+
+    <!-- Profit Calculator Overview -->
+    <div class="card" id="profitOverviewCard">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">💰</span>
+          Monthly Profit Overview
+        </div>
+      </div>
+      <div class="profit-calculator">
+        <div class="profit-item">
+          <div class="profit-label">Total Cost</div>
+          <div class="profit-value cost" id="overviewCost">$0</div>
+        </div>
+        <div class="profit-item">
+          <div class="profit-label">Total Revenue</div>
+          <div class="profit-value revenue" id="overviewRevenue">$0</div>
+        </div>
+        <div class="profit-item">
+          <div class="profit-label">Gross Profit</div>
+          <div class="profit-value profit" id="overviewProfit">$0</div>
+        </div>
+        <div class="profit-item">
+          <div class="profit-label">Profit Margin</div>
+          <div class="profit-value margin" id="overviewMargin">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders List -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">📋</span>
+          Orders
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <select class="select" id="filterStatus" onchange="filterOrders()">
+          <option value="">All Status</option>
+          <option value="draft">Draft</option>
+          <option value="quoted">Quoted</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="preparing">Preparing</option>
+          <option value="delivered">Delivered</option>
+          <option value="completed">Completed</option>
+        </select>
+        <select class="select" id="filterType" onchange="filterOrders()">
+          <option value="">All Types</option>
+          <option value="drop_off">Drop-off</option>
+          <option value="full_service">Full Service</option>
+          <option value="pickup">Pickup</option>
+          <option value="buffet">Buffet</option>
+          <option value="plated">Plated</option>
+        </select>
+        <input type="date" class="input" id="filterDateFrom" onchange="filterOrders()" placeholder="From Date">
+        <input type="date" class="input" id="filterDateTo" onchange="filterOrders()" placeholder="To Date">
+      </div>
+
+      <div id="ordersContainer">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">🍽️</div>
+          <h3>No Catering Orders Yet</h3>
+          <p>Create your first catering order to track profitability</p>
+          <button class="btn-primary" onclick="openNewOrderModal()">
+            <span>+</span> Create Order
+          </button>
+        </div>
+
+        <div class="table-wrap" id="ordersTable" style="display: none;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Guests</th>
+                <th>Status</th>
+                <th class="num">Revenue</th>
+                <th class="num">Margin</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody">
+              <!-- Orders will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Order Modal -->
+  <div class="modal-overlay" id="orderModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">New Catering Order</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="orderForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Order Name *</label>
+              <input type="text" class="form-input" id="orderName" required placeholder="e.g., Acme Corp Holiday Lunch">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company Name</label>
+              <input type="text" class="form-input" id="companyName" placeholder="Client company">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Order Type *</label>
+              <select class="form-select" id="orderType" required>
+                <option value="">Select type...</option>
+                <option value="drop_off">Drop-off</option>
+                <option value="full_service">Full Service</option>
+                <option value="pickup">Pickup</option>
+                <option value="buffet">Buffet Style</option>
+                <option value="plated">Plated Service</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Guest Count *</label>
+              <input type="number" class="form-input" id="guestCount" required min="1" placeholder="Number of guests" oninput="updateStaffSuggestion(); recalculateProfit();">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery Date *</label>
+              <input type="date" class="form-input" id="orderDate" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery Time</label>
+              <input type="time" class="form-input" id="deliveryTime">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Delivery Address</label>
+              <input type="text" class="form-input" id="deliveryAddress" placeholder="Full delivery address">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Name</label>
+              <input type="text" class="form-input" id="contactName" placeholder="Primary contact">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Phone</label>
+              <input type="tel" class="form-input" id="contactPhone" placeholder="(555) 123-4567">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Notes</label>
+              <textarea class="form-textarea" id="orderNotes" placeholder="Special instructions or dietary requirements..."></textarea>
+            </div>
+          </div>
+
+          <!-- Menu Builder -->
+          <div class="menu-section">
+            <div class="menu-header">
+              <span class="menu-title">Menu Items</span>
+              <button type="button" class="btn-sm" onclick="addMenuRow()">+ Add Item</button>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div class="menu-row" style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                <span>Item Name</span>
+                <span>Quantity</span>
+                <span>Unit Cost</span>
+                <span>Sell Price</span>
+                <span></span>
+              </div>
+            </div>
+            <div id="menuContainer">
+              <!-- Menu rows will be added here -->
+            </div>
+          </div>
+
+          <!-- Live Profit Calculator -->
+          <div class="live-profit">
+            <div class="live-profit-title">
+              <span>💰</span>
+              Live Profit Calculator
+            </div>
+            <div class="live-profit-grid">
+              <div class="live-profit-item">
+                <div class="live-profit-label">Total Cost</div>
+                <div class="live-profit-value cost" id="liveCost">$0</div>
+              </div>
+              <div class="live-profit-item">
+                <div class="live-profit-label">Selling Price</div>
+                <div class="live-profit-value revenue" id="liveRevenue">$0</div>
+              </div>
+              <div class="live-profit-item">
+                <div class="live-profit-label">Gross Profit</div>
+                <div class="live-profit-value profit" id="liveProfit">$0</div>
+              </div>
+              <div class="live-profit-item">
+                <div class="live-profit-label">Margin</div>
+                <div class="live-profit-value margin" id="liveMargin">0%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Suggestion -->
+          <div class="staff-suggestion" id="staffSuggestion" style="display: none;">
+            <div class="staff-suggestion-title">Recommended Staffing</div>
+            <div class="staff-grid">
+              <div class="staff-item">
+                <div class="staff-count" id="staffServers">0</div>
+                <div class="staff-role">Servers</div>
+              </div>
+              <div class="staff-item">
+                <div class="staff-count" id="staffBartenders">0</div>
+                <div class="staff-role">Bartenders</div>
+              </div>
+              <div class="staff-item">
+                <div class="staff-count" id="staffKitchen">0</div>
+                <div class="staff-role">Kitchen Staff</div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" id="saveOrderBtn" onclick="saveOrder()">
+          <span id="saveBtnText">Create Order</span>
+          <span class="loading-spinner" id="saveSpinner" style="display: none;"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // CATERING PAGE SCRIPTS
+    // ========================================
+
+    let orders = [];
+    let editingOrderId = null;
+    let menuRowCount = 0;
+    let authToken = localStorage.getItem('authToken');
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!authToken) {
+        window.location.href = 'login.html';
+        return;
+      }
+      loadOrders();
+    });
+
+    // API Helpers
+    async function apiCall(endpoint, options = {}) {
+      const response = await fetch(`/api${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          ...options.headers
+        }
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Request failed' }));
+        throw new Error(error.error || 'Request failed');
+      }
+      return response.json();
+    }
+
+    // Load Orders
+    async function loadOrders() {
+      try {
+        const data = await apiCall('/catering');
+        orders = data.orders || [];
+        renderOrders();
+        updateStats();
+        updateProfitOverview();
+      } catch (error) {
+        console.error('Failed to load orders:', error);
+      }
+    }
+
+    // Render Orders
+    function renderOrders() {
+      const tbody = document.getElementById('ordersBody');
+      const emptyState = document.getElementById('emptyState');
+      const table = document.getElementById('ordersTable');
+
+      if (orders.length === 0) {
+        emptyState.style.display = 'block';
+        table.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      table.style.display = 'block';
+
+      tbody.innerHTML = orders.map(order => {
+        const orderDate = new Date(order.order_date);
+        const formattedDate = orderDate.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        });
+        const deliveryTime = order.delivery_time ? ` @ ${order.delivery_time}` : '';
+        const revenue = order.selling_price_cents ? `$${(order.selling_price_cents / 100).toLocaleString()}` : '--';
+        const margin = order.profit_margin_pct !== null ? `${order.profit_margin_pct.toFixed(1)}%` : '--';
+        const marginClass = order.profit_margin_pct >= 40 ? 'good' : (order.profit_margin_pct >= 25 ? 'warning' : 'bad');
+        const typeLabels = {
+          drop_off: 'Drop-off',
+          full_service: 'Full Service',
+          pickup: 'Pickup',
+          buffet: 'Buffet',
+          plated: 'Plated'
+        };
+
+        return `
+          <tr onclick="openOrderDetails(${order.id})">
+            <td>
+              <div class="order-name">${escapeHtml(order.order_name)}</div>
+              ${order.company_name ? `<div class="order-company">${escapeHtml(order.company_name)}</div>` : ''}
+            </td>
+            <td>${formattedDate}${deliveryTime}</td>
+            <td>${typeLabels[order.order_type] || order.order_type}</td>
+            <td>${order.guest_count} guests</td>
+            <td><span class="badge badge-${order.status}">${order.status}</span></td>
+            <td class="num">${revenue}</td>
+            <td class="num margin-cell ${marginClass}">${margin}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Update Stats
+    function updateStats() {
+      const now = new Date();
+      const active = orders.filter(o =>
+        ['draft', 'quoted', 'confirmed', 'preparing'].includes(o.status)
+      );
+
+      document.getElementById('statActive').textContent = active.length;
+
+      // Find next delivery
+      const upcoming = active.filter(o => new Date(o.order_date) >= now)
+        .sort((a, b) => new Date(a.order_date) - new Date(b.order_date));
+
+      if (upcoming.length > 0) {
+        const next = upcoming[0];
+        const nextDate = new Date(next.order_date).toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        });
+        document.getElementById('statNextDelivery').textContent = `Next: ${nextDate}`;
+      } else {
+        document.getElementById('statNextDelivery').textContent = 'No deliveries scheduled';
+      }
+
+      // Calculate monthly stats
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const monthlyOrders = orders.filter(o => new Date(o.order_date) >= thisMonth);
+
+      const totalRevenue = monthlyOrders.reduce((sum, o) => sum + (o.selling_price_cents || 0), 0);
+      const totalCost = monthlyOrders.reduce((sum, o) => sum + (o.total_cost_cents || 0), 0);
+      const totalProfit = totalRevenue - totalCost;
+
+      document.getElementById('statRevenue').textContent = `$${(totalRevenue / 100).toLocaleString()}`;
+      document.getElementById('statOrderCount').textContent = `${monthlyOrders.length} orders`;
+      document.getElementById('statProfit').textContent = `$${(totalProfit / 100).toLocaleString()}`;
+
+      // Average margin
+      const ordersWithMargin = orders.filter(o => o.profit_margin_pct !== null);
+      if (ordersWithMargin.length > 0) {
+        const avgMargin = ordersWithMargin.reduce((sum, o) => sum + o.profit_margin_pct, 0) / ordersWithMargin.length;
+        document.getElementById('statMargin').textContent = `${avgMargin.toFixed(1)}%`;
+      }
+    }
+
+    // Update Profit Overview
+    function updateProfitOverview() {
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const monthlyOrders = orders.filter(o => new Date(o.order_date) >= thisMonth);
+
+      const totalCost = monthlyOrders.reduce((sum, o) => sum + (o.total_cost_cents || 0), 0);
+      const totalRevenue = monthlyOrders.reduce((sum, o) => sum + (o.selling_price_cents || 0), 0);
+      const totalProfit = totalRevenue - totalCost;
+      const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+      document.getElementById('overviewCost').textContent = `$${(totalCost / 100).toLocaleString()}`;
+      document.getElementById('overviewRevenue').textContent = `$${(totalRevenue / 100).toLocaleString()}`;
+      document.getElementById('overviewProfit').textContent = `$${(totalProfit / 100).toLocaleString()}`;
+
+      const marginEl = document.getElementById('overviewMargin');
+      marginEl.textContent = `${margin.toFixed(1)}%`;
+      marginEl.classList.remove('warning', 'good');
+      if (margin >= 40) marginEl.classList.add('good');
+      else if (margin >= 25) marginEl.classList.add('warning');
+    }
+
+    // Filter Orders
+    function filterOrders() {
+      const status = document.getElementById('filterStatus').value;
+      const type = document.getElementById('filterType').value;
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+
+      loadOrders().then(() => {
+        if (status) orders = orders.filter(o => o.status === status);
+        if (type) orders = orders.filter(o => o.order_type === type);
+        if (dateFrom) orders = orders.filter(o => o.order_date >= dateFrom);
+        if (dateTo) orders = orders.filter(o => o.order_date <= dateTo);
+        renderOrders();
+      });
+    }
+
+    // Modal Functions
+    function openNewOrderModal() {
+      editingOrderId = null;
+      document.getElementById('modalTitle').textContent = 'New Catering Order';
+      document.getElementById('saveBtnText').textContent = 'Create Order';
+      document.getElementById('orderForm').reset();
+      document.getElementById('menuContainer').innerHTML = '';
+      document.getElementById('staffSuggestion').style.display = 'none';
+      menuRowCount = 0;
+      resetLiveProfit();
+      document.getElementById('orderModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('orderModal').classList.remove('active');
+    }
+
+    // Menu Rows
+    function addMenuRow(name = '', qty = '', unitCost = '', sellPrice = '') {
+      menuRowCount++;
+      const container = document.getElementById('menuContainer');
+      const row = document.createElement('div');
+      row.className = 'menu-row';
+      row.id = `menu-row-${menuRowCount}`;
+      row.innerHTML = `
+        <input type="text" class="form-input" placeholder="Item name" value="${escapeHtml(name)}" oninput="recalculateProfit()">
+        <input type="number" class="form-input" placeholder="Qty" value="${qty}" oninput="recalculateProfit()">
+        <input type="number" class="form-input" placeholder="$ cost" step="0.01" value="${unitCost}" oninput="recalculateProfit()">
+        <input type="number" class="form-input" placeholder="$ sell" step="0.01" value="${sellPrice}" oninput="recalculateProfit()">
+        <button type="button" class="btn-remove" onclick="removeMenuRow(${menuRowCount})">&times;</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeMenuRow(id) {
+      const row = document.getElementById(`menu-row-${id}`);
+      if (row) {
+        row.remove();
+        recalculateProfit();
+      }
+    }
+
+    // Live Profit Calculator
+    function recalculateProfit() {
+      const rows = document.querySelectorAll('#menuContainer .menu-row');
+      let totalCost = 0;
+      let totalRevenue = 0;
+
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const qty = parseFloat(inputs[1].value) || 0;
+        const unitCost = parseFloat(inputs[2].value) || 0;
+        const sellPrice = parseFloat(inputs[3].value) || 0;
+
+        totalCost += qty * unitCost;
+        totalRevenue += qty * sellPrice;
+      });
+
+      const profit = totalRevenue - totalCost;
+      const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+
+      document.getElementById('liveCost').textContent = `$${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById('liveRevenue').textContent = `$${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById('liveProfit').textContent = `$${profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+      const marginEl = document.getElementById('liveMargin');
+      marginEl.textContent = `${margin.toFixed(1)}%`;
+      marginEl.classList.remove('warning', 'good');
+      if (margin >= 40) marginEl.classList.add('good');
+      else if (margin >= 25) marginEl.classList.add('warning');
+    }
+
+    function resetLiveProfit() {
+      document.getElementById('liveCost').textContent = '$0';
+      document.getElementById('liveRevenue').textContent = '$0';
+      document.getElementById('liveProfit').textContent = '$0';
+      document.getElementById('liveMargin').textContent = '0%';
+      document.getElementById('liveMargin').classList.remove('warning', 'good');
+    }
+
+    // Staff Suggestion
+    function updateStaffSuggestion() {
+      const guestCount = parseInt(document.getElementById('guestCount').value) || 0;
+      const orderType = document.getElementById('orderType').value;
+      const suggestion = document.getElementById('staffSuggestion');
+
+      if (guestCount < 10 || orderType === 'drop_off' || orderType === 'pickup') {
+        suggestion.style.display = 'none';
+        return;
+      }
+
+      suggestion.style.display = 'block';
+
+      // Staffing ratios based on event type
+      const ratios = {
+        full_service: { servers: 20, bartenders: 75, kitchen: 50 },
+        buffet: { servers: 30, bartenders: 75, kitchen: 40 },
+        plated: { servers: 15, bartenders: 75, kitchen: 40 }
+      };
+
+      const ratio = ratios[orderType] || ratios.buffet;
+
+      document.getElementById('staffServers').textContent = Math.ceil(guestCount / ratio.servers);
+      document.getElementById('staffBartenders').textContent = Math.ceil(guestCount / ratio.bartenders);
+      document.getElementById('staffKitchen').textContent = Math.ceil(guestCount / ratio.kitchen);
+    }
+
+    // Save Order
+    async function saveOrder() {
+      const form = document.getElementById('orderForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const saveBtn = document.getElementById('saveOrderBtn');
+      const btnText = document.getElementById('saveBtnText');
+      const spinner = document.getElementById('saveSpinner');
+
+      saveBtn.disabled = true;
+      btnText.style.display = 'none';
+      spinner.style.display = 'inline-block';
+
+      try {
+        // Calculate totals from menu items
+        const menuRows = document.querySelectorAll('#menuContainer .menu-row');
+        let totalCost = 0;
+        let totalRevenue = 0;
+        const items = [];
+
+        menuRows.forEach(row => {
+          const inputs = row.querySelectorAll('input');
+          const itemName = inputs[0].value;
+          const qty = parseFloat(inputs[1].value) || 0;
+          const unitCost = parseFloat(inputs[2].value) || 0;
+          const sellPrice = parseFloat(inputs[3].value) || 0;
+
+          if (itemName) {
+            totalCost += qty * unitCost;
+            totalRevenue += qty * sellPrice;
+            items.push({
+              item_name: itemName,
+              quantity: qty,
+              unit_cost_cents: Math.round(unitCost * 100),
+              selling_price_cents: Math.round(sellPrice * 100)
+            });
+          }
+        });
+
+        const margin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0;
+
+        const orderData = {
+          order_name: document.getElementById('orderName').value,
+          company_name: document.getElementById('companyName').value || null,
+          order_type: document.getElementById('orderType').value,
+          order_date: document.getElementById('orderDate').value,
+          delivery_time: document.getElementById('deliveryTime').value || null,
+          delivery_address: document.getElementById('deliveryAddress').value || null,
+          guest_count: parseInt(document.getElementById('guestCount').value),
+          contact_name: document.getElementById('contactName').value || null,
+          contact_phone: document.getElementById('contactPhone').value || null,
+          notes: document.getElementById('orderNotes').value || null,
+          total_cost_cents: Math.round(totalCost * 100),
+          selling_price_cents: Math.round(totalRevenue * 100),
+          profit_margin_pct: margin,
+          staff_needed: parseInt(document.getElementById('staffServers').textContent) || 0
+        };
+
+        let result;
+        if (editingOrderId) {
+          result = await apiCall(`/catering/${editingOrderId}`, {
+            method: 'PUT',
+            body: JSON.stringify(orderData)
+          });
+        } else {
+          result = await apiCall('/catering', {
+            method: 'POST',
+            body: JSON.stringify(orderData)
+          });
+        }
+
+        // Add items if we created a new order
+        if (!editingOrderId && items.length > 0 && result.order) {
+          for (const item of items) {
+            await apiCall(`/catering/${result.order.id}/items`, {
+              method: 'POST',
+              body: JSON.stringify(item)
+            });
+          }
+        }
+
+        closeModal();
+        loadOrders();
+
+      } catch (error) {
+        alert('Failed to save order: ' + error.message);
+      } finally {
+        saveBtn.disabled = false;
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+      }
+    }
+
+    // Open Order Details
+    async function openOrderDetails(orderId) {
+      try {
+        const data = await apiCall(`/catering/${orderId}`);
+        const order = data.order;
+        editingOrderId = orderId;
+
+        document.getElementById('modalTitle').textContent = 'Edit Catering Order';
+        document.getElementById('saveBtnText').textContent = 'Update Order';
+
+        // Populate form
+        document.getElementById('orderName').value = order.order_name;
+        document.getElementById('companyName').value = order.company_name || '';
+        document.getElementById('orderType').value = order.order_type;
+        document.getElementById('guestCount').value = order.guest_count;
+        document.getElementById('orderDate').value = order.order_date;
+        document.getElementById('deliveryTime').value = order.delivery_time || '';
+        document.getElementById('deliveryAddress').value = order.delivery_address || '';
+        document.getElementById('contactName').value = order.contact_name || '';
+        document.getElementById('contactPhone').value = order.contact_phone || '';
+        document.getElementById('orderNotes').value = order.notes || '';
+
+        // Populate menu items
+        document.getElementById('menuContainer').innerHTML = '';
+        menuRowCount = 0;
+        if (data.items) {
+          data.items.forEach(item => {
+            addMenuRow(
+              item.item_name,
+              item.quantity,
+              item.unit_cost_cents ? (item.unit_cost_cents / 100).toFixed(2) : '',
+              item.selling_price_cents ? (item.selling_price_cents / 100).toFixed(2) : ''
+            );
+          });
+        }
+
+        recalculateProfit();
+        updateStaffSuggestion();
+        document.getElementById('orderModal').classList.add('active');
+      } catch (error) {
+        alert('Failed to load order: ' + error.message);
+      }
+    }
+
+    // Helpers
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

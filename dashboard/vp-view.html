@@ -1813,6 +1813,34 @@
       color: #a855f7;
     }
 
+    .quick-action-tile.events {
+      background: linear-gradient(145deg, rgba(30, 20, 40, 0.95) 0%, rgba(22, 15, 32, 0.98) 100%);
+      border-color: rgba(168, 85, 247, 0.3);
+    }
+
+    .quick-action-tile.events:hover {
+      border-color: rgba(168, 85, 247, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.12);
+    }
+
+    .quick-action-tile.events .tile-value {
+      color: #a855f7;
+    }
+
+    .quick-action-tile.catering {
+      background: linear-gradient(145deg, rgba(35, 20, 25, 0.95) 0%, rgba(28, 15, 20, 0.98) 100%);
+      border-color: rgba(236, 72, 153, 0.3);
+    }
+
+    .quick-action-tile.catering:hover {
+      border-color: rgba(236, 72, 153, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(236, 72, 153, 0.12);
+    }
+
+    .quick-action-tile.catering .tile-value {
+      color: #ec4899;
+    }
+
     @keyframes pulse-badge {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.05); }
@@ -2455,6 +2483,32 @@
           <span class="tile-label">Connect Email</span>
           <span class="tile-value" id="tileEmailStatus">Auto-Import</span>
         </a>
+      </div>
+
+      <!-- Third Row: Events & Catering Tiles -->
+      <div class="quick-actions-grid" style="margin-top: -4px;">
+        <a href="private-events.html" class="quick-action-tile events">
+          <span class="tile-icon">🎉</span>
+          <span class="tile-label">Private Events</span>
+          <span class="tile-value" id="tileEventsCount">3 Upcoming</span>
+          <span class="tile-subtitle" id="tileEventsNext">Next: Sat, Jan 25</span>
+        </a>
+        <a href="catering.html" class="quick-action-tile catering">
+          <span class="tile-icon">🍽️</span>
+          <span class="tile-label">Catering</span>
+          <span class="tile-value" id="tileCateringCount">5 Orders</span>
+          <span class="tile-subtitle" id="tileCateringRevenue">$12,450 this month</span>
+        </a>
+        <button onclick="openPayrollEntry()" class="quick-action-tile">
+          <span class="tile-icon">💵</span>
+          <span class="tile-label">Add Payroll</span>
+          <span class="tile-value">Quick Entry</span>
+        </button>
+        <button onclick="openExpenseEntry()" class="quick-action-tile">
+          <span class="tile-icon">🧾</span>
+          <span class="tile-label">Add Expense</span>
+          <span class="tile-value">Quick Entry</span>
+        </button>
       </div>
 
       <!-- Financial Overview Section -->

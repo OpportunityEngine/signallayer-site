@@ -182,6 +182,20 @@ function initDatabase() {
       }
     }
 
+    // Load Events & Catering schema
+    try {
+      const eventsCateringSchemaPath = path.join(__dirname, 'database-schema-events-catering.sql');
+      if (fs.existsSync(eventsCateringSchemaPath)) {
+        const eventsCateringSchema = fs.readFileSync(eventsCateringSchemaPath, 'utf8');
+        db.exec(eventsCateringSchema);
+        console.log('✅ Events & Catering schema loaded');
+      }
+    } catch (eventsSchemaError) {
+      if (!eventsSchemaError.message.includes('already exists')) {
+        console.log('⚠️  Events & Catering schema may already exist (safe to ignore)');
+      }
+    }
+
     // Run BI schema migrations (for existing databases with old schema)
     try {
       // Check if reorder_recommendations needs migration (add title, description columns if missing)

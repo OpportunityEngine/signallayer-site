@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Private Events - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       PREMIUM PRIVATE EVENTS PAGE
+       Revenue Radar - Event Planning
+       ======================================== */
+
+    :root {
+      --bg: #0a0f1a;
+      --panel: #111525;
+      --panel2: #0f1320;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(168, 85, 247, 0.25);
+      --border-purple: rgba(168, 85, 247, 0.3);
+      --text: rgba(255, 255, 255, 0.95);
+      --text-bright: #ffffff;
+      --muted: rgba(255, 255, 255, 0.7);
+      --muted2: rgba(255, 255, 255, 0.5);
+      --purple: #a855f7;
+      --purple-dark: #9333ea;
+      --purple-glow: rgba(168, 85, 247, 0.15);
+      --gold: #fbbf24;
+      --good: rgba(120, 255, 190, 0.18);
+      --warn: rgba(255, 210, 120, 0.18);
+      --error: rgba(255, 90, 90, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at top, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Header */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted2);
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--purple); }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text-bright);
+      margin-bottom: 8px;
+    }
+
+    .subtitle { color: var(--muted); font-size: 14px; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+    }
+
+    /* Stats Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--purple) 0%, var(--purple-dark) 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-purple);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.15);
+    }
+
+    .stat-card:hover::before { opacity: 1; }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--text-bright);
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .stat-value.purple { color: var(--purple); }
+    .stat-value.green { color: #22c55e; }
+    .stat-value.gold { color: var(--gold); }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 4px;
+    }
+
+    /* Cards */
+    .card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: all 0.3s;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title .icon { font-size: 20px; }
+
+    /* Recommendations Section */
+    .recommendations-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .recommendation-card {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .recommendation-card:hover {
+      border-color: var(--border-purple);
+      transform: translateX(3px);
+    }
+
+    .recommendation-card.critical { border-left: 4px solid #ef4444; }
+    .recommendation-card.high { border-left: 4px solid var(--gold); }
+    .recommendation-card.medium { border-left: 4px solid var(--purple); }
+    .recommendation-card.low { border-left: 4px solid #64748b; }
+
+    .rec-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .rec-type {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(168, 85, 247, 0.2);
+      color: var(--purple);
+    }
+
+    .rec-savings {
+      font-size: 14px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    .rec-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-bright);
+      margin-bottom: 6px;
+    }
+
+    .rec-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .rec-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+      border-color: var(--border-purple);
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .btn-sm.accept {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+      border: none;
+      color: white;
+    }
+
+    .btn-sm.accept:hover {
+      box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Events Table */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table th, .table td {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 12px;
+      vertical-align: middle;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.2);
+      text-align: left;
+    }
+
+    .table tbody tr {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .table tbody tr:hover {
+      background: rgba(168, 85, 247, 0.05);
+    }
+
+    .event-name {
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+
+    .event-type {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-planning {
+      background: rgba(168, 85, 247, 0.2);
+      color: var(--purple);
+    }
+
+    .badge-confirmed {
+      background: var(--good);
+      color: rgba(120, 255, 190, 0.95);
+    }
+
+    .badge-completed {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+    }
+
+    .badge-cancelled {
+      background: var(--error);
+      color: rgba(255, 90, 90, 0.95);
+    }
+
+    .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* Filter Row */
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .select, .input {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .select:hover, .select:focus,
+    .input:hover, .input:focus {
+      border-color: var(--border-purple);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; margin-bottom: 24px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 24px;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      max-width: 800px;
+      width: 100%;
+      position: relative;
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 24px;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { padding: 24px; }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group.full { grid-column: span 2; }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--border-purple);
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+    }
+
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(168, 85, 247, 0.02);
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.08);
+    }
+
+    .drop-zone-icon { font-size: 40px; margin-bottom: 12px; }
+
+    .drop-zone-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .drop-zone-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .format-badges {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .format-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(168, 85, 247, 0.15);
+      color: var(--purple);
+    }
+
+    /* Event Items Section */
+    .items-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .items-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .items-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .btn-remove {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .btn-remove:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--border-purple);
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    /* Templates Section */
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .template-card {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .template-card:hover {
+      border-color: var(--border-purple);
+      background: rgba(168, 85, 247, 0.05);
+    }
+
+    .template-icon { font-size: 32px; margin-bottom: 8px; }
+    .template-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .template-info { font-size: 12px; color: var(--muted); }
+
+    /* Parsed Preview */
+    .parsed-preview {
+      background: rgba(168, 85, 247, 0.1);
+      border: 1px solid var(--border-purple);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .parsed-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--purple);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .parsed-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .parsed-item {
+      background: var(--panel);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .recommendations-grid { grid-template-columns: 1fr; }
+      .templates-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: span 1; }
+      .page-header { flex-direction: column; gap: 16px; }
+      .templates-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Loading */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="vp-view.html" class="back-link">
+      <span>&larr;</span> Back to Dashboard
+    </a>
+
+    <div class="page-header">
+      <div>
+        <h1>Private Events</h1>
+        <p class="subtitle">Plan events, optimize ordering, and track profitability</p>
+      </div>
+      <button class="btn-primary" onclick="openNewEventModal()">
+        <span>+</span> New Event
+      </button>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Upcoming Events</div>
+        <div class="stat-value purple" id="statUpcoming">0</div>
+        <div class="stat-sub" id="statNextEvent">No events scheduled</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">This Month Revenue</div>
+        <div class="stat-value green" id="statRevenue">$0</div>
+        <div class="stat-sub" id="statRevenueChange">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Guest Count</div>
+        <div class="stat-value" id="statAvgGuests">0</div>
+        <div class="stat-sub">per event</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Profit Margin</div>
+        <div class="stat-value gold" id="statMargin">0%</div>
+        <div class="stat-sub">avg across events</div>
+      </div>
+    </div>
+
+    <!-- Smart Recommendations -->
+    <div class="card" id="recommendationsCard" style="display: none;">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">💡</span>
+          Smart Recommendations
+        </div>
+        <span class="muted" id="recCount">0 suggestions</span>
+      </div>
+      <div class="recommendations-grid" id="recommendationsGrid">
+        <!-- Recommendations will be inserted here -->
+      </div>
+    </div>
+
+    <!-- Events List -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">📅</span>
+          Events
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <select class="select" id="filterStatus" onchange="filterEvents()">
+          <option value="">All Status</option>
+          <option value="planning">Planning</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select class="select" id="filterType" onchange="filterEvents()">
+          <option value="">All Types</option>
+          <option value="wedding_reception">Wedding Reception</option>
+          <option value="corporate_lunch">Corporate Lunch</option>
+          <option value="birthday_party">Birthday Party</option>
+          <option value="anniversary">Anniversary</option>
+          <option value="holiday_party">Holiday Party</option>
+          <option value="cocktail_party">Cocktail Party</option>
+          <option value="fundraiser">Fundraiser</option>
+          <option value="other">Other</option>
+        </select>
+        <input type="date" class="input" id="filterDateFrom" onchange="filterEvents()" placeholder="From Date">
+        <input type="date" class="input" id="filterDateTo" onchange="filterEvents()" placeholder="To Date">
+      </div>
+
+      <div id="eventsContainer">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">🎉</div>
+          <h3>No Events Yet</h3>
+          <p>Create your first event to get smart ordering recommendations</p>
+          <button class="btn-primary" onclick="openNewEventModal()">
+            <span>+</span> Create Event
+          </button>
+        </div>
+
+        <div class="table-wrap" id="eventsTable" style="display: none;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>Guests</th>
+                <th>Status</th>
+                <th>Budget</th>
+                <th class="num">Items</th>
+              </tr>
+            </thead>
+            <tbody id="eventsBody">
+              <!-- Events will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Event Modal -->
+  <div class="modal-overlay" id="eventModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">New Event</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Templates Section -->
+        <div id="templatesSection">
+          <p style="color: var(--muted); margin-bottom: 16px; font-size: 14px;">Start from a template or create from scratch</p>
+          <div class="templates-grid" id="templatesGrid">
+            <!-- Templates will be loaded here -->
+          </div>
+          <div style="text-align: center; margin-bottom: 24px;">
+            <button class="btn-secondary" onclick="showCustomForm()">Or create custom event</button>
+          </div>
+        </div>
+
+        <!-- Event Form -->
+        <form id="eventForm" style="display: none;">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Event Name *</label>
+              <input type="text" class="form-input" id="eventName" required placeholder="e.g., Smith Wedding Reception">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Event Type *</label>
+              <select class="form-select" id="eventType" required>
+                <option value="">Select type...</option>
+                <option value="wedding_reception">Wedding Reception</option>
+                <option value="corporate_lunch">Corporate Lunch</option>
+                <option value="birthday_party">Birthday Party</option>
+                <option value="anniversary">Anniversary</option>
+                <option value="holiday_party">Holiday Party</option>
+                <option value="cocktail_party">Cocktail Party</option>
+                <option value="fundraiser">Fundraiser</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Event Date *</label>
+              <input type="date" class="form-input" id="eventDate" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Event Time</label>
+              <input type="time" class="form-input" id="eventTime">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Guest Count *</label>
+              <input type="number" class="form-input" id="guestCount" required min="1" placeholder="Expected guests">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duration (hours)</label>
+              <input type="number" class="form-input" id="duration" step="0.5" value="4" placeholder="4">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Venue Type</label>
+              <select class="form-select" id="venueType">
+                <option value="on_site">On-Site</option>
+                <option value="off_site">Off-Site</option>
+                <option value="outdoor">Outdoor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Budget</label>
+              <input type="number" class="form-input" id="budget" placeholder="Total budget in $">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Name</label>
+              <input type="text" class="form-input" id="contactName" placeholder="Primary contact">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Phone</label>
+              <input type="tel" class="form-input" id="contactPhone" placeholder="(555) 123-4567">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Dietary Restrictions</label>
+              <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="dietVegetarian"> <span style="font-size: 14px;">Vegetarian</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="dietVegan"> <span style="font-size: 14px;">Vegan</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="dietGlutenFree"> <span style="font-size: 14px;">Gluten-Free</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="dietDairyFree"> <span style="font-size: 14px;">Dairy-Free</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="dietKosher"> <span style="font-size: 14px;">Kosher</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="dietHalal"> <span style="font-size: 14px;">Halal</span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Notes</label>
+              <textarea class="form-textarea" id="eventNotes" placeholder="Any special requests or details..."></textarea>
+            </div>
+          </div>
+
+          <!-- File Upload -->
+          <div class="form-group full">
+            <label class="form-label">Upload Event Notes or Photos</label>
+            <div class="drop-zone" id="dropZone">
+              <div class="drop-zone-icon">📋</div>
+              <div class="drop-zone-title">Drag & drop files here</div>
+              <div class="drop-zone-subtitle">We'll extract guest counts, items, dates automatically</div>
+              <div class="format-badges">
+                <span class="format-badge">PDF</span>
+                <span class="format-badge">JPG/PNG</span>
+                <span class="format-badge">TXT</span>
+              </div>
+              <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.txt" style="display: none;">
+            </div>
+            <div class="parsed-preview" id="parsedPreview" style="display: none;">
+              <div class="parsed-title">
+                <span class="loading-spinner" id="parseSpinner"></span>
+                <span id="parseStatus">Parsing document...</span>
+              </div>
+              <div class="parsed-items" id="parsedItems"></div>
+            </div>
+          </div>
+
+          <!-- Items Section -->
+          <div class="items-section">
+            <div class="items-header">
+              <span class="items-title">Event Items</span>
+              <button type="button" class="btn-sm" onclick="addItemRow()">+ Add Item</button>
+            </div>
+            <div id="itemsContainer">
+              <!-- Item rows will be added here -->
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" id="saveEventBtn" onclick="saveEvent()">
+          <span id="saveBtnText">Create Event</span>
+          <span class="loading-spinner" id="saveSpinner" style="display: none;"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // PRIVATE EVENTS PAGE SCRIPTS
+    // ========================================
+
+    let events = [];
+    let recommendations = [];
+    let templates = [];
+    let editingEventId = null;
+    let itemRowCount = 0;
+    let authToken = localStorage.getItem('authToken');
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!authToken) {
+        window.location.href = 'login.html';
+        return;
+      }
+      loadEvents();
+      loadTemplates();
+      loadRecommendations();
+      setupDropZone();
+    });
+
+    // API Helpers
+    async function apiCall(endpoint, options = {}) {
+      const response = await fetch(`/api${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          ...options.headers
+        }
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Request failed' }));
+        throw new Error(error.error || 'Request failed');
+      }
+      return response.json();
+    }
+
+    // Load Events
+    async function loadEvents() {
+      try {
+        const data = await apiCall('/events');
+        events = data.events || [];
+        renderEvents();
+        updateStats();
+      } catch (error) {
+        console.error('Failed to load events:', error);
+      }
+    }
+
+    // Load Templates
+    async function loadTemplates() {
+      try {
+        const data = await apiCall('/event-templates');
+        templates = data.templates || [];
+        renderTemplates();
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+        // Use default templates if API fails
+        templates = [
+          { id: 1, template_name: 'Wedding Reception', event_type: 'wedding_reception', default_guest_count: 100, default_duration_hours: 5, icon: '💒' },
+          { id: 2, template_name: 'Corporate Lunch', event_type: 'corporate_lunch', default_guest_count: 50, default_duration_hours: 2, icon: '💼' },
+          { id: 3, template_name: 'Birthday Party', event_type: 'birthday_party', default_guest_count: 30, default_duration_hours: 3, icon: '🎂' }
+        ];
+        renderTemplates();
+      }
+    }
+
+    // Load Recommendations
+    async function loadRecommendations() {
+      try {
+        const data = await apiCall('/events/recommendations');
+        recommendations = data.recommendations || [];
+        renderRecommendations();
+      } catch (error) {
+        console.error('Failed to load recommendations:', error);
+      }
+    }
+
+    // Render Events
+    function renderEvents() {
+      const tbody = document.getElementById('eventsBody');
+      const emptyState = document.getElementById('emptyState');
+      const table = document.getElementById('eventsTable');
+
+      if (events.length === 0) {
+        emptyState.style.display = 'block';
+        table.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      table.style.display = 'block';
+
+      tbody.innerHTML = events.map(event => {
+        const eventDate = new Date(event.event_date);
+        const formattedDate = eventDate.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        });
+        const eventTime = event.event_time ? ` @ ${event.event_time}` : '';
+        const budget = event.budget_cents ? `$${(event.budget_cents / 100).toLocaleString()}` : '--';
+        const typeLabel = formatEventType(event.event_type);
+        const statusClass = `badge-${event.status}`;
+
+        return `
+          <tr onclick="openEventDetails(${event.id})">
+            <td>
+              <div class="event-name">${escapeHtml(event.event_name)}</div>
+              <div class="event-type">${typeLabel}</div>
+            </td>
+            <td>${formattedDate}${eventTime}</td>
+            <td>${event.guest_count} guests</td>
+            <td><span class="badge ${statusClass}">${event.status}</span></td>
+            <td>${budget}</td>
+            <td class="num">${event.item_count || 0}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render Templates
+    function renderTemplates() {
+      const grid = document.getElementById('templatesGrid');
+      const icons = {
+        wedding_reception: '💒',
+        corporate_lunch: '💼',
+        birthday_party: '🎂',
+        anniversary: '💕',
+        holiday_party: '🎄',
+        cocktail_party: '🍸',
+        fundraiser: '🎗️'
+      };
+
+      grid.innerHTML = templates.map(t => `
+        <div class="template-card" onclick="useTemplate(${t.id})">
+          <div class="template-icon">${t.icon || icons[t.event_type] || '🎉'}</div>
+          <div class="template-name">${escapeHtml(t.template_name)}</div>
+          <div class="template-info">${t.default_guest_count} guests • ${t.default_duration_hours}h</div>
+        </div>
+      `).join('');
+    }
+
+    // Render Recommendations
+    function renderRecommendations() {
+      const card = document.getElementById('recommendationsCard');
+      const grid = document.getElementById('recommendationsGrid');
+      const count = document.getElementById('recCount');
+
+      if (recommendations.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      count.textContent = `${recommendations.length} suggestion${recommendations.length !== 1 ? 's' : ''}`;
+
+      grid.innerHTML = recommendations.map(rec => {
+        const savings = rec.potential_savings_cents > 0
+          ? `+$${(rec.potential_savings_cents / 100).toLocaleString()}`
+          : '';
+        const typeLabels = {
+          quantity_adjustment: 'Quantity',
+          bulk_opportunity: 'Bulk Discount',
+          timing_alert: 'Timing',
+          cost_savings: 'Cost Savings',
+          historical_insight: 'Insight',
+          dietary_reminder: 'Dietary'
+        };
+
+        return `
+          <div class="recommendation-card ${rec.priority}">
+            <div class="rec-header">
+              <span class="rec-type">${typeLabels[rec.recommendation_type] || rec.recommendation_type}</span>
+              ${savings ? `<span class="rec-savings">${savings}</span>` : ''}
+            </div>
+            <div class="rec-title">${escapeHtml(rec.title)}</div>
+            <div class="rec-desc">${escapeHtml(rec.description || '')}</div>
+            <div class="rec-actions">
+              <button class="btn-sm accept" onclick="acceptRecommendation(${rec.id})">Accept</button>
+              <button class="btn-sm" onclick="dismissRecommendation(${rec.id})">Dismiss</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Update Stats
+    function updateStats() {
+      const now = new Date();
+      const upcoming = events.filter(e =>
+        new Date(e.event_date) >= now &&
+        (e.status === 'planning' || e.status === 'confirmed')
+      );
+
+      document.getElementById('statUpcoming').textContent = upcoming.length;
+
+      if (upcoming.length > 0) {
+        const next = upcoming.sort((a, b) => new Date(a.event_date) - new Date(b.event_date))[0];
+        const nextDate = new Date(next.event_date).toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        });
+        document.getElementById('statNextEvent').textContent = `Next: ${nextDate}`;
+      } else {
+        document.getElementById('statNextEvent').textContent = 'No events scheduled';
+      }
+
+      // Calculate revenue (from completed events this month)
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const completedThisMonth = events.filter(e =>
+        e.status === 'completed' &&
+        new Date(e.event_date) >= thisMonth
+      );
+      const revenue = completedThisMonth.reduce((sum, e) => sum + (e.budget_cents || 0), 0);
+      document.getElementById('statRevenue').textContent = `$${(revenue / 100).toLocaleString()}`;
+
+      // Average guests
+      if (events.length > 0) {
+        const avgGuests = Math.round(events.reduce((sum, e) => sum + e.guest_count, 0) / events.length);
+        document.getElementById('statAvgGuests').textContent = avgGuests;
+      }
+    }
+
+    // Filter Events
+    function filterEvents() {
+      const status = document.getElementById('filterStatus').value;
+      const type = document.getElementById('filterType').value;
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+
+      loadEvents().then(() => {
+        if (status) events = events.filter(e => e.status === status);
+        if (type) events = events.filter(e => e.event_type === type);
+        if (dateFrom) events = events.filter(e => e.event_date >= dateFrom);
+        if (dateTo) events = events.filter(e => e.event_date <= dateTo);
+        renderEvents();
+      });
+    }
+
+    // Modal Functions
+    function openNewEventModal() {
+      editingEventId = null;
+      document.getElementById('modalTitle').textContent = 'New Event';
+      document.getElementById('saveBtnText').textContent = 'Create Event';
+      document.getElementById('templatesSection').style.display = 'block';
+      document.getElementById('eventForm').style.display = 'none';
+      document.getElementById('eventForm').reset();
+      document.getElementById('itemsContainer').innerHTML = '';
+      document.getElementById('parsedPreview').style.display = 'none';
+      itemRowCount = 0;
+      document.getElementById('eventModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('eventModal').classList.remove('active');
+    }
+
+    function showCustomForm() {
+      document.getElementById('templatesSection').style.display = 'none';
+      document.getElementById('eventForm').style.display = 'block';
+    }
+
+    function useTemplate(templateId) {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) return;
+
+      document.getElementById('templatesSection').style.display = 'none';
+      document.getElementById('eventForm').style.display = 'block';
+
+      // Populate form with template defaults
+      document.getElementById('eventType').value = template.event_type;
+      document.getElementById('guestCount').value = template.default_guest_count;
+      document.getElementById('duration').value = template.default_duration_hours;
+
+      // Load template items if available
+      if (template.default_items) {
+        try {
+          const items = JSON.parse(template.default_items);
+          items.forEach(item => {
+            addItemRow(item.item_name, item.quantity_per_person);
+          });
+        } catch (e) {}
+      }
+    }
+
+    // Item Rows
+    function addItemRow(name = '', qty = '') {
+      itemRowCount++;
+      const container = document.getElementById('itemsContainer');
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.id = `item-row-${itemRowCount}`;
+      row.innerHTML = `
+        <input type="text" class="form-input" placeholder="Item name" value="${escapeHtml(name)}">
+        <input type="number" class="form-input" placeholder="Qty needed" value="${qty}">
+        <select class="form-select">
+          <option value="each">each</option>
+          <option value="case">cases</option>
+          <option value="lb">lbs</option>
+          <option value="gal">gallons</option>
+        </select>
+        <button type="button" class="btn-remove" onclick="removeItemRow(${itemRowCount})">&times;</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeItemRow(id) {
+      const row = document.getElementById(`item-row-${id}`);
+      if (row) row.remove();
+    }
+
+    // Save Event
+    async function saveEvent() {
+      const form = document.getElementById('eventForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const saveBtn = document.getElementById('saveEventBtn');
+      const btnText = document.getElementById('saveBtnText');
+      const spinner = document.getElementById('saveSpinner');
+
+      saveBtn.disabled = true;
+      btnText.style.display = 'none';
+      spinner.style.display = 'inline-block';
+
+      try {
+        const eventData = {
+          event_name: document.getElementById('eventName').value,
+          event_type: document.getElementById('eventType').value,
+          event_date: document.getElementById('eventDate').value,
+          event_time: document.getElementById('eventTime').value || null,
+          guest_count: parseInt(document.getElementById('guestCount').value),
+          duration_hours: parseFloat(document.getElementById('duration').value) || 4,
+          venue_type: document.getElementById('venueType').value,
+          budget_cents: document.getElementById('budget').value ? parseInt(document.getElementById('budget').value) * 100 : null,
+          contact_name: document.getElementById('contactName').value || null,
+          contact_phone: document.getElementById('contactPhone').value || null,
+          dietary_vegetarian: document.getElementById('dietVegetarian').checked ? 1 : 0,
+          dietary_vegan: document.getElementById('dietVegan').checked ? 1 : 0,
+          dietary_gluten_free: document.getElementById('dietGlutenFree').checked ? 1 : 0,
+          dietary_dairy_free: document.getElementById('dietDairyFree').checked ? 1 : 0,
+          dietary_kosher: document.getElementById('dietKosher').checked ? 1 : 0,
+          dietary_halal: document.getElementById('dietHalal').checked ? 1 : 0,
+          notes: document.getElementById('eventNotes').value || null
+        };
+
+        // Collect items
+        const itemRows = document.querySelectorAll('#itemsContainer .item-row');
+        const items = [];
+        itemRows.forEach(row => {
+          const inputs = row.querySelectorAll('input, select');
+          if (inputs[0].value) {
+            items.push({
+              item_name: inputs[0].value,
+              quantity_needed: parseFloat(inputs[1].value) || 1,
+              unit_of_measure: inputs[2].value
+            });
+          }
+        });
+
+        let result;
+        if (editingEventId) {
+          result = await apiCall(`/events/${editingEventId}`, {
+            method: 'PUT',
+            body: JSON.stringify(eventData)
+          });
+        } else {
+          result = await apiCall('/events', {
+            method: 'POST',
+            body: JSON.stringify(eventData)
+          });
+        }
+
+        // Add items if we created a new event
+        if (!editingEventId && items.length > 0 && result.event) {
+          for (const item of items) {
+            await apiCall(`/events/${result.event.id}/items`, {
+              method: 'POST',
+              body: JSON.stringify(item)
+            });
+          }
+        }
+
+        closeModal();
+        loadEvents();
+        loadRecommendations();
+
+      } catch (error) {
+        alert('Failed to save event: ' + error.message);
+      } finally {
+        saveBtn.disabled = false;
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+      }
+    }
+
+    // Open Event Details
+    async function openEventDetails(eventId) {
+      try {
+        const data = await apiCall(`/events/${eventId}`);
+        const event = data.event;
+        editingEventId = eventId;
+
+        document.getElementById('modalTitle').textContent = 'Edit Event';
+        document.getElementById('saveBtnText').textContent = 'Update Event';
+        document.getElementById('templatesSection').style.display = 'none';
+        document.getElementById('eventForm').style.display = 'block';
+
+        // Populate form
+        document.getElementById('eventName').value = event.event_name;
+        document.getElementById('eventType').value = event.event_type;
+        document.getElementById('eventDate').value = event.event_date;
+        document.getElementById('eventTime').value = event.event_time || '';
+        document.getElementById('guestCount').value = event.guest_count;
+        document.getElementById('duration').value = event.duration_hours;
+        document.getElementById('venueType').value = event.venue_type || 'on_site';
+        document.getElementById('budget').value = event.budget_cents ? event.budget_cents / 100 : '';
+        document.getElementById('contactName').value = event.contact_name || '';
+        document.getElementById('contactPhone').value = event.contact_phone || '';
+        document.getElementById('dietVegetarian').checked = event.dietary_vegetarian;
+        document.getElementById('dietVegan').checked = event.dietary_vegan;
+        document.getElementById('dietGlutenFree').checked = event.dietary_gluten_free;
+        document.getElementById('dietDairyFree').checked = event.dietary_dairy_free;
+        document.getElementById('dietKosher').checked = event.dietary_kosher;
+        document.getElementById('dietHalal').checked = event.dietary_halal;
+        document.getElementById('eventNotes').value = event.notes || '';
+
+        // Populate items
+        document.getElementById('itemsContainer').innerHTML = '';
+        itemRowCount = 0;
+        if (data.items) {
+          data.items.forEach(item => {
+            addItemRow(item.item_name, item.quantity_needed);
+          });
+        }
+
+        document.getElementById('eventModal').classList.add('active');
+      } catch (error) {
+        alert('Failed to load event: ' + error.message);
+      }
+    }
+
+    // Recommendations
+    async function acceptRecommendation(recId) {
+      try {
+        await apiCall(`/events/recommendations/${recId}/action`, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'accept' })
+        });
+        loadRecommendations();
+      } catch (error) {
+        console.error('Failed to accept recommendation:', error);
+      }
+    }
+
+    async function dismissRecommendation(recId) {
+      try {
+        await apiCall(`/events/recommendations/${recId}/action`, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'dismiss' })
+        });
+        loadRecommendations();
+      } catch (error) {
+        console.error('Failed to dismiss recommendation:', error);
+      }
+    }
+
+    // Drop Zone
+    function setupDropZone() {
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+
+      dropZone.addEventListener('click', () => fileInput.click());
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+          handleFileUpload(e.dataTransfer.files[0]);
+        }
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+          handleFileUpload(e.target.files[0]);
+        }
+      });
+    }
+
+    async function handleFileUpload(file) {
+      const preview = document.getElementById('parsedPreview');
+      const spinner = document.getElementById('parseSpinner');
+      const status = document.getElementById('parseStatus');
+      const items = document.getElementById('parsedItems');
+
+      preview.style.display = 'block';
+      spinner.style.display = 'inline-block';
+      status.textContent = 'Parsing document...';
+      items.innerHTML = '';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/events/parse-document', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: formData
+        });
+
+        if (!response.ok) throw new Error('Parse failed');
+
+        const data = await response.json();
+        spinner.style.display = 'none';
+        status.textContent = `Extracted from "${file.name}"`;
+
+        // Show parsed data
+        const parsed = data.parsed || {};
+        const badges = [];
+
+        if (parsed.guestCount) {
+          badges.push(`${parsed.guestCount} guests`);
+          document.getElementById('guestCount').value = parsed.guestCount;
+        }
+        if (parsed.eventDate) {
+          badges.push(parsed.eventDate);
+          document.getElementById('eventDate').value = parsed.eventDate;
+        }
+        if (parsed.items && parsed.items.length) {
+          parsed.items.forEach(item => {
+            badges.push(`${item.quantity} ${item.unit} ${item.name}`);
+            addItemRow(item.name, item.quantity);
+          });
+        }
+        if (parsed.dietary && parsed.dietary.length) {
+          badges.push(...parsed.dietary);
+        }
+        if (parsed.budget) {
+          badges.push(`Budget: $${parsed.budget.total / 100}`);
+          document.getElementById('budget').value = parsed.budget.total / 100;
+        }
+
+        items.innerHTML = badges.map(b => `<span class="parsed-item">${escapeHtml(b)}</span>`).join('');
+
+      } catch (error) {
+        spinner.style.display = 'none';
+        status.textContent = 'Failed to parse document';
+        console.error('Parse error:', error);
+      }
+    }
+
+    // Helpers
+    function formatEventType(type) {
+      const labels = {
+        wedding_reception: 'Wedding Reception',
+        corporate_lunch: 'Corporate Lunch',
+        birthday_party: 'Birthday Party',
+        anniversary: 'Anniversary',
+        holiday_party: 'Holiday Party',
+        cocktail_party: 'Cocktail Party',
+        fundraiser: 'Fundraiser',
+        other: 'Other'
+      };
+      return labels[type] || type;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
