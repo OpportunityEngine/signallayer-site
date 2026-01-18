@@ -4,6 +4,7 @@
 // =====================================================
 
 const DemoIntentAdapter = require('./intent-signal-demo-adapter');
+const ApolloIntentAdapter = require('./intent-signal-apollo-adapter');
 
 class IntentSignalService {
   constructor(db) {
@@ -14,8 +15,27 @@ class IntentSignalService {
 
     // Register available adapters
     this.registerAdapter('demo', new DemoIntentAdapter());
-    // Future: this.registerAdapter('bombora', new BomboraAdapter());
-    // Future: this.registerAdapter('zoominfo', new ZoomInfoAdapter());
+
+    // Register Apollo adapter if API key is available
+    const apolloApiKey = process.env.APOLLO_API_KEY;
+    if (apolloApiKey) {
+      const apolloAdapter = new ApolloIntentAdapter(apolloApiKey);
+      this.registerAdapter('apollo', apolloAdapter);
+      console.log('✅ Apollo.io adapter configured with API key');
+
+      // Test Apollo connection on startup
+      apolloAdapter.testConnection().then(result => {
+        if (result.success) {
+          console.log('✅ Apollo.io API connection verified');
+        } else {
+          console.warn('⚠️  Apollo.io API connection failed:', result.message);
+        }
+      }).catch(err => {
+        console.warn('⚠️  Apollo.io API test failed:', err.message);
+      });
+    } else {
+      console.log('ℹ️  Apollo.io adapter not configured (set APOLLO_API_KEY to enable)');
+    }
   }
 
   /**
@@ -24,6 +44,29 @@ class IntentSignalService {
   registerAdapter(name, adapter) {
     this.adapters.set(name, adapter);
     console.log(`📡 Intent Signal adapter registered: ${name}`);
+  }
+
+  /**
+   * Get the best available adapter
+   * Prefers Apollo (real data) over demo
+   */
+  getPreferredAdapter(preferredSource = null) {
+    // If a specific source is requested and available, use it
+    if (preferredSource && this.adapters.has(preferredSource)) {
+      return { name: preferredSource, adapter: this.adapters.get(preferredSource) };
+    }
+
+    // Prefer Apollo if configured
+    if (this.adapters.has('apollo')) {
+      return { name: 'apollo', adapter: this.adapters.get('apollo') };
+    }
+
+    // Fall back to demo
+    if (this.adapters.has('demo')) {
+      return { name: 'demo', adapter: this.adapters.get('demo') };
+    }
+
+    return null;
   }
 
   /**
@@ -152,12 +195,14 @@ class IntentSignalService {
         return;
       }
 
-      // Get the demo adapter (for now, always use demo)
-      const adapter = this.adapters.get('demo');
+      // Get the preferred adapter (Apollo if available, otherwise demo)
+      const { name: adapterName, adapter } = this.getPreferredAdapter(config.data_source) || {};
       if (!adapter) {
         console.error('❌ No adapter available for intent signals');
         return;
       }
+
+      console.log(`📡 Config ${configId}: Using ${adapterName} adapter`);
 
       // Generate signals
       const filters = {
@@ -165,9 +210,27 @@ class IntentSignalService {
         company_size_max: config.company_size_max
       };
 
-      // Generate 2-5 signals per sync (realistic for demo)
-      const signalCount = Math.floor(Math.random() * 4) + 2;
-      const signals = await adapter.generateSignals(keywords, zipCodes, signalCount, filters);
+      // Generate signals - more for demo, fewer for real APIs to conserve credits
+      const signalCount = adapterName === 'demo'
+        ? Math.floor(Math.random() * 4) + 2  // 2-5 for demo
+        : Math.min(10, config.max_results_per_sync || 10); // Up to 10 for Apollo
+
+      let signals = [];
+      let errorMessage = null;
+
+      try {
+        signals = await adapter.generateSignals(keywords, zipCodes, signalCount, filters);
+      } catch (adapterError) {
+        console.error(`❌ Adapter ${adapterName} failed:`, adapterError.message);
+        errorMessage = adapterError.message;
+
+        // Fall back to demo if Apollo fails
+        if (adapterName === 'apollo' && this.adapters.has('demo')) {
+          console.log('⚠️  Falling back to demo adapter');
+          const demoAdapter = this.adapters.get('demo');
+          signals = await demoAdapter.generateSignals(keywords, zipCodes, signalCount, filters);
+        }
+      }
 
       // Store signals in database
       let newCount = 0;
@@ -204,7 +267,7 @@ class IntentSignalService {
             signal.matched_keyword,
             signal.keyword_match_strength,
             signal.search_context,
-            signal.intent_source,
+            signal.intent_source || adapterName,
             signal.intent_category,
             signal.overall_score,
             signal.recency_score,
@@ -242,13 +305,22 @@ class IntentSignalService {
 
       // Log sync
       this.db.prepare(`
-        INSERT INTO intent_sync_log (source_id, config_id, sync_type, status, records_fetched, records_matched, records_new, duration_ms, completed_at)
-        SELECT id, ?, 'scheduled', 'completed', ?, ?, ?, ?, datetime('now')
-        FROM intent_data_sources WHERE source_name = 'demo'
-      `).run(configId, signals.length, signals.length, newCount, duration);
+        INSERT INTO intent_sync_log (source_id, config_id, sync_type, status, records_fetched, records_matched, records_new, duration_ms, error_message, completed_at)
+        SELECT id, ?, 'scheduled', ?, ?, ?, ?, ?, ?, datetime('now')
+        FROM intent_data_sources WHERE source_name = ?
+      `).run(
+        configId,
+        errorMessage ? 'partial' : 'completed',
+        signals.length,
+        signals.length,
+        newCount,
+        duration,
+        errorMessage,
+        adapterName
+      );
 
       if (newCount > 0) {
-        console.log(`✅ Config ${configId}: Generated ${newCount} new signals (${duration}ms)`);
+        console.log(`✅ Config ${configId}: Generated ${newCount} new signals via ${adapterName} (${duration}ms)`);
       }
 
     } catch (error) {
@@ -311,6 +383,45 @@ class IntentSignalService {
    */
   onConfigDeleted(configId) {
     this.stopConfigSync(configId);
+  }
+
+  /**
+   * Get status of all adapters
+   */
+  getAdapterStatus() {
+    const status = {};
+    for (const [name, adapter] of this.adapters) {
+      status[name] = {
+        registered: true,
+        sourceName: adapter.sourceName || name
+      };
+    }
+    return status;
+  }
+
+  /**
+   * Test a specific adapter
+   */
+  async testAdapter(adapterName) {
+    const adapter = this.adapters.get(adapterName);
+    if (!adapter) {
+      return { success: false, message: `Adapter "${adapterName}" not found` };
+    }
+
+    if (typeof adapter.testConnection === 'function') {
+      return await adapter.testConnection();
+    }
+
+    // For adapters without test method, do a small signal generation
+    try {
+      const signals = await adapter.generateSignals(['restaurant'], ['75201'], 1, {});
+      return {
+        success: signals.length > 0,
+        message: signals.length > 0 ? 'Adapter working' : 'No signals generated'
+      };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   }
 }
 
