@@ -29,6 +29,7 @@
       padding: 40px 20px;
     }
 
+    /* Background gradient - using will-change to prevent rendering glitches */
     body::before {
       content: '';
       position: fixed;
@@ -40,6 +41,9 @@
                   radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.15) 0%, transparent 50%);
       pointer-events: none;
       z-index: 0;
+      will-change: transform;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
 
     .container {
