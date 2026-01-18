@@ -1841,6 +1841,34 @@
       color: #ec4899;
     }
 
+    .quick-action-tile.payroll {
+      background: linear-gradient(145deg, rgba(25, 35, 20, 0.95) 0%, rgba(18, 28, 15, 0.98) 100%);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .quick-action-tile.payroll:hover {
+      border-color: rgba(34, 197, 94, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(34, 197, 94, 0.12);
+    }
+
+    .quick-action-tile.payroll .tile-value {
+      color: #22c55e;
+    }
+
+    .quick-action-tile.expense {
+      background: linear-gradient(145deg, rgba(35, 30, 20, 0.95) 0%, rgba(28, 22, 15, 0.98) 100%);
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .quick-action-tile.expense:hover {
+      border-color: rgba(251, 191, 36, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(251, 191, 36, 0.12);
+    }
+
+    .quick-action-tile.expense .tile-value {
+      color: #fbbf24;
+    }
+
     @keyframes pulse-badge {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.05); }
@@ -2499,15 +2527,17 @@
           <span class="tile-value" id="tileCateringCount">5 Orders</span>
           <span class="tile-subtitle" id="tileCateringRevenue">$12,450 this month</span>
         </a>
-        <button onclick="openPayrollEntry()" class="quick-action-tile">
+        <button onclick="openManualPayrollModal()" class="quick-action-tile payroll">
           <span class="tile-icon">💵</span>
-          <span class="tile-label">Add Payroll</span>
-          <span class="tile-value">Quick Entry</span>
+          <span class="tile-label">Manual Payroll Entry</span>
+          <span class="tile-value" id="tilePayrollValue">Quick Entry</span>
+          <span class="tile-subtitle" id="tilePayrollLast">Last: --</span>
         </button>
-        <button onclick="openExpenseEntry()" class="quick-action-tile">
+        <button onclick="openManualExpenseModal()" class="quick-action-tile expense">
           <span class="tile-icon">🧾</span>
-          <span class="tile-label">Add Expense</span>
-          <span class="tile-value">Quick Entry</span>
+          <span class="tile-label">Manual Expense Entry</span>
+          <span class="tile-value" id="tileExpenseValue">Quick Entry</span>
+          <span class="tile-subtitle" id="tileExpenseLast">Last: --</span>
         </button>
       </div>
 
@@ -2794,105 +2824,6 @@
           </div>
         </div>
 
-      </div>
-
-      <!-- Payroll & Expense Entry Section -->
-      <div class="grid2">
-        <!-- Payroll Entry Card -->
-        <div class="card">
-          <div class="sectionHeader">
-            <div class="sectionTitle">💵 Payroll Entry</div>
-            <button class="btn" onclick="viewPayrollHistory()" style="background: var(--panel2); font-size: 13px;">View History</button>
-          </div>
-          <div class="divider"></div>
-          <div style="padding: 20px;">
-            <form id="payrollForm" onsubmit="submitPayroll(event)">
-              <div style="display: grid; gap: 16px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                  <div>
-                    <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Period Start</label>
-                    <input type="date" id="payrollStart" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                  </div>
-                  <div>
-                    <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Period End</label>
-                    <input type="date" id="payrollEnd" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                  </div>
-                </div>
-                <div>
-                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Gross Payroll ($)</label>
-                  <input type="number" id="grossPayroll" step="0.01" min="0" required placeholder="e.g. 15000.00" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                  <div>
-                    <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Employee Count</label>
-                    <input type="number" id="employeeCount" min="1" placeholder="e.g. 12" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                  </div>
-                  <div>
-                    <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Total Hours</label>
-                    <input type="number" id="totalHours" step="0.5" min="0" placeholder="e.g. 480" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                  </div>
-                </div>
-                <div>
-                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Notes (optional)</label>
-                  <textarea id="payrollNotes" rows="2" placeholder="Any additional notes..." style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); resize: vertical;"></textarea>
-                </div>
-                <button type="submit" class="btn" style="width: 100%;">Save Payroll Entry</button>
-              </div>
-            </form>
-            <div id="payrollStatus" style="margin-top: 12px; display: none;"></div>
-          </div>
-        </div>
-
-        <!-- Expense Entry Card -->
-        <div class="card">
-          <div class="sectionHeader">
-            <div class="sectionTitle">🧾 Expense Entry</div>
-            <button class="btn" onclick="viewExpenseHistory()" style="background: var(--panel2); font-size: 13px;">View History</button>
-          </div>
-          <div class="divider"></div>
-          <div style="padding: 20px;">
-            <form id="expenseForm" onsubmit="submitExpense(event)">
-              <div style="display: grid; gap: 16px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                  <div>
-                    <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Category</label>
-                    <select id="expenseCategory" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                      <option value="">Select category...</option>
-                      <option value="inventory">Inventory / Supplies</option>
-                      <option value="utilities">Utilities</option>
-                      <option value="rent">Rent / Lease</option>
-                      <option value="insurance">Insurance</option>
-                      <option value="marketing">Marketing</option>
-                      <option value="equipment">Equipment</option>
-                      <option value="professional">Professional Services</option>
-                      <option value="technology">Technology / Software</option>
-                      <option value="travel">Travel</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Date</label>
-                    <input type="date" id="expenseDate" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                  </div>
-                </div>
-                <div>
-                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Amount ($)</label>
-                  <input type="number" id="expenseAmount" step="0.01" min="0" required placeholder="e.g. 1500.00" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                </div>
-                <div>
-                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Vendor / Description</label>
-                  <input type="text" id="expenseVendor" placeholder="e.g. Electric Company - Monthly Bill" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                </div>
-                <div>
-                  <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Notes (optional)</label>
-                  <textarea id="expenseNotes" rows="2" placeholder="Any additional notes..." style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); resize: vertical;"></textarea>
-                </div>
-                <button type="submit" class="btn" style="width: 100%;">Save Expense Entry</button>
-              </div>
-            </form>
-            <div id="expenseStatus" style="margin-top: 12px; display: none;"></div>
-          </div>
-        </div>
       </div>
 
       <!-- Vendor and Location Breakdown -->
@@ -4485,28 +4416,59 @@
     let expenseBreakdownChart = null;
     let spendingTrendChart = null;
 
-    // Open payroll entry form (scroll to it)
-    function openPayrollEntry() {
-      const payrollForm = document.getElementById('payrollForm');
-      if (payrollForm) {
-        payrollForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Open Manual Payroll Modal
+    function openManualPayrollModal() {
+      const modal = document.getElementById('manualPayrollModal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
         // Focus on first input
         setTimeout(() => {
           document.getElementById('payrollStart')?.focus();
-        }, 300);
+        }, 100);
       }
     }
 
-    // Open expense entry form (scroll to it)
-    function openExpenseEntry() {
-      const expenseForm = document.getElementById('expenseForm');
-      if (expenseForm) {
-        expenseForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Close Manual Payroll Modal
+    function closeManualPayrollModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('manualPayrollModal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    // Open Manual Expense Modal
+    function openManualExpenseModal() {
+      const modal = document.getElementById('manualExpenseModal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
         // Focus on first input
         setTimeout(() => {
           document.getElementById('expenseCategory')?.focus();
-        }, 300);
+        }, 100);
       }
+    }
+
+    // Close Manual Expense Modal
+    function closeManualExpenseModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('manualExpenseModal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    // Legacy functions (kept for compatibility)
+    function openPayrollEntry() {
+      openManualPayrollModal();
+    }
+
+    function openExpenseEntry() {
+      openManualExpenseModal();
     }
 
     // Submit payroll entry
@@ -5570,6 +5532,114 @@
             <span style="color: #22c55e; font-size: 12px;">↑ Real savings</span>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Payroll Entry Modal -->
+  <div class="modal-overlay" id="manualPayrollModal" onclick="closeManualPayrollModal(event)">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 10px;">
+          <span>💵</span> Manual Payroll Entry
+        </div>
+        <button class="modal-close" onclick="closeManualPayrollModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="payrollForm" onsubmit="submitPayroll(event)">
+          <div style="display: grid; gap: 16px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Period Start</label>
+                <input type="date" id="payrollStart" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Period End</label>
+                <input type="date" id="payrollEnd" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+            </div>
+            <div>
+              <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Gross Payroll ($)</label>
+              <input type="number" id="grossPayroll" step="0.01" min="0" required placeholder="e.g. 15000.00" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Employee Count</label>
+                <input type="number" id="employeeCount" min="1" placeholder="e.g. 12" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Total Hours</label>
+                <input type="number" id="totalHours" step="0.5" min="0" placeholder="e.g. 480" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+            </div>
+            <div>
+              <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Notes (optional)</label>
+              <textarea id="payrollNotes" rows="2" placeholder="Any additional notes..." style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+              <button type="button" class="btn" onclick="viewPayrollHistory()" style="background: var(--panel2);">View History</button>
+              <button type="submit" class="btn" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none;">Save Payroll Entry</button>
+            </div>
+          </div>
+        </form>
+        <div id="payrollStatus" style="margin-top: 12px; display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Expense Entry Modal -->
+  <div class="modal-overlay" id="manualExpenseModal" onclick="closeManualExpenseModal(event)">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 10px;">
+          <span>🧾</span> Manual Expense Entry
+        </div>
+        <button class="modal-close" onclick="closeManualExpenseModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="expenseForm" onsubmit="submitExpense(event)">
+          <div style="display: grid; gap: 16px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Category</label>
+                <select id="expenseCategory" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                  <option value="">Select category...</option>
+                  <option value="inventory">Inventory / Supplies</option>
+                  <option value="utilities">Utilities</option>
+                  <option value="rent">Rent / Lease</option>
+                  <option value="insurance">Insurance</option>
+                  <option value="marketing">Marketing</option>
+                  <option value="equipment">Equipment</option>
+                  <option value="professional">Professional Services</option>
+                  <option value="technology">Technology / Software</option>
+                  <option value="travel">Travel</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Date</label>
+                <input type="date" id="expenseDate" required style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+            </div>
+            <div>
+              <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Amount ($)</label>
+              <input type="number" id="expenseAmount" step="0.01" min="0" required placeholder="e.g. 1500.00" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+            </div>
+            <div>
+              <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Vendor / Description</label>
+              <input type="text" id="expenseVendor" placeholder="e.g. Electric Company - Monthly Bill" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+            </div>
+            <div>
+              <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px;">Notes (optional)</label>
+              <textarea id="expenseNotes" rows="2" placeholder="Any additional notes..." style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+              <button type="button" class="btn" onclick="viewExpenseHistory()" style="background: var(--panel2);">View History</button>
+              <button type="submit" class="btn" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border: none; color: #1a1a1a;">Save Expense Entry</button>
+            </div>
+          </div>
+        </form>
+        <div id="expenseStatus" style="margin-top: 12px; display: none;"></div>
       </div>
     </div>
   </div>
