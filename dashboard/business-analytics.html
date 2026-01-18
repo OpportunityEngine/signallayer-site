@@ -14,26 +14,18 @@
     }
 
     body {
+      margin: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, #0a0f1a 0%, #0d1321 50%, #0a0f1a 100%);
+      background: #0a0f1a;
+      background-image:
+        radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.08) 0%, transparent 50%);
+      background-attachment: fixed;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
       color: #e2e8f0;
       min-height: 100vh;
       line-height: 1.6;
-    }
-
-    .page-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
-                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: 0;
-      will-change: transform;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
     }
 
     .container {
@@ -795,7 +787,6 @@
   </style>
 </head>
 <body>
-  <div class="page-bg"></div>
 
   <div class="container">
     <a href="vp-view.html" class="back-link">

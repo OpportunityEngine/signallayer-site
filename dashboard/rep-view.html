@@ -15,31 +15,21 @@
     }
 
     body {
+      margin: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #0a0f1a;
+      background-image:
+        radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.08) 0%, transparent 50%);
+      background-attachment: fixed;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
       color: #e2e8f0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       min-height: 100vh;
-      position: relative;
+      line-height: 1.5;
       overflow-x: hidden;
-    }
-
-    /* Ambient background gradient - using will-change to prevent rendering glitches */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(ellipse at top, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
-                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.15) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: 0;
-      will-change: transform;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
     }
 
     .container {
