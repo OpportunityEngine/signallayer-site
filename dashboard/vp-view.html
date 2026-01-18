@@ -2990,7 +2990,7 @@
       </div>
 
       <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
-      <div class="quick-actions-grid" style="grid-template-columns: repeat(5, 1fr);">
+      <div class="quick-actions-grid" style="grid-template-columns: repeat(4, 1fr);">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-label">Inventory</span>
           <span class="tile-value" id="tileInventoryCount">247 Items</span>
@@ -3010,15 +3010,10 @@
           <span class="tile-value" style="color: #22c55e;" id="tileActionsExecuted">$6,287 Saved</span>
           <span class="tile-subtitle" id="tileActionsCount">12 actions - 92% success</span>
         </div>
-        <div class="quick-action-tile pipeline" onclick="scrollToOpportunityPipeline()">
-          <span class="tile-label">Opportunity Pipeline</span>
-          <span class="tile-value" id="tilePipelineTotal">$31,647</span>
-          <span class="tile-subtitle" id="tilePipelineCount">91 opportunities tracked</span>
-        </div>
       </div>
 
-      <!-- Row 2: Upload Payroll, Events & Catering -->
-      <div class="quick-actions-grid" style="margin-top: -4px; grid-template-columns: repeat(3, 1fr);">
+      <!-- Row 2: Upload Payroll, Events, Catering & Overbilling -->
+      <div class="quick-actions-grid" style="margin-top: -4px; grid-template-columns: repeat(4, 1fr);">
         <a href="upload-payroll.html" class="quick-action-tile payroll">
           <span class="tile-label">Upload Payroll</span>
           <span class="tile-value" id="tilePayrollStatus">Import POS Data</span>
@@ -3034,6 +3029,11 @@
           <span class="tile-value" id="tileCateringCount">5 Orders</span>
           <span class="tile-subtitle" id="tileCateringRevenue">$12,450 this month</span>
         </a>
+        <div class="quick-action-tile pipeline" onclick="scrollToFlaggedIssues()">
+          <span class="tile-label">Overbilling</span>
+          <span class="tile-value" id="tilePipelineTotal">$8,247</span>
+          <span class="tile-subtitle" id="tilePipelineCount">18 issues flagged</span>
+        </div>
       </div>
 
       <!-- Row 3: Connect Email Banner with Stats -->
@@ -4577,6 +4577,14 @@
     // Scroll to Opportunity Pipeline section
     function scrollToOpportunityPipeline() {
       const section = document.getElementById('opportunityPipeline');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // Scroll to Flagged Issues section
+    function scrollToFlaggedIssues() {
+      const section = document.getElementById('issuesTable');
       if (section) {
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
