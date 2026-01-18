@@ -666,6 +666,129 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Demo Mode Toggle Styles */
+    .demo-toggle-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .demo-toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(17, 21, 37, 0.8);
+      padding: 8px 16px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .demo-toggle-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      transition: color 0.3s;
+    }
+
+    .demo-toggle-label.active {
+      color: #fbbf24;
+    }
+
+    .demo-toggle {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+
+    .demo-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .demo-toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+      border-radius: 24px;
+      transition: all 0.3s;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .demo-toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background: #94a3b8;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    .demo-toggle input:checked + .demo-toggle-slider {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border-color: rgba(251, 191, 36, 0.5);
+    }
+
+    .demo-toggle input:checked + .demo-toggle-slider:before {
+      transform: translateX(24px);
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+    }
+
+    .demo-mode-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      transition: all 0.3s;
+    }
+
+    .demo-mode-indicator.demo {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .demo-mode-indicator.real {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .indicator-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .demo-mode-indicator.demo .indicator-dot {
+      background: #f87171;
+    }
+
+    .demo-mode-indicator.real .indicator-dot {
+      background: #4ade80;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
   </style>
 </head>
 <body>
@@ -683,6 +806,21 @@
       <div>
         <h1>Business Analytics</h1>
         <p class="subtitle">Track payroll, expenses, and financial performance</p>
+      </div>
+      <!-- Demo Mode Toggle (Admin Only) -->
+      <div id="demoToggleContainer" class="demo-toggle-container" style="display: none;">
+        <div class="demo-toggle-wrapper">
+          <span class="demo-toggle-label" id="demoModeLabel">Demo Data</span>
+          <label class="demo-toggle">
+            <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
+            <span class="demo-toggle-slider"></span>
+          </label>
+          <span class="demo-toggle-label" id="realDataLabel">Real Data</span>
+        </div>
+        <div class="demo-mode-indicator" id="demoModeIndicator">
+          <span class="indicator-dot"></span>
+          <span id="modeText">Demo Mode</span>
+        </div>
       </div>
     </div>
 
@@ -988,6 +1126,62 @@
       window.location.href = '/dashboard/login.html';
     }
 
+    // =====================================================
+    // DEMO MODE TOGGLE FUNCTIONALITY (Admin Only)
+    // =====================================================
+
+    // Get current user info
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdmin = currentUser.role === 'admin';
+
+    // Initialize demo mode state
+    let demoModeEnabled = localStorage.getItem('demoModeEnabled') !== 'false'; // Default to demo mode ON
+
+    // Show toggle only for admin users
+    if (isAdmin) {
+      const toggleContainer = document.getElementById('demoToggleContainer');
+      if (toggleContainer) {
+        toggleContainer.style.display = 'flex';
+      }
+      // Initialize toggle state
+      const toggle = document.getElementById('demoModeToggle');
+      if (toggle) {
+        toggle.checked = !demoModeEnabled; // Checked = Real Data
+      }
+      updateDemoModeUI();
+    }
+
+    function toggleDemoMode() {
+      const toggle = document.getElementById('demoModeToggle');
+      demoModeEnabled = !toggle.checked; // Unchecked = Demo, Checked = Real
+      localStorage.setItem('demoModeEnabled', demoModeEnabled);
+      updateDemoModeUI();
+      // Reload analytics with new mode
+      loadAnalytics();
+      showToast(demoModeEnabled ? 'Switched to Demo Data' : 'Switched to Real Data', 'info');
+    }
+
+    function updateDemoModeUI() {
+      const indicator = document.getElementById('demoModeIndicator');
+      const modeText = document.getElementById('modeText');
+      const demoLabel = document.getElementById('demoModeLabel');
+      const realLabel = document.getElementById('realDataLabel');
+
+      if (demoModeEnabled) {
+        indicator.className = 'demo-mode-indicator demo';
+        modeText.textContent = 'Demo Mode';
+        demoLabel.classList.add('active');
+        realLabel.classList.remove('active');
+      } else {
+        indicator.className = 'demo-mode-indicator real';
+        modeText.textContent = 'Live Data';
+        demoLabel.classList.remove('active');
+        realLabel.classList.add('active');
+      }
+    }
+
+    // =====================================================
+
     // Set default dates
     const today = new Date();
     const weekAgo = new Date(today);
@@ -1183,19 +1377,55 @@
       }
     });
 
+    // Demo data for presentations
+    const DEMO_ANALYTICS = {
+      payroll: { total_labor: 425000, avg_labor: 42500, total_overtime: 18500 },
+      expenses: { total: 289000 },
+      weeklyTrends: [
+        { week: '2026-01', labor_cents: 38500, expenses_cents: 27200 },
+        { week: '2026-02', labor_cents: 41200, expenses_cents: 28900 },
+        { week: '2026-03', labor_cents: 39800, expenses_cents: 26500 },
+        { week: '2026-04', labor_cents: 43500, expenses_cents: 31200 },
+        { week: '2026-05', labor_cents: 45200, expenses_cents: 29800 },
+        { week: '2026-06', labor_cents: 42800, expenses_cents: 28100 },
+        { week: '2026-07', labor_cents: 44100, expenses_cents: 30500 }
+      ],
+      breakdown: [
+        { category: 'COGS', amount: 144500 },
+        { category: 'Utilities', amount: 37300 },
+        { category: 'Rent', amount: 63000 },
+        { category: 'Other', amount: 44200 }
+      ]
+    };
+
     // Load analytics data
     async function loadAnalytics() {
       try {
-        const response = await fetch('/api/bi/analytics/financial?period=90', {
+        // If admin has demo mode ON, show demo data
+        if (isAdmin && demoModeEnabled) {
+          console.log('[Analytics] Loading demo data (demo mode enabled)');
+          updateDashboard(DEMO_ANALYTICS);
+          return;
+        }
+
+        // Otherwise fetch real data from API
+        const response = await fetch('/api/bi/analytics/financial?period=90&demoMode=' + (demoModeEnabled ? 'true' : 'false'), {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
         const data = await response.json();
         if (data.success) {
           updateDashboard(data.data);
+        } else if (data.data) {
+          // API returned data even if not marked success
+          updateDashboard(data.data);
         }
       } catch (error) {
         console.error('Failed to load analytics:', error);
+        // On error with demo mode on, show demo data anyway
+        if (demoModeEnabled) {
+          updateDashboard(DEMO_ANALYTICS);
+        }
       }
     }
 
