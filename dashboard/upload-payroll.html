@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Payroll - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #050810 0%, #0a0e18 50%, #050810 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(34, 197, 94, 0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, rgba(30, 58, 138, 0.08) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 32px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #22c55e;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 32px;
+    }
+
+    /* POS Integration Cards */
+    .pos-integrations {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .pos-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .pos-card:hover {
+      border-color: rgba(34, 197, 94, 0.4);
+      background: rgba(34, 197, 94, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .pos-card.selected {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .pos-logo {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 800;
+      color: #94a3b8;
+    }
+
+    .pos-card.toast .pos-logo { color: #f97316; }
+    .pos-card.square .pos-logo { color: #3b82f6; }
+    .pos-card.clover .pos-logo { color: #22c55e; }
+    .pos-card.other .pos-logo { color: #8b5cf6; }
+
+    .pos-name {
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .pos-desc {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    /* Main Upload Card */
+    .upload-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(34, 197, 94, 0.15);
+      border-radius: 20px;
+      padding: 40px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .card-subtitle {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(34, 197, 94, 0.3);
+      border-radius: 16px;
+      padding: 50px 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .drop-zone:hover {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.05);
+    }
+
+    .drop-zone.dragover {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+      transform: scale(1.01);
+    }
+
+    .drop-zone.uploading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .drop-zone-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: #22c55e;
+    }
+
+    .drop-zone-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone-subtitle {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .drop-zone-formats {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .format-badge {
+      padding: 5px 12px;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 50px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #22c55e;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    /* Export Instructions */
+    .export-instructions {
+      margin-top: 32px;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .instructions-title {
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .instructions-title span {
+      color: #22c55e;
+    }
+
+    .instruction-steps {
+      list-style: none;
+    }
+
+    .instruction-steps li {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      background: rgba(34, 197, 94, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #22c55e;
+      flex-shrink: 0;
+    }
+
+    /* Progress */
+    .upload-progress {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .upload-progress.active {
+      display: block;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .progress-filename {
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .progress-percent {
+      color: #22c55e;
+      font-weight: 700;
+    }
+
+    .progress-bar-container {
+      height: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 50px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      border-radius: 50px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    /* Results Card */
+    .results-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 16px;
+      padding: 32px;
+      display: none;
+      margin-top: 24px;
+    }
+
+    .results-card.active {
+      display: block;
+      animation: slideIn 0.4s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .results-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: white;
+    }
+
+    .results-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    .results-subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .results-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .results-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .result-stat {
+      text-align: center;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+    }
+
+    .result-stat-value {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: #22c55e;
+    }
+
+    .result-stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* Data Preview Table */
+    .data-preview {
+      margin-top: 24px;
+      overflow-x: auto;
+    }
+
+    .data-preview table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .data-preview th {
+      text-align: left;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.6);
+      color: #94a3b8;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    .data-preview td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+    }
+
+    .data-preview tr:hover td {
+      background: rgba(34, 197, 94, 0.03);
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    /* Recent Uploads */
+    .recent-uploads {
+      margin-top: 32px;
+    }
+
+    .section-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 16px;
+    }
+
+    .upload-history-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(34, 197, 94, 0.1);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+
+    .upload-history-item:hover {
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    .upload-history-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(34, 197, 94, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #22c55e;
+    }
+
+    .upload-history-info {
+      flex: 1;
+    }
+
+    .upload-history-name {
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .upload-history-meta {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .upload-history-status {
+      padding: 6px 12px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .upload-history-status.completed {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .upload-history-status.processing {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    .alert.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+
+    .alert.info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="container">
+    <a href="vp-view.html" class="back-link">← Back to Dashboard</a>
+
+    <h1>Upload Payroll Data</h1>
+    <p class="subtitle">Import payroll exports from Toast, Square, Clover, or other POS systems to track labor costs</p>
+
+    <div id="alertContainer"></div>
+
+    <!-- POS System Selection -->
+    <div class="pos-integrations">
+      <div class="pos-card toast" onclick="selectPOS('toast')">
+        <div class="pos-logo">T</div>
+        <div class="pos-name">Toast</div>
+        <div class="pos-desc">Export from Toast Portal</div>
+      </div>
+      <div class="pos-card square" onclick="selectPOS('square')">
+        <div class="pos-logo">S</div>
+        <div class="pos-name">Square</div>
+        <div class="pos-desc">Square Dashboard export</div>
+      </div>
+      <div class="pos-card clover" onclick="selectPOS('clover')">
+        <div class="pos-logo">C</div>
+        <div class="pos-name">Clover</div>
+        <div class="pos-desc">Clover payroll reports</div>
+      </div>
+      <div class="pos-card other" onclick="selectPOS('other')">
+        <div class="pos-logo">+</div>
+        <div class="pos-name">Other</div>
+        <div class="pos-desc">CSV or Excel file</div>
+      </div>
+    </div>
+
+    <div class="upload-card">
+      <div class="card-title">Upload Payroll Export</div>
+      <div class="card-subtitle">Drag and drop your payroll export file or click to browse</div>
+
+      <!-- Drop Zone -->
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="drop-zone-icon">$</div>
+        <div class="drop-zone-title">Drop Payroll File Here</div>
+        <div class="drop-zone-subtitle">or click to browse files</div>
+        <div class="drop-zone-formats">
+          <span class="format-badge">CSV</span>
+          <span class="format-badge">Excel (.xlsx)</span>
+          <span class="format-badge">XLS</span>
+        </div>
+      </div>
+      <input type="file" id="fileInput" class="file-input" accept=".csv,.xlsx,.xls" onchange="handleFiles(event)">
+
+      <!-- Export Instructions -->
+      <div class="export-instructions" id="exportInstructions">
+        <div class="instructions-title">
+          <span>How to Export from Toast</span>
+        </div>
+        <ol class="instruction-steps">
+          <li>
+            <span class="step-number">1</span>
+            <span>Log in to your Toast Portal at pos.toasttab.com</span>
+          </li>
+          <li>
+            <span class="step-number">2</span>
+            <span>Navigate to Payroll > Reports > Labor Summary</span>
+          </li>
+          <li>
+            <span class="step-number">3</span>
+            <span>Select your date range and click "Export to Excel"</span>
+          </li>
+          <li>
+            <span class="step-number">4</span>
+            <span>Upload the downloaded file here</span>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Upload Progress -->
+      <div class="upload-progress" id="uploadProgress">
+        <div class="progress-header">
+          <span class="progress-filename" id="progressFilename">payroll-jan-2026.xlsx</span>
+          <span class="progress-percent" id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-status" id="progressStatus">Uploading...</div>
+      </div>
+    </div>
+
+    <!-- Results Card -->
+    <div class="results-card" id="resultsCard">
+      <div class="results-header">
+        <div class="results-icon">✓</div>
+        <div>
+          <div class="results-title">Payroll Data Imported</div>
+          <div class="results-subtitle" id="resultsSummary">Successfully processed 42 employee records</div>
+        </div>
+      </div>
+
+      <div class="results-stats">
+        <div class="result-stat">
+          <div class="result-stat-value" id="statEmployees">42</div>
+          <div class="result-stat-label">Employees</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="statHours">1,247</div>
+          <div class="result-stat-label">Total Hours</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="statGross">$24,850</div>
+          <div class="result-stat-label">Gross Pay</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-value" id="statAvgRate">$19.92</div>
+          <div class="result-stat-label">Avg Hourly</div>
+        </div>
+      </div>
+
+      <div class="data-preview">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Role</th>
+              <th>Hours</th>
+              <th>Rate</th>
+              <th>Gross Pay</th>
+            </tr>
+          </thead>
+          <tbody id="previewData">
+            <!-- Data will be populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="confirmImport()">Confirm Import</button>
+        <button class="btn btn-secondary" onclick="resetUpload()">Upload Different File</button>
+      </div>
+    </div>
+
+    <!-- Recent Uploads -->
+    <div class="recent-uploads">
+      <div class="section-title">Recent Payroll Uploads</div>
+      <div id="uploadHistory">
+        <!-- History will be populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedPOS = 'toast';
+    let uploadedData = null;
+    const authToken = localStorage.getItem('accessToken');
+
+    // Check auth
+    if (!authToken) {
+      window.location.href = 'login.html';
+    }
+
+    // POS Selection
+    function selectPOS(pos) {
+      selectedPOS = pos;
+      document.querySelectorAll('.pos-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      document.querySelector(`.pos-card.${pos}`).classList.add('selected');
+      updateInstructions(pos);
+    }
+
+    function updateInstructions(pos) {
+      const instructions = {
+        toast: {
+          title: 'How to Export from Toast',
+          steps: [
+            'Log in to your Toast Portal at pos.toasttab.com',
+            'Navigate to Payroll > Reports > Labor Summary',
+            'Select your date range and click "Export to Excel"',
+            'Upload the downloaded file here'
+          ]
+        },
+        square: {
+          title: 'How to Export from Square',
+          steps: [
+            'Log in to Square Dashboard at squareup.com',
+            'Go to Team > Timecards',
+            'Click "Export" and select your date range',
+            'Download the CSV and upload here'
+          ]
+        },
+        clover: {
+          title: 'How to Export from Clover',
+          steps: [
+            'Log in to Clover Web Dashboard',
+            'Navigate to Employees > Time Cards',
+            'Click "Export" to download timecard data',
+            'Upload the file here'
+          ]
+        },
+        other: {
+          title: 'Custom CSV Format',
+          steps: [
+            'Prepare a CSV or Excel file with employee payroll data',
+            'Include columns: Employee Name, Hours, Rate, Pay Date',
+            'Ensure dates are in MM/DD/YYYY format',
+            'Upload the file here'
+          ]
+        }
+      };
+
+      const inst = instructions[pos];
+      const html = `
+        <div class="instructions-title">
+          <span>${inst.title}</span>
+        </div>
+        <ol class="instruction-steps">
+          ${inst.steps.map((step, i) => `
+            <li>
+              <span class="step-number">${i + 1}</span>
+              <span>${step}</span>
+            </li>
+          `).join('')}
+        </ol>
+      `;
+      document.getElementById('exportInstructions').innerHTML = html;
+    }
+
+    // Initialize with Toast selected
+    selectPOS('toast');
+
+    // Drag and drop handlers
+    const dropZone = document.getElementById('dropZone');
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length) processFile(files[0]);
+    });
+
+    function handleFiles(event) {
+      const files = event.target.files;
+      if (files.length) processFile(files[0]);
+    }
+
+    async function processFile(file) {
+      const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (!['csv', 'xlsx', 'xls'].includes(ext)) {
+        showAlert('error', 'Please upload a CSV or Excel file');
+        return;
+      }
+
+      // Show progress
+      const progress = document.getElementById('uploadProgress');
+      progress.classList.add('active');
+      document.getElementById('progressFilename').textContent = file.name;
+      document.getElementById('progressStatus').textContent = 'Uploading...';
+
+      dropZone.classList.add('uploading');
+
+      // Simulate upload progress
+      let percent = 0;
+      const progressBar = document.getElementById('progressBar');
+      const progressPercent = document.getElementById('progressPercent');
+
+      const interval = setInterval(() => {
+        percent += Math.random() * 15;
+        if (percent >= 100) {
+          percent = 100;
+          clearInterval(interval);
+          uploadFile(file);
+        }
+        progressBar.style.width = percent + '%';
+        progressPercent.textContent = Math.round(percent) + '%';
+      }, 200);
+    }
+
+    async function uploadFile(file) {
+      document.getElementById('progressStatus').textContent = 'Processing payroll data...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('source', selectedPOS);
+
+      try {
+        const response = await fetch('/api/payroll/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showResults(data.data);
+          showAlert('success', 'Payroll data processed successfully!');
+        } else {
+          throw new Error(data.error || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showAlert('error', error.message || 'Failed to process payroll file');
+        resetProgress();
+      }
+    }
+
+    function showResults(data) {
+      document.getElementById('uploadProgress').classList.remove('active');
+      document.getElementById('dropZone').classList.remove('uploading');
+
+      const resultsCard = document.getElementById('resultsCard');
+      resultsCard.classList.add('active');
+
+      // Update stats
+      document.getElementById('statEmployees').textContent = data.employeeCount || 0;
+      document.getElementById('statHours').textContent = (data.totalHours || 0).toLocaleString();
+      document.getElementById('statGross').textContent = '$' + (data.grossPay || 0).toLocaleString();
+      document.getElementById('statAvgRate').textContent = '$' + (data.avgHourlyRate || 0).toFixed(2);
+      document.getElementById('resultsSummary').textContent =
+        `Successfully processed ${data.employeeCount || 0} employee records for ${data.payPeriod || 'this period'}`;
+
+      // Populate preview table
+      const tbody = document.getElementById('previewData');
+      tbody.innerHTML = (data.preview || []).slice(0, 10).map(row => `
+        <tr>
+          <td>${row.employee || '-'}</td>
+          <td>${row.role || '-'}</td>
+          <td>${row.hours || 0}</td>
+          <td>$${(row.rate || 0).toFixed(2)}</td>
+          <td>$${(row.grossPay || 0).toLocaleString()}</td>
+        </tr>
+      `).join('');
+
+      uploadedData = data;
+    }
+
+    async function confirmImport() {
+      if (!uploadedData) return;
+
+      try {
+        const response = await fetch('/api/payroll/confirm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ uploadId: uploadedData.uploadId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showAlert('success', 'Payroll data saved successfully!');
+          loadUploadHistory();
+          resetUpload();
+        } else {
+          throw new Error(data.error || 'Failed to save');
+        }
+      } catch (error) {
+        showAlert('error', error.message);
+      }
+    }
+
+    function resetUpload() {
+      document.getElementById('resultsCard').classList.remove('active');
+      document.getElementById('uploadProgress').classList.remove('active');
+      document.getElementById('dropZone').classList.remove('uploading');
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('fileInput').value = '';
+      uploadedData = null;
+    }
+
+    function resetProgress() {
+      document.getElementById('uploadProgress').classList.remove('active');
+      document.getElementById('dropZone').classList.remove('uploading');
+      document.getElementById('progressBar').style.width = '0%';
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById('alertContainer');
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 5000);
+    }
+
+    async function loadUploadHistory() {
+      try {
+        const response = await fetch('/api/payroll/uploads', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        const data = await response.json();
+
+        const history = document.getElementById('uploadHistory');
+        if (data.data && data.data.length > 0) {
+          history.innerHTML = data.data.slice(0, 5).map(item => `
+            <div class="upload-history-item">
+              <div class="upload-history-icon">$</div>
+              <div class="upload-history-info">
+                <div class="upload-history-name">${item.filename || 'Payroll Upload'}</div>
+                <div class="upload-history-meta">${item.source || 'Manual'} - ${new Date(item.created_at).toLocaleDateString()}</div>
+              </div>
+              <div class="upload-history-status ${item.status || 'completed'}">${item.status || 'Completed'}</div>
+            </div>
+          `).join('');
+        } else {
+          history.innerHTML = `
+            <div class="upload-history-item">
+              <div class="upload-history-icon">$</div>
+              <div class="upload-history-info">
+                <div class="upload-history-name">No uploads yet</div>
+                <div class="upload-history-meta">Upload your first payroll file above</div>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+      }
+    }
+
+    // Load history on page load
+    loadUploadHistory();
+  </script>
+</body>
+</html>
