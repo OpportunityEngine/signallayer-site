@@ -3441,185 +3441,243 @@
 
   <!-- Add Email Monitor Modal -->
   <div class="modal-overlay" id="addEmailMonitorModal" onclick="closeAddEmailMonitor(event)">
-    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h2 style="margin: 0; font-size: 24px; font-weight: 700;">Add Email Monitor</h2>
-        <button onclick="closeAddEmailMonitor()" style="background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
+    <div class="modal-content" style="max-width: 700px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 24px;">📧</span>
+          <span>Add Email Monitor</span>
+          <span style="font-size: 11px; background: rgba(6, 182, 212, 0.15); color: #06b6d4; padding: 4px 10px; border-radius: 20px; font-weight: 600;">Invoice Autopilot</span>
+        </div>
+        <button class="modal-close" onclick="closeAddEmailMonitor()">&times;</button>
       </div>
-
-      <div style="display: grid; gap: 20px;">
-        <div>
-          <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Monitor Name *</label>
-          <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
-          <small style="display: block; color: var(--muted2); margin-top: 4px;">Friendly name to identify this monitor</small>
-        </div>
-
-        <div>
-          <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Email Address *</label>
-          <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
-          <small style="display: block; color: var(--muted2); margin-top: 4px;">Email account to monitor for invoices</small>
-        </div>
-
-        <div>
-          <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">Email Password/App Password *</label>
-          <input type="password" id="newMonitorPassword" placeholder="Your email password" required style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
-          <small style="display: block; color: var(--gold); margin-top: 4px;">⚠️ For Gmail/Yahoo/Outlook, use App Password (not regular password)</small>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="modal-body">
+        <!-- Quick Setup Info -->
+        <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(6, 182, 212, 0.02) 100%); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+          <div style="width: 44px; height: 44px; background: rgba(6, 182, 212, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">🔒</div>
           <div>
-            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">IMAP Server *</label>
-            <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
-          </div>
-          <div>
-            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text);">IMAP Port</label>
-            <input type="number" id="newMonitorImapPort" placeholder="993" value="993" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px;">Secure Connection</div>
+            <div style="font-size: 12px; color: var(--muted);">Your credentials are encrypted and we only read invoice emails. <a href="#" onclick="openSetupGuide(); return false;" style="color: #06b6d4;">Need help? View setup guide</a></div>
           </div>
         </div>
 
-        <div style="text-align: center;">
-          <button onclick="testIMAPConnection()" type="button" class="btn" style="background: #6366f1;">🔌 Test Connection</button>
-          <div id="testConnectionResult" style="margin-top: 12px; display: none;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">Monitor Name <span style="color: var(--muted);">*</span></label>
+              <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
+              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">A friendly name to identify this inbox</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">Email Address <span style="color: var(--muted);">*</span></label>
+              <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()" style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
+              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">The email account to monitor for invoices</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">Password / App Password <span style="color: var(--muted);">*</span></label>
+              <input type="password" id="newMonitorPassword" placeholder="Enter app password" required style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
+              <div style="font-size: 11px; color: #f59e0b; margin-top: 6px; display: flex; align-items: center; gap: 4px;">
+                <span>⚠️</span> Gmail/Yahoo/Outlook require an App Password
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">IMAP Server <span style="color: var(--muted);">*</span></label>
+              <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
+              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">Auto-detected for common providers</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">IMAP Port</label>
+              <input type="number" id="newMonitorImapPort" placeholder="993" value="993" style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
+              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">Usually 993 for SSL connections</div>
+            </div>
+
+            <div style="margin-top: auto;">
+              <button onclick="testIMAPConnection()" type="button" class="btn" style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; padding: 12px; font-size: 13px; font-weight: 600;">
+                🔌 Test Connection
+              </button>
+              <div id="testConnectionResult" style="margin-top: 10px; display: none; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div style="display: flex; gap: 12px; margin-top: 24px;">
-        <button onclick="createEmailMonitor()" class="btn" style="flex: 1;">Create Monitor</button>
-        <button onclick="closeAddEmailMonitor()" class="btn" style="flex: 1; background: var(--panel2);">Cancel</button>
-      </div>
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <button onclick="createEmailMonitor()" class="btn" style="flex: 1; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; padding: 14px; font-size: 14px; font-weight: 600;">
+            Create Email Monitor
+          </button>
+          <button onclick="closeAddEmailMonitor()" class="btn" style="padding: 14px 28px; background: var(--panel2); font-size: 14px;">Cancel</button>
+        </div>
 
-      <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
+        <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
+      </div>
     </div>
   </div>
 
   <!-- Setup Guide Modal -->
   <div class="modal-overlay" id="setupGuideModal" onclick="closeSetupGuide(event)">
-    <div class="modal-content" style="max-width: 700px;" onclick="event.stopPropagation()">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h2 style="margin: 0; font-size: 24px; font-weight: 700;">📧 Email Autopilot Setup Guide</h2>
-        <button onclick="closeSetupGuide()" style="background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
-      </div>
-
-      <!-- How It Works -->
-      <div style="background: var(--gold-glow); border: 1px solid var(--border-gold); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-        <h3 style="margin: 0 0 12px 0; color: var(--gold); font-size: 16px;">How Email Autopilot Works</h3>
-        <ol style="margin: 0; padding-left: 20px; color: var(--text); line-height: 1.8;">
-          <li>Connect your invoice email inbox (where vendors send invoices)</li>
-          <li>Our system automatically scans for new invoice emails</li>
-          <li>AI extracts invoice data from PDFs and email content</li>
-          <li>Invoices are analyzed for price increases and discrepancies</li>
-          <li>You get notified of potential overbilling issues</li>
-        </ol>
-      </div>
-
-      <!-- Provider-Specific Instructions -->
-      <div style="margin-bottom: 24px;">
-        <h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 16px;">Setup by Email Provider</h3>
-
-        <div style="display: grid; gap: 12px;">
-          <!-- Gmail -->
-          <details style="background: var(--panel2); border-radius: 8px; border: 1px solid var(--border);">
-            <summary style="padding: 16px; cursor: pointer; font-weight: 600; color: var(--text);">
-              Gmail / Google Workspace
-            </summary>
-            <div style="padding: 0 16px 16px; color: var(--muted);">
-              <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li>Go to <a href="https://myaccount.google.com/security" target="_blank" style="color: var(--gold);">Google Account Security</a></li>
-                <li>Enable 2-Step Verification (if not already enabled)</li>
-                <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: var(--gold);">App Passwords</a></li>
-                <li>Select "Mail" and your device, then click "Generate"</li>
-                <li>Copy the 16-character password (use this in the form, not your regular password)</li>
-              </ol>
-              <div style="margin-top: 12px; padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">
-                <strong style="color: var(--gold);">IMAP Settings:</strong><br>
-                Server: imap.gmail.com | Port: 993 | Security: SSL/TLS
-              </div>
-            </div>
-          </details>
-
-          <!-- Outlook -->
-          <details style="background: var(--panel2); border-radius: 8px; border: 1px solid var(--border);">
-            <summary style="padding: 16px; cursor: pointer; font-weight: 600; color: var(--text);">
-              Outlook / Office 365 / Hotmail
-            </summary>
-            <div style="padding: 0 16px 16px; color: var(--muted);">
-              <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li>Go to <a href="https://account.microsoft.com/security" target="_blank" style="color: var(--gold);">Microsoft Account Security</a></li>
-                <li>Enable Two-step verification</li>
-                <li>Under "App passwords", create a new app password</li>
-                <li>Use this generated password (not your regular password)</li>
-              </ol>
-              <div style="margin-top: 12px; padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">
-                <strong style="color: var(--gold);">IMAP Settings:</strong><br>
-                Server: outlook.office365.com | Port: 993 | Security: SSL/TLS
-              </div>
-            </div>
-          </details>
-
-          <!-- Yahoo -->
-          <details style="background: var(--panel2); border-radius: 8px; border: 1px solid var(--border);">
-            <summary style="padding: 16px; cursor: pointer; font-weight: 600; color: var(--text);">
-              Yahoo Mail
-            </summary>
-            <div style="padding: 0 16px 16px; color: var(--muted);">
-              <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li>Go to <a href="https://login.yahoo.com/account/security" target="_blank" style="color: var(--gold);">Yahoo Account Security</a></li>
-                <li>Click "Generate app password"</li>
-                <li>Select "Other App" and enter "Revenue Radar"</li>
-                <li>Copy the generated password</li>
-              </ol>
-              <div style="margin-top: 12px; padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">
-                <strong style="color: var(--gold);">IMAP Settings:</strong><br>
-                Server: imap.mail.yahoo.com | Port: 993 | Security: SSL/TLS
-              </div>
-            </div>
-          </details>
-
-          <!-- GoDaddy -->
-          <details style="background: var(--panel2); border-radius: 8px; border: 1px solid var(--border);">
-            <summary style="padding: 16px; cursor: pointer; font-weight: 600; color: var(--text);">
-              GoDaddy Workspace Email
-            </summary>
-            <div style="padding: 0 16px 16px; color: var(--muted);">
-              <p style="margin: 0 0 12px 0;">GoDaddy Workspace allows direct IMAP access with your regular email password.</p>
-              <div style="padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">
-                <strong style="color: var(--gold);">IMAP Settings:</strong><br>
-                Server: imap.secureserver.net | Port: 993 | Security: SSL/TLS
-              </div>
-            </div>
-          </details>
-
-          <!-- Other -->
-          <details style="background: var(--panel2); border-radius: 8px; border: 1px solid var(--border);">
-            <summary style="padding: 16px; cursor: pointer; font-weight: 600; color: var(--text);">
-              Other Email Providers
-            </summary>
-            <div style="padding: 0 16px 16px; color: var(--muted);">
-              <p style="margin: 0 0 12px 0;">For other providers, you'll need:</p>
-              <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li>IMAP server address (usually imap.yourdomain.com)</li>
-                <li>Port number (usually 993 for SSL or 143 for non-SSL)</li>
-                <li>Your email address and password</li>
-              </ul>
-              <p style="margin: 12px 0 0 0;">Check your email provider's help documentation for IMAP settings, or contact their support.</p>
-            </div>
-          </details>
+    <div class="modal-content" style="max-width: 950px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 24px;">📧</span>
+          <span>Email Autopilot Setup Guide</span>
         </div>
+        <button class="modal-close" onclick="closeSetupGuide()">&times;</button>
       </div>
+      <div class="modal-body">
+        <!-- Two Column Layout -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <!-- Left Column: How It Works + Tips -->
+          <div>
+            <!-- How It Works -->
+            <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="margin: 0 0 16px 0; color: var(--gold); font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <span>⚡</span> How It Works
+              </h3>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                  <div style="width: 24px; height: 24px; background: rgba(251, 191, 36, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--gold); flex-shrink: 0;">1</div>
+                  <div style="font-size: 13px; color: var(--text);">Connect your invoice email inbox</div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                  <div style="width: 24px; height: 24px; background: rgba(251, 191, 36, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--gold); flex-shrink: 0;">2</div>
+                  <div style="font-size: 13px; color: var(--text);">We automatically scan for new invoices</div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                  <div style="width: 24px; height: 24px; background: rgba(251, 191, 36, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--gold); flex-shrink: 0;">3</div>
+                  <div style="font-size: 13px; color: var(--text);">AI extracts data from PDFs & emails</div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                  <div style="width: 24px; height: 24px; background: rgba(251, 191, 36, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--gold); flex-shrink: 0;">4</div>
+                  <div style="font-size: 13px; color: var(--text);">Get alerts on price increases & overbilling</div>
+                </div>
+              </div>
+            </div>
 
-      <!-- Tips -->
-      <div style="background: var(--panel2); border-radius: 8px; padding: 20px; border: 1px solid var(--border);">
-        <h3 style="margin: 0 0 12px 0; color: var(--text); font-size: 16px;">💡 Pro Tips for Multi-Location Owners</h3>
-        <ul style="margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.8;">
-          <li><strong style="color: var(--text);">Dedicated invoice email:</strong> Set up invoices@yourcompany.com and ask vendors to send there</li>
-          <li><strong style="color: var(--text);">Multiple monitors:</strong> Create one monitor per location for better tracking</li>
-          <li><strong style="color: var(--text);">Forward invoices:</strong> Set up email forwarding rules to consolidate invoices</li>
-          <li><strong style="color: var(--text);">Check frequency:</strong> Invoices are scanned every 15 minutes by default</li>
-        </ul>
-      </div>
+            <!-- Pro Tips -->
+            <div style="background: var(--panel2); border-radius: 12px; padding: 20px; border: 1px solid var(--border);">
+              <h3 style="margin: 0 0 14px 0; color: var(--text); font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <span>💡</span> Pro Tips
+              </h3>
+              <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--muted);">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span><strong style="color: var(--text);">Dedicated email:</strong> Create invoices@company.com for vendors</span>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span><strong style="color: var(--text);">Multi-location:</strong> One monitor per location works best</span>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span><strong style="color: var(--text);">Forwarding:</strong> Set up rules to consolidate invoices</span>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span><strong style="color: var(--text);">Frequency:</strong> Scanned every 15 minutes automatically</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div style="margin-top: 24px; text-align: center;">
-        <button onclick="closeSetupGuide(); openAddEmailMonitor();" class="btn">Ready to Connect Email</button>
+          <!-- Right Column: Provider Instructions -->
+          <div>
+            <h3 style="margin: 0 0 14px 0; color: var(--text); font-size: 14px; font-weight: 700;">Setup by Email Provider</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Gmail -->
+              <details style="background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
+                <summary style="padding: 14px 16px; cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 16px;">📬</span> Gmail / Google Workspace
+                </summary>
+                <div style="padding: 0 16px 16px; color: var(--muted); font-size: 12px; line-height: 1.7;">
+                  <ol style="margin: 0; padding-left: 18px;">
+                    <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #06b6d4;">App Passwords</a></li>
+                    <li>Enable 2-Step Verification if needed</li>
+                    <li>Generate a new app password for "Mail"</li>
+                    <li>Use the 16-character password below</li>
+                  </ol>
+                  <div style="margin-top: 10px; padding: 10px 12px; background: rgba(6, 182, 212, 0.08); border-radius: 6px; font-family: monospace; font-size: 11px;">
+                    <strong style="color: #06b6d4;">Server:</strong> imap.gmail.com <strong style="color: #06b6d4; margin-left: 12px;">Port:</strong> 993
+                  </div>
+                </div>
+              </details>
+
+              <!-- Outlook -->
+              <details style="background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
+                <summary style="padding: 14px 16px; cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 16px;">📧</span> Outlook / Office 365
+                </summary>
+                <div style="padding: 0 16px 16px; color: var(--muted); font-size: 12px; line-height: 1.7;">
+                  <ol style="margin: 0; padding-left: 18px;">
+                    <li>Go to <a href="https://account.microsoft.com/security" target="_blank" style="color: #06b6d4;">Microsoft Security</a></li>
+                    <li>Enable Two-step verification</li>
+                    <li>Create a new app password</li>
+                  </ol>
+                  <div style="margin-top: 10px; padding: 10px 12px; background: rgba(6, 182, 212, 0.08); border-radius: 6px; font-family: monospace; font-size: 11px;">
+                    <strong style="color: #06b6d4;">Server:</strong> outlook.office365.com <strong style="color: #06b6d4; margin-left: 12px;">Port:</strong> 993
+                  </div>
+                </div>
+              </details>
+
+              <!-- Yahoo -->
+              <details style="background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
+                <summary style="padding: 14px 16px; cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 16px;">📨</span> Yahoo Mail
+                </summary>
+                <div style="padding: 0 16px 16px; color: var(--muted); font-size: 12px; line-height: 1.7;">
+                  <ol style="margin: 0; padding-left: 18px;">
+                    <li>Go to <a href="https://login.yahoo.com/account/security" target="_blank" style="color: #06b6d4;">Yahoo Security</a></li>
+                    <li>Generate app password for "Other App"</li>
+                    <li>Name it "Revenue Radar"</li>
+                  </ol>
+                  <div style="margin-top: 10px; padding: 10px 12px; background: rgba(6, 182, 212, 0.08); border-radius: 6px; font-family: monospace; font-size: 11px;">
+                    <strong style="color: #06b6d4;">Server:</strong> imap.mail.yahoo.com <strong style="color: #06b6d4; margin-left: 12px;">Port:</strong> 993
+                  </div>
+                </div>
+              </details>
+
+              <!-- GoDaddy -->
+              <details style="background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
+                <summary style="padding: 14px 16px; cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 16px;">🌐</span> GoDaddy Workspace
+                </summary>
+                <div style="padding: 0 16px 16px; color: var(--muted); font-size: 12px; line-height: 1.7;">
+                  <p style="margin: 0 0 10px 0;">Use your regular email password - no app password needed.</p>
+                  <div style="padding: 10px 12px; background: rgba(6, 182, 212, 0.08); border-radius: 6px; font-family: monospace; font-size: 11px;">
+                    <strong style="color: #06b6d4;">Server:</strong> imap.secureserver.net <strong style="color: #06b6d4; margin-left: 12px;">Port:</strong> 993
+                  </div>
+                </div>
+              </details>
+
+              <!-- Other -->
+              <details style="background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
+                <summary style="padding: 14px 16px; cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 16px;">⚙️</span> Other Providers
+                </summary>
+                <div style="padding: 0 16px 16px; color: var(--muted); font-size: 12px; line-height: 1.7;">
+                  <p style="margin: 0;">Check your email provider's documentation for IMAP settings. Typically:</p>
+                  <ul style="margin: 8px 0 0 0; padding-left: 18px;">
+                    <li>Server: imap.yourdomain.com</li>
+                    <li>Port: 993 (SSL) or 143 (non-SSL)</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA Button -->
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center;">
+          <button onclick="closeSetupGuide(); openAddEmailMonitor();" class="btn" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; padding: 14px 32px; font-size: 14px; font-weight: 600;">
+            Ready to Connect Email →
+          </button>
+        </div>
       </div>
     </div>
   </div>
