@@ -1998,6 +1998,42 @@
       text-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
     }
 
+    /* Intent Signals Tile - Orange/Red Theme for Urgency */
+    .quick-action-tile.intent {
+      background: linear-gradient(165deg, rgba(35, 18, 10, 0.97) 0%, rgba(25, 12, 6, 0.99) 100%);
+      border-color: rgba(249, 115, 22, 0.25);
+      position: relative;
+    }
+    .quick-action-tile.intent::before {
+      background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.7), transparent);
+    }
+    .quick-action-tile.intent:hover {
+      border-color: rgba(249, 115, 22, 0.5);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(249, 115, 22, 0.15);
+    }
+    .quick-action-tile.intent .tile-value {
+      color: #f97316;
+      text-shadow: 0 0 25px rgba(249, 115, 22, 0.5);
+    }
+    .quick-action-tile.intent .tile-subtitle {
+      color: rgba(251, 146, 60, 0.9);
+    }
+    .quick-action-tile.intent.has-critical::after {
+      content: '';
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 10px;
+      height: 10px;
+      background: #ef4444;
+      border-radius: 50%;
+      animation: pulse-critical 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-critical {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
     .quick-action-tile.settings {
       background: linear-gradient(165deg, rgba(20, 22, 28, 0.97) 0%, rgba(15, 17, 22, 0.99) 100%);
       border-color: rgba(148, 163, 184, 0.2);
@@ -2611,6 +2647,286 @@
       font-weight: 600;
       color: #22c55e;
     }
+
+    /* Intent Signals Modal Styles */
+    .intent-signals-grid {
+      display: grid;
+      gap: 12px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+
+    .intent-signal-card {
+      display: flex;
+      align-items: stretch;
+      gap: 16px;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .intent-signal-card:hover {
+      border-color: rgba(249, 115, 22, 0.3);
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .intent-signal-card.priority-critical {
+      border-left: 3px solid #ef4444;
+    }
+    .intent-signal-card.priority-high {
+      border-left: 3px solid #f97316;
+    }
+    .intent-signal-card.priority-medium {
+      border-left: 3px solid #eab308;
+    }
+    .intent-signal-card.priority-low {
+      border-left: 3px solid #64748b;
+    }
+
+    .intent-signal-priority-bar {
+      width: 4px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .intent-signal-priority-bar.critical { background: #ef4444; }
+    .intent-signal-priority-bar.high { background: #f97316; }
+    .intent-signal-priority-bar.medium { background: #eab308; }
+    .intent-signal-priority-bar.low { background: #64748b; }
+
+    .intent-signal-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .intent-signal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .intent-signal-company {
+      font-size: 15px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .intent-signal-industry {
+      font-size: 10px;
+      font-weight: 600;
+      color: #94a3b8;
+      background: rgba(100, 116, 139, 0.15);
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    .intent-signal-location {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+
+    .intent-signal-keyword-box {
+      background: rgba(249, 115, 22, 0.08);
+      border: 1px solid rgba(249, 115, 22, 0.2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+
+    .intent-signal-keyword-label {
+      font-size: 10px;
+      color: #f97316;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .intent-signal-search-context {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-style: italic;
+    }
+
+    .intent-signal-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .intent-signal-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .intent-signal-score {
+      text-align: right;
+      min-width: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .intent-signal-score-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #f97316;
+      line-height: 1;
+    }
+
+    .intent-signal-score-label {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .freshness-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+    .freshness-badge.hot {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      animation: pulse-hot 1.5s ease-in-out infinite;
+    }
+    .freshness-badge.warm {
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
+    }
+    .freshness-badge.cooling {
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+    }
+    .freshness-badge.cold {
+      background: rgba(100, 116, 139, 0.15);
+      color: #64748b;
+    }
+    @keyframes pulse-hot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .intent-signal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .intent-signal-btn {
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .intent-signal-btn:hover {
+      border-color: #f97316;
+      background: rgba(249, 115, 22, 0.1);
+    }
+    .intent-signal-btn.primary {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      border: none;
+      color: white;
+    }
+    .intent-signal-btn.primary:hover {
+      opacity: 0.9;
+    }
+
+    .intent-summary-stat {
+      text-align: center;
+      flex: 1;
+    }
+    .intent-summary-value {
+      font-size: 32px;
+      font-weight: 800;
+    }
+    .intent-summary-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .intent-filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .intent-filter-btn {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .intent-filter-btn:hover {
+      border-color: #f97316;
+      color: #f97316;
+    }
+    .intent-filter-btn.active {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: #f97316;
+      color: #f97316;
+      font-weight: 600;
+    }
+
+    .intent-contact-info {
+      background: rgba(34, 197, 94, 0.08);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-top: 10px;
+    }
+    .intent-contact-info .contact-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #22c55e;
+    }
+    .intent-contact-info .contact-title {
+      font-size: 11px;
+      color: #64748b;
+    }
+    .intent-contact-info .contact-email {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .intent-empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+    }
+    .intent-empty-state h3 {
+      font-size: 18px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .intent-empty-state p {
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
@@ -2674,7 +2990,7 @@
       </div>
 
       <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
-      <div class="quick-actions-grid">
+      <div class="quick-actions-grid" style="grid-template-columns: repeat(5, 1fr);">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-label">Inventory</span>
           <span class="tile-value" id="tileInventoryCount">247 Items</span>
@@ -2684,6 +3000,11 @@
           <span class="tile-value" id="tileSavingsFound">$8,247 Found</span>
           <span class="tile-subtitle">+ Location Performance</span>
         </a>
+        <div class="quick-action-tile intent" id="intentSignalsTile" onclick="openIntentSignalsModal()">
+          <span class="tile-label">Intent Signals</span>
+          <span class="tile-value" id="tileIntentCount">0 New</span>
+          <span class="tile-subtitle" id="tileIntentCritical">Loading...</span>
+        </div>
         <div class="quick-action-tile results" onclick="openActionsExecutedModal()">
           <span class="tile-label">Smart Actions Executed</span>
           <span class="tile-value" style="color: #22c55e;" id="tileActionsExecuted">$6,287 Saved</span>
@@ -2730,7 +3051,7 @@
           <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
             <span style="color: var(--muted); font-size: 12px;">Set up automatic invoice scanning</span>
             <button class="btn" onclick="openSetupGuide()" style="background: var(--panel2); font-size: 12px; padding: 8px 14px;">How It Works</button>
-            <a href="connect-email.html" class="btn" style="font-size: 12px; padding: 8px 14px;">Configure</a>
+            <button class="btn" onclick="openAddEmailMonitor()" style="font-size: 12px; padding: 8px 14px;">Configure</button>
           </div>
         </div>
       </div>
@@ -3052,71 +3373,6 @@
         <div class="divider"></div>
         <div class="tableWrap" id="issuesTable">
           <div class="loadingState">Loading issues...</div>
-        </div>
-      </div>
-
-      <!-- Email Invoice Autopilot Section -->
-      <div class="card">
-        <div class="sectionHeader">
-          <div class="sectionTitle">📧 Email Invoice Autopilot</div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="btn" onclick="openSetupGuide()" style="background: var(--panel2); font-size: 13px;">Setup Guide</button>
-            <button class="btn" onclick="openAddEmailMonitor()">+ Add Email Monitor</button>
-          </div>
-        </div>
-        <div class="divider"></div>
-
-        <!-- Quick Stats Bar -->
-        <div id="emailAutopilotStats" style="display: none; padding: 16px; background: var(--panel2); border-bottom: 1px solid var(--border);">
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: center;">
-            <div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--gold);" id="statActiveMonitors">0</div>
-              <div style="font-size: 12px; color: var(--muted2);">Active Monitors</div>
-            </div>
-            <div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--text);" id="statEmailsProcessed">0</div>
-              <div style="font-size: 12px; color: var(--muted2);">Emails Processed</div>
-            </div>
-            <div>
-              <div style="font-size: 24px; font-weight: 700; color: #10b981;" id="statInvoicesCreated">0</div>
-              <div style="font-size: 12px; color: var(--muted2);">Invoices Created</div>
-            </div>
-            <div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--text);" id="statLastCheck">-</div>
-              <div style="font-size: 12px; color: var(--muted2);">Last Check</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="padding: 16px;">
-          <div id="emailMonitorsList" style="display: grid; gap: 12px;">
-            <div class="emailAutopilotEmptyState" style="text-align: center; padding: 48px 24px;">
-              <div style="font-size: 48px; margin-bottom: 16px;">📬</div>
-              <h3 style="color: var(--text); margin-bottom: 8px; font-size: 18px;">Automate Your Invoice Processing</h3>
-              <p style="color: var(--muted2); margin-bottom: 24px; max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.6;">
-                Connect your email inbox and we'll automatically scan for invoices, extract the data,
-                and flag any pricing discrepancies - saving you hours of manual work.
-              </p>
-              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn" onclick="openAddEmailMonitor()">+ Add Email Monitor</button>
-                <button class="btn" onclick="openSetupGuide()" style="background: var(--panel2);">How It Works</button>
-              </div>
-              <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
-                <div style="color: var(--muted2); font-size: 13px; margin-bottom: 12px;">Works with all major email providers:</div>
-                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; color: var(--muted);">
-                  <span>Gmail</span>
-                  <span>•</span>
-                  <span>Outlook/Office 365</span>
-                  <span>•</span>
-                  <span>Yahoo</span>
-                  <span>•</span>
-                  <span>GoDaddy</span>
-                  <span>•</span>
-                  <span>Any IMAP</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -3933,6 +4189,380 @@
       const modal = document.getElementById('actionsExecutedModal');
       if (modal) {
         modal.classList.remove('active');
+      }
+    }
+
+    // =====================================================
+    // INTENT SIGNALS FUNCTIONS
+    // =====================================================
+    let intentSignalsData = [];
+    let currentIntentFilter = 'all';
+
+    // Open Intent Signals Modal
+    function openIntentSignalsModal() {
+      const modal = document.getElementById('intentSignalsModal');
+      if (modal) {
+        modal.classList.add('active');
+        loadIntentSignals();
+      }
+    }
+
+    // Close Intent Signals Modal
+    function closeIntentSignalsModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('intentSignalsModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Open Intent Config Modal
+    function openIntentConfigModal() {
+      const modal = document.getElementById('intentConfigModal');
+      if (modal) {
+        modal.classList.add('active');
+      }
+    }
+
+    // Close Intent Config Modal
+    function closeIntentConfigModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('intentConfigModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Load Intent Signals from API
+    async function loadIntentSignals() {
+      try {
+        const response = await fetch('/api/intent-signals/feed?limit=50', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          intentSignalsData = data.signals || [];
+          updateIntentSignalsDisplay();
+          updateIntentSummaryStats(data.summary || {});
+        }
+      } catch (error) {
+        console.error('Error loading intent signals:', error);
+      }
+    }
+
+    // Update Intent Summary Stats
+    function updateIntentSummaryStats(summary) {
+      document.getElementById('modalIntentNew').textContent = summary.new_count || 0;
+      document.getElementById('modalIntentCritical').textContent = summary.critical_new || 0;
+      document.getElementById('modalIntentHigh').textContent = summary.high_new || 0;
+
+      const responseRate = summary.contacted_count && summary.total_signals
+        ? Math.round((summary.contacted_count / summary.total_signals) * 100)
+        : 0;
+      document.getElementById('modalIntentContacted').textContent = responseRate + '%';
+
+      // Update tile
+      document.getElementById('tileIntentCount').textContent = (summary.new_count || 0) + ' New';
+      const criticalCount = summary.critical_new || 0;
+      document.getElementById('tileIntentCritical').textContent = criticalCount > 0
+        ? criticalCount + ' Critical'
+        : 'Monitoring active';
+
+      // Add/remove critical indicator
+      const tile = document.getElementById('intentSignalsTile');
+      if (criticalCount > 0) {
+        tile.classList.add('has-critical');
+      } else {
+        tile.classList.remove('has-critical');
+      }
+    }
+
+    // Update Intent Signals Display
+    function updateIntentSignalsDisplay() {
+      const grid = document.getElementById('intentSignalsGrid');
+      let filteredSignals = intentSignalsData;
+
+      if (currentIntentFilter !== 'all') {
+        if (currentIntentFilter === 'new') {
+          filteredSignals = intentSignalsData.filter(s => s.status === 'new');
+        } else if (currentIntentFilter === 'contacted') {
+          filteredSignals = intentSignalsData.filter(s => s.status === 'contacted');
+        } else {
+          filteredSignals = intentSignalsData.filter(s => s.priority === currentIntentFilter);
+        }
+      }
+
+      if (filteredSignals.length === 0) {
+        grid.innerHTML = `
+          <div class="intent-empty-state">
+            <h3>No Intent Signals Yet</h3>
+            <p>Configure your keywords and zip codes to start monitoring for buyer intent.</p>
+            <button class="btn" onclick="openIntentConfigModal()" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border: none;">Configure Keywords</button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filteredSignals.map(signal => renderIntentSignalCard(signal)).join('');
+    }
+
+    // Render a single intent signal card
+    function renderIntentSignalCard(signal) {
+      const freshnessClass = getFreshnessClass(signal.freshness_hours);
+      const freshnessLabel = getFreshnessLabel(signal.freshness_hours);
+
+      const contactHtml = signal.contact_name ? `
+        <div class="intent-contact-info">
+          <div class="contact-name">${escapeHtml(signal.contact_name)}</div>
+          <div class="contact-title">${escapeHtml(signal.contact_title || 'Decision Maker')}</div>
+          ${signal.contact_email ? `<div class="contact-email">${escapeHtml(signal.contact_email)}</div>` : ''}
+        </div>
+      ` : '';
+
+      return `
+        <div class="intent-signal-card priority-${signal.priority}" data-id="${signal.id}" data-priority="${signal.priority}" data-status="${signal.status}">
+          <div class="intent-signal-content">
+            <div class="intent-signal-header">
+              <span class="intent-signal-company">${escapeHtml(signal.company_name)}</span>
+              <span class="intent-signal-industry">${escapeHtml(signal.company_industry || 'Business')}</span>
+              <span class="freshness-badge ${freshnessClass}">${freshnessLabel}</span>
+            </div>
+            <div class="intent-signal-location">
+              ${escapeHtml(signal.company_city || '')}${signal.company_city && signal.company_state ? ', ' : ''}${escapeHtml(signal.company_state || '')} ${escapeHtml(signal.company_zip || '')}
+            </div>
+            <div class="intent-signal-keyword-box">
+              <div class="intent-signal-keyword-label">Matched: ${escapeHtml(signal.matched_keyword)}</div>
+              <div class="intent-signal-search-context">"${escapeHtml(signal.search_context || 'Searching for related products/services')}"</div>
+            </div>
+            ${contactHtml}
+            <div class="intent-signal-meta">
+              <span class="intent-signal-meta-item">
+                <span style="color: #f97316;">●</span> ${signal.keyword_match_strength || 0}% match
+              </span>
+              <span class="intent-signal-meta-item">
+                ${formatTimeAgo(signal.freshness_hours)} ago
+              </span>
+              ${signal.company_employee_count ? `
+                <span class="intent-signal-meta-item">
+                  ${signal.company_employee_count} employees
+                </span>
+              ` : ''}
+            </div>
+            <div class="intent-signal-actions">
+              ${signal.status === 'new' ? `
+                <button class="intent-signal-btn primary" onclick="markIntentContacted(${signal.id})">Mark Contacted</button>
+              ` : `
+                <span style="font-size: 11px; color: #22c55e;">✓ ${signal.status}</span>
+              `}
+              ${signal.contact_email ? `
+                <button class="intent-signal-btn" onclick="emailIntentLead('${escapeHtml(signal.contact_email)}')">Email</button>
+              ` : ''}
+              ${signal.company_phone ? `
+                <button class="intent-signal-btn" onclick="callIntentLead('${escapeHtml(signal.company_phone)}')">Call</button>
+              ` : ''}
+            </div>
+          </div>
+          <div class="intent-signal-score">
+            <div>
+              <div class="intent-signal-score-value">${signal.overall_score || 0}</div>
+              <div class="intent-signal-score-label">Score</div>
+            </div>
+            <div style="margin-top: 12px;">
+              <span class="freshness-badge ${signal.priority === 'critical' ? 'hot' : signal.priority === 'high' ? 'warm' : 'cooling'}" style="font-size: 9px;">${signal.priority.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Get freshness class based on hours
+    function getFreshnessClass(hours) {
+      if (hours <= 2) return 'hot';
+      if (hours <= 8) return 'warm';
+      if (hours <= 24) return 'cooling';
+      return 'cold';
+    }
+
+    // Get freshness label
+    function getFreshnessLabel(hours) {
+      if (hours <= 2) return 'HOT';
+      if (hours <= 8) return 'Warm';
+      if (hours <= 24) return 'Cooling';
+      return 'Cold';
+    }
+
+    // Format time ago
+    function formatTimeAgo(hours) {
+      if (hours < 1) {
+        const mins = Math.round(hours * 60);
+        return mins + ' min' + (mins !== 1 ? 's' : '');
+      }
+      if (hours < 24) {
+        const h = Math.round(hours);
+        return h + ' hour' + (h !== 1 ? 's' : '');
+      }
+      const days = Math.round(hours / 24);
+      return days + ' day' + (days !== 1 ? 's' : '');
+    }
+
+    // Filter intent signals
+    function filterIntentSignals(filter) {
+      currentIntentFilter = filter;
+      document.querySelectorAll('.intent-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      });
+      updateIntentSignalsDisplay();
+    }
+
+    // Mark signal as contacted
+    async function markIntentContacted(signalId) {
+      try {
+        const response = await fetch(`/api/intent-signals/matches/${signalId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ status: 'contacted' })
+        });
+
+        if (response.ok) {
+          // Update local data
+          const signal = intentSignalsData.find(s => s.id === signalId);
+          if (signal) {
+            signal.status = 'contacted';
+          }
+          updateIntentSignalsDisplay();
+          loadIntentSignals(); // Refresh stats
+          showToast('Signal marked as contacted', 'success');
+        }
+      } catch (error) {
+        console.error('Error updating signal:', error);
+        showToast('Failed to update signal', 'error');
+      }
+    }
+
+    // Email intent lead
+    function emailIntentLead(email) {
+      window.location.href = `mailto:${email}?subject=Following up on your recent search`;
+    }
+
+    // Call intent lead
+    function callIntentLead(phone) {
+      window.location.href = `tel:${phone}`;
+    }
+
+    // Generate demo intent signals
+    async function generateDemoIntentSignals() {
+      try {
+        const response = await fetch('/api/intent-signals/demo/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            keywords: ['restaurant equipment', 'commercial kitchen', 'food service supplies', 'pos system'],
+            zip_codes: ['90210', '90211', '75201', '75202', '10001'],
+            count: 8
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          showToast(`Generated ${result.generated} demo signals!`, 'success');
+          loadIntentSignals();
+        } else {
+          showToast('Failed to generate demo signals', 'error');
+        }
+      } catch (error) {
+        console.error('Error generating demo signals:', error);
+        showToast('Error generating demo signals', 'error');
+      }
+    }
+
+    // Save intent config
+    async function saveIntentConfig(event) {
+      event.preventDefault();
+
+      const configName = document.getElementById('configName').value;
+      const keywordsRaw = document.getElementById('configKeywords').value;
+      const zipCodesRaw = document.getElementById('configZipCodes').value;
+
+      const keywords = keywordsRaw.split('\n').map(k => k.trim()).filter(k => k);
+      const zipCodes = zipCodesRaw.split(',').map(z => z.trim()).filter(z => z);
+
+      if (keywords.length === 0) {
+        showToast('Please enter at least one keyword', 'error');
+        return;
+      }
+      if (zipCodes.length === 0) {
+        showToast('Please enter at least one zip code', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/intent-signals/configs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            config_name: configName,
+            keywords: keywords,
+            zip_codes: zipCodes,
+            notify_critical: document.getElementById('notifyCritical').checked ? 1 : 0,
+            notify_high: document.getElementById('notifyHigh').checked ? 1 : 0,
+            notify_medium: document.getElementById('notifyMedium').checked ? 1 : 0,
+            notify_low: document.getElementById('notifyLow').checked ? 1 : 0
+          })
+        });
+
+        if (response.ok) {
+          showToast('Configuration saved successfully!', 'success');
+          closeIntentConfigModal();
+          loadIntentSignals();
+        } else {
+          const err = await response.json();
+          showToast(err.error || 'Failed to save configuration', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving config:', error);
+        showToast('Error saving configuration', 'error');
+      }
+    }
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load intent signals on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load intent signal summary for tile
+      loadIntentSignalsSummary();
+    });
+
+    // Load just the summary for the tile (lighter weight)
+    async function loadIntentSignalsSummary() {
+      try {
+        const response = await fetch('/api/intent-signals/summary', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (response.ok) {
+          const summary = await response.json();
+          updateIntentSummaryStats(summary);
+        }
+      } catch (error) {
+        console.log('Intent signals not configured yet');
+        document.getElementById('tileIntentCount').textContent = '0 New';
+        document.getElementById('tileIntentCritical').textContent = 'Click to configure';
       }
     }
 
@@ -5791,6 +6421,142 @@
             <span style="color: #22c55e; font-size: 12px;">↑ Real savings</span>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Intent Signals Modal -->
+  <div class="modal-overlay" id="intentSignalsModal" onclick="closeIntentSignalsModal(event)">
+    <div class="modal-content" style="max-width: 1100px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 20px;">📡</span> Intent Signals
+          <span class="verified-badge" style="font-size: 10px; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 4px 10px; border-radius: 20px; font-weight: 700;">Live Monitoring</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="btn" onclick="openIntentConfigModal()" style="background: var(--panel2); font-size: 12px; padding: 8px 14px;">Configure</button>
+          <button class="btn" onclick="generateDemoIntentSignals()" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border: none; font-size: 12px; padding: 8px 14px;">Generate Demo Signals</button>
+          <button class="modal-close" onclick="closeIntentSignalsModal()">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- Summary Stats -->
+        <div class="actions-results-summary" style="display: flex; gap: 24px; margin-bottom: 24px; padding: 16px; background: var(--panel2); border-radius: 12px;">
+          <div class="intent-summary-stat">
+            <div class="intent-summary-value" style="color: #f97316;" id="modalIntentNew">0</div>
+            <div class="intent-summary-label">New Signals</div>
+          </div>
+          <div class="intent-summary-stat">
+            <div class="intent-summary-value" style="color: #ef4444;" id="modalIntentCritical">0</div>
+            <div class="intent-summary-label">Critical</div>
+          </div>
+          <div class="intent-summary-stat">
+            <div class="intent-summary-value" style="color: #eab308;" id="modalIntentHigh">0</div>
+            <div class="intent-summary-label">High Priority</div>
+          </div>
+          <div class="intent-summary-stat" style="flex: 1.5;">
+            <div class="intent-summary-value" style="color: #22c55e;" id="modalIntentContacted">0%</div>
+            <div class="intent-summary-label">Response Rate</div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="intent-filters">
+          <button class="intent-filter-btn active" data-filter="all" onclick="filterIntentSignals('all')">All</button>
+          <button class="intent-filter-btn" data-filter="critical" onclick="filterIntentSignals('critical')">Critical</button>
+          <button class="intent-filter-btn" data-filter="high" onclick="filterIntentSignals('high')">High</button>
+          <button class="intent-filter-btn" data-filter="new" onclick="filterIntentSignals('new')">New</button>
+          <button class="intent-filter-btn" data-filter="contacted" onclick="filterIntentSignals('contacted')">Contacted</button>
+        </div>
+
+        <!-- Signals Grid -->
+        <div class="intent-signals-grid" id="intentSignalsGrid">
+          <div class="intent-empty-state">
+            <h3>No Intent Signals Yet</h3>
+            <p>Configure your keywords and zip codes to start monitoring for buyer intent.</p>
+            <button class="btn" onclick="openIntentConfigModal()" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border: none;">Configure Keywords</button>
+          </div>
+        </div>
+
+        <!-- Total Impact Footer -->
+        <div class="actions-total-impact" style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div class="total-impact-label" style="font-size: 14px; font-weight: 700; color: var(--text);">Intent Signal Performance</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Signals expire after 48 hours - act fast on critical leads</div>
+          </div>
+          <div class="total-impact-badge" style="display: flex; align-items: center; gap: 16px;">
+            <div style="text-align: center;">
+              <div style="font-size: 18px; font-weight: 800; color: #f97316;" id="modalIntentAvgScore">--</div>
+              <div style="font-size: 10px; color: #64748b;">Avg Score</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 18px; font-weight: 800; color: #22c55e;" id="modalIntentWonValue">$0</div>
+              <div style="font-size: 10px; color: #64748b;">Won Value</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Intent Signal Configuration Modal -->
+  <div class="modal-overlay" id="intentConfigModal" onclick="closeIntentConfigModal(event)">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 10px;">
+          <span>⚙️</span> Configure Intent Signals
+        </div>
+        <button class="modal-close" onclick="closeIntentConfigModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="intentConfigForm" onsubmit="saveIntentConfig(event)">
+          <div style="display: grid; gap: 20px;">
+            <div>
+              <label style="display: block; font-size: 13px; color: var(--text); margin-bottom: 8px; font-weight: 600;">Configuration Name</label>
+              <input type="text" id="configName" required placeholder="e.g., Restaurant Equipment Leads" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 13px; color: var(--text); margin-bottom: 8px; font-weight: 600;">Keywords to Monitor</label>
+              <textarea id="configKeywords" rows="4" required placeholder="Enter keywords (one per line):&#10;restaurant equipment&#10;commercial kitchen&#10;food service supplies&#10;pos system" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; resize: vertical;"></textarea>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">One keyword per line. More specific keywords = higher quality matches.</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 13px; color: var(--text); margin-bottom: 8px; font-weight: 600;">Target Zip Codes</label>
+              <input type="text" id="configZipCodes" required placeholder="e.g., 90210, 90211, 90212" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Comma-separated zip codes for your target territory.</div>
+            </div>
+
+            <div style="padding: 16px; background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.2); border-radius: 8px;">
+              <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px;">Notification Preferences</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="notifyCritical" checked style="width: 16px; height: 16px; accent-color: #f97316;">
+                  <span style="font-size: 13px; color: var(--text);">Critical signals</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="notifyHigh" checked style="width: 16px; height: 16px; accent-color: #f97316;">
+                  <span style="font-size: 13px; color: var(--text);">High priority</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="notifyMedium" style="width: 16px; height: 16px; accent-color: #f97316;">
+                  <span style="font-size: 13px; color: var(--text);">Medium priority</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="notifyLow" style="width: 16px; height: 16px; accent-color: #f97316;">
+                  <span style="font-size: 13px; color: var(--text);">Low priority</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;">
+              <button type="button" class="btn" onclick="closeIntentConfigModal()" style="background: var(--panel2);">Cancel</button>
+              <button type="submit" class="btn" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border: none;">Save Configuration</button>
+            </div>
+          </div>
+        </form>
+        <div id="intentConfigStatus" style="margin-top: 12px; display: none;"></div>
       </div>
     </div>
   </div>

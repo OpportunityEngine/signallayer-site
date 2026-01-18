@@ -1229,6 +1229,12 @@ console.log('✅ Business Intelligence routes registered at /api/bi (auth requir
 app.use('/api', requireAuth, eventCateringRoutes);
 console.log('✅ Private Events & Catering routes registered at /api (auth required)');
 
+// Intent Signals routes (buyer intent monitoring)
+// Protected by auth middleware to ensure req.user is populated
+const intentSignalRoutes = require('./intent-signal-routes');
+app.use('/api/intent-signals', requireAuth, intentSignalRoutes);
+console.log('✅ Intent Signal routes registered at /api/intent-signals (auth required)');
+
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {
   const start = Date.now();

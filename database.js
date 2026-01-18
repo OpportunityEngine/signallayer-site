@@ -384,6 +384,21 @@ function initDatabase() {
       console.log('⚠️  Email monitors migration (safe to ignore):', emailMigrationError.message);
     }
 
+    // Initialize Intent Signals schema
+    try {
+      const intentSignalsSchemaPath = path.join(__dirname, 'database-schema-intent-signals.sql');
+      if (fs.existsSync(intentSignalsSchemaPath)) {
+        const intentSignalsSchema = fs.readFileSync(intentSignalsSchemaPath, 'utf8');
+        db.exec(intentSignalsSchema);
+        console.log('✅ Intent Signals schema initialized');
+      }
+    } catch (intentError) {
+      // Tables may already exist
+      if (!intentError.message.includes('already exists')) {
+        console.log('⚠️  Intent Signals schema (safe to ignore):', intentError.message);
+      }
+    }
+
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
     // Seed demo data if database is empty (only in development)
