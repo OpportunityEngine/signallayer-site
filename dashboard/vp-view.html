@@ -3438,8 +3438,8 @@
   </div>
 
   <!-- Add Email Monitor Modal -->
-  <div id="addEmailMonitorModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.9); z-index: 9999; align-items: center; justify-content: center;">
-    <div style="background: var(--panel); border-radius: 12px; padding: 32px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border);">
+  <div class="modal-overlay" id="addEmailMonitorModal" onclick="closeAddEmailMonitor(event)">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <h2 style="margin: 0; font-size: 24px; font-weight: 700;">Add Email Monitor</h2>
         <button onclick="closeAddEmailMonitor()" style="background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
@@ -3491,8 +3491,8 @@
   </div>
 
   <!-- Setup Guide Modal -->
-  <div id="setupGuideModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.9); z-index: 9999; align-items: center; justify-content: center; overflow-y: auto;">
-    <div style="background: var(--panel); border-radius: 12px; padding: 32px; max-width: 700px; width: 90%; margin: 40px auto; border: 1px solid var(--border);">
+  <div class="modal-overlay" id="setupGuideModal" onclick="closeSetupGuide(event)">
+    <div class="modal-content" style="max-width: 700px;" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <h2 style="margin: 0; font-size: 24px; font-weight: 700;">📧 Email Autopilot Setup Guide</h2>
         <button onclick="closeSetupGuide()" style="background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; width: 32px; height: 32px;">&times;</button>
@@ -5037,26 +5037,40 @@
     }
 
     function openAddEmailMonitor() {
-      document.getElementById('addEmailMonitorModal').style.display = 'flex';
+      const modal = document.getElementById('addEmailMonitorModal');
+      if (modal) {
+        modal.classList.add('active');
+      }
     }
 
-    function closeAddEmailMonitor() {
-      document.getElementById('addEmailMonitorModal').style.display = 'none';
-      // Clear form
-      document.getElementById('newMonitorName').value = '';
-      document.getElementById('newMonitorEmail').value = '';
-      document.getElementById('newMonitorPassword').value = '';
-      document.getElementById('newMonitorImapHost').value = '';
-      document.getElementById('newMonitorImapPort').value = '993';
-      document.getElementById('testConnectionResult').style.display = 'none';
+    function closeAddEmailMonitor(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('addEmailMonitorModal');
+      if (modal) {
+        modal.classList.remove('active');
+        // Clear form
+        document.getElementById('newMonitorName').value = '';
+        document.getElementById('newMonitorEmail').value = '';
+        document.getElementById('newMonitorPassword').value = '';
+        document.getElementById('newMonitorImapHost').value = '';
+        document.getElementById('newMonitorImapPort').value = '993';
+        document.getElementById('testConnectionResult').style.display = 'none';
+      }
     }
 
     function openSetupGuide() {
-      document.getElementById('setupGuideModal').style.display = 'flex';
+      const modal = document.getElementById('setupGuideModal');
+      if (modal) {
+        modal.classList.add('active');
+      }
     }
 
-    function closeSetupGuide() {
-      document.getElementById('setupGuideModal').style.display = 'none';
+    function closeSetupGuide(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('setupGuideModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
     }
 
     function closeMonitorActivity() {
