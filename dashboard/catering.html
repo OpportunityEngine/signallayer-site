@@ -678,6 +678,224 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Smart Recommendations Section */
+    .recommendations-section {
+      margin-bottom: 24px;
+    }
+
+    .recommendations-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .recommendations-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .recommendations-title .icon { font-size: 22px; }
+
+    .recommendations-count {
+      background: rgba(236, 72, 153, 0.2);
+      color: var(--pink);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .savings-badge {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .recommendations-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .recommendation-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.6) 0%, rgba(15, 19, 32, 0.8) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      position: relative;
+      transition: all 0.3s;
+      overflow: hidden;
+    }
+
+    .recommendation-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      border-radius: 14px 0 0 14px;
+    }
+
+    .recommendation-card.critical::before { background: #ef4444; }
+    .recommendation-card.high::before { background: #f59e0b; }
+    .recommendation-card.medium::before { background: #3b82f6; }
+    .recommendation-card.low::before { background: #22c55e; }
+
+    .recommendation-card:hover {
+      border-color: rgba(236, 72, 153, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .rec-priority {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .rec-priority.critical { color: #ef4444; }
+    .rec-priority.high { color: #f59e0b; }
+    .rec-priority.medium { color: #3b82f6; }
+    .rec-priority.low { color: #22c55e; }
+
+    .rec-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-bright);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .rec-description {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .rec-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .rec-savings {
+      font-size: 13px;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .rec-savings span {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 11px;
+    }
+
+    .rec-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .rec-btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .rec-btn-accept {
+      background: rgba(236, 72, 153, 0.2);
+      color: var(--pink);
+      border-color: rgba(236, 72, 153, 0.3);
+    }
+
+    .rec-btn-accept:hover {
+      background: rgba(236, 72, 153, 0.3);
+      border-color: var(--pink);
+    }
+
+    .rec-btn-dismiss {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      border-color: var(--border);
+    }
+
+    .rec-btn-dismiss:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .rec-type-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .rec-type-badge.expiring { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .rec-type-badge.bulk { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+    .rec-type-badge.stock { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .rec-type-badge.cost { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+    .rec-type-badge.quantity { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .rec-type-badge.menu { background: rgba(236, 72, 153, 0.15); color: var(--pink); }
+
+    .recommendations-empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+
+    .recommendations-empty .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    .recommendations-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .view-all-btn {
+      font-size: 13px;
+      color: var(--pink);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .view-all-btn:hover {
+      color: var(--pink-dark);
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -722,6 +940,40 @@
         <div class="stat-label">Avg Margin</div>
         <div class="stat-value gold" id="statMargin">0%</div>
         <div class="stat-sub">across all orders</div>
+      </div>
+    </div>
+
+    <!-- Smart Ordering Recommendations -->
+    <div class="recommendations-section" id="recommendationsSection">
+      <div class="recommendations-header">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div class="recommendations-title">
+            <span class="icon">🧠</span>
+            Smart Ordering Recommendations
+            <span class="recommendations-count" id="recCount">0</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="savings-badge" id="totalSavings" style="display: none;">
+            <span>💰</span>
+            <span id="savingsAmount">$0</span> potential savings
+          </div>
+          <button class="view-all-btn" id="toggleRecsBtn" onclick="toggleRecommendations()">Show All</button>
+        </div>
+      </div>
+      <div id="recommendationsContainer">
+        <div class="recommendations-loading" id="recsLoading">
+          <span class="loading-spinner"></span>
+          Analyzing your inventory and orders...
+        </div>
+        <div class="recommendations-empty" id="recsEmpty" style="display: none;">
+          <div class="icon">✅</div>
+          <h3>No Recommendations</h3>
+          <p>Your catering orders are optimized. Check back as you add new orders.</p>
+        </div>
+        <div class="recommendations-grid" id="recsGrid" style="display: none;">
+          <!-- Recommendations will be inserted here -->
+        </div>
       </div>
     </div>
 
@@ -961,6 +1213,9 @@
     let menuRowCount = 0;
     let authToken = localStorage.getItem('accessToken');
 
+    let recommendations = [];
+    let showAllRecs = false;
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       if (!authToken) {
@@ -968,6 +1223,7 @@
         return;
       }
       loadOrders();
+      loadRecommendations();
     });
 
     // API Helpers
@@ -1379,6 +1635,177 @@
         document.getElementById('orderModal').classList.add('active');
       } catch (error) {
         alert('Failed to load order: ' + error.message);
+      }
+    }
+
+    // ========================================
+    // SMART RECOMMENDATIONS
+    // ========================================
+
+    async function loadRecommendations() {
+      const loading = document.getElementById('recsLoading');
+      const empty = document.getElementById('recsEmpty');
+      const grid = document.getElementById('recsGrid');
+
+      loading.style.display = 'flex';
+      empty.style.display = 'none';
+      grid.style.display = 'none';
+
+      try {
+        const data = await apiCall('/catering/smart-recommendations');
+        recommendations = data.data || [];
+
+        // Update counts
+        document.getElementById('recCount').textContent = recommendations.length;
+
+        // Update total savings
+        const totalSavings = data.summary?.totalPotentialSavings || 0;
+        if (totalSavings > 0) {
+          document.getElementById('totalSavings').style.display = 'flex';
+          document.getElementById('savingsAmount').textContent = `$${(totalSavings / 100).toLocaleString()}`;
+        } else {
+          document.getElementById('totalSavings').style.display = 'none';
+        }
+
+        loading.style.display = 'none';
+
+        if (recommendations.length === 0) {
+          empty.style.display = 'block';
+          document.getElementById('toggleRecsBtn').style.display = 'none';
+        } else {
+          grid.style.display = 'grid';
+          renderRecommendations();
+          document.getElementById('toggleRecsBtn').style.display = recommendations.length > 4 ? 'inline' : 'none';
+        }
+      } catch (error) {
+        console.error('Failed to load recommendations:', error);
+        loading.style.display = 'none';
+        empty.style.display = 'block';
+        empty.innerHTML = `
+          <div class="icon">⚠️</div>
+          <h3>Couldn't Load Recommendations</h3>
+          <p>We'll try again when you refresh the page.</p>
+        `;
+      }
+    }
+
+    function renderRecommendations() {
+      const grid = document.getElementById('recsGrid');
+      const displayRecs = showAllRecs ? recommendations : recommendations.slice(0, 4);
+
+      grid.innerHTML = displayRecs.map(rec => {
+        const typeBadge = getTypeBadge(rec.recommendation_type);
+        const savings = rec.potential_savings_cents > 0
+          ? `<div class="rec-savings">$${(rec.potential_savings_cents / 100).toLocaleString()} <span>potential savings</span></div>`
+          : '';
+
+        return `
+          <div class="recommendation-card ${rec.priority}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div class="rec-priority ${rec.priority}">${rec.priority}</div>
+              <span class="rec-type-badge ${typeBadge.class}">${typeBadge.label}</span>
+            </div>
+            <div class="rec-title">${escapeHtml(rec.title)}</div>
+            <div class="rec-description">${escapeHtml(rec.description)}</div>
+            <div class="rec-meta">
+              ${savings}
+              <div class="rec-actions">
+                ${rec.suggested_action ? `<button class="rec-btn rec-btn-accept" onclick="acceptRecommendation('${rec.id}')">${getActionLabel(rec.recommendation_type)}</button>` : ''}
+                <button class="rec-btn rec-btn-dismiss" onclick="dismissRecommendation('${rec.id}')">Dismiss</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Update toggle button
+      const btn = document.getElementById('toggleRecsBtn');
+      btn.textContent = showAllRecs ? 'Show Less' : `Show All (${recommendations.length})`;
+    }
+
+    function getTypeBadge(type) {
+      const badges = {
+        'expiring_inventory': { label: 'Expiring', class: 'expiring' },
+        'bulk_opportunity': { label: 'Bulk Deal', class: 'bulk' },
+        'low_stock_alert': { label: 'Low Stock', class: 'stock' },
+        'cost_savings': { label: 'Save $', class: 'cost' },
+        'quantity_adjustment': { label: 'Quantity', class: 'quantity' },
+        'menu_suggestion': { label: 'Menu', class: 'menu' },
+        'staffing_suggestion': { label: 'Staffing', class: 'quantity' }
+      };
+      return badges[type] || { label: type, class: 'menu' };
+    }
+
+    function getActionLabel(type) {
+      const labels = {
+        'expiring_inventory': 'Add to Menu',
+        'bulk_opportunity': 'Apply',
+        'low_stock_alert': 'Order Now',
+        'cost_savings': 'Compare',
+        'quantity_adjustment': 'Adjust',
+        'menu_suggestion': 'Review',
+        'staffing_suggestion': 'Update'
+      };
+      return labels[type] || 'Accept';
+    }
+
+    function toggleRecommendations() {
+      showAllRecs = !showAllRecs;
+      renderRecommendations();
+    }
+
+    async function acceptRecommendation(recId) {
+      try {
+        // If it's a stored recommendation (numeric ID), call the API
+        if (!isNaN(recId)) {
+          await apiCall(`/catering/recommendations/${recId}/action`, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'accept' })
+          });
+        }
+
+        // Remove from local array and re-render
+        recommendations = recommendations.filter(r => r.id !== recId);
+        document.getElementById('recCount').textContent = recommendations.length;
+
+        if (recommendations.length === 0) {
+          document.getElementById('recsGrid').style.display = 'none';
+          document.getElementById('recsEmpty').style.display = 'block';
+          document.getElementById('toggleRecsBtn').style.display = 'none';
+        } else {
+          renderRecommendations();
+        }
+
+        // Reload orders to reflect any changes
+        loadOrders();
+      } catch (error) {
+        console.error('Failed to accept recommendation:', error);
+      }
+    }
+
+    async function dismissRecommendation(recId) {
+      try {
+        // If it's a stored recommendation (numeric ID), call the API
+        if (!isNaN(recId)) {
+          await apiCall(`/catering/recommendations/${recId}/action`, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'dismiss' })
+          });
+        }
+
+        // Remove from local array and re-render
+        recommendations = recommendations.filter(r => r.id !== recId);
+        document.getElementById('recCount').textContent = recommendations.length;
+
+        if (recommendations.length === 0) {
+          document.getElementById('recsGrid').style.display = 'none';
+          document.getElementById('recsEmpty').style.display = 'block';
+          document.getElementById('toggleRecsBtn').style.display = 'none';
+        } else {
+          renderRecommendations();
+        }
+      } catch (error) {
+        console.error('Failed to dismiss recommendation:', error);
       }
     }
 
