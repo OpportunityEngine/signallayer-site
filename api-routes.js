@@ -481,6 +481,57 @@ router.get('/telemetry/summary', (req, res) => {
   }
 });
 
+// ===== RECENT UPLOADS ENDPOINT =====
+
+/**
+ * GET /api/uploads/recent - Get user's recent invoice uploads
+ * Returns the most recent ingestion runs for the authenticated user
+ */
+router.get('/uploads/recent', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const limit = parseInt(req.query.limit) || 10;
+
+    const uploads = db.getDatabase().prepare(`
+      SELECT
+        id,
+        run_id,
+        account_name,
+        vendor_name,
+        file_name,
+        file_size,
+        status,
+        created_at,
+        completed_at
+      FROM ingestion_runs
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(user.id, limit);
+
+    // Format the uploads for frontend display
+    const formattedUploads = uploads.map(u => ({
+      id: u.id,
+      runId: u.run_id,
+      fileName: u.file_name || 'Invoice',
+      accountName: u.account_name || 'Unknown',
+      vendorName: u.vendor_name || 'Unknown',
+      status: u.status || 'completed',
+      fileSize: u.file_size,
+      createdAt: u.created_at,
+      completedAt: u.completed_at
+    }));
+
+    res.json({
+      success: true,
+      runs: formattedUploads
+    });
+  } catch (error) {
+    console.error('[API] Error fetching recent uploads:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DEMO MODE ENDPOINT =====
 
 // GET /api/demo/status - Check if we should use demo or production data

@@ -943,9 +943,31 @@
           <p style="color: #64748b; font-size: 14px;">Successfully extracted ${items} line items totaling $${total.toLocaleString(undefined, {minimumFractionDigits: 2})}. No pricing discrepancies found.</p>
         `;
       } else {
+        // Show more info when no items extracted
+        const warnings = result.extracted?.processorMeta?.warnings || [];
+        const fileType = result.extracted?.processorMeta?.fileType || 'unknown';
+        const extractionMethod = result.extracted?.processorMeta?.extractionMethod || 'unknown';
+        const confidence = result.extracted?.processorMeta?.extractionConfidence || 0;
+
+        let diagnosticMsg = '';
+        if (warnings.length > 0) {
+          diagnosticMsg = `<br><span style="font-size: 12px; color: #f59e0b;">⚠️ ${warnings.join('. ')}</span>`;
+        }
+
+        if (fileType === 'pdf' && confidence < 0.5) {
+          diagnosticMsg += `<br><span style="font-size: 12px; color: #64748b;">This may be a scanned PDF. OCR extraction was attempted.</span>`;
+        }
+
         oppList.innerHTML = `
           <div class="opportunities-title">Processing Complete</div>
-          <p style="color: #64748b; font-size: 14px;">Invoice received. Check the dashboard for detailed analysis.</p>
+          <p style="color: #64748b; font-size: 14px;">
+            Invoice received and stored. ${items === 0 ? 'No line items could be automatically extracted from this document.' : ''}
+            Check the dashboard for detailed analysis.
+            ${diagnosticMsg}
+          </p>
+          <p style="font-size: 11px; color: #475569; margin-top: 8px;">
+            File type: ${fileType} | Extraction: ${extractionMethod} | Confidence: ${(confidence * 100).toFixed(0)}%
+          </p>
         `;
       }
 
@@ -964,10 +986,10 @@
       window.location.href = 'manager-view.html';
     }
 
-    // Load recent uploads
+    // Load recent uploads from database
     async function loadRecentUploads() {
       try {
-        const response = await fetch('/api/runs?limit=5', {
+        const response = await fetch('/api/uploads/recent?limit=5', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -978,23 +1000,39 @@
           const listEl = document.getElementById('recentUploadsList');
 
           if (runs.length === 0) {
-            listEl.innerHTML = '<p style="color: #64748b; text-align: center; padding: 20px;">No recent uploads</p>';
+            listEl.innerHTML = '<p style="color: #64748b; text-align: center; padding: 20px;">No recent uploads yet. Upload your first invoice above!</p>';
             return;
           }
 
-          listEl.innerHTML = runs.map(run => `
-            <div class="upload-history-item">
-              <div class="upload-history-icon">📄</div>
-              <div class="upload-history-info">
-                <div class="upload-history-name">${run.file_name || 'Invoice'}</div>
-                <div class="upload-history-meta">${run.account_name || 'Unknown'} • ${new Date(run.created_at).toLocaleDateString()}</div>
+          listEl.innerHTML = runs.map(run => {
+            // Format the date nicely
+            const date = run.createdAt ? new Date(run.createdAt) : new Date();
+            const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+            // Determine status class
+            const statusClass = run.status === 'completed' ? 'success' :
+                               run.status === 'processing' ? 'pending' : 'failed';
+
+            return `
+              <div class="upload-history-item">
+                <div class="upload-history-icon">📄</div>
+                <div class="upload-history-info">
+                  <div class="upload-history-name">${run.fileName || 'Invoice'}</div>
+                  <div class="upload-history-meta">${run.vendorName || run.accountName || 'Unknown'} • ${formattedDate}</div>
+                </div>
+                <span class="upload-history-status ${statusClass}">${run.status || 'completed'}</span>
               </div>
-              <span class="upload-history-status ${run.status}">${run.status}</span>
-            </div>
-          `).join('');
+            `;
+          }).join('');
+        } else {
+          console.error('Failed to load recent uploads:', response.status);
+          document.getElementById('recentUploadsList').innerHTML =
+            '<p style="color: #64748b; text-align: center; padding: 20px;">Could not load recent uploads</p>';
         }
       } catch (error) {
         console.error('Error loading recent uploads:', error);
+        document.getElementById('recentUploadsList').innerHTML =
+          '<p style="color: #64748b; text-align: center; padding: 20px;">Error loading uploads</p>';
       }
     }
 

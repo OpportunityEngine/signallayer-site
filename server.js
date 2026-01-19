@@ -2164,6 +2164,18 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       };
 
       console.log(`[INGEST] Universal processor: ${processorResult.fileType} file, ${processorResult.extractionMethod} extraction, ${processorResult.items.length} items, confidence: ${((processorResult.confidence?.overall || 0) * 100).toFixed(1)}%, time: ${processorResult.processingTimeMs}ms`);
+
+      // Log warnings if extraction had issues
+      if (processorResult.warnings && processorResult.warnings.length > 0) {
+        console.log(`[INGEST] Processor warnings: ${processorResult.warnings.join(', ')}`);
+      }
+
+      // Log raw text sample for debugging (first 200 chars)
+      if (processorResult.rawText && processorResult.rawText.length > 0) {
+        console.log(`[INGEST] Raw text sample: ${processorResult.rawText.substring(0, 200).replace(/\n/g, ' ')}...`);
+      } else {
+        console.log(`[INGEST] WARNING: No raw text extracted from file!`);
+      }
     } else {
       // Fallback to basic parser if processor fails
       const invoiceParser = require('./invoice-parser');
@@ -2590,6 +2602,7 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
                         'Unknown Vendor';
 
       // Store ingestion run in database
+      const fileName = body.fileName || body.file_name || body.source_ref?.value || 'upload';
       const runRecord = db.getDatabase().prepare(`
         INSERT INTO ingestion_runs (
           run_id, user_id, account_name, vendor_name,
@@ -2600,7 +2613,7 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         userId,
         accountName || 'Unknown',
         vendorName,
-        body.source_ref?.value || 'upload',
+        fileName,
         JSON.stringify(body).length
       );
 
