@@ -11,6 +11,14 @@ const fs = require('fs').promises;
 const path = require('path');
 const universalInvoiceProcessor = require('./universal-invoice-processor');  // Universal invoice processing (PDF, images, OCR)
 
+// Try to load OAuth service (optional - only needed if using OAuth)
+let emailOAuth = null;
+try {
+  emailOAuth = require('./email-oauth-service');
+} catch (e) {
+  console.log('[EMAIL IMAP] OAuth service not available - using password auth only');
+}
+
 // Encryption key for storing email passwords (use environment variable in production)
 const ENCRYPTION_KEY = process.env.EMAIL_ENCRYPTION_KEY || 'revenue-radar-email-key-2026';
 
@@ -117,14 +125,13 @@ class EmailIMAPService {
 
       console.log(`[EMAIL IMAP] Checking emails for monitor ${monitorId}: ${monitor.email_address}`);
 
-      const imap = new Imap({
-        user: monitor.imap_user,
-        password: this.decryptPassword(monitor.imap_password_encrypted),
-        host: monitor.imap_host,
-        port: monitor.imap_port,
-        tls: monitor.imap_secure === 1,
-        tlsOptions: { rejectUnauthorized: false }
-      });
+      // Build IMAP configuration based on auth type
+      const imapConfig = await this.buildIMAPConfig(monitor);
+      if (!imapConfig) {
+        throw new Error('Failed to build IMAP configuration - auth missing');
+      }
+
+      const imap = new Imap(imapConfig);
 
       await this.processIMAPConnection(imap, monitor);
 
@@ -213,6 +220,63 @@ class EmailIMAPService {
 
       imap.connect();
     });
+  }
+
+  /**
+   * Build IMAP configuration based on authentication type (OAuth or password)
+   * @param {Object} monitor - Email monitor configuration
+   * @returns {Object} IMAP configuration object
+   */
+  async buildIMAPConfig(monitor) {
+    const baseConfig = {
+      user: monitor.imap_user || monitor.email_address,
+      host: monitor.imap_host,
+      port: monitor.imap_port || 993,
+      tls: monitor.imap_secure !== 0,
+      tlsOptions: { rejectUnauthorized: false }
+    };
+
+    // Check if this is an OAuth monitor
+    if (monitor.oauth_provider && emailOAuth) {
+      console.log(`[EMAIL IMAP] Using OAuth (${monitor.oauth_provider}) for monitor ${monitor.id}`);
+
+      try {
+        // Get valid access token (refreshes if needed)
+        const accessToken = await emailOAuth.getValidAccessToken(monitor);
+
+        if (!accessToken) {
+          throw new Error('Failed to get OAuth access token');
+        }
+
+        // Use XOAUTH2 authentication
+        const xoauth2Token = emailOAuth.createXOAuth2Token(
+          monitor.email_address,
+          accessToken
+        );
+
+        return {
+          ...baseConfig,
+          xoauth2: xoauth2Token
+        };
+
+      } catch (oauthError) {
+        console.error(`[EMAIL IMAP] OAuth error for monitor ${monitor.id}:`, oauthError.message);
+        throw oauthError;
+      }
+    }
+
+    // Fall back to password authentication
+    if (monitor.imap_password_encrypted) {
+      console.log(`[EMAIL IMAP] Using password auth for monitor ${monitor.id}`);
+      return {
+        ...baseConfig,
+        password: this.decryptPassword(monitor.imap_password_encrypted)
+      };
+    }
+
+    // No authentication method available
+    console.error(`[EMAIL IMAP] No auth method for monitor ${monitor.id}`);
+    return null;
   }
 
   /**

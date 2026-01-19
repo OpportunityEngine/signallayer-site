@@ -3352,68 +3352,96 @@
         <button class="modal-close" onclick="closeAddEmailMonitor()">&times;</button>
       </div>
       <div class="modal-body">
-        <!-- Quick Setup Info -->
-        <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(6, 182, 212, 0.02) 100%); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
-          <div style="width: 44px; height: 44px; background: rgba(6, 182, 212, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">🔒</div>
-          <div>
-            <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px;">Secure Connection</div>
-            <div style="font-size: 12px; color: var(--muted);">Your credentials are encrypted and we only read invoice emails. <a href="#" onclick="openSetupGuide(); return false;" style="color: #06b6d4;">Need help? View setup guide</a></div>
+        <!-- Quick Connect Section (OAuth) -->
+        <div id="oauthConnectSection">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px;">Quick Connect</div>
+            <div style="font-size: 13px; color: var(--muted);">Connect with one click - no passwords needed!</div>
+          </div>
+
+          <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 24px;">
+            <!-- Google OAuth Button -->
+            <button onclick="connectWithGoogle()" id="googleOAuthBtn" class="btn" style="display: flex; align-items: center; gap: 12px; padding: 14px 28px; background: white; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; font-weight: 500; color: #3c4043; cursor: pointer; transition: all 0.2s;">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Connect with Google
+            </button>
+
+            <!-- Microsoft OAuth Button -->
+            <button onclick="connectWithMicrosoft()" id="microsoftOAuthBtn" class="btn" style="display: flex; align-items: center; gap: 12px; padding: 14px 28px; background: white; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; font-weight: 500; color: #3c4043; cursor: pointer; transition: all 0.2s;">
+              <svg width="20" height="20" viewBox="0 0 23 23"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>
+              Connect with Microsoft
+            </button>
+          </div>
+
+          <div id="oauthStatus" style="text-align: center; margin-bottom: 16px; display: none;"></div>
+
+          <!-- Divider -->
+          <div style="display: flex; align-items: center; gap: 16px; margin: 24px 0;">
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <span style="color: var(--muted); font-size: 12px; font-weight: 500;">OR CONNECT MANUALLY</span>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <!-- Left Column -->
-          <div style="display: flex; flex-direction: column; gap: 18px;">
-            <div>
-              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">Monitor Name <span style="color: var(--muted);">*</span></label>
-              <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">A friendly name to identify this inbox</div>
+        <!-- Manual Setup Section -->
+        <div id="manualSetupSection">
+          <!-- Info Banner -->
+          <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="font-size: 12px; color: var(--muted);">
+              <strong style="color: #f59e0b;">For Gmail users:</strong> You'll need an App Password.
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #06b6d4;">Generate one here</a>
+              (requires 2-factor auth enabled).
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Left Column -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">Monitor Name <span style="color: var(--muted);">*</span></label>
+                <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">Email Address <span style="color: var(--muted);">*</span></label>
+                <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()" style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">App Password <span style="color: var(--muted);">*</span></label>
+                <input type="password" id="newMonitorPassword" placeholder="Enter app password" required style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
             </div>
 
-            <div>
-              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">Email Address <span style="color: var(--muted);">*</span></label>
-              <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()" style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">The email account to monitor for invoices</div>
-            </div>
+            <!-- Right Column -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">IMAP Server <span style="color: var(--muted);">*</span></label>
+                <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+                <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Auto-detected for Gmail, Outlook, Yahoo</div>
+              </div>
 
-            <div>
-              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">Password / App Password <span style="color: var(--muted);">*</span></label>
-              <input type="password" id="newMonitorPassword" placeholder="Enter app password" required style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
-              <div style="font-size: 11px; color: #f59e0b; margin-top: 6px; display: flex; align-items: center; gap: 4px;">
-                <span>⚠️</span> Gmail/Yahoo/Outlook require an App Password
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">IMAP Port</label>
+                <input type="number" id="newMonitorImapPort" placeholder="993" value="993" style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+
+              <div>
+                <button onclick="testIMAPConnection()" type="button" class="btn" style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; padding: 11px; font-size: 13px; font-weight: 600;">
+                  Test Connection
+                </button>
+                <div id="testConnectionResult" style="margin-top: 8px; display: none; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
               </div>
             </div>
           </div>
 
-          <!-- Right Column -->
-          <div style="display: flex; flex-direction: column; gap: 18px;">
-            <div>
-              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">IMAP Server <span style="color: var(--muted);">*</span></label>
-              <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">Auto-detected for common providers</div>
-            </div>
-
-            <div>
-              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); font-size: 13px;">IMAP Port</label>
-              <input type="number" id="newMonitorImapPort" placeholder="993" value="993" style="width: 100%; padding: 12px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; transition: border-color 0.2s;">
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 6px;">Usually 993 for SSL connections</div>
-            </div>
-
-            <div style="margin-top: auto;">
-              <button onclick="testIMAPConnection()" type="button" class="btn" style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; padding: 12px; font-size: 13px; font-weight: 600;">
-                🔌 Test Connection
-              </button>
-              <div id="testConnectionResult" style="margin-top: 10px; display: none; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
-            </div>
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+            <button onclick="createEmailMonitor()" class="btn" style="flex: 1; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; padding: 14px; font-size: 14px; font-weight: 600;">
+              Create Email Monitor
+            </button>
+            <button onclick="closeAddEmailMonitor()" class="btn" style="padding: 14px 28px; background: var(--panel2); font-size: 14px;">Cancel</button>
           </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div style="display: flex; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);">
-          <button onclick="createEmailMonitor()" class="btn" style="flex: 1; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; padding: 14px; font-size: 14px; font-weight: 600;">
-            Create Email Monitor
-          </button>
-          <button onclick="closeAddEmailMonitor()" class="btn" style="padding: 14px 28px; background: var(--panel2); font-size: 14px;">Cancel</button>
         </div>
 
         <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
@@ -5003,6 +5031,8 @@
       const modal = document.getElementById('addEmailMonitorModal');
       if (modal) {
         modal.classList.add('active');
+        // Check OAuth availability
+        checkOAuthStatus();
       }
     }
 
@@ -5018,7 +5048,133 @@
         document.getElementById('newMonitorImapHost').value = '';
         document.getElementById('newMonitorImapPort').value = '993';
         document.getElementById('testConnectionResult').style.display = 'none';
+        document.getElementById('oauthStatus').style.display = 'none';
       }
+    }
+
+    // =====================================================
+    // OAUTH FUNCTIONS
+    // =====================================================
+
+    async function checkOAuthStatus() {
+      try {
+        const response = await fetch(`${API_BASE}/api/email-oauth/status`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          const googleBtn = document.getElementById('googleOAuthBtn');
+          const microsoftBtn = document.getElementById('microsoftOAuthBtn');
+
+          // Enable/disable buttons based on configuration
+          if (result.data.google && result.data.google.configured) {
+            googleBtn.disabled = false;
+            googleBtn.style.opacity = '1';
+            googleBtn.title = 'Connect your Gmail account';
+          } else {
+            googleBtn.disabled = true;
+            googleBtn.style.opacity = '0.5';
+            googleBtn.title = 'Google OAuth not configured';
+          }
+
+          if (result.data.microsoft && result.data.microsoft.configured) {
+            microsoftBtn.disabled = false;
+            microsoftBtn.style.opacity = '1';
+            microsoftBtn.title = 'Connect your Outlook account';
+          } else {
+            microsoftBtn.disabled = true;
+            microsoftBtn.style.opacity = '0.5';
+            microsoftBtn.title = 'Microsoft OAuth not configured';
+          }
+
+          // If neither is configured, hide the OAuth section entirely
+          if (!result.data.google?.configured && !result.data.microsoft?.configured) {
+            document.getElementById('oauthConnectSection').style.display = 'none';
+          } else {
+            document.getElementById('oauthConnectSection').style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check OAuth status:', error);
+        // Hide OAuth section on error
+        document.getElementById('oauthConnectSection').style.display = 'none';
+      }
+    }
+
+    async function connectWithGoogle() {
+      const statusDiv = document.getElementById('oauthStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = '<div style="color: var(--muted);">Connecting to Google...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-oauth/google/auth`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data.authUrl) {
+          // Redirect to Google OAuth
+          window.location.href = result.data.authUrl;
+        } else {
+          statusDiv.innerHTML = `<div style="color: #ef4444;">Failed: ${result.error || 'Unknown error'}</div>`;
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function connectWithMicrosoft() {
+      const statusDiv = document.getElementById('oauthStatus');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = '<div style="color: var(--muted);">Connecting to Microsoft...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-oauth/microsoft/auth`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data.authUrl) {
+          // Redirect to Microsoft OAuth
+          window.location.href = result.data.authUrl;
+        } else {
+          statusDiv.innerHTML = `<div style="color: #ef4444;">Failed: ${result.error || 'Unknown error'}</div>`;
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+      }
+    }
+
+    // Check for OAuth callback results on page load
+    function checkOAuthCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const oauthSuccess = params.get('oauth_success');
+      const oauthError = params.get('oauth_error');
+      const email = params.get('email');
+
+      if (oauthSuccess) {
+        const action = oauthSuccess === 'created' ? 'created' : 'updated';
+        showAlert('success', `Email monitor ${action} successfully for ${email || 'your account'}!`);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Reload monitors
+        loadEmailMonitors();
+        loadEmailMonitorStats();
+      } else if (oauthError) {
+        showAlert('error', `OAuth failed: ${decodeURIComponent(oauthError)}`);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    // Call on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkOAuthCallback();
+    });
     }
 
     function openSetupGuide() {

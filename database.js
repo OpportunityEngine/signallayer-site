@@ -376,6 +376,29 @@ function initDatabase() {
           console.log('✅ Migration: Added name column to email_monitors');
         }
 
+        // OAuth columns for Google/Microsoft authentication
+        const hasOAuthProvider = emailMonitorsInfo.some(col => col.name === 'oauth_provider');
+        const hasOAuthAccessToken = emailMonitorsInfo.some(col => col.name === 'oauth_access_token');
+        const hasOAuthRefreshToken = emailMonitorsInfo.some(col => col.name === 'oauth_refresh_token');
+        const hasOAuthTokenExpires = emailMonitorsInfo.some(col => col.name === 'oauth_token_expires_at');
+
+        if (!hasOAuthProvider) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN oauth_provider TEXT`);
+          console.log('✅ Migration: Added oauth_provider column to email_monitors');
+        }
+        if (!hasOAuthAccessToken) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN oauth_access_token TEXT`);
+          console.log('✅ Migration: Added oauth_access_token column to email_monitors');
+        }
+        if (!hasOAuthRefreshToken) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN oauth_refresh_token TEXT`);
+          console.log('✅ Migration: Added oauth_refresh_token column to email_monitors');
+        }
+        if (!hasOAuthTokenExpires) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN oauth_token_expires_at DATETIME`);
+          console.log('✅ Migration: Added oauth_token_expires_at column to email_monitors');
+        }
+
         // Disable demo email monitor that has invalid credentials
         db.exec(`UPDATE email_monitors SET is_active = 0 WHERE encrypted_password = 'ENCRYPTED_DEMO_PASSWORD'`);
         console.log('✅ Migration: Disabled demo email monitor with invalid credentials');

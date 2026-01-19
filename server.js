@@ -131,6 +131,7 @@ const authRoutes = require('./auth-routes');  // Authentication routes
 const { requireAuth, requireRole, enforceDemoRestrictions, optionalAuth, addDemoHeaders } = require('./auth-middleware');  // Auth middleware
 const userManagementRoutes = require('./user-management-routes');  // User management
 const emailMonitorRoutes = require('./email-monitor-routes');  // Email monitoring
+const emailOAuthRoutes = require('./email-oauth-routes');  // Email OAuth (Google/Microsoft)
 const adminAnalyticsRoutes = require('./admin-analytics-routes');  // Admin analytics
 const signupRoutes = require('./signup-routes');  // Public self-service signup
 const stripeRoutes = require('./stripe-routes');  // Stripe payment integration
@@ -1378,6 +1379,10 @@ console.log('✅ User management routes registered at /api/user-management');
 // Email Monitor routes (authenticated users - email invoice autopilot)
 app.use('/api/email-monitors', emailMonitorRoutes);
 console.log('✅ Email monitor routes registered at /api/email-monitors');
+
+// Email OAuth routes (Google/Microsoft OAuth for email monitoring)
+app.use('/api/email-oauth', emailOAuthRoutes);
+console.log('✅ Email OAuth routes registered at /api/email-oauth');
 
 // Admin Analytics routes (admin only - real-time metrics)
 app.use('/api/admin', adminAnalyticsRoutes);
