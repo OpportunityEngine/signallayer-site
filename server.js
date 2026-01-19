@@ -138,6 +138,7 @@ const businessIntelRoutes = require('./business-intel-routes');  // Business Int
 const eventCateringRoutes = require('./event-catering-routes');  // Private Events & Catering
 const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware');  // Trial enforcement
 const InventoryIntelligence = require('./inventory-intelligence');  // Inventory tracking & price intelligence
+const universalInvoiceProcessor = require('./universal-invoice-processor');  // Universal invoice processing (PDF, images, OCR)
 
 // Initialize inventory intelligence for auto-processing
 const inventoryIntelligence = new InventoryIntelligence();
@@ -2103,43 +2104,72 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
 
     let raw_text = payload?.raw_text || "";
 
-    // Check if raw_text contains a base64-encoded PDF
+    // ===== UNIVERSAL INVOICE PROCESSOR =====
+    // Handles ALL formats: PDF (digital & scanned), images (phone photos, screenshots), text
+    // Includes OCR for scanned documents and mobile photo optimization
+    let processorResult = null;
+    let parsedInvoice = null;
+
+    // Determine input type and process accordingly
     if (raw_text.startsWith("PDF_FILE_BASE64:")) {
-      console.log("[INGEST] Detected base64 PDF, extracting text server-side...");
-      try {
-        const base64Data = raw_text.substring("PDF_FILE_BASE64:".length);
-        const pdfBuffer = Buffer.from(base64Data, 'base64');
-        console.log(`[INGEST] PDF buffer size: ${pdfBuffer.length} bytes`);
-
-        // Use pdf-parse to extract text with timeout
-        const pdfParse = require('pdf-parse');
-
-        // Add 30-second timeout to PDF parsing to prevent hanging
-        const pdfParseWithTimeout = async (buffer, timeoutMs) => {
-          return Promise.race([
-            pdfParse(buffer),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('PDF parsing timed out')), timeoutMs)
-            )
-          ]);
-        };
-
-        const pdfData = await pdfParseWithTimeout(pdfBuffer, 30000);
-
-        raw_text = pdfData.text;
-        console.log(`[INGEST] ✓ Extracted ${raw_text.length} chars from PDF file`);
-      } catch (pdfError) {
-        console.error("[INGEST] PDF extraction failed:", pdfError.message || pdfError);
-        raw_text = ""; // Fall back to empty if extraction fails
-      }
+      // Base64-encoded PDF
+      console.log("[INGEST] Processing base64 PDF with universal processor...");
+      const base64Data = raw_text.substring("PDF_FILE_BASE64:".length);
+      processorResult = await universalInvoiceProcessor.processInvoice(
+        { base64: base64Data, mimeType: 'application/pdf', filename: body.fileName },
+        { source: source_type, includeRawText: true }
+      );
+    } else if (raw_text.startsWith("IMAGE_FILE_BASE64:")) {
+      // Base64-encoded image (phone photo, screenshot, scan)
+      console.log("[INGEST] Processing base64 image with universal processor (OCR)...");
+      const base64Data = raw_text.substring("IMAGE_FILE_BASE64:".length);
+      processorResult = await universalInvoiceProcessor.processInvoice(
+        { base64: base64Data, mimeType: body.mimeType || 'image/jpeg', filename: body.fileName },
+        { source: source_type, includeRawText: true, preprocessImages: true }
+      );
+    } else if (raw_text.startsWith("FILE_BASE64:")) {
+      // Generic base64 file - let universal processor auto-detect type
+      console.log("[INGEST] Processing base64 file with universal processor (auto-detect)...");
+      const base64Data = raw_text.substring("FILE_BASE64:".length);
+      processorResult = await universalInvoiceProcessor.processInvoice(
+        { base64: base64Data, mimeType: body.mimeType, filename: body.fileName },
+        { source: source_type, includeRawText: true, preprocessImages: true }
+      );
+    } else if (raw_text && raw_text.length > 0) {
+      // Direct text input - process as text
+      console.log("[INGEST] Processing direct text with universal processor...");
+      processorResult = await universalInvoiceProcessor.processInvoice(
+        { text: raw_text },
+        { source: source_type, includeRawText: true }
+      );
+    } else {
+      // No input provided
+      console.log("[INGEST] No valid input provided");
+      processorResult = { ok: false, warnings: ['No invoice data provided'], items: [], rawText: '' };
     }
 
-    // ===== UNIFIED INVOICE PARSER =====
-    // Use the unified parser for consistent extraction across all entry points
-    const invoiceParser = require('./invoice-parser');
-    const parsedInvoice = invoiceParser.parseInvoice(raw_text);
+    // Extract results from universal processor
+    if (processorResult) {
+      raw_text = processorResult.rawText || '';
+      parsedInvoice = processorResult.parsed || {
+        ok: processorResult.ok,
+        items: processorResult.items || [],
+        totals: processorResult.totals,
+        vendor: processorResult.vendor,
+        customer: processorResult.customer,
+        metadata: processorResult.metadata,
+        confidence: processorResult.confidence,
+        opportunities: processorResult.opportunities || [],
+        validation: { warnings: processorResult.warnings || [] }
+      };
 
-    console.log(`[INGEST] Unified parser results: ${parsedInvoice.items.length} items, confidence: ${(parsedInvoice.confidence.overall * 100).toFixed(1)}%`);
+      console.log(`[INGEST] Universal processor: ${processorResult.fileType} file, ${processorResult.extractionMethod} extraction, ${processorResult.items.length} items, confidence: ${((processorResult.confidence?.overall || 0) * 100).toFixed(1)}%, time: ${processorResult.processingTimeMs}ms`);
+    } else {
+      // Fallback to basic parser if processor fails
+      const invoiceParser = require('./invoice-parser');
+      parsedInvoice = invoiceParser.parseInvoice(raw_text);
+      console.log(`[INGEST] Fallback parser: ${parsedInvoice.items.length} items`);
+    }
 
     // Build extracted object - prefer parsed items over payload items
     const extracted = {
@@ -2164,7 +2194,15 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         opportunities: parsedInvoice.opportunities,
         validation: parsedInvoice.validation,
         parseTimeMs: parsedInvoice.parseTimeMs
-      }
+      },
+      // Include universal processor metadata
+      processorMeta: processorResult ? {
+        fileType: processorResult.fileType,
+        extractionMethod: processorResult.extractionMethod,
+        extractionConfidence: processorResult.extractionConfidence,
+        processingTimeMs: processorResult.processingTimeMs,
+        warnings: processorResult.warnings
+      } : null
     };
 
     writeRunJson(run_id, "raw_capture.json", body);

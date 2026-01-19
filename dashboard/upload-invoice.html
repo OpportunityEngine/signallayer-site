@@ -557,11 +557,15 @@
         <div class="drop-zone-subtitle">or click to browse files</div>
         <div class="drop-zone-formats">
           <span class="format-badge">PDF</span>
-          <span class="format-badge">Excel (.xlsx)</span>
+          <span class="format-badge">Photos</span>
+          <span class="format-badge">Excel</span>
           <span class="format-badge">CSV</span>
         </div>
+        <div class="drop-zone-hint" style="margin-top: 8px; font-size: 12px; color: #888;">
+          📱 Phone photos & screenshots supported with OCR
+        </div>
       </div>
-      <input type="file" id="fileInput" class="file-input" accept=".pdf,.xlsx,.xls,.csv" multiple onchange="handleFiles(event)">
+      <input type="file" id="fileInput" class="file-input" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.heic,.webp,.tiff,.tif" multiple onchange="handleFiles(event)">
 
       <!-- Upload Options -->
       <div class="upload-options">
@@ -694,13 +698,19 @@
     }
 
     async function uploadFile(file) {
-      const allowedExtensions = ['.pdf', '.xlsx', '.xls', '.csv'];
+      // Supported file types - now includes images for phone photos/screenshots
+      const documentExtensions = ['.pdf', '.xlsx', '.xls', '.csv'];
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.heic', '.webp', '.tiff', '.tif'];
+      const allowedExtensions = [...documentExtensions, ...imageExtensions];
       const ext = '.' + file.name.split('.').pop().toLowerCase();
 
       if (!allowedExtensions.includes(ext)) {
-        showAlert('error', 'Please upload a PDF, Excel, or CSV file');
+        showAlert('error', 'Please upload a PDF, image (JPG, PNG, HEIC), Excel, or CSV file');
         return;
       }
+
+      const isImage = imageExtensions.includes(ext);
+      const isPDF = ext === '.pdf';
 
       // Show progress
       const progressEl = document.getElementById('uploadProgress');
@@ -721,10 +731,17 @@
 
         // Determine payload based on file type
         let rawTextPayload;
-        if (ext === '.pdf') {
+        let mimeType = file.type;
+
+        if (isPDF) {
           rawTextPayload = 'PDF_FILE_BASE64:' + fileContent;
           updateProgress(20, 'Preparing PDF for processing...');
+        } else if (isImage) {
+          // Image files - use universal processor with OCR
+          rawTextPayload = 'IMAGE_FILE_BASE64:' + fileContent;
+          updateProgress(20, 'Preparing image for OCR processing...');
         } else {
+          // Excel/CSV - read as text
           rawTextPayload = await readFileAsText(file);
           updateProgress(20, 'Preparing file...');
         }
@@ -735,7 +752,13 @@
 
         // Start progress animation
         let progress = 25;
-        const progressMessages = [
+        const progressMessages = isImage ? [
+          'Uploading image...',
+          'Preprocessing image...',
+          'Running OCR text extraction...',
+          'Analyzing invoice content...',
+          'Processing invoice data...'
+        ] : [
           'Uploading to server...',
           'Parsing document...',
           'Extracting data...',
@@ -751,7 +774,7 @@
           msgIndex++;
         }, 800);
 
-        console.log('[Upload] Sending to /ingest endpoint...');
+        console.log('[Upload] Sending to /ingest endpoint...', isImage ? '(image with OCR)' : '');
 
         const response = await fetch('/ingest', {
           method: 'POST',
@@ -763,6 +786,7 @@
             raw_text: rawTextPayload,
             source_type: 'upload',
             fileName: file.name,
+            mimeType: mimeType,  // Include MIME type for image processing
             accountName: accountName || 'Uploaded Invoice',
             vendorName: vendorName || 'Unknown Vendor'
           }),

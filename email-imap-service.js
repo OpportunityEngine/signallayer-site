@@ -9,6 +9,7 @@ const crypto = require('crypto-js');
 const db = require('./database');
 const fs = require('fs').promises;
 const path = require('path');
+const universalInvoiceProcessor = require('./universal-invoice-processor');  // Universal invoice processing (PDF, images, OCR)
 
 // Encryption key for storing email passwords (use environment variable in production)
 const ENCRYPTION_KEY = process.env.EMAIL_ENCRYPTION_KEY || 'revenue-radar-email-key-2026';
@@ -344,12 +345,20 @@ class EmailIMAPService {
       return false;
     }
 
-    // Check for PDF attachments (invoices are usually PDFs)
-    const hasPDFAttachment = emailData.attachments.some(att =>
-      att.contentType === 'application/pdf' || att.filename?.toLowerCase().endsWith('.pdf')
-    );
+    // Supported file types for invoice processing (PDF and images for scanned invoices)
+    const SUPPORTED_MIME_TYPES = [
+      'application/pdf',
+      'image/jpeg', 'image/jpg', 'image/png', 'image/tiff', 'image/webp', 'image/heic'
+    ];
+    const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.heic'];
 
-    if (!hasPDFAttachment) {
+    // Check for supported invoice attachment types
+    const hasInvoiceAttachment = emailData.attachments.some(att => {
+      const ext = att.filename ? '.' + att.filename.split('.').pop().toLowerCase() : '';
+      return SUPPORTED_MIME_TYPES.includes(att.contentType) || SUPPORTED_EXTENSIONS.includes(ext);
+    });
+
+    if (!hasInvoiceAttachment) {
       return false;
     }
 
@@ -362,8 +371,8 @@ class EmailIMAPService {
   }
 
   /**
-   * Process invoice PDF attachments
-   * Integrates with the /ingest endpoint for full invoice processing
+   * Process invoice attachments (PDF, images, scanned documents)
+   * Uses Universal Invoice Processor for all formats including OCR for scans/images
    * @param {Object} emailData - Parsed email data
    * @param {Object} monitor - Email monitor configuration
    * @returns {Promise<Object>} Processing result
@@ -371,86 +380,130 @@ class EmailIMAPService {
   async processInvoiceAttachments(emailData, monitor) {
     const invoiceIds = [];
     let invoicesCreated = 0;
-    const pdfParse = require('pdf-parse');
+
+    // Supported file types for invoice processing
+    const SUPPORTED_TYPES = {
+      'application/pdf': 'pdf',
+      'image/jpeg': 'image',
+      'image/jpg': 'image',
+      'image/png': 'image',
+      'image/tiff': 'image',
+      'image/webp': 'image',
+      'image/heic': 'image'
+    };
+
+    const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.heic'];
 
     try {
       for (const attachment of emailData.attachments) {
-        if (attachment.contentType === 'application/pdf' || attachment.filename?.toLowerCase().endsWith('.pdf')) {
-          console.log(`[EMAIL IMAP] Processing PDF attachment: ${attachment.filename}`);
+        const ext = attachment.filename ? '.' + attachment.filename.split('.').pop().toLowerCase() : '';
+        const isSupported = SUPPORTED_TYPES[attachment.contentType] || SUPPORTED_EXTENSIONS.includes(ext);
 
-          try {
-            // Parse PDF content
-            const pdfData = await pdfParse(attachment.content);
-            const pdfText = pdfData.text;
+        if (!isSupported) continue;
 
-            console.log(`[EMAIL IMAP] Extracted ${pdfText.length} characters from PDF`);
+        const fileType = SUPPORTED_TYPES[attachment.contentType] || (ext === '.pdf' ? 'pdf' : 'image');
+        console.log(`[EMAIL IMAP] Processing ${fileType} attachment: ${attachment.filename}`);
 
-            // Extract vendor/account info from email
-            const senderDomain = emailData.from?.value?.[0]?.address?.split('@')[1] || '';
-            const vendorName = this.extractVendorName(senderDomain, emailData.subject, pdfText);
-            const accountName = monitor.account_name;
-
-            // Build invoice payload for /ingest
-            const invoicePayload = {
-              rawText: pdfText,
-              vendorName: vendorName,
-              accountName: accountName,
-              fileName: attachment.filename,
+        try {
+          // ===== USE UNIVERSAL INVOICE PROCESSOR =====
+          // Handles PDFs (digital & scanned), images (phone photos, scans), with OCR
+          const processorResult = await universalInvoiceProcessor.processInvoice(
+            {
+              buffer: attachment.content,
+              mimeType: attachment.contentType,
+              filename: attachment.filename
+            },
+            {
               source: 'email_autopilot',
-              monitorId: monitor.id,
-              emailSubject: emailData.subject,
-              emailFrom: emailData.from?.value?.[0]?.address,
-              emailDate: emailData.date?.toISOString()
-            };
-
-            // Call internal ingest function (no HTTP needed)
-            const result = await this.ingestInvoice(invoicePayload, monitor);
-
-            if (result.success) {
-              invoiceIds.push(result.runId);
-              invoicesCreated++;
-
-              // Log activity
-              db.logEmailActivity(
-                monitor.id,
-                'invoice_processed',
-                `Processed invoice from ${vendorName}: ${attachment.filename}`,
-                'info',
-                {
-                  runId: result.runId,
-                  opportunities: result.opportunitiesDetected || 0,
-                  fileName: attachment.filename
-                }
-              );
-
-              // Update monitor stats
-              db.updateEmailMonitorStats(monitor.id, {
-                totalInvoicesFound: 1,
-                totalOpportunitiesDetected: result.opportunitiesDetected || 0,
-                totalSavingsDetectedCents: result.savingsDetectedCents || 0
-              });
-
-              console.log(`[EMAIL IMAP] ✓ Invoice processed successfully: ${result.runId}`);
-            } else {
-              console.error(`[EMAIL IMAP] Invoice processing failed: ${result.error}`);
-              db.logEmailActivity(
-                monitor.id,
-                'error',
-                `Failed to process invoice ${attachment.filename}: ${result.error}`,
-                'error',
-                { fileName: attachment.filename, error: result.error }
-              );
+              includeRawText: true,
+              preprocessImages: true  // Enable mobile photo optimization
             }
-          } catch (pdfError) {
-            console.error(`[EMAIL IMAP] PDF parsing error for ${attachment.filename}:`, pdfError.message);
+          );
+
+          if (!processorResult.ok && processorResult.rawTextLength === 0) {
+            console.warn(`[EMAIL IMAP] No text extracted from ${attachment.filename}`);
+            db.logEmailActivity(
+              monitor.id,
+              'warning',
+              `No text could be extracted from ${attachment.filename}`,
+              'warning',
+              { fileName: attachment.filename, fileType: processorResult.fileType }
+            );
+            continue;
+          }
+
+          console.log(`[EMAIL IMAP] Universal processor: ${processorResult.fileType} file, ${processorResult.extractionMethod} extraction, ${processorResult.rawTextLength} chars, confidence: ${((processorResult.confidence?.overall || 0) * 100).toFixed(1)}%`);
+
+          // Extract vendor/account info from email
+          const senderDomain = emailData.from?.value?.[0]?.address?.split('@')[1] || '';
+          const vendorName = this.extractVendorName(senderDomain, emailData.subject, processorResult.rawText);
+          const accountName = monitor.account_name;
+
+          // Build invoice payload for ingestInvoice
+          const invoicePayload = {
+            rawText: processorResult.rawText,
+            vendorName: processorResult.vendor?.name || vendorName,
+            accountName: processorResult.customer?.name || accountName,
+            fileName: attachment.filename,
+            source: 'email_autopilot',
+            monitorId: monitor.id,
+            emailSubject: emailData.subject,
+            emailFrom: emailData.from?.value?.[0]?.address,
+            emailDate: emailData.date?.toISOString(),
+            // Pass processor results to avoid re-parsing
+            _processorResult: processorResult
+          };
+
+          // Call internal ingest function
+          const result = await this.ingestInvoice(invoicePayload, monitor);
+
+          if (result.success) {
+            invoiceIds.push(result.runId);
+            invoicesCreated++;
+
+            // Log activity with extraction details
+            db.logEmailActivity(
+              monitor.id,
+              'invoice_processed',
+              `Processed ${fileType} invoice from ${vendorName}: ${attachment.filename}`,
+              'info',
+              {
+                runId: result.runId,
+                opportunities: result.opportunitiesDetected || 0,
+                fileName: attachment.filename,
+                fileType: processorResult.fileType,
+                extractionMethod: processorResult.extractionMethod,
+                confidence: processorResult.confidence?.overall
+              }
+            );
+
+            // Update monitor stats
+            db.updateEmailMonitorStats(monitor.id, {
+              totalInvoicesFound: 1,
+              totalOpportunitiesDetected: result.opportunitiesDetected || 0,
+              totalSavingsDetectedCents: result.savingsDetectedCents || 0
+            });
+
+            console.log(`[EMAIL IMAP] ✓ Invoice processed successfully: ${result.runId}`);
+          } else {
+            console.error(`[EMAIL IMAP] Invoice processing failed: ${result.error}`);
             db.logEmailActivity(
               monitor.id,
               'error',
-              `Failed to parse PDF ${attachment.filename}: ${pdfError.message}`,
-              'warning',
-              { fileName: attachment.filename, error: pdfError.message }
+              `Failed to process invoice ${attachment.filename}: ${result.error}`,
+              'error',
+              { fileName: attachment.filename, error: result.error }
             );
           }
+        } catch (processError) {
+          console.error(`[EMAIL IMAP] Processing error for ${attachment.filename}:`, processError.message);
+          db.logEmailActivity(
+            monitor.id,
+            'error',
+            `Failed to process ${attachment.filename}: ${processError.message}`,
+            'warning',
+            { fileName: attachment.filename, error: processError.message }
+          );
         }
       }
 
@@ -526,12 +579,34 @@ class EmailIMAPService {
         VALUES (?, ?, ?, ?, ?, 'processing', CURRENT_TIMESTAMP)
       `).run(runId, user.id, payload.accountName, payload.vendorName, payload.fileName);
 
-      // ===== USE UNIFIED INVOICE PARSER =====
+      // ===== USE UNIVERSAL INVOICE PROCESSOR =====
       // This ensures consistent extraction across upload, email, and browser extension
-      const invoiceParser = require('./invoice-parser');
-      const parsedInvoice = invoiceParser.parseInvoice(payload.rawText);
+      // If _processorResult is passed, use it (already processed by processInvoiceAttachments)
+      let parsedInvoice;
 
-      console.log(`[EMAIL IMAP] Unified parser: ${parsedInvoice.items.length} items, confidence: ${(parsedInvoice.confidence.overall * 100).toFixed(1)}%`);
+      if (payload._processorResult && payload._processorResult.parsed) {
+        // Use pre-processed result from processInvoiceAttachments
+        parsedInvoice = payload._processorResult.parsed;
+        console.log(`[EMAIL IMAP] Using pre-processed result: ${parsedInvoice.items?.length || 0} items`);
+      } else {
+        // Process from scratch using universal processor
+        const processorResult = await universalInvoiceProcessor.processInvoice(
+          { text: payload.rawText },
+          { source: 'email_autopilot', includeRawText: true }
+        );
+        parsedInvoice = processorResult.parsed || {
+          ok: processorResult.ok,
+          items: processorResult.items || [],
+          totals: processorResult.totals,
+          vendor: processorResult.vendor,
+          customer: processorResult.customer,
+          metadata: processorResult.metadata,
+          confidence: processorResult.confidence,
+          opportunities: processorResult.opportunities || [],
+          validation: { warnings: processorResult.warnings || [] }
+        };
+        console.log(`[EMAIL IMAP] Universal processor: ${parsedInvoice.items?.length || 0} items, confidence: ${((parsedInvoice.confidence?.overall || 0) * 100).toFixed(1)}%`);
+      }
 
       // Use parsed items, fall back to legacy extraction if parser finds nothing
       const items = parsedInvoice.items.length > 0

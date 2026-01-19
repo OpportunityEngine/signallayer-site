@@ -603,9 +603,10 @@
         <div class="file-upload-zone" id="dropZone" onclick="document.getElementById('invoiceFile').click()">
           <div class="file-upload-icon">📁</div>
           <div class="file-upload-text">Drag & drop your invoice here</div>
-          <div class="file-upload-hint">or click to browse • PDF, Excel, or CSV</div>
+          <div class="file-upload-hint">or click to browse • PDF, Images, Excel, or CSV</div>
+          <div style="font-size: 11px; color: #888; margin-top: 6px;">📱 Phone photos & screenshots supported with OCR</div>
         </div>
-        <input type="file" id="invoiceFile" class="file-input" accept=".pdf,.xlsx,.xls,.csv" onchange="handleFileSelect(event)">
+        <input type="file" id="invoiceFile" class="file-input" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.heic,.webp,.tiff,.tif" onchange="handleFileSelect(event)">
 
         <div id="uploadStatus" style="margin-top: 20px; display: none;">
           <div class="alert info">
@@ -847,40 +848,100 @@
     }
 
     async function handleFile(file) {
-      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'];
-      const allowedExtensions = ['.pdf', '.xlsx', '.xls', '.csv'];
+      // Supported file types - includes images for phone photos/screenshots with OCR
+      const documentExtensions = ['.pdf', '.xlsx', '.xls', '.csv'];
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.heic', '.webp', '.tiff', '.tif'];
+      const allowedExtensions = [...documentExtensions, ...imageExtensions];
 
       const ext = '.' + file.name.split('.').pop().toLowerCase();
       if (!allowedExtensions.includes(ext)) {
-        showAlert('error', 'Please upload a PDF, Excel, or CSV file');
+        showAlert('error', 'Please upload a PDF, image (JPG, PNG, HEIC), Excel, or CSV file');
         return;
       }
 
+      const isImage = imageExtensions.includes(ext);
+      const isPDF = ext === '.pdf';
+
       document.getElementById('uploadStatus').style.display = 'block';
-      document.getElementById('uploadFileName').textContent = file.name;
+      document.getElementById('uploadFileName').textContent = file.name + (isImage ? ' (OCR processing)' : '');
 
-      // Simulate upload (in real implementation, call /ingest endpoint)
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('accountName', userData.companyName || 'My Company');
+        // Read file as base64
+        const fileContent = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
-        // For now, simulate success
-        setTimeout(() => {
-          document.getElementById('uploadStatus').style.display = 'none';
-          document.getElementById('uploadResult').style.display = 'block';
+        // Determine payload format based on file type
+        let rawTextPayload;
+        if (isPDF) {
+          rawTextPayload = 'PDF_FILE_BASE64:' + fileContent;
+        } else if (isImage) {
+          rawTextPayload = 'IMAGE_FILE_BASE64:' + fileContent;
+        } else {
+          // Excel/CSV - read as text
+          rawTextPayload = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+        }
+
+        // Call the /ingest endpoint
+        const response = await fetch('/ingest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            raw_text: rawTextPayload,
+            source_type: 'onboarding',
+            fileName: file.name,
+            mimeType: file.type,
+            accountName: userData.companyName || 'My Company',
+            vendorName: 'Unknown Vendor'
+          })
+        });
+
+        const result = await response.json();
+
+        document.getElementById('uploadStatus').style.display = 'none';
+        document.getElementById('uploadResult').style.display = 'block';
+
+        if (response.ok && result.ok) {
+          const itemCount = result.extracted?.items?.length || 0;
+          const opportunities = result.extracted?.parsedInvoice?.opportunities?.length || 0;
+          const totalCents = result.extracted?.parsedInvoice?.totals?.totalCents || 0;
+          const totalFormatted = '$' + (totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 });
+
           document.getElementById('uploadResult').innerHTML = `
             <div class="alert success">
-              <strong>Success!</strong> Invoice "${file.name}" uploaded. We found <strong>3 potential opportunities</strong> worth an estimated <strong>$12,450</strong>.
+              <strong>Success!</strong> Invoice "${file.name}" processed. Found <strong>${itemCount} line items</strong>, <strong>${opportunities} opportunities</strong>, total: <strong>${totalFormatted}</strong>.
             </div>
           `;
           document.getElementById('continueAfterUpload').style.display = 'inline-flex';
           userData.invoiceUploaded = true;
-        }, 2000);
+        } else {
+          document.getElementById('uploadResult').innerHTML = `
+            <div class="alert error">
+              <strong>Error:</strong> ${result.error?.message || 'Failed to process invoice. Please try again.'}
+            </div>
+          `;
+        }
 
       } catch (error) {
+        console.error('Upload error:', error);
         document.getElementById('uploadStatus').style.display = 'none';
-        showAlert('error', 'Failed to upload invoice. Please try again.');
+        document.getElementById('uploadResult').style.display = 'block';
+        document.getElementById('uploadResult').innerHTML = `
+          <div class="alert error">
+            <strong>Error:</strong> Failed to upload invoice. Please try again.
+          </div>
+        `;
       }
     }
 
