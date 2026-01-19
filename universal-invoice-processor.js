@@ -309,7 +309,7 @@ async function advancedImagePreprocessing(imageBuffer) {
 
 /**
  * Extract text from PDF buffer
- * Handles both digital and scanned PDFs
+ * Handles both digital and scanned PDFs with multiple fallback methods
  */
 async function extractTextFromPDF(pdfBuffer, options = {}) {
   const { useOCRFallback = true, maxPages = 10 } = options;
@@ -319,8 +319,14 @@ async function extractTextFromPDF(pdfBuffer, options = {}) {
     throw new Error('pdf-parse not available');
   }
 
+  let bestText = '';
+  let bestMethod = 'none';
+  let bestConfidence = 0;
+  let pageCount = 1;
+
   try {
-    // Try standard text extraction first
+    // Method 1: Standard pdf-parse extraction
+    console.log('[PDFExtract] Trying standard text extraction...');
     const pdfData = await Promise.race([
       pdfParseLib(pdfBuffer),
       new Promise((_, reject) =>
@@ -328,44 +334,81 @@ async function extractTextFromPDF(pdfBuffer, options = {}) {
       )
     ]);
 
-    const text = (pdfData.text || '').trim();
-    const pageCount = pdfData.numpages || 1;
+    bestText = (pdfData.text || '').trim();
+    pageCount = pdfData.numpages || 1;
+    bestMethod = 'pdf-parse';
 
-    console.log(`[PDFExtract] Extracted ${text.length} chars from ${pageCount} pages`);
+    // Calculate quality score for extracted text
+    const textQuality = assessTextQuality(bestText);
+    bestConfidence = textQuality.score;
 
-    // Check if text extraction was successful (not a scanned PDF)
-    if (text.length > 100) {
+    console.log(`[PDFExtract] Standard extraction: ${bestText.length} chars, quality: ${(textQuality.score * 100).toFixed(0)}%`);
+
+    // If text quality is good (has prices, reasonable length), return it
+    if (textQuality.score >= 0.7 && textQuality.hasPrices) {
       return {
-        text,
-        method: 'pdf-parse',
+        text: cleanExtractedText(bestText),
+        method: bestMethod,
         pageCount,
-        confidence: 0.9
+        confidence: bestConfidence
       };
     }
 
-    // Scanned PDF - try OCR
-    if (useOCRFallback) {
-      console.log('[PDFExtract] Low text content, attempting OCR...');
-      const ocrMod = getOcrModule();
+    // Method 2: If low text or quality, try OCR on PDF pages
+    if (useOCRFallback && (bestText.length < 200 || textQuality.score < 0.5)) {
+      console.log('[PDFExtract] Trying OCR extraction...');
 
+      // Try our OCR module first
+      const ocrMod = getOcrModule();
       if (ocrMod && typeof ocrMod.ocrPdfBufferToText === 'function') {
-        const ocrText = ocrMod.ocrPdfBufferToText(pdfBuffer, { maxPages });
-        if (ocrText && ocrText.length > text.length) {
-          return {
-            text: ocrText,
-            method: 'ocr',
-            pageCount,
-            confidence: 0.7
-          };
+        try {
+          const ocrText = ocrMod.ocrPdfBufferToText(pdfBuffer, { maxPages });
+          if (ocrText) {
+            const ocrQuality = assessTextQuality(ocrText);
+            console.log(`[PDFExtract] OCR extraction: ${ocrText.length} chars, quality: ${(ocrQuality.score * 100).toFixed(0)}%`);
+
+            if (ocrQuality.score > bestConfidence) {
+              bestText = ocrText;
+              bestMethod = 'pdf-ocr';
+              bestConfidence = ocrQuality.score;
+            }
+          }
+        } catch (ocrErr) {
+          console.warn('[PDFExtract] OCR module failed:', ocrErr.message);
+        }
+      }
+
+      // Method 3: Convert PDF to image and OCR (fallback for complex PDFs)
+      if (bestConfidence < 0.5) {
+        try {
+          const imageOcrText = await extractPdfViaImageOcr(pdfBuffer);
+          if (imageOcrText) {
+            const imgQuality = assessTextQuality(imageOcrText);
+            console.log(`[PDFExtract] Image-OCR extraction: ${imageOcrText.length} chars, quality: ${(imgQuality.score * 100).toFixed(0)}%`);
+
+            if (imgQuality.score > bestConfidence) {
+              bestText = imageOcrText;
+              bestMethod = 'pdf-image-ocr';
+              bestConfidence = imgQuality.score;
+            }
+          }
+        } catch (imgErr) {
+          console.warn('[PDFExtract] Image-OCR failed:', imgErr.message);
         }
       }
     }
 
+    // Method 4: Combine all extracted text if we have multiple sources
+    // Sometimes different methods extract different parts
+    if (bestConfidence < 0.6 && bestText.length > 0) {
+      bestText = cleanExtractedText(bestText);
+    }
+
     return {
-      text,
-      method: 'pdf-parse',
+      text: bestText,
+      method: bestMethod,
       pageCount,
-      confidence: text.length > 50 ? 0.5 : 0.2
+      confidence: Math.max(0.2, bestConfidence) // Minimum confidence if we have any text
     };
 
   } catch (err) {
@@ -375,10 +418,150 @@ async function extractTextFromPDF(pdfBuffer, options = {}) {
 }
 
 /**
- * Extract text from image using Tesseract OCR
+ * Assess the quality of extracted text for invoice parsing
+ */
+function assessTextQuality(text) {
+  if (!text || text.length < 10) {
+    return { score: 0, hasPrices: false, hasWords: false };
+  }
+
+  let score = 0.3; // Base score for having text
+  const checks = {
+    hasPrices: false,
+    hasWords: false,
+    hasNumbers: false,
+    hasInvoiceKeywords: false,
+    hasLineItems: false
+  };
+
+  // Check for currency/prices (strong indicator)
+  if (/\$\s*[\d,]+\.?\d{0,2}|\d+\.\d{2}\s*(USD|CAD|EUR)?/i.test(text)) {
+    score += 0.2;
+    checks.hasPrices = true;
+  }
+
+  // Check for common invoice keywords
+  if (/invoice|total|subtotal|tax|amount|qty|quantity|price|bill|order|ship/i.test(text)) {
+    score += 0.15;
+    checks.hasInvoiceKeywords = true;
+  }
+
+  // Check for reasonable word content (not just gibberish)
+  const words = text.match(/[a-zA-Z]{3,}/g) || [];
+  if (words.length > 10) {
+    score += 0.1;
+    checks.hasWords = true;
+  }
+
+  // Check for numbers (quantities, prices, dates)
+  const numbers = text.match(/\d+/g) || [];
+  if (numbers.length > 5) {
+    score += 0.1;
+    checks.hasNumbers = true;
+  }
+
+  // Check for line item patterns (qty + description + price on same line)
+  if (/\d+\s+[A-Za-z].*\$?\d+\.\d{2}/m.test(text)) {
+    score += 0.15;
+    checks.hasLineItems = true;
+  }
+
+  // Penalize for too much gibberish
+  const gibberish = text.match(/[^\x20-\x7E\n\r\t]/g) || [];
+  const gibberishRatio = gibberish.length / text.length;
+  if (gibberishRatio > 0.1) {
+    score -= gibberishRatio * 0.3;
+  }
+
+  return {
+    score: Math.min(1, Math.max(0, score)),
+    ...checks
+  };
+}
+
+/**
+ * Clean extracted text for better parsing
+ */
+function cleanExtractedText(text) {
+  if (!text) return '';
+
+  return text
+    // Normalize whitespace
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    // Remove excessive blank lines
+    .replace(/\n{3,}/g, '\n\n')
+    // Remove null bytes and control characters
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+    // Normalize spaces
+    .replace(/[ \t]+/g, ' ')
+    // Trim lines
+    .split('\n').map(line => line.trim()).join('\n')
+    .trim();
+}
+
+/**
+ * Extract text from PDF by converting to image first (for scanned PDFs)
+ */
+async function extractPdfViaImageOcr(pdfBuffer) {
+  const sharpLib = getSharp();
+  if (!sharpLib) return null;
+
+  const { spawnSync } = require('child_process');
+  const os = require('os');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-img-ocr-'));
+  const pdfPath = path.join(tmpDir, 'input.pdf');
+  const imgPath = path.join(tmpDir, 'page.png');
+
+  try {
+    fs.writeFileSync(pdfPath, pdfBuffer);
+
+    // Try pdftoppm first (from poppler-utils)
+    let converted = false;
+    const pdftoppmPaths = ['/opt/homebrew/bin/pdftoppm', '/usr/local/bin/pdftoppm', '/usr/bin/pdftoppm'];
+
+    for (const ppmPath of pdftoppmPaths) {
+      if (fs.existsSync(ppmPath)) {
+        const result = spawnSync(ppmPath, [
+          '-png', '-r', '300', '-f', '1', '-l', '1',
+          pdfPath, path.join(tmpDir, 'page')
+        ], { timeout: 30000 });
+
+        // pdftoppm outputs as page-1.png
+        const outputPath = path.join(tmpDir, 'page-1.png');
+        if (fs.existsSync(outputPath)) {
+          fs.renameSync(outputPath, imgPath);
+          converted = true;
+          break;
+        }
+      }
+    }
+
+    if (!converted) {
+      console.log('[PDFImageOCR] pdftoppm not available, skipping image conversion');
+      return null;
+    }
+
+    // Now OCR the image
+    const imageBuffer = fs.readFileSync(imgPath);
+    const result = await extractTextFromImage(imageBuffer, { retryWithAdvancedPreprocess: true });
+
+    return result?.text || null;
+
+  } finally {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch (_) {}
+  }
+}
+
+/**
+ * Extract text from image using Tesseract OCR with multi-PSM strategy
+ * Tries multiple page segmentation modes to find the best extraction
  */
 async function extractTextFromImage(imageBuffer, options = {}) {
-  const { retryWithAdvancedPreprocess = true } = options;
+  const { retryWithAdvancedPreprocess = true, tryAllPSM = true } = options;
   const { execSync, spawnSync } = require('child_process');
   const os = require('os');
 
@@ -410,78 +593,138 @@ async function extractTextFromImage(imageBuffer, options = {}) {
     throw new Error('Tesseract not found. Install: brew install tesseract');
   }
 
-  // Preprocess image for better OCR
-  console.log('[ImageOCR] Preprocessing image...');
-  const preprocessedBuffer = await preprocessImageForOCR(imageBuffer);
-
   // Create temp directory
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'invoice-ocr-'));
-  const inputPath = path.join(tmpDir, 'input.png');
   const outputBase = path.join(tmpDir, 'output');
 
+  // Define PSM modes to try (ordered by likelihood for invoices)
+  // PSM 3 = Fully automatic page segmentation (default)
+  // PSM 4 = Assume single column of text of variable sizes
+  // PSM 6 = Assume uniform block of text
+  // PSM 11 = Sparse text - find as much text as possible
+  // PSM 12 = Sparse text with OSD
+  const psmModes = [
+    { psm: '6', name: 'uniform-block', description: 'Uniform block of text' },
+    { psm: '3', name: 'auto', description: 'Fully automatic' },
+    { psm: '4', name: 'single-column', description: 'Single column' },
+    { psm: '11', name: 'sparse', description: 'Sparse text - max extraction' },
+    { psm: '1', name: 'auto-osd', description: 'Auto with orientation detection' }
+  ];
+
+  // Preprocessing variants to try
+  const preprocessingVariants = [
+    { name: 'standard', fn: preprocessImageForOCR },
+    { name: 'advanced', fn: advancedImagePreprocessing },
+    { name: 'high-contrast', fn: highContrastPreprocessing }
+  ];
+
+  let bestResult = { text: '', confidence: 0, method: 'none' };
+  let allExtractedTexts = [];
+
   try {
-    // Write preprocessed image
-    fs.writeFileSync(inputPath, preprocessedBuffer);
+    // Phase 1: Try standard preprocessing with multiple PSM modes
+    console.log('[ImageOCR] Phase 1: Standard preprocessing with multi-PSM...');
+    const standardBuffer = await preprocessImageForOCR(imageBuffer);
+    const standardInputPath = path.join(tmpDir, 'standard.png');
+    fs.writeFileSync(standardInputPath, standardBuffer);
 
-    // Run Tesseract with optimized settings for invoices
-    // PSM 6 = Assume uniform block of text (good for invoices)
-    // OEM 3 = Default, uses LSTM if available
-    const result = spawnSync(tesseractPath, [
-      inputPath,
-      outputBase,
-      '-l', 'eng',
-      '--psm', '6',
-      '--oem', '3',
-      '-c', 'preserve_interword_spaces=1'
-    ], { encoding: 'utf8', timeout: 60000 });
+    for (const psmMode of psmModes.slice(0, 3)) { // Try top 3 PSM modes first
+      const result = runTesseract(tesseractPath, standardInputPath, outputBase, psmMode.psm);
+      if (result.text) {
+        const quality = assessTextQuality(result.text);
+        const confidence = calculateOCRConfidence(result.text);
 
-    if (result.status !== 0) {
-      console.error('[ImageOCR] Tesseract error:', result.stderr);
-    }
+        console.log(`[ImageOCR] PSM ${psmMode.psm} (${psmMode.name}): ${result.text.length} chars, quality: ${(quality.score * 100).toFixed(0)}%`);
 
-    const outputPath = `${outputBase}.txt`;
-    let text = '';
+        allExtractedTexts.push({
+          text: result.text,
+          confidence,
+          quality,
+          method: `tesseract-psm${psmMode.psm}`
+        });
 
-    if (fs.existsSync(outputPath)) {
-      text = fs.readFileSync(outputPath, 'utf8').trim();
-    }
+        if (confidence > bestResult.confidence) {
+          bestResult = { text: result.text, confidence, method: `tesseract-psm${psmMode.psm}` };
+        }
 
-    console.log(`[ImageOCR] First pass extracted ${text.length} chars`);
-
-    // Calculate confidence based on text quality
-    let confidence = calculateOCRConfidence(text);
-
-    // If low confidence and retry enabled, try advanced preprocessing
-    if (confidence < 0.5 && retryWithAdvancedPreprocess) {
-      console.log('[ImageOCR] Low confidence, retrying with advanced preprocessing...');
-
-      const advancedBuffer = await advancedImagePreprocessing(imageBuffer);
-      fs.writeFileSync(inputPath, advancedBuffer);
-
-      const retryResult = spawnSync(tesseractPath, [
-        inputPath,
-        outputBase,
-        '-l', 'eng',
-        '--psm', '4', // Assume single column (good for receipts)
-        '--oem', '3'
-      ], { encoding: 'utf8', timeout: 60000 });
-
-      if (fs.existsSync(outputPath)) {
-        const retryText = fs.readFileSync(outputPath, 'utf8').trim();
-        const retryConfidence = calculateOCRConfidence(retryText);
-
-        if (retryConfidence > confidence) {
-          console.log(`[ImageOCR] Advanced preprocessing improved: ${confidence.toFixed(2)} -> ${retryConfidence.toFixed(2)}`);
-          text = retryText;
-          confidence = retryConfidence;
+        // If we got high quality result, no need to try more modes
+        if (quality.score >= 0.75 && quality.hasPrices && quality.hasLineItems) {
+          console.log('[ImageOCR] High quality result found, skipping remaining modes');
+          break;
         }
       }
     }
 
+    // Phase 2: If low confidence, try advanced preprocessing
+    if (bestResult.confidence < 0.6 && retryWithAdvancedPreprocess) {
+      console.log('[ImageOCR] Phase 2: Advanced preprocessing...');
+
+      const advancedBuffer = await advancedImagePreprocessing(imageBuffer);
+      const advancedInputPath = path.join(tmpDir, 'advanced.png');
+      fs.writeFileSync(advancedInputPath, advancedBuffer);
+
+      for (const psmMode of psmModes.slice(0, 2)) {
+        const result = runTesseract(tesseractPath, advancedInputPath, outputBase, psmMode.psm);
+        if (result.text) {
+          const confidence = calculateOCRConfidence(result.text);
+
+          allExtractedTexts.push({
+            text: result.text,
+            confidence,
+            method: `tesseract-advanced-psm${psmMode.psm}`
+          });
+
+          if (confidence > bestResult.confidence) {
+            console.log(`[ImageOCR] Advanced PSM ${psmMode.psm} improved: ${bestResult.confidence.toFixed(2)} -> ${confidence.toFixed(2)}`);
+            bestResult = { text: result.text, confidence, method: `tesseract-advanced-psm${psmMode.psm}` };
+          }
+        }
+      }
+    }
+
+    // Phase 3: Try high contrast preprocessing for difficult images
+    if (bestResult.confidence < 0.5) {
+      console.log('[ImageOCR] Phase 3: High contrast preprocessing...');
+
+      const highContrastBuffer = await highContrastPreprocessing(imageBuffer);
+      const highContrastInputPath = path.join(tmpDir, 'highcontrast.png');
+      fs.writeFileSync(highContrastInputPath, highContrastBuffer);
+
+      const result = runTesseract(tesseractPath, highContrastInputPath, outputBase, '11'); // Sparse text mode
+      if (result.text) {
+        const confidence = calculateOCRConfidence(result.text);
+
+        allExtractedTexts.push({
+          text: result.text,
+          confidence,
+          method: 'tesseract-highcontrast-sparse'
+        });
+
+        if (confidence > bestResult.confidence) {
+          console.log(`[ImageOCR] High contrast improved: ${bestResult.confidence.toFixed(2)} -> ${confidence.toFixed(2)}`);
+          bestResult = { text: result.text, confidence, method: 'tesseract-highcontrast-sparse' };
+        }
+      }
+    }
+
+    // Phase 4: Combine texts from multiple extractions for maximum coverage
+    if (bestResult.confidence < 0.65 && allExtractedTexts.length > 1) {
+      console.log('[ImageOCR] Phase 4: Combining multiple extractions...');
+      const combinedText = combineOCRResults(allExtractedTexts);
+      const combinedConfidence = calculateOCRConfidence(combinedText);
+
+      if (combinedConfidence > bestResult.confidence) {
+        console.log(`[ImageOCR] Combined text improved: ${bestResult.confidence.toFixed(2)} -> ${combinedConfidence.toFixed(2)}`);
+        bestResult = { text: combinedText, confidence: combinedConfidence, method: 'tesseract-combined' };
+      }
+    }
+
+    console.log(`[ImageOCR] Final result: ${bestResult.text.length} chars, confidence: ${(bestResult.confidence * 100).toFixed(0)}%, method: ${bestResult.method}`);
+
     return {
-      text,
-      method: 'tesseract-ocr',
-      confidence
+      text: cleanExtractedText(bestResult.text),
+      method: bestResult.method,
+      confidence: bestResult.confidence
     };
 
   } finally {
@@ -490,6 +733,97 @@ async function extractTextFromImage(imageBuffer, options = {}) {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch (_) {}
   }
+}
+
+/**
+ * Run Tesseract with specific settings
+ */
+function runTesseract(tesseractPath, inputPath, outputBase, psm) {
+  const { spawnSync } = require('child_process');
+
+  const args = [
+    inputPath,
+    outputBase,
+    '-l', 'eng',
+    '--psm', psm,
+    '--oem', '3',
+    '-c', 'preserve_interword_spaces=1',
+    '-c', 'tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?@#$%&*()-+=/<>[]{}|\\\'" '
+  ];
+
+  const result = spawnSync(tesseractPath, args, { encoding: 'utf8', timeout: 60000 });
+
+  const outputPath = `${outputBase}.txt`;
+  let text = '';
+
+  if (fs.existsSync(outputPath)) {
+    text = fs.readFileSync(outputPath, 'utf8').trim();
+    // Clean up for next run
+    try { fs.unlinkSync(outputPath); } catch (_) {}
+  }
+
+  return { text, status: result.status };
+}
+
+/**
+ * High contrast preprocessing for difficult/low quality images
+ */
+async function highContrastPreprocessing(imageBuffer) {
+  const sharpLib = getSharp();
+  if (!sharpLib) return imageBuffer;
+
+  try {
+    const outputBuffer = await sharpLib(imageBuffer)
+      .rotate() // Auto-rotate based on EXIF
+      .grayscale()
+      .normalize()
+      .linear(1.5, -50) // Aggressive contrast increase
+      .sharpen({ sigma: 2 })
+      .threshold(120) // Binarize
+      .negate() // Sometimes inverted helps
+      .negate() // Negate back (but after threshold, cleans up)
+      .png()
+      .toBuffer();
+
+    return outputBuffer;
+  } catch (err) {
+    console.error('[HighContrastPreprocess] Error:', err.message);
+    return imageBuffer;
+  }
+}
+
+/**
+ * Combine multiple OCR results to get maximum text coverage
+ * Useful when different PSM modes extract different parts of the document
+ */
+function combineOCRResults(results) {
+  if (!results || results.length === 0) return '';
+  if (results.length === 1) return results[0].text;
+
+  // Sort by confidence (best first)
+  const sorted = [...results].sort((a, b) => b.confidence - a.confidence);
+
+  // Start with best result
+  let combined = sorted[0].text;
+  const combinedLines = new Set(combined.split('\n').map(l => l.trim().toLowerCase()).filter(l => l.length > 5));
+
+  // Add unique lines from other results
+  for (let i = 1; i < sorted.length; i++) {
+    const lines = sorted[i].text.split('\n');
+    for (const line of lines) {
+      const normalized = line.trim().toLowerCase();
+      // Only add if it's a meaningful line we haven't seen
+      if (normalized.length > 5 && !combinedLines.has(normalized)) {
+        // Check if it contains useful invoice info
+        if (/\$|total|qty|quantity|price|tax|\d+\.\d{2}/.test(normalized)) {
+          combined += '\n' + line.trim();
+          combinedLines.add(normalized);
+        }
+      }
+    }
+  }
+
+  return combined;
 }
 
 /**
@@ -758,7 +1092,12 @@ module.exports = {
   createUploadHandler,
   detectFileType,
   preprocessImageForOCR,
+  advancedImagePreprocessing,
+  highContrastPreprocessing,
   extractTextFromPDF,
   extractTextFromImage,
-  calculateOCRConfidence
+  calculateOCRConfidence,
+  assessTextQuality,
+  cleanExtractedText,
+  combineOCRResults
 };

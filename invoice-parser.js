@@ -183,7 +183,37 @@ function extractLineItems(text) {
     }
   }
 
-  // Strategy 6: Fallback - extract total as single item
+  // Strategy 6: OCR-tolerant extraction (handles common OCR artifacts)
+  if (items.length === 0) {
+    const ocrItems = extractOCRTolerant(text);
+    if (ocrItems.length > 0) {
+      strategyUsed = 'ocr_tolerant';
+      ocrItems.forEach(item => {
+        const key = `${item.description}|${item.totalCents}`.toLowerCase();
+        if (!seenDescriptions.has(key)) {
+          seenDescriptions.add(key);
+          items.push({ ...item, extractionStrategy: strategyUsed, confidence: 0.55 });
+        }
+      });
+    }
+  }
+
+  // Strategy 7: Multi-line item extraction (items spanning multiple lines)
+  if (items.length === 0) {
+    const multiLineItems = extractMultiLineItems(text);
+    if (multiLineItems.length > 0) {
+      strategyUsed = 'multi_line';
+      multiLineItems.forEach(item => {
+        const key = `${item.description}|${item.totalCents}`.toLowerCase();
+        if (!seenDescriptions.has(key)) {
+          seenDescriptions.add(key);
+          items.push({ ...item, extractionStrategy: strategyUsed, confidence: 0.5 });
+        }
+      });
+    }
+  }
+
+  // Strategy 8: Fallback - extract total as single item
   if (items.length === 0) {
     const totalItem = extractTotalAsItem(text);
     if (totalItem) {
@@ -201,6 +231,7 @@ function extractLineItems(text) {
 
 /**
  * Strategy 1: Table format extraction
+ * Enhanced with more patterns for common invoice layouts
  */
 function extractTableFormat(text) {
   const items = [];
@@ -209,37 +240,81 @@ function extractTableFormat(text) {
   // Detect table header to understand column order
   let columnOrder = detectColumnOrder(lines);
 
-  // Pattern for table rows: numbers and text separated by whitespace or tabs
+  // Comprehensive patterns for table rows
   const patterns = [
-    // QTY DESC UNIT TOTAL
+    // Standard: QTY DESC UNIT TOTAL
     /^\s*(\d+)\s+(.{5,60}?)\s+\$?([\d,]+\.?\d{0,2})\s+\$?([\d,]+\.?\d{0,2})\s*$/,
     // QTY DESC TOTAL (no unit price)
     /^\s*(\d+)\s+(.{5,60}?)\s+\$?([\d,]+\.?\d{2})\s*$/,
     // DESC QTY UNIT TOTAL
-    /^\s*(.{5,60}?)\s+(\d+)\s+\$?([\d,]+\.?\d{0,2})\s+\$?([\d,]+\.?\d{0,2})\s*$/
+    /^\s*(.{5,60}?)\s+(\d+)\s+\$?([\d,]+\.?\d{0,2})\s+\$?([\d,]+\.?\d{0,2})\s*$/,
+    // SKU QTY DESC UNIT TOTAL (common in distributor invoices)
+    /^\s*([A-Z0-9\-]{3,15})\s+(\d+)\s+(.{5,50}?)\s+\$?([\d,]+\.?\d{0,2})\s+\$?([\d,]+\.?\d{0,2})\s*$/,
+    // QTY @ UNIT = TOTAL (receipt style)
+    /^\s*(\d+)\s*@\s*\$?([\d,]+\.?\d{0,2})\s*=?\s*\$?([\d,]+\.?\d{2})\s+(.{5,50})/,
+    // DESC x QTY TOTAL (Amazon/retail style)
+    /^\s*(.{5,50}?)\s+[xX]\s*(\d+)\s+\$?([\d,]+\.?\d{2})\s*$/,
+    // DESC (QTY) TOTAL
+    /^\s*(.{5,50}?)\s+\((\d+)\)\s+\$?([\d,]+\.?\d{2})\s*$/,
+    // TAB-separated: QTY\tDESC\tPRICE
+    /^(\d+)\t+(.{5,60}?)\t+\$?([\d,]+\.?\d{2})$/,
+    // Pipe-separated (PDF table extraction artifact): QTY|DESC|PRICE
+    /^(\d+)\s*\|\s*(.{5,60}?)\s*\|\s*\$?([\d,]+\.?\d{2})$/
   ];
 
   for (const line of lines) {
-    for (const pattern of patterns) {
+    if (isLikelyTotalLine(line) || isLikelyHeaderLine(line)) continue;
+
+    for (let pIdx = 0; pIdx < patterns.length; pIdx++) {
+      const pattern = patterns[pIdx];
       const match = line.match(pattern);
       if (match) {
-        let qty, desc, unitPrice, totalPrice;
+        let qty, desc, unitPrice, totalPrice, sku = null;
 
-        if (pattern === patterns[0]) {
+        // Parse based on pattern type
+        if (pIdx === 0) {
+          // QTY DESC UNIT TOTAL
           qty = parseInt(match[1]) || 1;
           desc = cleanDescription(match[2]);
           unitPrice = parsePrice(match[3]);
           totalPrice = parsePrice(match[4]);
-        } else if (pattern === patterns[1]) {
+        } else if (pIdx === 1) {
+          // QTY DESC TOTAL
           qty = parseInt(match[1]) || 1;
           desc = cleanDescription(match[2]);
           totalPrice = parsePrice(match[3]);
           unitPrice = Math.round(totalPrice / qty);
-        } else {
+        } else if (pIdx === 2) {
+          // DESC QTY UNIT TOTAL
           desc = cleanDescription(match[1]);
           qty = parseInt(match[2]) || 1;
           unitPrice = parsePrice(match[3]);
           totalPrice = parsePrice(match[4]) || unitPrice * qty;
+        } else if (pIdx === 3) {
+          // SKU QTY DESC UNIT TOTAL
+          sku = match[1].trim();
+          qty = parseInt(match[2]) || 1;
+          desc = cleanDescription(match[3]);
+          unitPrice = parsePrice(match[4]);
+          totalPrice = parsePrice(match[5]) || unitPrice * qty;
+        } else if (pIdx === 4) {
+          // QTY @ UNIT = TOTAL DESC
+          qty = parseInt(match[1]) || 1;
+          unitPrice = parsePrice(match[2]);
+          totalPrice = parsePrice(match[3]);
+          desc = cleanDescription(match[4]);
+        } else if (pIdx === 5 || pIdx === 6) {
+          // DESC x QTY TOTAL or DESC (QTY) TOTAL
+          desc = cleanDescription(match[1]);
+          qty = parseInt(match[2]) || 1;
+          totalPrice = parsePrice(match[3]);
+          unitPrice = Math.round(totalPrice / qty);
+        } else {
+          // TAB or pipe separated
+          qty = parseInt(match[1]) || 1;
+          desc = cleanDescription(match[2]);
+          totalPrice = parsePrice(match[3]);
+          unitPrice = Math.round(totalPrice / qty);
         }
 
         if (isValidItem(desc, totalPrice || unitPrice)) {
@@ -248,7 +323,7 @@ function extractTableFormat(text) {
             quantity: qty,
             unitPriceCents: unitPrice || Math.round(totalPrice / qty),
             totalCents: totalPrice || unitPrice * qty,
-            sku: null
+            sku: sku
           });
         }
         break;
@@ -357,6 +432,161 @@ function extractPriceAnchored(text) {
   }
 
   return items;
+}
+
+/**
+ * Strategy 6: OCR-tolerant extraction
+ * Handles common OCR artifacts like confused characters (0/O, 1/l, etc.)
+ */
+function extractOCRTolerant(text) {
+  const items = [];
+  const lines = text.split('\n');
+
+  // Normalize common OCR errors
+  const normalizedText = text
+    .replace(/[|l]/g, '1') // pipe and lowercase L often misread as 1
+    .replace(/O(?=\d)/g, '0') // O followed by digit is likely 0
+    .replace(/(?<=\d)O/g, '0') // digit followed by O is likely 0
+    .replace(/S(?=\d{2,})/g, '5') // S followed by digits might be 5
+    .replace(/\s{2,}/g, ' '); // Multiple spaces to single
+
+  const normalizedLines = normalizedText.split('\n');
+
+  // More relaxed price pattern for OCR text
+  const ocrPricePatterns = [
+    // Standard: $12.34 or 12.34
+    /\$?\s*([\d,]+\.[\d]{2})\s*$/,
+    // With OCR artifacts: $ 12 . 34 or 12 , 34
+    /\$?\s*([\d\s,]+[\.\,]\s*[\d]{2})\s*$/,
+    // Price with units: 12.34 EA or 12.34/ea
+    /\$?\s*([\d,]+\.[\d]{2})\s*(?:ea|each|pc|\/ea|\/each)?\s*$/i
+  ];
+
+  for (let i = 0; i < normalizedLines.length; i++) {
+    const line = normalizedLines[i].trim();
+    if (line.length < 5) continue;
+    if (isLikelyTotalLine(line) || isLikelyHeaderLine(line)) continue;
+
+    for (const pattern of ocrPricePatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        // Clean up OCR'd price string
+        const priceStr = match[1].replace(/\s+/g, '').replace(/,(?=\d{2}$)/, '.');
+        const price = parsePrice(priceStr);
+
+        if (price > 0 && price < 10000000) {
+          const descPart = line.substring(0, line.lastIndexOf(match[0])).trim();
+          const desc = cleanOCRDescription(descPart);
+
+          if (desc.length >= 3 && !isLikelyTotalLine(desc)) {
+            items.push({
+              description: desc,
+              quantity: inferQuantity(desc, line),
+              unitPriceCents: price,
+              totalCents: price,
+              sku: extractSku(desc)
+            });
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Strategy 7: Multi-line item extraction
+ * Handles invoices where item descriptions span multiple lines
+ */
+function extractMultiLineItems(text) {
+  const items = [];
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  let currentItem = null;
+  let descriptionLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip totals and headers
+    if (isLikelyTotalLine(line) || isLikelyHeaderLine(line)) {
+      // Save any pending item
+      if (currentItem && currentItem.totalCents > 0) {
+        items.push(currentItem);
+      }
+      currentItem = null;
+      descriptionLines = [];
+      continue;
+    }
+
+    // Check if line ends with a price
+    const priceMatch = line.match(/\$?([\d,]+\.[\d]{2})\s*$/);
+
+    if (priceMatch) {
+      const price = parsePrice(priceMatch[1]);
+
+      // Save previous item if any
+      if (currentItem && currentItem.totalCents > 0) {
+        items.push(currentItem);
+      }
+
+      // Get description from this line (before price)
+      const descOnLine = line.substring(0, line.indexOf(priceMatch[0])).trim();
+
+      // Check if previous lines might be part of description (if they have no price)
+      let fullDesc = descOnLine;
+      if (descriptionLines.length > 0 && descOnLine.length < 20) {
+        // Short desc on price line - combine with accumulated desc
+        fullDesc = [...descriptionLines, descOnLine].join(' ').trim();
+      }
+
+      const cleanDesc = cleanDescription(fullDesc);
+
+      if (cleanDesc.length >= 3 && price > 0) {
+        currentItem = {
+          description: cleanDesc,
+          quantity: inferQuantity(cleanDesc, line),
+          unitPriceCents: price,
+          totalCents: price,
+          sku: extractSku(cleanDesc)
+        };
+      }
+
+      descriptionLines = [];
+    } else {
+      // Line without price - might be continuation of description
+      if (line.length >= 3 && line.length <= 100 && !/^\d+$/.test(line)) {
+        descriptionLines.push(line);
+      }
+    }
+  }
+
+  // Don't forget last item
+  if (currentItem && currentItem.totalCents > 0) {
+    items.push(currentItem);
+  }
+
+  return items;
+}
+
+/**
+ * Clean OCR'd description with common artifact fixes
+ */
+function cleanOCRDescription(desc) {
+  if (!desc) return '';
+
+  return desc
+    // Fix common OCR character confusions in words
+    .replace(/\b0nly\b/gi, 'Only')
+    .replace(/\bl\b(?=[A-Za-z])/g, 'I') // Standalone l followed by letter is likely I
+    .replace(/\b(\d+)\s*[xX×]\s*/g, '') // Remove quantity indicators
+    .replace(/\bqty[:\s]*\d+\b/gi, '')
+    .replace(/[^\w\s\-\.,&\/\#\(\)\'\"]/g, ' ') // Remove unusual chars
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 200);
 }
 
 /**
