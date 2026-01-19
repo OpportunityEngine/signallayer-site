@@ -900,81 +900,180 @@
       </div>
     </div>
 
-    <!-- Row 1: Financial Health Score + Spending Velocity -->
-    <div class="grid-2">
-      <!-- Financial Health Score -->
+    <!-- Row 1: Recent Activity + Quick Actions + 30-Day Forecast (ACTION-ORIENTED TOP) -->
+    <div class="grid-3">
+      <!-- Recent Invoice Activity - FIRST for immediate awareness -->
       <div class="tile-card">
         <div class="tile-header">
           <div class="tile-title">
-            <span>🎯</span> Financial Health Score
+            <span>📄</span> Recent Invoice Activity
           </div>
-          <span class="tile-badge">Real-time</span>
+          <span class="tile-badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">Live Feed</span>
+        </div>
+        <div class="tile-body scrollable-section" style="max-height: 320px; padding: 0;">
+          <div id="activityFeed">
+            <div class="activity-item">
+              <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">✓</div>
+              <div class="activity-content">
+                <div class="activity-title">Invoice #INV-2847 processed</div>
+                <div class="activity-meta">Sysco Foods • 2 min ago</div>
+              </div>
+              <div class="activity-amount">$1,247.50</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon" style="background: rgba(239, 68, 68, 0.15);">⚠️</div>
+              <div class="activity-content">
+                <div class="activity-title">Price discrepancy flagged</div>
+                <div class="activity-meta">US Foods • 15 min ago</div>
+              </div>
+              <div class="activity-amount" style="color: #ef4444;">+$84.20</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon" style="background: rgba(59, 130, 246, 0.15);">📧</div>
+              <div class="activity-content">
+                <div class="activity-title">Invoice received via email</div>
+                <div class="activity-meta">Cintas • 32 min ago</div>
+              </div>
+              <div class="activity-amount">$456.00</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">💰</div>
+              <div class="activity-content">
+                <div class="activity-title">Credit recovered</div>
+                <div class="activity-meta">Republic National • 1 hr ago</div>
+              </div>
+              <div class="activity-amount" style="color: #22c55e;">+$127.80</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon" style="background: rgba(251, 191, 36, 0.15);">🔄</div>
+              <div class="activity-content">
+                <div class="activity-title">Bulk import completed</div>
+                <div class="activity-meta">12 invoices • 2 hrs ago</div>
+              </div>
+              <div class="activity-amount">$8,420.00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 30-Day Expense Forecast -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>💵</span> 30-Day Expense Forecast
+          </div>
+          <span class="tile-badge">Predictive</span>
         </div>
         <div class="tile-body">
-          <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; align-items: center;">
-            <div class="health-gauge">
-              <div class="health-score excellent" id="healthScore">A+</div>
-              <div class="health-label">Excellent</div>
-              <div class="health-sublabel">Top 5% of businesses</div>
+          <div class="chart-container-small">
+            <canvas id="forecastChart"></canvas>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
+            <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">This Week</div>
+              <div style="font-size: 18px; font-weight: 700; color: #ffffff;">$12,400</div>
+              <div style="font-size: 10px; color: #64748b;">Committed</div>
             </div>
-            <div>
-              <div class="data-list">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <span style="font-size: 13px; color: #94a3b8;">Cost Control</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 92%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">92%</span>
-                  </div>
+            <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Next Week</div>
+              <div style="font-size: 18px; font-weight: 700; color: #fbbf24;">$14,800</div>
+              <div style="font-size: 10px; color: #64748b;">Projected</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">30 Days</div>
+              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">$52,200</div>
+              <div style="font-size: 10px; color: #64748b;">Forecast</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Price Intelligence -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>🌍</span> Market Price Intelligence
+          </div>
+          <span class="tile-badge">AI Powered</span>
+        </div>
+        <div class="tile-body">
+          <div style="margin-bottom: 12px; padding: 10px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px;">
+            <div style="font-size: 11px; color: #06b6d4; font-weight: 600; margin-bottom: 2px;">💡 Market Insight</div>
+            <div style="font-size: 12px; color: #e2e8f0;">Beef prices expected to rise 8-12% next quarter. Consider locking in current pricing.</div>
+          </div>
+          <div class="data-list">
+            <div class="data-row">
+              <div class="data-row-left">
+                <div class="data-row-info">
+                  <h4>Ground Beef 80/20</h4>
+                  <p>Your price: $4.29/lb</p>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <span style="font-size: 13px; color: #94a3b8;">Invoice Accuracy</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 88%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">88%</span>
-                  </div>
+              </div>
+              <div class="data-row-value">
+                <div class="amount" style="color: #22c55e;">-8%</div>
+                <div class="change" style="color: #64748b;">vs market $4.65</div>
+              </div>
+            </div>
+            <div class="data-row">
+              <div class="data-row-left">
+                <div class="data-row-info">
+                  <h4>Chicken Breast 10lb</h4>
+                  <p>Your price: $52.50/case</p>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <span style="font-size: 13px; color: #94a3b8;">Vendor Compliance</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill gold" style="width: 78%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #fbbf24;">78%</span>
-                  </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
-                  <span style="font-size: 13px; color: #94a3b8;">Price Consistency</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 95%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">95%</span>
-                  </div>
-                </div>
+              </div>
+              <div class="data-row-value">
+                <div class="amount" style="color: #ef4444;">+12%</div>
+                <div class="change" style="color: #64748b;">vs market $46.80</div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Spending Velocity -->
-      <div class="tile-card">
-        <div class="tile-header">
-          <div class="tile-title">
-            <span>⚡</span> Spending Velocity
-          </div>
-          <span class="tile-badge">12 Weeks</span>
+    <!-- Row 2: Quick Actions Hub (NEW) -->
+    <div class="tile-card" style="margin-bottom: 24px;">
+      <div class="tile-header">
+        <div class="tile-title">
+          <span>⚡</span> Quick Actions
         </div>
-        <div class="tile-body">
-          <div class="chart-container">
-            <canvas id="velocityChart"></canvas>
+        <span class="tile-badge">Owner Tools</span>
+      </div>
+      <div class="tile-body">
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px;">
+          <a href="upload-invoice.html" style="text-decoration: none;">
+            <div style="text-align: center; padding: 16px 12px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+              <div style="font-size: 24px; margin-bottom: 8px;">📄</div>
+              <div style="font-size: 12px; font-weight: 600; color: #fbbf24;">Upload Invoice</div>
+            </div>
+          </a>
+          <div onclick="showToast('Opening vendor comparison...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+            <div style="font-size: 12px; font-weight: 600; color: #3b82f6;">Compare Vendors</div>
           </div>
-          <div class="chart-legend">
-            <div class="legend-item"><span class="legend-dot" style="background: #fbbf24;"></span> Actual Spend</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #3b82f6;"></span> Budget</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span> Savings</div>
+          <div onclick="showToast('Opening price alerts...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 8px;">🚨</div>
+            <div style="font-size: 12px; font-weight: 600; color: #ef4444;">Price Alerts</div>
           </div>
+          <div onclick="showToast('Generating report...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 8px;">📈</div>
+            <div style="font-size: 12px; font-weight: 600; color: #22c55e;">Export Report</div>
+          </div>
+          <div onclick="showToast('Opening budget settings...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 8px;">💰</div>
+            <div style="font-size: 12px; font-weight: 600; color: #8b5cf6;">Set Budget</div>
+          </div>
+          <a href="admin-email-monitors.html" style="text-decoration: none;">
+            <div style="text-align: center; padding: 16px 12px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+              <div style="font-size: 24px; margin-bottom: 8px;">📧</div>
+              <div style="font-size: 12px; font-weight: 600; color: #06b6d4;">Email Autopilot</div>
+            </div>
+          </a>
         </div>
       </div>
     </div>
 
-    <!-- Row 2: Location Performance + Opportunity Pipeline -->
+    <!-- Row 3: Location Performance + Opportunity Pipeline -->
     <div class="grid-2">
       <!-- Location Performance -->
       <div class="tile-card">
@@ -1270,7 +1369,7 @@
       </div>
     </div>
 
-    <!-- Row 5: KPI Targets + Recent Activity -->
+    <!-- Row 5: KPI Targets + Profit Margin Tracker (NEW) -->
     <div class="grid-2">
       <!-- KPI Targets -->
       <div class="tile-card">
@@ -1316,145 +1415,265 @@
         </div>
       </div>
 
-      <!-- Recent Invoice Activity -->
+      <!-- Profit Margin Tracker (NEW) -->
       <div class="tile-card">
         <div class="tile-header">
           <div class="tile-title">
-            <span>📄</span> Recent Invoice Activity
+            <span>💎</span> Profit Margin Tracker
           </div>
-          <span class="tile-badge">Live Feed</span>
+          <span class="tile-badge">Goal: 15%</span>
         </div>
-        <div class="tile-body scrollable-section" style="max-height: 280px; padding: 0;">
-          <div id="activityFeed">
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">✓</div>
-              <div class="activity-content">
-                <div class="activity-title">Invoice #INV-2847 processed</div>
-                <div class="activity-meta">Sysco Foods • 2 min ago</div>
-              </div>
-              <div class="activity-amount">$1,247.50</div>
+        <div class="tile-body">
+          <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 20px;">
+            <div style="text-align: center;">
+              <div style="font-size: 48px; font-weight: 900; color: #22c55e; line-height: 1;">12.8%</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Current Margin</div>
             </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(239, 68, 68, 0.15);">⚠️</div>
-              <div class="activity-content">
-                <div class="activity-title">Price discrepancy flagged</div>
-                <div class="activity-meta">US Foods • 15 min ago</div>
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 11px; color: #64748b;">Progress to Goal</span>
+                <span style="font-size: 11px; font-weight: 600; color: #fbbf24;">85%</span>
               </div>
-              <div class="activity-amount" style="color: #ef4444;">+$84.20</div>
+              <div class="progress-bar" style="height: 12px;">
+                <div class="progress-fill gold" style="width: 85%;"></div>
+              </div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 6px;">+2.2% from last month</div>
             </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(59, 130, 246, 0.15);">📧</div>
-              <div class="activity-content">
-                <div class="activity-title">Invoice received via email</div>
-                <div class="activity-meta">Cintas • 32 min ago</div>
-              </div>
-              <div class="activity-amount">$456.00</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+            <div style="text-align: center; padding: 12px; background: rgba(34, 197, 94, 0.1); border-radius: 10px;">
+              <div style="font-size: 16px; font-weight: 700; color: #22c55e;">$18.2k</div>
+              <div style="font-size: 10px; color: #64748b;">Gross Profit</div>
             </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">💰</div>
-              <div class="activity-content">
-                <div class="activity-title">Credit recovered</div>
-                <div class="activity-meta">Republic National • 1 hr ago</div>
-              </div>
-              <div class="activity-amount" style="color: #22c55e;">+$127.80</div>
+            <div style="text-align: center; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 10px;">
+              <div style="font-size: 16px; font-weight: 700; color: #3b82f6;">$142k</div>
+              <div style="font-size: 10px; color: #64748b;">Revenue MTD</div>
             </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(251, 191, 36, 0.15);">🔄</div>
-              <div class="activity-content">
-                <div class="activity-title">Bulk import completed</div>
-                <div class="activity-meta">12 invoices • 2 hrs ago</div>
-              </div>
-              <div class="activity-amount">$8,420.00</div>
+            <div style="text-align: center; padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 10px;">
+              <div style="font-size: 16px; font-weight: 700; color: #fbbf24;">$3.1k</div>
+              <div style="font-size: 10px; color: #64748b;">Savings Impact</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Row 6: Market Intelligence + Cash Flow Forecast -->
+    <!-- Row 6: Cash Flow Calendar + Weekly Comparison (NEW BUSINESS OWNER FEATURES) -->
     <div class="grid-2">
-      <!-- Market Price Intelligence -->
+      <!-- Cash Flow Calendar -->
       <div class="tile-card">
         <div class="tile-header">
           <div class="tile-title">
-            <span>🌍</span> Market Price Intelligence
+            <span>📅</span> Cash Flow Calendar
           </div>
-          <span class="tile-badge">AI Powered</span>
+          <span class="tile-badge">This Week</span>
         </div>
         <div class="tile-body">
-          <div style="margin-bottom: 16px; padding: 12px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px;">
-            <div style="font-size: 12px; color: #06b6d4; font-weight: 600; margin-bottom: 4px;">💡 Market Insight</div>
-            <div style="font-size: 13px; color: #e2e8f0;">Beef prices expected to rise 8-12% next quarter due to supply constraints. Consider locking in current pricing.</div>
+          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center;">
+            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Mon</div>
+              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$4.2k</div>
+            </div>
+            <div style="padding: 8px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Tue</div>
+              <div style="font-size: 12px; font-weight: 700; color: #ef4444;">-$2.8k</div>
+            </div>
+            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Wed</div>
+              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$5.1k</div>
+            </div>
+            <div style="padding: 8px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Thu</div>
+              <div style="font-size: 12px; font-weight: 700; color: #ef4444;">-$6.4k</div>
+            </div>
+            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Fri</div>
+              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$8.9k</div>
+            </div>
+            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Sat</div>
+              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$7.2k</div>
+            </div>
+            <div style="padding: 8px; background: rgba(59, 130, 246, 0.15); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+              <div style="font-size: 10px; color: #64748b;">Sun</div>
+              <div style="font-size: 12px; font-weight: 700; color: #3b82f6;">~$3.8k</div>
+            </div>
           </div>
-          <div class="data-list">
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-info">
-                  <h4>Ground Beef 80/20</h4>
-                  <p>Your price: $4.29/lb</p>
-                </div>
+          <div style="margin-top: 16px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 11px; color: #64748b;">Weekly Net Cash Flow</div>
+                <div style="font-size: 20px; font-weight: 700; color: #22c55e;">+$20,000</div>
               </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">-8%</div>
-                <div class="change" style="color: #64748b;">vs market $4.65</div>
-              </div>
-            </div>
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-info">
-                  <h4>Chicken Breast 10lb</h4>
-                  <p>Your price: $52.50/case</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #ef4444;">+12%</div>
-                <div class="change" style="color: #64748b;">vs market $46.80</div>
-              </div>
-            </div>
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-info">
-                  <h4>Produce Mix</h4>
-                  <p>Your avg: $2.18/lb</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">-3%</div>
-                <div class="change" style="color: #64748b;">vs market $2.25</div>
+              <div style="text-align: right;">
+                <div style="font-size: 11px; color: #64748b;">Upcoming Bills</div>
+                <div style="font-size: 14px; font-weight: 600; color: #ef4444;">$8,450 due Thu</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Cash Flow Forecast -->
+      <!-- Week-over-Week Comparison (NEW) -->
       <div class="tile-card">
         <div class="tile-header">
           <div class="tile-title">
-            <span>💵</span> 30-Day Expense Forecast
+            <span>📊</span> Week-over-Week Comparison
           </div>
-          <span class="tile-badge">Predictive</span>
+          <span class="tile-badge">vs Last Week</span>
         </div>
         <div class="tile-body">
-          <div class="chart-container-small">
-            <canvas id="forecastChart"></canvas>
+          <div class="data-list">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <span style="font-size: 13px; color: #e2e8f0;">Total Spend</span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 14px; color: #64748b;">$18.4k → $17.2k</span>
+                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↓ 6.5%</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <span style="font-size: 13px; color: #e2e8f0;">Invoices Processed</span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 14px; color: #64748b;">42 → 47</span>
+                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↑ 12%</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <span style="font-size: 13px; color: #e2e8f0;">Savings Found</span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 14px; color: #64748b;">$890 → $1,247</span>
+                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↑ 40%</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <span style="font-size: 13px; color: #e2e8f0;">Price Alerts</span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 14px; color: #64748b;">5 → 3</span>
+                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↓ 40%</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+              <span style="font-size: 13px; color: #e2e8f0;">Avg Invoice Value</span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 14px; color: #64748b;">$438 → $366</span>
+                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↓ 16%</span>
+              </div>
+            </div>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
-            <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
-              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">This Week</div>
-              <div style="font-size: 18px; font-weight: 700; color: #ffffff;">$12,400</div>
-              <div style="font-size: 10px; color: #64748b;">Committed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 7: Financial Health Score + Spending Velocity (CHARTS AT BOTTOM) -->
+    <div class="grid-2">
+      <!-- Financial Health Score -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>🎯</span> Financial Health Score
+          </div>
+          <span class="tile-badge">Real-time</span>
+        </div>
+        <div class="tile-body">
+          <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; align-items: center;">
+            <div class="health-gauge">
+              <div class="health-score excellent" id="healthScore">A+</div>
+              <div class="health-label">Excellent</div>
+              <div class="health-sublabel">Top 5% of businesses</div>
             </div>
-            <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
-              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Next Week</div>
-              <div style="font-size: 18px; font-weight: 700; color: #fbbf24;">$14,800</div>
-              <div style="font-size: 10px; color: #64748b;">Projected</div>
+            <div>
+              <div class="data-list">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size: 13px; color: #94a3b8;">Cost Control</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 92%;"></div></div>
+                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">92%</span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size: 13px; color: #94a3b8;">Invoice Accuracy</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 88%;"></div></div>
+                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">88%</span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size: 13px; color: #94a3b8;">Vendor Compliance</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill gold" style="width: 78%;"></div></div>
+                    <span style="font-size: 12px; font-weight: 600; color: #fbbf24;">78%</span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+                  <span style="font-size: 13px; color: #94a3b8;">Price Consistency</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 95%;"></div></div>
+                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">95%</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
-              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">30 Days</div>
-              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">$52,200</div>
-              <div style="font-size: 10px; color: #64748b;">Forecast</div>
-            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spending Velocity -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>⚡</span> Spending Velocity
+          </div>
+          <span class="tile-badge">12 Weeks</span>
+        </div>
+        <div class="tile-body">
+          <div class="chart-container">
+            <canvas id="velocityChart"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><span class="legend-dot" style="background: #fbbf24;"></span> Actual Spend</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #3b82f6;"></span> Budget</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span> Savings</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 8: Business Owner Summary (NEW - AT-A-GLANCE OVERVIEW) -->
+    <div class="tile-card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(15, 19, 32, 0.9) 100%); border-color: rgba(251, 191, 36, 0.25);">
+      <div class="tile-header">
+        <div class="tile-title">
+          <span>👑</span> Owner's Daily Briefing
+        </div>
+        <span class="tile-badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24;">Today's Summary</span>
+      </div>
+      <div class="tile-body">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+          <div style="text-align: center; padding: 20px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px;">
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Money Saved Today</div>
+            <div style="font-size: 32px; font-weight: 800; color: #22c55e;">$847</div>
+            <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↑ 3 opportunities captured</div>
+          </div>
+          <div style="text-align: center; padding: 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px;">
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Invoices Processed</div>
+            <div style="font-size: 32px; font-weight: 800; color: #3b82f6;">12</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">All validated ✓</div>
+          </div>
+          <div style="text-align: center; padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px;">
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Action Required</div>
+            <div style="font-size: 32px; font-weight: 800; color: #ef4444;">2</div>
+            <div style="font-size: 12px; color: #ef4444; margin-top: 4px;">Price alerts pending</div>
+          </div>
+          <div style="text-align: center; padding: 20px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 12px;">
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">YTD Savings</div>
+            <div style="font-size: 32px; font-weight: 800; color: #fbbf24;">$12.8k</div>
+            <div style="font-size: 12px; color: #fbbf24; margin-top: 4px;">On track for $18k goal</div>
+          </div>
+        </div>
+        <div style="margin-top: 16px; padding: 14px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 20px;">🤖</span>
+          <div>
+            <div style="font-size: 12px; color: #06b6d4; font-weight: 600;">AI Recommendation</div>
+            <div style="font-size: 13px; color: #e2e8f0;">Consider renegotiating with Sysco - your chicken breast pricing is 12% above market. Estimated annual savings: <strong style="color: #22c55e;">$2,400</strong></div>
           </div>
         </div>
       </div>
