@@ -778,6 +778,42 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.5; transform: scale(0.8); }
     }
+
+    /* Premium Scrollable Sections */
+    .scrollable-section {
+      max-height: 500px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(251, 191, 36, 0.4) rgba(255, 255, 255, 0.05);
+    }
+
+    .scrollable-section::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .scrollable-section::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .scrollable-section::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.5) 0%, rgba(245, 158, 11, 0.3) 100%);
+      border-radius: 4px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .scrollable-section::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.7) 0%, rgba(245, 158, 11, 0.5) 100%);
+    }
+
+    .scrollable-section-tall {
+      max-height: 600px;
+    }
+
+    .scrollable-section-short {
+      max-height: 350px;
+    }
   </style>
 </head>
 <body>
@@ -926,7 +962,7 @@
             <span style="font-size: 11px; font-weight: 500; color: #64748b; background: var(--panel2); padding: 2px 8px; border-radius: 10px;">By Savings</span>
           </h4>
         </div>
-        <div style="padding: 16px; display: grid; gap: 12px;">
+        <div class="scrollable-section scrollable-section-short" style="padding: 16px; display: grid; gap: 12px;">
           <div style="background: var(--panel2); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
             <div>
               <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">Downtown Location</div>
@@ -1121,91 +1157,6 @@
     }
 
     // =====================================================
-
-    // Set default dates
-    const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    document.getElementById('payrollStart').value = weekAgo.toISOString().split('T')[0];
-    document.getElementById('payrollEnd').value = today.toISOString().split('T')[0];
-    document.getElementById('expenseStart').value = weekAgo.toISOString().split('T')[0];
-    document.getElementById('expenseEnd').value = today.toISOString().split('T')[0];
-
-    // Payroll form submission
-    document.getElementById('payrollForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const data = {
-        period_type: 'weekly',
-        period_start: document.getElementById('payrollStart').value,
-        period_end: document.getElementById('payrollEnd').value,
-        gross_payroll_cents: Math.round(parseFloat(document.getElementById('grossPayroll').value || 0) * 100),
-        employer_taxes_cents: Math.round(parseFloat(document.getElementById('employerTaxes').value || 0) * 100),
-        benefits_cents: Math.round(parseFloat(document.getElementById('benefits').value || 0) * 100),
-        employee_count: parseInt(document.getElementById('employeeCount').value) || null,
-        hours_worked: parseFloat(document.getElementById('totalHours').value) || null
-      };
-
-      try {
-        const response = await fetch('/api/bi/payroll', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          showToast('Payroll entry saved!', 'success');
-          document.getElementById('payrollForm').reset();
-          loadAnalytics();
-        } else {
-          showToast('Error: ' + result.error, 'error');
-        }
-      } catch (error) {
-        showToast('Failed to save payroll', 'error');
-      }
-    });
-
-    // Expense form submission
-    document.getElementById('expenseForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const data = {
-        period_type: 'weekly',
-        period_start: document.getElementById('expenseStart').value,
-        period_end: document.getElementById('expenseEnd').value,
-        category: document.getElementById('expenseCategory').value,
-        amount_cents: Math.round(parseFloat(document.getElementById('expenseAmount').value || 0) * 100),
-        vendor_name: document.getElementById('expenseVendor').value,
-        description: document.getElementById('expenseVendor').value
-      };
-
-      try {
-        const response = await fetch('/api/bi/expenses', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          showToast('Expense entry saved!', 'success');
-          document.getElementById('expenseForm').reset();
-          loadAnalytics();
-        } else {
-          showToast('Error: ' + result.error, 'error');
-        }
-      } catch (error) {
-        showToast('Failed to save expense', 'error');
-      }
-    });
 
     // Initialize Charts
     const trendCtx = document.getElementById('trendChart').getContext('2d');
