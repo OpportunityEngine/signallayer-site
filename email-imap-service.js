@@ -556,6 +556,19 @@ class EmailIMAPService {
         itemsTotalCents += item.totalCents || 0;
       }
 
+      // ===== PROCESS COGS CODING =====
+      // Auto-categorize invoice items based on user's SKU mappings
+      try {
+        const { processInvoiceForCOGS } = require('./server');
+        if (processInvoiceForCOGS && typeof processInvoiceForCOGS === 'function') {
+          await processInvoiceForCOGS(user.id, runId, items);
+          console.log(`[EMAIL IMAP] ✓ COGS coding completed for ${items.length} items`);
+        }
+      } catch (cogsError) {
+        // Don't fail the invoice processing if COGS coding fails
+        console.warn('[EMAIL IMAP] COGS coding skipped:', cogsError.message);
+      }
+
       // Use parser's extracted total if available (more accurate for vendors like Cintas)
       // Fall back to summed items total if parser didn't find a total
       const totalCents = parsedInvoice.totals?.totalCents > 0

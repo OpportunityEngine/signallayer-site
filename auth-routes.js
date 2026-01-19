@@ -161,16 +161,22 @@ router.post('/forgot-password',
       }
 
       // Always return success to prevent email enumeration
-      // In production, send email with reset link
       const db = require('./database').getDatabase();
-      const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+      const user = db.prepare('SELECT id, name FROM users WHERE email = ?').get(email.toLowerCase());
 
       if (user) {
         const token = authService.generatePasswordResetToken(user.id);
 
-        // TODO: Send email with reset link
-        console.log(`[AUTH] Password reset token for ${email}: ${token}`);
-        console.log(`[AUTH] Reset link: http://localhost:5050/reset-password?token=${token}`);
+        // Send password reset email
+        const emailService = require('./email-service');
+        try {
+          await emailService.sendPasswordResetEmail(email.toLowerCase(), user.name, token);
+          console.log(`[AUTH] Password reset email sent to ${email}`);
+        } catch (emailError) {
+          console.error('[AUTH] Failed to send password reset email:', emailError);
+          // Still log the token for development/debugging
+          console.log(`[AUTH] Password reset token for ${email}: ${token}`);
+        }
       }
 
       res.json({
@@ -321,6 +327,61 @@ router.get('/me', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get user info'
+    });
+  }
+});
+
+/**
+ * PUT /auth/profile
+ * Update user profile (name)
+ */
+router.put('/profile', requireAuth, async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name is required'
+      });
+    }
+
+    if (name.trim().length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name must be less than 100 characters'
+      });
+    }
+
+    const db = require('./database').getDatabase();
+
+    db.prepare(`
+      UPDATE users
+      SET name = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(name.trim(), req.user.id);
+
+    await authService.logAudit({
+      userId: req.user.id,
+      userEmail: req.user.email,
+      action: 'profile_updated',
+      description: 'User updated their name',
+      ipAddress: req.ip,
+      success: true
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: { name: name.trim() }
+    });
+
+  } catch (error) {
+    console.error('[AUTH] Update profile error:', error);
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update profile'
     });
   }
 });

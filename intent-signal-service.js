@@ -83,7 +83,7 @@ class IntentSignalService {
 
     try {
       // Load all active configurations
-      const configs = this.db.prepare(`
+      const configs = this.db.getDatabase().prepare(`
         SELECT * FROM intent_signal_configs WHERE is_active = 1
       `).all();
 
@@ -178,7 +178,7 @@ class IntentSignalService {
 
     try {
       // Get the config
-      const config = this.db.prepare(`
+      const config = this.db.getDatabase().prepare(`
         SELECT * FROM intent_signal_configs WHERE id = ?
       `).get(configId);
 
@@ -234,7 +234,7 @@ class IntentSignalService {
 
       // Store signals in database
       let newCount = 0;
-      const insertStmt = this.db.prepare(`
+      const insertStmt = this.db.getDatabase().prepare(`
         INSERT INTO intent_signal_matches (
           user_id, config_id, company_name, company_address, company_city,
           company_state, company_zip, company_phone, company_website,
@@ -295,7 +295,7 @@ class IntentSignalService {
 
       // Update config stats
       const duration = Date.now() - startTime;
-      this.db.prepare(`
+      this.db.getDatabase().prepare(`
         UPDATE intent_signal_configs
         SET last_check_at = datetime('now'),
             last_match_at = CASE WHEN ? > 0 THEN datetime('now') ELSE last_match_at END,
@@ -304,7 +304,7 @@ class IntentSignalService {
       `).run(newCount, newCount, configId);
 
       // Log sync
-      this.db.prepare(`
+      this.db.getDatabase().prepare(`
         INSERT INTO intent_sync_log (source_id, config_id, sync_type, status, records_fetched, records_matched, records_new, duration_ms, error_message, completed_at)
         SELECT id, ?, 'scheduled', ?, ?, ?, ?, ?, ?, datetime('now')
         FROM intent_data_sources WHERE source_name = ?
@@ -328,7 +328,7 @@ class IntentSignalService {
 
       // Log failed sync
       try {
-        this.db.prepare(`
+        this.db.getDatabase().prepare(`
           INSERT INTO intent_sync_log (source_id, config_id, sync_type, status, error_message, completed_at)
           SELECT id, ?, 'scheduled', 'failed', ?, datetime('now')
           FROM intent_data_sources WHERE source_name = 'demo'
@@ -344,7 +344,7 @@ class IntentSignalService {
    */
   expireStaleSignals() {
     try {
-      const result = this.db.prepare(`
+      const result = this.db.getDatabase().prepare(`
         UPDATE intent_signal_matches
         SET status = 'expired'
         WHERE status IN ('new', 'viewed')

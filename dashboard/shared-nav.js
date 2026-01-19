@@ -436,11 +436,18 @@ function createSettingsModal() {
           <!-- Profile Section -->
           <div class="settings-section">
             <h3>Profile</h3>
-            <div class="profile-info">
-              <div class="profile-row">
-                <span class="profile-label">Name</span>
-                <span class="profile-value">${user.name || 'Not set'}</span>
+            <form id="updateNameForm" onsubmit="handleUpdateName(event)">
+              <div class="settings-field">
+                <label for="profileName">Name</label>
+                <div class="name-field-wrapper">
+                  <input type="text" id="profileName" value="${user.name || ''}" placeholder="Enter your name" maxlength="100">
+                  <button type="submit" class="name-save-btn" id="saveNameBtn">Save</button>
+                </div>
+                <div id="nameUpdateError" class="settings-error" style="display: none;"></div>
+                <div id="nameUpdateSuccess" class="settings-success" style="display: none;"></div>
               </div>
+            </form>
+            <div class="profile-info">
               <div class="profile-row">
                 <span class="profile-label">Email</span>
                 <span class="profile-value">${user.email}</span>
@@ -637,9 +644,31 @@ function createSettingsModal() {
         letter-spacing: 0.3px;
       }
 
-      .password-field-wrapper {
+      .password-field-wrapper,
+      .name-field-wrapper {
         display: flex;
         gap: 8px;
+      }
+
+      .name-save-btn {
+        padding: 0 18px;
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        border: none;
+        border-radius: 8px;
+        color: #1a1a1a;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .name-save-btn:hover {
+        opacity: 0.9;
+      }
+
+      .name-save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .settings-field input {
@@ -983,6 +1012,84 @@ async function handleChangePassword(event) {
   }
 }
 
+/**
+ * Handle name update form submission
+ */
+async function handleUpdateName(event) {
+  event.preventDefault();
+
+  const nameInput = document.getElementById('profileName');
+  const btn = document.getElementById('saveNameBtn');
+  const errorDiv = document.getElementById('nameUpdateError');
+  const successDiv = document.getElementById('nameUpdateSuccess');
+  const name = nameInput.value.trim();
+
+  // Hide previous messages
+  errorDiv.style.display = 'none';
+  successDiv.style.display = 'none';
+
+  // Validate
+  if (!name) {
+    errorDiv.textContent = 'Name is required.';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  if (name.length > 100) {
+    errorDiv.textContent = 'Name must be less than 100 characters.';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const token = window.AuthManager.getToken();
+    const response = await fetch('/auth/profile', {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      successDiv.textContent = 'Name updated successfully!';
+      successDiv.style.display = 'block';
+
+      // Update the user in AuthManager and localStorage
+      const currentUser = window.AuthManager.getUser();
+      currentUser.name = data.data.name;
+      localStorage.setItem('user', JSON.stringify(currentUser));
+
+      // Update the navigation display
+      const userNameEl = document.querySelector('.user-name');
+      if (userNameEl) {
+        userNameEl.textContent = data.data.name;
+      }
+
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => {
+        successDiv.style.display = 'none';
+      }, 3000);
+    } else {
+      errorDiv.textContent = data.error || 'Failed to update name.';
+      errorDiv.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Update name error:', error);
+    errorDiv.textContent = 'Connection error. Please try again.';
+    errorDiv.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
+}
+
 // Close modal on escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
@@ -1003,3 +1110,4 @@ window.openSettingsModal = openSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
 window.toggleSettingsPassword = toggleSettingsPassword;
 window.handleChangePassword = handleChangePassword;
+window.handleUpdateName = handleUpdateName;

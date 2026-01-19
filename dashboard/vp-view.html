@@ -4527,10 +4527,12 @@
 
         if (response.ok) {
           const result = await response.json();
-          showToast(`Generated ${result.generated} demo signals!`, 'success');
+          const count = result.data?.count || result.generated || 0;
+          showToast(`Generated ${count} demo signals!`, 'success');
           loadIntentSignals();
         } else {
-          showToast('Failed to generate demo signals', 'error');
+          const errorData = await response.json().catch(() => ({}));
+          showToast(errorData.error || 'Failed to generate demo signals', 'error');
         }
       } catch (error) {
         console.error('Error generating demo signals:', error);

@@ -429,9 +429,28 @@ router.get('/feed', (req, res) => {
 
     const { total } = database.prepare(countQuery).get(...countParams);
 
+    // Get summary stats for the dashboard
+    const summary = database.prepare(`
+      SELECT
+        COUNT(*) as total_signals,
+        COUNT(CASE WHEN status = 'new' THEN 1 END) as new_count,
+        COUNT(CASE WHEN status = 'viewed' THEN 1 END) as viewed_count,
+        COUNT(CASE WHEN status = 'contacted' THEN 1 END) as contacted_count,
+        COUNT(CASE WHEN status = 'qualified' THEN 1 END) as qualified_count,
+        COUNT(CASE WHEN status = 'won' THEN 1 END) as won_count,
+        COUNT(CASE WHEN priority = 'critical' AND status = 'new' THEN 1 END) as critical_new,
+        COUNT(CASE WHEN priority = 'high' AND status = 'new' THEN 1 END) as high_new,
+        COUNT(CASE WHEN priority = 'critical' AND status IN ('new', 'viewed') THEN 1 END) as critical_open,
+        COUNT(CASE WHEN priority = 'high' AND status IN ('new', 'viewed') THEN 1 END) as high_open
+      FROM intent_signal_matches
+      WHERE user_id = ? AND is_archived = 0
+    `).get(req.user.id);
+
     res.json({
       success: true,
-      data: matches,
+      signals: matches,  // Frontend expects 'signals'
+      data: matches,     // Keep for backwards compatibility
+      summary: summary,
       pagination: {
         limit: parseInt(limit),
         offset: parseInt(offset),
@@ -834,14 +853,19 @@ router.get('/analytics', (req, res) => {
 /**
  * POST /api/intent-signals/demo/generate
  * Generate demo signals for testing
+ * Accepts: config_id (optional), keywords (optional), zip_codes (optional), count (optional)
  */
 router.post('/demo/generate', async (req, res) => {
   try {
-    const { config_id, count = 5 } = req.body;
+    const { config_id, count = 5, keywords: reqKeywords, zip_codes: reqZipCodes } = req.body;
     const database = db.getDatabase();
 
-    // Get the config
-    let config;
+    let config = null;
+    let keywords = [];
+    let zipCodes = [];
+    let configId = null;
+
+    // Try to get an existing config first
     if (config_id) {
       config = database.prepare(`
         SELECT * FROM intent_signal_configs WHERE id = ? AND user_id = ?
@@ -853,10 +877,31 @@ router.post('/demo/generate', async (req, res) => {
       `).get(req.user.id);
     }
 
-    if (!config) {
+    // If no config exists but keywords/zip_codes were provided, create a default config
+    if (!config && reqKeywords && reqKeywords.length > 0 && reqZipCodes && reqZipCodes.length > 0) {
+      // Create a default demo config
+      const result = database.prepare(`
+        INSERT INTO intent_signal_configs (user_id, config_name, keywords, zip_codes, is_active)
+        VALUES (?, ?, ?, ?, 1)
+      `).run(
+        req.user.id,
+        'Demo Configuration',
+        JSON.stringify(reqKeywords),
+        JSON.stringify(reqZipCodes)
+      );
+      configId = result.lastInsertRowid;
+      keywords = reqKeywords;
+      zipCodes = reqZipCodes;
+      console.log(`Created default demo config ${configId} for user ${req.user.id}`);
+    } else if (config) {
+      configId = config.id;
+      keywords = JSON.parse(config.keywords || '[]');
+      zipCodes = JSON.parse(config.zip_codes || '[]');
+    } else {
+      // No config and no keywords/zip_codes provided
       return res.status(400).json({
         success: false,
-        error: 'No configuration found. Please create an intent signal configuration first.'
+        error: 'No configuration found. Please create an intent signal configuration first, or provide keywords and zip_codes in the request.'
       });
     }
 
@@ -864,12 +909,9 @@ router.post('/demo/generate', async (req, res) => {
     const DemoIntentAdapter = require('./intent-signal-demo-adapter');
     const adapter = new DemoIntentAdapter();
 
-    const keywords = JSON.parse(config.keywords || '[]');
-    const zipCodes = JSON.parse(config.zip_codes || '[]');
-
     const signals = await adapter.generateSignals(keywords, zipCodes, count, {
-      company_size_min: config.company_size_min,
-      company_size_max: config.company_size_max
+      company_size_min: config ? config.company_size_min : null,
+      company_size_max: config ? config.company_size_max : null
     });
 
     // Insert signals into database
@@ -888,7 +930,7 @@ router.post('/demo/generate', async (req, res) => {
     for (const signal of signals) {
       const result = insertStmt.run(
         req.user.id,
-        config.id,
+        configId,
         signal.company_name,
         signal.company_address,
         signal.company_city,
@@ -926,11 +968,12 @@ router.post('/demo/generate', async (req, res) => {
       UPDATE intent_signal_configs
       SET total_matches = total_matches + ?, last_match_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(signals.length, config.id);
+    `).run(signals.length, configId);
 
     res.json({
       success: true,
       message: `Generated ${signals.length} demo signals`,
+      generated: signals.length,  // Direct count for frontend
       data: { count: signals.length, ids: insertedIds }
     });
   } catch (error) {

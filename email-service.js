@@ -1000,6 +1000,91 @@ View your full inventory at: ${APP_URL}/dashboard/inventory.html
   }
 
   /**
+   * Send password reset email
+   * @param {string} email - User email
+   * @param {string} name - User name
+   * @param {string} token - Password reset token
+   */
+  async sendPasswordResetEmail(email, name, token) {
+    const resetUrl = `${APP_URL}/reset-password.html?token=${token}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px 30px; text-align: center; }
+          .logo { font-size: 48px; margin-bottom: 10px; }
+          .header-text { color: #fbbf24; font-size: 28px; font-weight: 800; margin: 0; }
+          .content { padding: 40px 30px; }
+          .greeting { font-size: 20px; color: #333; margin-bottom: 20px; }
+          .message { font-size: 16px; color: #666; line-height: 1.6; margin-bottom: 30px; }
+          .button { display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #1a1a1a; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; }
+          .button:hover { opacity: 0.9; }
+          .footer { padding: 30px; text-align: center; color: #999; font-size: 14px; background: #f9f9f9; }
+          .url-fallback { margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 6px; font-size: 12px; color: #666; word-break: break-all; }
+          .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0; font-size: 14px; color: #92400e; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">$</div>
+            <h1 class="header-text">Password Reset</h1>
+          </div>
+          <div class="content">
+            <p class="greeting">Hi ${name || 'there'},</p>
+            <p class="message">
+              We received a request to reset your password for your Revenue Radar account.
+              Click the button below to create a new password:
+            </p>
+            <center>
+              <a href="${resetUrl}" class="button">Reset Password</a>
+            </center>
+            <p class="url-fallback">
+              Or copy and paste this link in your browser:<br>
+              ${resetUrl}
+            </p>
+            <div class="warning">
+              <strong>Didn't request this?</strong> If you didn't request a password reset,
+              you can safely ignore this email. Your password will remain unchanged.
+            </div>
+          </div>
+          <div class="footer">
+            This link expires in 1 hour for security.<br>
+            Revenue Radar - Sales Intelligence Platform
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${name || 'there'},
+
+We received a request to reset your password for your Revenue Radar account.
+
+Reset your password by visiting:
+${resetUrl}
+
+This link expires in 1 hour for security.
+
+If you didn't request this, you can safely ignore this email. Your password will remain unchanged.
+
+- Revenue Radar Team
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Reset Your Password - Revenue Radar',
+      html,
+      text
+    });
+  }
+
+  /**
    * Send daily inventory digest email
    * @param {string} email - User email
    * @param {string} name - User name

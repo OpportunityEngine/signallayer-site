@@ -4149,5 +4149,6 @@ function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Export app for testing
+// Export app for testing and COGS processing for email autopilot
 module.exports = app;
+module.exports.processInvoiceForCOGS = processInvoiceForCOGS;
