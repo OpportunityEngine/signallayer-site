@@ -938,7 +938,7 @@ async function processInvoice(input, options = {}) {
       });
     }
 
-    console.log(`[UniversalProcessor] File type: ${result.fileType}, size: ${buffer ? buffer.length : 'N/A'}`);
+    console.log(`[UniversalProcessor] File type: ${result.fileType}, size: ${buffer ? buffer.length : 'N/A'}, filename: ${input.filename || 'unknown'}, mimeType: ${input.mimeType || 'unknown'}`);
 
     // 3. Extract text based on file type
     let extractionResult = null;
@@ -973,6 +973,11 @@ async function processInvoice(input, options = {}) {
 
     if (!extractionResult || !extractionResult.text) {
       result.warnings.push('Text extraction failed or returned empty');
+      // Still set extraction method if we tried something
+      if (extractionResult) {
+        result.extractionMethod = extractionResult.method || 'attempted';
+        result.extractionConfidence = extractionResult.confidence || 0;
+      }
       result.processingTimeMs = Date.now() - startTime;
       return result;
     }
