@@ -543,6 +543,85 @@ router.post('/:id/check-now', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/email-monitors/:id/diagnose
+ * Run diagnostic check on email monitor - returns detailed results
+ */
+router.post('/:id/diagnose', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    const monitor = db.getEmailMonitor(id);
+
+    if (!monitor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email monitor not found'
+      });
+    }
+
+    // Check ownership
+    if (user.role !== 'admin' && monitor.user_id !== user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    // Run diagnostic
+    const diagnostic = {
+      monitor: {
+        id: monitor.id,
+        email: monitor.email_address,
+        is_active: monitor.is_active,
+        oauth_provider: monitor.oauth_provider,
+        has_oauth_token: !!monitor.oauth_access_token,
+        has_refresh_token: !!monitor.oauth_refresh_token,
+        token_expires: monitor.oauth_token_expires_at,
+        imap_host: monitor.imap_host,
+        imap_port: monitor.imap_port,
+        last_checked: monitor.last_checked_at,
+        last_error: monitor.last_error,
+        emails_processed: monitor.emails_processed_count,
+        invoices_created: monitor.invoices_created_count
+      },
+      checks: {}
+    };
+
+    // Check OAuth token validity
+    if (monitor.oauth_provider) {
+      const expiresAt = new Date(monitor.oauth_token_expires_at);
+      const now = new Date();
+      diagnostic.checks.oauth_token_valid = expiresAt > now;
+      diagnostic.checks.oauth_token_expires_in = Math.round((expiresAt - now) / 1000 / 60) + ' minutes';
+    }
+
+    // Try to connect and check inbox
+    try {
+      const result = await emailService.diagnoseMonitor(id);
+      diagnostic.checks.connection = result;
+    } catch (err) {
+      diagnostic.checks.connection = {
+        success: false,
+        error: err.message
+      };
+    }
+
+    res.json({
+      success: true,
+      diagnostic
+    });
+
+  } catch (error) {
+    console.error('[EMAIL-MONITORS] Diagnose error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // =====================================================
 // ACTIVITY & STATS
 // =====================================================

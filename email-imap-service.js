@@ -180,28 +180,40 @@ class EmailIMAPService {
   async processIMAPConnection(imap, monitor) {
     return new Promise((resolve, reject) => {
       imap.once('ready', () => {
-        imap.openBox(monitor.folder_name || 'INBOX', false, (err, box) => {
+        console.log(`[EMAIL IMAP] ✓ IMAP connection ready for ${monitor.email_address}`);
+
+        const folderName = monitor.folder_name || 'INBOX';
+        console.log(`[EMAIL IMAP] Opening mailbox: ${folderName}`);
+
+        imap.openBox(folderName, false, (err, box) => {
           if (err) {
+            console.error(`[EMAIL IMAP] ❌ Failed to open mailbox ${folderName}:`, err.message);
             imap.end();
             return reject(err);
           }
 
-          // Search for unread emails with attachments
+          console.log(`[EMAIL IMAP] ✓ Mailbox opened: ${box.messages.total} total messages, ${box.messages.new} new`);
+
+          // Search for emails
           const searchCriteria = this.buildSearchCriteria(monitor);
+          console.log(`[EMAIL IMAP] Searching with criteria:`, JSON.stringify(searchCriteria));
 
           imap.search(searchCriteria, (err, results) => {
             if (err) {
+              console.error(`[EMAIL IMAP] ❌ Search error:`, err.message);
               imap.end();
               return reject(err);
             }
 
+            console.log(`[EMAIL IMAP] Search returned ${results.length} email(s)`);
+
             if (results.length === 0) {
-              console.log(`[EMAIL IMAP] No new emails found for monitor ${monitor.id}`);
+              console.log(`[EMAIL IMAP] No emails matching criteria for monitor ${monitor.id}`);
               imap.end();
               return resolve();
             }
 
-            console.log(`[EMAIL IMAP] Found ${results.length} email(s) to process for monitor ${monitor.id}`);
+            console.log(`[EMAIL IMAP] Found ${results.length} email(s) to check for monitor ${monitor.id}`);
 
             const fetch = imap.fetch(results, {
               bodies: '',
@@ -395,7 +407,13 @@ class EmailIMAPService {
    * @returns {Array} IMAP search criteria
    */
   buildSearchCriteria(monitor) {
-    const criteria = ['UNSEEN']; // Only unread emails
+    // Search for emails from the last 7 days (not just unread - we track processed UIDs separately)
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - 7);
+
+    const criteria = [['SINCE', sinceDate]];
+
+    console.log(`[EMAIL IMAP] Search criteria: emails since ${sinceDate.toISOString().split('T')[0]}`);
 
     // Parse custom search criteria if provided
     if (monitor.search_criteria) {
@@ -411,9 +429,10 @@ class EmailIMAPService {
         }
 
         if (customCriteria.since_days) {
-          const sinceDate = new Date();
-          sinceDate.setDate(sinceDate.getDate() - customCriteria.since_days);
-          criteria.push(['SINCE', sinceDate]);
+          const customSinceDate = new Date();
+          customSinceDate.setDate(customSinceDate.getDate() - customCriteria.since_days);
+          // Replace the default since date with custom one
+          criteria[0] = ['SINCE', customSinceDate];
         }
       } catch (error) {
         console.error('[EMAIL IMAP] Error parsing search criteria:', error);
@@ -1016,6 +1035,150 @@ class EmailIMAPService {
         invoicesCreated: m.invoices_created_count
       }))
     };
+  }
+
+  /**
+   * Diagnose email monitor - test connection and return detailed status
+   * @param {number} monitorId - Monitor ID
+   * @returns {Promise<Object>} Diagnostic results
+   */
+  async diagnoseMonitor(monitorId) {
+    const results = {
+      success: false,
+      steps: [],
+      emails: []
+    };
+
+    try {
+      const monitor = db.getEmailMonitor(monitorId);
+      if (!monitor) {
+        results.steps.push({ step: 'get_monitor', success: false, error: 'Monitor not found' });
+        return results;
+      }
+      results.steps.push({ step: 'get_monitor', success: true, email: monitor.email_address });
+
+      // Build IMAP config
+      let imapConfig;
+      try {
+        imapConfig = await this.buildIMAPConfig(monitor);
+        if (!imapConfig) {
+          results.steps.push({ step: 'build_config', success: false, error: 'No OAuth token or password available' });
+          return results;
+        }
+        results.steps.push({ step: 'build_config', success: true, host: monitor.imap_host, port: monitor.imap_port, auth: imapConfig.xoauth2 ? 'OAuth2' : 'Password' });
+      } catch (configError) {
+        results.steps.push({ step: 'build_config', success: false, error: configError.message });
+        return results;
+      }
+
+      // Test IMAP connection
+      const imap = new Imap(imapConfig);
+
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          imap.end();
+          reject(new Error('Connection timeout after 30 seconds'));
+        }, 30000);
+
+        imap.once('ready', () => {
+          clearTimeout(timeout);
+          results.steps.push({ step: 'imap_connect', success: true });
+
+          imap.openBox('INBOX', true, (err, box) => {
+            if (err) {
+              results.steps.push({ step: 'open_inbox', success: false, error: err.message });
+              imap.end();
+              return resolve();
+            }
+
+            results.steps.push({ step: 'open_inbox', success: true, totalMessages: box.messages.total, newMessages: box.messages.new });
+
+            // Search for recent emails
+            const sinceDate = new Date();
+            sinceDate.setDate(sinceDate.getDate() - 7);
+
+            imap.search([['SINCE', sinceDate]], (err, uids) => {
+              if (err) {
+                results.steps.push({ step: 'search', success: false, error: err.message });
+                imap.end();
+                return resolve();
+              }
+
+              results.steps.push({ step: 'search', success: true, found: uids.length, criteria: `SINCE ${sinceDate.toISOString().split('T')[0]}` });
+
+              if (uids.length === 0) {
+                imap.end();
+                results.success = true;
+                return resolve();
+              }
+
+              // Fetch headers of up to 10 recent emails
+              const toFetch = uids.slice(-10);
+              const fetch = imap.fetch(toFetch, { bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)', struct: true });
+
+              fetch.on('message', (msg, seqno) => {
+                let emailInfo = { seqno };
+
+                msg.on('body', (stream, info) => {
+                  let buffer = '';
+                  stream.on('data', chunk => buffer += chunk.toString('utf8'));
+                  stream.on('end', () => {
+                    // Parse headers
+                    const subjectMatch = buffer.match(/Subject: (.+)/i);
+                    const fromMatch = buffer.match(/From: (.+)/i);
+                    const dateMatch = buffer.match(/Date: (.+)/i);
+                    emailInfo.subject = subjectMatch ? subjectMatch[1].trim() : 'No Subject';
+                    emailInfo.from = fromMatch ? fromMatch[1].trim() : 'Unknown';
+                    emailInfo.date = dateMatch ? dateMatch[1].trim() : 'Unknown';
+                  });
+                });
+
+                msg.once('attributes', (attrs) => {
+                  emailInfo.uid = attrs.uid;
+                  emailInfo.flags = attrs.flags;
+                  // Check for attachments
+                  if (attrs.struct) {
+                    emailInfo.hasAttachments = JSON.stringify(attrs.struct).includes('attachment') ||
+                                              JSON.stringify(attrs.struct).includes('application/pdf') ||
+                                              JSON.stringify(attrs.struct).includes('image/');
+                    emailInfo.parts = attrs.struct.length || 1;
+                  }
+                });
+
+                msg.once('end', () => {
+                  results.emails.push(emailInfo);
+                });
+              });
+
+              fetch.once('error', (err) => {
+                results.steps.push({ step: 'fetch_headers', success: false, error: err.message });
+              });
+
+              fetch.once('end', () => {
+                results.steps.push({ step: 'fetch_headers', success: true, fetched: results.emails.length });
+                results.success = true;
+                imap.end();
+                resolve();
+              });
+            });
+          });
+        });
+
+        imap.once('error', (err) => {
+          clearTimeout(timeout);
+          results.steps.push({ step: 'imap_connect', success: false, error: err.message });
+          resolve();
+        });
+
+        imap.connect();
+      });
+
+      return results;
+
+    } catch (error) {
+      results.steps.push({ step: 'diagnose', success: false, error: error.message });
+      return results;
+    }
   }
 }
 
