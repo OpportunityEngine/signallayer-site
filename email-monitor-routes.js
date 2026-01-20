@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
 
     if (user.role === 'admin') {
       // Admin sees all monitors
-      monitors = db.prepare(`
+      monitors = db.getDatabase().prepare(`
         SELECT
           em.*,
           u.name as user_name,
@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
       `).all();
     } else {
       // Non-admins see only their own monitors
-      monitors = db.prepare(`
+      monitors = db.getDatabase().prepare(`
         SELECT * FROM email_monitors
         WHERE user_id = ?
         ORDER BY created_at DESC
@@ -154,7 +154,7 @@ router.post('/', async (req, res) => {
     const encryptedPassword = emailService.encryptPassword(imap_password);
 
     // Insert monitor
-    const result = db.prepare(`
+    const result = db.getDatabase().prepare(`
       INSERT INTO email_monitors (
         user_id,
         name,
@@ -319,7 +319,7 @@ router.put('/:id', async (req, res) => {
 
     // Perform update
     values.push(id);
-    db.prepare(`
+    db.getDatabase().prepare(`
       UPDATE email_monitors
       SET ${updates.join(', ')}
       WHERE id = ?
@@ -390,7 +390,7 @@ router.delete('/:id', async (req, res) => {
     emailService.stopMonitor(id);
 
     // Delete monitor (cascade will delete processing logs)
-    db.prepare('DELETE FROM email_monitors WHERE id = ?').run(id);
+    db.getDatabase().prepare('DELETE FROM email_monitors WHERE id = ?').run(id);
 
     res.json({
       success: true,
@@ -437,7 +437,7 @@ router.post('/:id/start', async (req, res) => {
     }
 
     // Enable and start
-    db.prepare('UPDATE email_monitors SET is_active = 1 WHERE id = ?').run(id);
+    db.getDatabase().prepare('UPDATE email_monitors SET is_active = 1 WHERE id = ?').run(id);
     emailService.startMonitor(id);
 
     res.json({
@@ -482,7 +482,7 @@ router.post('/:id/stop', async (req, res) => {
 
     // Stop and disable
     emailService.stopMonitor(id);
-    db.prepare('UPDATE email_monitors SET is_active = 0 WHERE id = ?').run(id);
+    db.getDatabase().prepare('UPDATE email_monitors SET is_active = 0 WHERE id = ?').run(id);
 
     res.json({
       success: true,
@@ -589,7 +589,7 @@ router.get('/:id/activity', async (req, res) => {
     query += ' ORDER BY processed_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), parseInt(offset));
 
-    const activity = db.prepare(query).all(...params);
+    const activity = db.getDatabase().prepare(query).all(...params);
 
     // Get total count
     let countQuery = 'SELECT COUNT(*) as total FROM email_processing_log WHERE monitor_id = ?';
@@ -598,7 +598,7 @@ router.get('/:id/activity', async (req, res) => {
       countQuery += ' AND status = ?';
       countParams.push(status);
     }
-    const { total } = db.prepare(countQuery).get(...countParams);
+    const { total } = db.getDatabase().prepare(countQuery).get(...countParams);
 
     res.json({
       success: true,
@@ -649,7 +649,7 @@ router.get('/:id/stats', async (req, res) => {
     }
 
     // Get processing stats
-    const stats = db.prepare(`
+    const stats = db.getDatabase().prepare(`
       SELECT
         COUNT(*) as total_emails,
         SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful,
@@ -781,7 +781,7 @@ router.get('/system/status', requireRole(['admin']), async (req, res) => {
     const status = emailService.getStatus();
 
     // Get all monitors summary
-    const monitorsSummary = db.prepare(`
+    const monitorsSummary = db.getDatabase().prepare(`
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
