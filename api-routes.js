@@ -2,8 +2,20 @@
 // Production API endpoints that integrate with SQLite database
 const express = require('express');
 const db = require('./database');
+const demoData = require('./dashboard/demoData');
 
 const router = express.Router();
+
+// Demo user detection
+const DEMO_ROLES = ['demo_viewer', 'demo_business'];
+const DEMO_EMAILS = ['demo@revenueradar.com', 'business@demo.revenueradar.com'];
+
+function isDemoUser(user) {
+  if (!user) return false;
+  if (DEMO_ROLES.includes(user.role)) return true;
+  if (DEMO_EMAILS.includes((user.email || '').toLowerCase())) return true;
+  return false;
+}
 
 // Middleware to extract user from request
 function getUserContext(req) {
@@ -486,11 +498,22 @@ router.get('/telemetry/summary', (req, res) => {
 /**
  * GET /api/uploads/recent - Get user's recent invoice uploads
  * Returns the most recent ingestion runs for the authenticated user
+ * Demo users receive demo invoice data
  */
 router.get('/uploads/recent', (req, res) => {
   try {
     const user = getUserContext(req);
     const limit = parseInt(req.query.limit) || 10;
+
+    // Demo users get demo invoice data
+    if (isDemoUser(user)) {
+      const demoInvoices = demoData.invoices.slice(0, limit);
+      return res.json({
+        success: true,
+        runs: demoInvoices
+      });
+    }
+
     const database = db.getDatabase();
 
     const uploads = database.prepare(`

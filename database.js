@@ -491,9 +491,9 @@ function getDatabase() {
  *    For: Mom & pop shops, local businesses evaluating the product
  *    Email: business@demo.revenueradar.com / Password: DemoShop2026!
  *
- * 2. demo_viewer - "Universal Demo" - Read-only access to all dashboards
- *    For: Family, friends, investors, anyone you want to show the full platform
- *    Email: demo@revenueradar.com / Password: Demo2026!
+ * 2. demo_business - "Demo User" - Full demo of Business Dashboard
+ *    For: Anyone evaluating the business owner experience
+ *    Email: demo@revenueradar.com / Password: Demo123!
  *
  * FOUNDER ACCOUNTS (always exist):
  * 3. admin@revenueradar.com / Admin123! - System admin
@@ -514,9 +514,9 @@ function seedDemoUsers() {
     },
     {
       email: 'demo@revenueradar.com',
-      name: 'Demo Viewer',
-      password: 'Demo2026!',
-      role: 'demo_viewer',
+      name: 'Demo User',
+      password: 'Demo123!',
+      role: 'demo_business',
       accountName: 'Revenue Radar Demo'
     }
   ];
