@@ -408,6 +408,13 @@ function initDatabase() {
           console.log('✅ Migration: Added oauth_token_expires_at column to email_monitors');
         }
 
+        // Check for require_invoice_keywords column
+        const hasRequireInvoiceKeywords = emailMonitorsColumns.includes('require_invoice_keywords');
+        if (!hasRequireInvoiceKeywords) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN require_invoice_keywords INTEGER DEFAULT 1`);
+          console.log('✅ Migration: Added require_invoice_keywords column to email_monitors');
+        }
+
         // Disable demo email monitor that has invalid credentials
         db.exec(`UPDATE email_monitors SET is_active = 0 WHERE encrypted_password = 'ENCRYPTED_DEMO_PASSWORD'`);
         console.log('✅ Migration: Disabled demo email monitor with invalid credentials');

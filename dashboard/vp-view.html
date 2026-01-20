@@ -3060,6 +3060,73 @@
         <span id="trialStatusText" class="trial-banner-text"></span>
       </div>
 
+      <!-- Executive Daily Briefing - Premium at-a-glance overview -->
+      <div style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(12, 16, 25, 0.95) 0%, rgba(8, 12, 20, 0.98) 100%); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 16px; position: relative; overflow: hidden;">
+        <!-- Subtle accent line -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #d4af37 0%, #e6c55a 50%, #d4af37 100%);"></div>
+        <div style="padding: 20px 24px 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-size: 16px; font-weight: 700; letter-spacing: 0.3px; color: #ffffff; display: flex; align-items: center;">
+            <svg width="20" height="20" fill="none" stroke="#d4af37" viewBox="0 0 24 24" style="margin-right: 10px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            Executive Daily Briefing
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 8px; height: 8px; background: #4ade80; border-radius: 50%; animation: pulse 2s infinite;"></span>
+            <span style="font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500;">Live</span>
+            <span style="background: rgba(212, 175, 55, 0.15); color: #d4af37; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 8px;">Today's Summary</span>
+          </div>
+        </div>
+        <div style="padding: 8px 24px 24px 24px;">
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+            <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.02) 100%); border: 1px solid rgba(74, 222, 128, 0.15); border-radius: 14px; transition: all 0.2s;">
+              <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Money Saved Today</div>
+              <div style="font-size: 36px; font-weight: 800; color: #4ade80; line-height: 1;" id="briefingSavedToday">$847</div>
+              <div style="font-size: 12px; color: #4ade80; margin-top: 8px; font-weight: 500;">
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                3 opportunities captured
+              </div>
+            </div>
+            <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 14px; transition: all 0.2s;">
+              <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Invoices Processed</div>
+              <div style="font-size: 36px; font-weight: 800; color: #3b82f6; line-height: 1;" id="briefingInvoices">12</div>
+              <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 8px; font-weight: 500;">
+                <svg width="12" height="12" fill="none" stroke="#4ade80" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                All validated
+              </div>
+            </div>
+            <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(248, 113, 113, 0.08) 0%, rgba(248, 113, 113, 0.02) 100%); border: 1px solid rgba(248, 113, 113, 0.15); border-radius: 14px; transition: all 0.2s;">
+              <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Action Required</div>
+              <div style="font-size: 36px; font-weight: 800; color: #f87171; line-height: 1;" id="briefingActions">2</div>
+              <div style="font-size: 12px; color: #f87171; margin-top: 8px; font-weight: 500;">
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Price alerts pending
+              </div>
+            </div>
+            <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(212, 175, 55, 0.02) 100%); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 14px; transition: all 0.2s;">
+              <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">YTD Savings</div>
+              <div style="font-size: 36px; font-weight: 800; color: #d4af37; line-height: 1;" id="briefingYTD">$12.8k</div>
+              <div style="font-size: 12px; color: #d4af37; margin-top: 8px; font-weight: 500;">
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                On track for $18k goal
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 18px; padding: 16px 18px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0.02) 100%); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 12px; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(6, 182, 212, 0.1) 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="20" height="20" fill="none" stroke="#06b6d4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+              </svg>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11px; color: #06b6d4; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">AI Insight</div>
+              <div style="font-size: 13px; color: rgba(255,255,255,0.9); line-height: 1.5;" id="briefingAIInsight">Consider renegotiating with Sysco - your chicken breast pricing is 12% above market. Estimated annual savings: <strong style="color: #4ade80;">$2,400</strong></div>
+            </div>
+            <button onclick="window.location.href='business-analytics.html'" style="padding: 8px 16px; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 8px; color: #06b6d4; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(6, 182, 212, 0.25)'" onmouseout="this.style.background='rgba(6, 182, 212, 0.15)'">View Details</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
       <div class="quick-actions-grid" style="grid-template-columns: repeat(4, 1fr);">
         <a href="inventory.html" class="quick-action-tile">
