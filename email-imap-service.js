@@ -10,6 +10,10 @@ const db = require('./database');
 const fs = require('fs').promises;
 const path = require('path');
 const universalInvoiceProcessor = require('./universal-invoice-processor');  // Universal invoice processing (PDF, images, OCR)
+const InventoryIntelligence = require('./inventory-intelligence');  // Inventory tracking & price intelligence
+
+// Initialize inventory intelligence for auto-processing from email invoices
+const inventoryIntelligence = new InventoryIntelligence();
 
 // Try to load OAuth service (optional - only needed if using OAuth)
 let emailOAuth = null;
@@ -753,6 +757,48 @@ class EmailIMAPService {
         // Don't fail the invoice processing if COGS coding fails
         console.warn('[EMAIL IMAP] COGS coding skipped:', cogsError.message);
       }
+
+      // ===== INVENTORY INTELLIGENCE INTEGRATION =====
+      // Auto-update inventory levels, track prices, detect price changes
+      try {
+        const vendorName = parsedInvoice.vendor?.name || payload.vendorName;
+        const invoiceDate = parsedInvoice.date || parsedInvoice.invoiceDate || new Date().toISOString().split('T')[0];
+
+        const inventoryResult = inventoryIntelligence.processInvoiceForInventory(
+          user.id,
+          vendorName,
+          items,
+          invoiceDate
+        );
+
+        console.log(`[EMAIL IMAP] ✓ Inventory intelligence: ${inventoryResult.processed} items updated, ${inventoryResult.pricesRecorded} prices tracked, ${inventoryResult.priceAlerts?.length || 0} alerts`);
+
+        // Store any price alerts as opportunities
+        if (inventoryResult.priceAlerts && inventoryResult.priceAlerts.length > 0) {
+          for (const alert of inventoryResult.priceAlerts) {
+            if (alert.alertType === 'price_increase' && alert.changePercent >= 10) {
+              try {
+                db.getDatabase().prepare(`
+                  INSERT INTO opportunities (
+                    account_name, vendor_name, opportunity_type, description,
+                    estimated_value_cents, status, source, created_at
+                  ) VALUES (?, ?, 'price_increase', ?, ?, 'new', 'inventory_intel', CURRENT_TIMESTAMP)
+                `).run(
+                  payload.accountName,
+                  alert.vendor,
+                  `Price increase detected: ${alert.sku} increased by ${alert.changePercent}% (from $${(alert.previousPriceCents/100).toFixed(2)} to $${(alert.newPriceCents/100).toFixed(2)})`,
+                  Math.round((alert.newPriceCents - alert.previousPriceCents) * 10) // Estimated annual impact
+                );
+              } catch (oppErr) {
+                console.warn('[EMAIL IMAP] Failed to store price alert:', oppErr.message);
+              }
+            }
+          }
+        }
+      } catch (inventoryError) {
+        console.warn('[EMAIL IMAP] Inventory intelligence skipped:', inventoryError.message);
+      }
+      // ===== END INVENTORY INTELLIGENCE =====
 
       // Use parser's extracted total if available (more accurate for vendors like Cintas)
       // Fall back to summed items total if parser didn't find a total

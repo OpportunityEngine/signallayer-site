@@ -1628,6 +1628,63 @@
       </div>
     </div>
 
+    <!-- Row 7.5: Inventory Management Quick View -->
+    <div class="grid-2" style="margin-bottom: 24px;">
+      <!-- Inventory Status -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>📦</span> Inventory Status
+          </div>
+          <a href="/dashboard/inventory.html" class="tile-badge" style="text-decoration: none; cursor: pointer;">Manage →</a>
+        </div>
+        <div class="tile-body">
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+            <div style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 700; color: #ffffff;" id="invTotalItems">--</div>
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Items</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 700; color: #ef4444;" id="invCriticalCount">0</div>
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Critical</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 700; color: #fbbf24;" id="invLowCount">0</div>
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Low Stock</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 700; color: #22c55e;" id="invTotalValue">$0</div>
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Value</div>
+            </div>
+          </div>
+          <div id="stockoutAlerts" style="max-height: 150px; overflow-y: auto;">
+            <div style="text-align: center; padding: 20px; color: #64748b;">
+              <span style="font-size: 24px; margin-bottom: 8px; display: block;">✓</span>
+              No stockout alerts
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Smart Reorder Recommendations -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>🎯</span> Smart Reorder
+          </div>
+          <span class="tile-badge" id="reorderCount">0 Actions</span>
+        </div>
+        <div class="tile-body">
+          <div id="reorderRecommendations" style="max-height: 200px; overflow-y: auto;">
+            <div style="text-align: center; padding: 30px; color: #64748b;">
+              <span style="font-size: 24px; margin-bottom: 8px; display: block;">📋</span>
+              Upload inventory to get smart recommendations
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Row 8: Business Owner Summary (NEW - AT-A-GLANCE OVERVIEW) -->
     <div class="tile-card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(15, 19, 32, 0.9) 100%); border-color: rgba(251, 191, 36, 0.25);">
       <div class="tile-header">
@@ -1885,6 +1942,9 @@
           suppliersRes,
           priceAlertsRes,
           inventoryHealthRes,
+          inventoryDashboardRes,
+          stockoutAlertsRes,
+          reorderRecsRes,
           expensesRes,
           payrollRes,
           emailMonitorsRes
@@ -1895,6 +1955,9 @@
           fetch('/api/bi/suppliers', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/price-alerts?days=30&threshold=5', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/inventory/health', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
+          fetch('/api/bi/inventory/dashboard', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
+          fetch('/api/bi/inventory/stockout-alerts?days=14', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
+          fetch('/api/bi/inventory/recommendations', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/expenses?period=90', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/payroll?period=90', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/email-monitors', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null)
@@ -1907,6 +1970,9 @@
         const suppliersData = suppliersRes?.ok ? await suppliersRes.json() : null;
         const priceAlertsData = priceAlertsRes?.ok ? await priceAlertsRes.json() : null;
         const inventoryHealthData = inventoryHealthRes?.ok ? await inventoryHealthRes.json() : null;
+        const inventoryDashboardData = inventoryDashboardRes?.ok ? await inventoryDashboardRes.json() : null;
+        const stockoutAlertsData = stockoutAlertsRes?.ok ? await stockoutAlertsRes.json() : null;
+        const reorderRecsData = reorderRecsRes?.ok ? await reorderRecsRes.json() : null;
         const expensesData = expensesRes?.ok ? await expensesRes.json() : null;
         const payrollData = payrollRes?.ok ? await payrollRes.json() : null;
         const emailMonitorsData = emailMonitorsRes?.ok ? await emailMonitorsRes.json() : null;
@@ -1914,6 +1980,8 @@
         // Update all dashboard components
         updateHeroStats(savingsData?.data, opportunitiesData?.data, suppliersData?.data, emailMonitorsData?.data);
         updateFinancialHealth(inventoryHealthData?.data);
+        updateInventoryStatus(inventoryDashboardData?.data, stockoutAlertsData?.data);
+        updateReorderRecommendations(reorderRecsData?.data);
         updateSpendingVelocity(financialData?.data);
         updateLocationPerformance(opportunitiesData?.data, savingsData?.data);
         updateOpportunityPipeline(opportunitiesData?.data);
@@ -1931,6 +1999,109 @@
         console.error('Failed to load analytics:', error);
         showToast('Some data could not be loaded', 'error');
       }
+    }
+
+    // Update Inventory Status Tile
+    function updateInventoryStatus(dashboardData, stockoutAlerts) {
+      const stats = dashboardData?.stats || {};
+
+      // Update stats
+      const totalItems = document.getElementById('invTotalItems');
+      const criticalCount = document.getElementById('invCriticalCount');
+      const lowCount = document.getElementById('invLowCount');
+      const totalValue = document.getElementById('invTotalValue');
+
+      if (totalItems) totalItems.textContent = stats.total_items || 0;
+      if (criticalCount) criticalCount.textContent = stats.critical_count || 0;
+      if (lowCount) lowCount.textContent = stats.low_count || 0;
+      if (totalValue) totalValue.textContent = formatCurrency(stats.total_value_dollars || 0);
+
+      // Update stockout alerts
+      const alertsContainer = document.getElementById('stockoutAlerts');
+      if (alertsContainer && stockoutAlerts && stockoutAlerts.length > 0) {
+        alertsContainer.innerHTML = stockoutAlerts.slice(0, 5).map(alert => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${alert.severity === 'critical' ? '#ef4444' : alert.severity === 'high' ? '#f59e0b' : '#fbbf24'};">
+            <div>
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff;">${escapeHtml(alert.productName || alert.sku)}</div>
+              <div style="font-size: 11px; color: #94a3b8;">${alert.daysUntilStockout} days left • ${alert.currentQuantity} in stock</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; font-weight: 600; color: ${alert.severity === 'critical' ? '#ef4444' : '#fbbf24'}; text-transform: uppercase;">${alert.severity}</div>
+              <div style="font-size: 10px; color: #64748b;">Order ${alert.suggestedOrderQty}</div>
+            </div>
+          </div>
+        `).join('');
+      } else if (alertsContainer && (!stockoutAlerts || stockoutAlerts.length === 0)) {
+        const hasInventory = (stats.total_items || 0) > 0;
+        alertsContainer.innerHTML = hasInventory ? `
+          <div style="text-align: center; padding: 20px; color: #22c55e;">
+            <span style="font-size: 24px; margin-bottom: 8px; display: block;">✓</span>
+            All items well-stocked
+          </div>
+        ` : `
+          <div style="text-align: center; padding: 20px; color: #64748b;">
+            <span style="font-size: 24px; margin-bottom: 8px; display: block;">📦</span>
+            <a href="/dashboard/inventory.html" style="color: #fbbf24;">Upload inventory</a> to get started
+          </div>
+        `;
+      }
+    }
+
+    // Update Reorder Recommendations Tile
+    function updateReorderRecommendations(recommendations) {
+      const container = document.getElementById('reorderRecommendations');
+      const countBadge = document.getElementById('reorderCount');
+
+      if (!container) return;
+
+      const activeRecs = recommendations?.filter(r => !r.is_dismissed && !r.is_actioned) || [];
+
+      if (countBadge) {
+        countBadge.textContent = `${activeRecs.length} Actions`;
+        countBadge.style.background = activeRecs.length > 0 ? 'rgba(251, 191, 36, 0.2)' : 'rgba(34, 197, 94, 0.2)';
+        countBadge.style.color = activeRecs.length > 0 ? '#fbbf24' : '#22c55e';
+      }
+
+      if (activeRecs.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 30px; color: #22c55e;">
+            <span style="font-size: 24px; margin-bottom: 8px; display: block;">✓</span>
+            No reorder actions needed
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = activeRecs.slice(0, 5).map(rec => {
+        const priorityColors = {
+          critical: { bg: 'rgba(239, 68, 68, 0.1)', border: '#ef4444', text: '#ef4444' },
+          high: { bg: 'rgba(251, 191, 36, 0.1)', border: '#fbbf24', text: '#fbbf24' },
+          medium: { bg: 'rgba(59, 130, 246, 0.1)', border: '#3b82f6', text: '#3b82f6' },
+          low: { bg: 'rgba(100, 116, 139, 0.1)', border: '#64748b', text: '#64748b' }
+        };
+        const colors = priorityColors[rec.priority] || priorityColors.medium;
+        const savings = rec.potential_savings_cents > 0 ? `<span style="color: #22c55e; font-size: 11px;">Save $${(rec.potential_savings_cents/100).toFixed(0)}</span>` : '';
+
+        return `
+          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: ${colors.bg}; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${colors.border};">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(rec.title)}</div>
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">${escapeHtml(rec.description?.substring(0, 60) || '')}...</div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+              ${savings}
+              ${rec.suggested_quantity > 0 ? `<div style="font-size: 10px; color: #64748b;">Order ${rec.suggested_quantity}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // Update Hero Stats Row
@@ -1971,28 +2142,79 @@
       }
     }
 
-    // Update Financial Health Score
+    // Update Financial Health Score with real inventory data
     function updateFinancialHealth(healthData) {
       if (!healthData) return;
 
-      const healthScore = document.getElementById('healthScore');
-      const score = healthData.score || healthData.grade || 85;
+      const healthScoreEl = document.getElementById('healthScore');
+      const score = healthData.score || 85;
+      const breakdown = healthData.breakdown || {};
 
       // Determine grade
-      let grade, gradeClass;
-      if (typeof score === 'string') {
-        grade = score;
-        gradeClass = score.startsWith('A') ? 'excellent' : score.startsWith('B') ? 'good' : score.startsWith('C') ? 'warning' : 'critical';
+      let grade, gradeClass, label;
+      if (typeof healthData.grade === 'string') {
+        grade = healthData.grade;
+        gradeClass = grade.startsWith('A') ? 'excellent' : grade.startsWith('B') ? 'good' : grade.startsWith('C') ? 'warning' : 'critical';
       } else {
-        if (score >= 90) { grade = 'A+'; gradeClass = 'excellent'; }
-        else if (score >= 80) { grade = 'A'; gradeClass = 'excellent'; }
-        else if (score >= 70) { grade = 'B'; gradeClass = 'good'; }
-        else if (score >= 60) { grade = 'C'; gradeClass = 'warning'; }
-        else { grade = 'D'; gradeClass = 'critical'; }
+        if (score >= 90) { grade = 'A+'; gradeClass = 'excellent'; label = 'Excellent'; }
+        else if (score >= 80) { grade = 'A'; gradeClass = 'excellent'; label = 'Very Good'; }
+        else if (score >= 70) { grade = 'B'; gradeClass = 'good'; label = 'Good'; }
+        else if (score >= 60) { grade = 'C'; gradeClass = 'warning'; label = 'Needs Attention'; }
+        else { grade = 'D'; gradeClass = 'critical'; label = 'Critical'; }
       }
 
-      healthScore.textContent = grade;
-      healthScore.className = 'health-score ' + gradeClass;
+      healthScoreEl.textContent = grade;
+      healthScoreEl.className = 'health-score ' + gradeClass;
+
+      // Update the health label
+      const healthLabel = healthScoreEl.nextElementSibling;
+      if (healthLabel) healthLabel.textContent = label || 'Excellent';
+
+      // Update the breakdown bars with real data
+      const stockScore = breakdown.stockScore || 85;
+      const priceScore = breakdown.priceScore || 90;
+      const turnoverScore = breakdown.turnoverScore || 80;
+      const accuracyScore = breakdown.accuracyScore || 95;
+
+      // Find the data-list and update each row
+      const dataList = document.querySelector('.tile-card:has(#healthScore) .data-list');
+      if (dataList) {
+        const rows = dataList.querySelectorAll('div[style*="display: flex"]');
+        if (rows.length >= 4) {
+          // Update Cost Control (Stock Score)
+          updateHealthRow(rows[0], 'Stock Level', stockScore, breakdown.criticalItems ? `${breakdown.criticalItems} critical` : null);
+          // Update Invoice Accuracy (Price Score)
+          updateHealthRow(rows[1], 'Price Tracking', priceScore);
+          // Update Vendor Compliance (Turnover Score)
+          updateHealthRow(rows[2], 'Turnover Rate', turnoverScore);
+          // Update Price Consistency (Accuracy Score)
+          updateHealthRow(rows[3], 'Data Accuracy', accuracyScore);
+        }
+      }
+
+      // Show item counts if available
+      if (breakdown.itemCount !== undefined) {
+        const sublabel = healthScoreEl.parentElement?.querySelector('.health-sublabel');
+        if (sublabel) {
+          sublabel.textContent = `${breakdown.itemCount} items tracked`;
+        }
+      }
+    }
+
+    function updateHealthRow(row, label, score, alert = null) {
+      const labelEl = row.querySelector('span:first-child');
+      const progressFill = row.querySelector('.progress-fill');
+      const scoreEl = row.querySelector('span:last-child');
+
+      if (labelEl) labelEl.textContent = label;
+      if (progressFill) {
+        progressFill.style.width = `${score}%`;
+        progressFill.className = 'progress-fill ' + (score >= 80 ? 'green' : score >= 60 ? 'gold' : 'red');
+      }
+      if (scoreEl) {
+        scoreEl.textContent = alert || `${score}%`;
+        scoreEl.style.color = score >= 80 ? '#22c55e' : score >= 60 ? '#fbbf24' : '#ef4444';
+      }
     }
 
     // Update Spending Velocity Chart
