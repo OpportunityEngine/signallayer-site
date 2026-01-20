@@ -1063,6 +1063,52 @@
       </div>
     </div>
 
+    <!-- Email Invoice Autopilot - Savings Summary -->
+    <div class="tile-card" style="margin-bottom: 24px;">
+      <div class="tile-header">
+        <div class="tile-title">
+          <span>📧</span> Email Invoice Autopilot
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span id="autopilotStatus" class="tile-badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">Active</span>
+          <a href="manager-view.html#email-autopilot" style="font-size: 12px; color: #fbbf24; text-decoration: none;">Manage →</a>
+        </div>
+      </div>
+      <div class="tile-body">
+        <!-- Savings Summary Banner -->
+        <div id="autopilotSavingsBanner" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px 24px; border-radius: 12px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: white;">💰 Autopilot Savings Detected (This Month)</h3>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+            <div>
+              <div id="autopilotTotalSavings" style="font-size: 28px; font-weight: 800; color: white;">$0</div>
+              <div style="font-size: 12px; opacity: 0.9; color: rgba(255,255,255,0.9);">Total Savings</div>
+            </div>
+            <div>
+              <div id="autopilotCriticalFindings" style="font-size: 28px; font-weight: 800; color: white;">0</div>
+              <div style="font-size: 12px; opacity: 0.9; color: rgba(255,255,255,0.9);">Critical Findings</div>
+            </div>
+            <div>
+              <div id="autopilotInvoicesProcessed" style="font-size: 28px; font-weight: 800; color: white;">0</div>
+              <div style="font-size: 12px; opacity: 0.9; color: rgba(255,255,255,0.9);">Invoices Processed</div>
+            </div>
+            <div>
+              <div id="autopilotOpportunities" style="font-size: 28px; font-weight: 800; color: white;">0</div>
+              <div style="font-size: 12px; opacity: 0.9; color: rgba(255,255,255,0.9);">Opportunities</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Monitors Mini List -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+          <div id="autopilotMonitorsList">
+            <div style="text-align: center; padding: 20px; color: #64748b; font-size: 13px;">
+              Loading email monitors...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Row 3: Location Performance + Opportunity Pipeline -->
     <div class="grid-2">
       <!-- Location Performance -->
@@ -2510,8 +2556,99 @@
     `;
     document.head.appendChild(style);
 
+    // ===== EMAIL AUTOPILOT FUNCTIONS =====
+    async function loadEmailAutopilotData() {
+      try {
+        // Load monitors
+        const monitorsResponse = await fetch('/api/email-monitors', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (monitorsResponse.ok) {
+          const monitorsData = await monitorsResponse.json();
+          const monitors = monitorsData.monitors || [];
+
+          // Update status badge
+          const activeCount = monitors.filter(m => m.is_active).length;
+          const statusEl = document.getElementById('autopilotStatus');
+          if (statusEl) {
+            if (activeCount > 0) {
+              statusEl.textContent = `${activeCount} Active`;
+              statusEl.style.background = 'rgba(34, 197, 94, 0.15)';
+              statusEl.style.color = '#22c55e';
+            } else {
+              statusEl.textContent = 'Inactive';
+              statusEl.style.background = 'rgba(100, 116, 139, 0.15)';
+              statusEl.style.color = '#64748b';
+            }
+          }
+
+          // Display mini monitors list
+          const monitorsList = document.getElementById('autopilotMonitorsList');
+          if (monitorsList && monitors.length > 0) {
+            monitorsList.innerHTML = monitors.slice(0, 3).map(m => `
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); border-radius: 10px; border: 1px solid rgba(251, 191, 36, 0.1);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 10px; height: 10px; border-radius: 50%; background: ${m.is_active ? '#22c55e' : '#6b7280'};"></div>
+                  <div>
+                    <div style="font-weight: 600; font-size: 13px; color: #e2e8f0;">${m.name || 'Email Monitor'}</div>
+                    <div style="font-size: 11px; color: #64748b;">${m.email_address || ''}</div>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 13px; font-weight: 700; color: #22c55e;">${m.invoices_created || 0}</div>
+                  <div style="font-size: 10px; color: #64748b;">invoices</div>
+                </div>
+              </div>
+            `).join('');
+          } else if (monitorsList) {
+            monitorsList.innerHTML = `
+              <div style="text-align: center; padding: 20px; color: #64748b;">
+                <div style="font-size: 13px;">No email monitors configured</div>
+                <a href="manager-view.html" style="font-size: 12px; color: #fbbf24; text-decoration: none; margin-top: 8px; display: inline-block;">Set up email autopilot →</a>
+              </div>
+            `;
+          }
+
+          // Calculate totals from monitors
+          let totalInvoices = 0;
+          monitors.forEach(m => {
+            totalInvoices += m.invoices_created || 0;
+          });
+
+          document.getElementById('autopilotInvoicesProcessed').textContent = totalInvoices.toLocaleString();
+        }
+
+        // Load savings/opportunities data
+        const opportunitiesResponse = await fetch('/api/bi/opportunities-summary', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (opportunitiesResponse.ok) {
+          const oppData = await opportunitiesResponse.json();
+          if (oppData.success && oppData.data) {
+            const totalSavings = (oppData.data.total_potential_savings || 0) / 100;
+            const criticalCount = oppData.data.opportunities?.filter(o => o.priority === 'critical' || o.priority === 'high').length || 0;
+            const totalOpps = oppData.data.total_opportunities || 0;
+
+            document.getElementById('autopilotTotalSavings').textContent = '$' + totalSavings.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            document.getElementById('autopilotCriticalFindings').textContent = criticalCount.toString();
+            document.getElementById('autopilotOpportunities').textContent = totalOpps.toString();
+          }
+        }
+      } catch (error) {
+        console.error('[Autopilot] Failed to load data:', error);
+        document.getElementById('autopilotMonitorsList').innerHTML = `
+          <div style="text-align: center; padding: 20px; color: #ef4444; font-size: 13px;">
+            Failed to load email monitors
+          </div>
+        `;
+      }
+    }
+
     // Initialize
     loadAnalytics();
+    loadEmailAutopilotData();
   </script>
 </body>
 </html>

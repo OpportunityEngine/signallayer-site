@@ -706,11 +706,14 @@ class EmailIMAPService {
         return { success: false, error: 'Monitor user not found' };
       }
 
-      // Store ingestion run
-      db.getDatabase().prepare(`
+      // Store ingestion run and get the auto-increment ID for foreign key references
+      const insertResult = db.getDatabase().prepare(`
         INSERT INTO ingestion_runs (run_id, user_id, account_name, vendor_name, file_name, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'processing', CURRENT_TIMESTAMP)
       `).run(runId, user.id, payload.accountName, payload.vendorName, payload.fileName);
+
+      // Use INTEGER id for foreign key references to invoice_items
+      const runIdInt = insertResult.lastInsertRowid;
 
       // ===== USE UNIVERSAL INVOICE PROCESSOR =====
       // This ensures consistent extraction across upload, email, and browser extension
@@ -754,13 +757,13 @@ class EmailIMAPService {
           }))
         : this.extractInvoiceItems(payload.rawText); // Legacy fallback
 
-      // Store invoice items
+      // Store invoice items - use INTEGER id (runIdInt) for foreign key
       let itemsTotalCents = 0;
       for (const item of items) {
         db.getDatabase().prepare(`
           INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).run(runId, item.description, item.quantity, item.unitPriceCents, item.totalCents, item.category || 'general');
+        `).run(runIdInt, item.description, item.quantity, item.unitPriceCents, item.totalCents, item.category || 'general');
         itemsTotalCents += item.totalCents || 0;
       }
 
