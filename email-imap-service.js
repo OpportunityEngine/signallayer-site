@@ -107,10 +107,12 @@ class EmailIMAPService {
    * @param {number} monitorId - ID of the email monitor
    */
   async checkEmails(monitorId) {
+    console.log(`[EMAIL IMAP] ========== CHECK EMAILS START (Monitor ${monitorId}) ==========`);
+
     // Prevent duplicate processing
     const lockKey = `monitor-${monitorId}`;
     if (this.processingLocks.has(lockKey)) {
-      console.log(`[EMAIL IMAP] Monitor ${monitorId} already processing, skipping...`);
+      console.log(`[EMAIL IMAP] ⏳ Monitor ${monitorId} already processing, skipping...`);
       return;
     }
 
@@ -118,31 +120,51 @@ class EmailIMAPService {
 
     try {
       const monitor = db.getEmailMonitor(monitorId);
-      if (!monitor || !monitor.is_active) {
+      console.log(`[EMAIL IMAP] Monitor lookup result:`, monitor ? {
+        id: monitor.id,
+        email: monitor.email_address,
+        is_active: monitor.is_active,
+        oauth_provider: monitor.oauth_provider,
+        has_oauth_token: !!monitor.oauth_access_token,
+        require_invoice_keywords: monitor.require_invoice_keywords
+      } : 'NOT FOUND');
+
+      if (!monitor) {
+        console.error(`[EMAIL IMAP] ❌ Monitor ${monitorId} not found in database`);
         this.processingLocks.delete(lockKey);
         return;
       }
 
-      console.log(`[EMAIL IMAP] Checking emails for monitor ${monitorId}: ${monitor.email_address}`);
+      if (!monitor.is_active) {
+        console.log(`[EMAIL IMAP] ⏸️ Monitor ${monitorId} is inactive, skipping`);
+        this.processingLocks.delete(lockKey);
+        return;
+      }
+
+      console.log(`[EMAIL IMAP] 📧 Checking emails for: ${monitor.email_address}`);
 
       // Build IMAP configuration based on auth type
       const imapConfig = await this.buildIMAPConfig(monitor);
       if (!imapConfig) {
-        throw new Error('Failed to build IMAP configuration - auth missing');
+        throw new Error('Failed to build IMAP configuration - no OAuth token or password. Please reconnect your email.');
       }
 
+      console.log(`[EMAIL IMAP] 🔌 Connecting to IMAP server: ${monitor.imap_host}:${monitor.imap_port}`);
       const imap = new Imap(imapConfig);
 
       await this.processIMAPConnection(imap, monitor);
 
       // Update last checked timestamp
       db.updateEmailMonitorLastChecked(monitorId, new Date().toISOString());
+      console.log(`[EMAIL IMAP] ✅ Check completed for monitor ${monitorId}`);
 
     } catch (error) {
-      console.error(`[EMAIL IMAP] Error checking monitor ${monitorId}:`, error.message);
+      console.error(`[EMAIL IMAP] ❌ Error checking monitor ${monitorId}:`, error.message);
+      console.error(`[EMAIL IMAP] Stack:`, error.stack);
       db.updateEmailMonitorError(monitorId, error.message);
     } finally {
       this.processingLocks.delete(lockKey);
+      console.log(`[EMAIL IMAP] ========== CHECK EMAILS END (Monitor ${monitorId}) ==========`);
     }
   }
 
@@ -406,6 +428,7 @@ class EmailIMAPService {
   isInvoiceEmail(emailData, monitor) {
     // Check if email has attachments
     if (emailData.attachments.length === 0) {
+      console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no attachments`);
       return false;
     }
 
@@ -417,21 +440,44 @@ class EmailIMAPService {
     const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.heic'];
 
     // Check for supported invoice attachment types
-    const hasInvoiceAttachment = emailData.attachments.some(att => {
+    const invoiceAttachments = emailData.attachments.filter(att => {
       const ext = att.filename ? '.' + att.filename.split('.').pop().toLowerCase() : '';
       return SUPPORTED_MIME_TYPES.includes(att.contentType) || SUPPORTED_EXTENSIONS.includes(ext);
     });
 
-    if (!hasInvoiceAttachment) {
+    if (invoiceAttachments.length === 0) {
+      console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no PDF/image attachments (found: ${emailData.attachments.map(a => a.filename || a.contentType).join(', ')})`);
       return false;
     }
 
-    // Check subject for invoice keywords
-    const subject = (emailData.subject || '').toLowerCase();
-    const invoiceKeywords = ['invoice', 'bill', 'statement', 'receipt', 'order'];
-    const hasInvoiceKeyword = invoiceKeywords.some(keyword => subject.includes(keyword));
+    console.log(`[EMAIL IMAP] ✓ Email "${emailData.subject}" has ${invoiceAttachments.length} processable attachment(s): ${invoiceAttachments.map(a => a.filename).join(', ')}`);
 
-    return hasInvoiceKeyword;
+    // Check if monitor requires keyword filtering (optional - allows processing all PDFs)
+    if (monitor.require_invoice_keywords === false || monitor.require_invoice_keywords === 0) {
+      // Process ALL emails with supported attachments (best for dedicated invoice email addresses)
+      return true;
+    }
+
+    // Default behavior: Check subject and attachment names for invoice keywords
+    const subject = (emailData.subject || '').toLowerCase();
+    const attachmentNames = invoiceAttachments.map(a => (a.filename || '').toLowerCase()).join(' ');
+    const searchText = subject + ' ' + attachmentNames;
+
+    const invoiceKeywords = ['invoice', 'bill', 'statement', 'receipt', 'order', 'payment', 'purchase', 'po', 'quote', 'estimate'];
+    const hasInvoiceKeyword = invoiceKeywords.some(keyword => searchText.includes(keyword));
+
+    // Also check for common invoice file patterns in attachment names
+    const invoiceFilePatterns = [/inv[-_]?\d+/i, /po[-_]?\d+/i, /\d{4,}\.pdf$/i];
+    const hasInvoiceFilePattern = invoiceAttachments.some(att =>
+      invoiceFilePatterns.some(pattern => pattern.test(att.filename || ''))
+    );
+
+    if (!hasInvoiceKeyword && !hasInvoiceFilePattern) {
+      console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no invoice keywords found in subject or filenames`);
+      return false;
+    }
+
+    return true;
   }
 
   /**

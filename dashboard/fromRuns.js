@@ -93,13 +93,63 @@ function normalizeKey(desc, sku) {
   return (a && b) ? `${a}::${b}` : (a || b || "unknown");
 }
 
-function loadCanonicals() {
+// Load database to filter runs by user
+let db = null;
+try {
+  db = require('../database');
+} catch (e) {
+  console.warn('[fromRuns] Could not load database module:', e.message);
+}
+
+function loadCanonicals(userId = null) {
   if (!fs.existsSync(RUNS_DIR)) return [];
+
+  let allowedRunIds = null;
+
+  // If userId is provided, filter to only runs owned by this user
+  if (userId && db) {
+    try {
+      const database = db.getDatabase();
+      const userRuns = database.prepare(`
+        SELECT run_id FROM ingestion_runs WHERE user_id = ?
+      `).all(userId);
+      allowedRunIds = new Set(userRuns.map(r => r.run_id));
+
+      // If user has no runs in the database, also check _SUMMARY.json files
+      // for user_id metadata (for runs not yet in DB)
+    } catch (e) {
+      console.warn('[fromRuns] Database query failed:', e.message);
+    }
+  }
 
   const runIds = fs.readdirSync(RUNS_DIR).filter((d) => !d.startsWith(".")).sort();
   const out = [];
 
   for (const runId of runIds) {
+    // If we have a user filter, check if this run belongs to the user
+    if (allowedRunIds !== null && !allowedRunIds.has(runId)) {
+      // Also check the _SUMMARY.json for user_id in case not in DB yet
+      const summaryPath = path.join(RUNS_DIR, runId, "_SUMMARY.json");
+      if (fs.existsSync(summaryPath)) {
+        try {
+          const summary = JSON.parse(fs.readFileSync(summaryPath, "utf-8"));
+          if (summary.user_id && summary.user_id !== userId) {
+            continue; // Skip - belongs to a different user
+          }
+          // If summary has matching user_id or no user_id, continue
+          if (summary.user_id && summary.user_id === userId) {
+            // Allow this run
+          } else {
+            continue; // Skip runs without user ownership
+          }
+        } catch (_) {
+          continue; // Skip if can't read summary
+        }
+      } else {
+        continue; // Skip if not in allowedRunIds and no summary
+      }
+    }
+
     const fp = path.join(RUNS_DIR, runId, "canonical.json");
     if (!fs.existsSync(fp)) continue;
     try {
@@ -154,13 +204,15 @@ function computeDashboard(filters) {
   // normalize common aliases
   const impactPeriodNorm = (impactPeriod === "yearly") ? "annual" : impactPeriod;
   const impactFactor = getImpactFactor(impactPeriodNorm);
-const companyId = filters?.companyId || "demo-company";
+  const companyId = filters?.companyId || "demo-company";
   const dateFrom = filters?.dateFrom || "";
   const dateTo = filters?.dateTo || "";
   const vendorIdFilter = filters?.vendorId || "";
   const locationIdFilter = filters?.locationId || "";
+  const userId = filters?.userId || null;
 
-  const canonicals = loadCanonicals();
+  // Load canonicals - filtered by userId if provided
+  const canonicals = loadCanonicals(userId);
 
   const invoices = canonicals
     .map(({ runId, canonical }) => {
@@ -498,6 +550,7 @@ const filtered = invoices.filter((inv) => {
 function cacheKey(filters) {
   const f = filters || {};
   return JSON.stringify({
+    userId: f.userId || "",  // Include userId in cache key for user-specific data
     companyId: f.companyId || "",
     dateFrom: f.dateFrom || "",
     dateTo: f.dateTo || "",

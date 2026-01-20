@@ -75,27 +75,33 @@ router.get('/google/auth', requireAuth, (req, res) => {
  * Handle Google OAuth callback
  */
 router.get('/google/callback', async (req, res) => {
-  console.log('[EMAIL-OAUTH] Google callback received:', { code: req.query.code ? 'present' : 'missing', state: req.query.state ? 'present' : 'missing', error: req.query.error });
+  console.log('[EMAIL-OAUTH] ========== GOOGLE CALLBACK START ==========');
+  console.log('[EMAIL-OAUTH] Query params:', {
+    code: req.query.code ? `present (${req.query.code.substring(0, 20)}...)` : 'MISSING',
+    state: req.query.state ? `present (${req.query.state.substring(0, 20)}...)` : 'MISSING',
+    error: req.query.error || 'none'
+  });
 
   try {
     const { code, state, error } = req.query;
 
     if (error) {
-      console.error('[EMAIL-OAUTH] Google callback error from Google:', error);
+      console.error('[EMAIL-OAUTH] ❌ Google returned error:', error);
       return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent(error));
     }
 
     if (!code || !state) {
-      console.error('[EMAIL-OAUTH] Missing code or state');
+      console.error('[EMAIL-OAUTH] ❌ Missing code or state in callback');
       return res.redirect('/dashboard/vp-view.html?oauth_error=missing_params');
     }
 
     // Validate state
     const stateData = emailOAuth.validateState(state);
-    console.log('[EMAIL-OAUTH] State validation result:', stateData ? { userId: stateData.userId, provider: stateData.provider } : 'INVALID');
+    console.log('[EMAIL-OAUTH] State validation:', stateData ? `✓ Valid (userId: ${stateData.userId}, provider: ${stateData.provider})` : '❌ INVALID');
 
     if (!stateData || stateData.provider !== 'google') {
-      console.error('[EMAIL-OAUTH] Invalid state - this usually means the server restarted during OAuth flow. Please try again.');
+      console.error('[EMAIL-OAUTH] ❌ Invalid state - server may have restarted during OAuth flow');
+      console.error('[EMAIL-OAUTH] Tip: Complete OAuth quickly. Server restarts clear OAuth state.');
       return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent('Session expired. Please try connecting again.'));
     }
 
@@ -117,6 +123,7 @@ router.get('/google/callback', async (req, res) => {
 
     if (existingMonitor) {
       // Update existing monitor with new tokens and ensure it's active
+      console.log('[EMAIL-OAUTH] ✏️ Updating existing monitor ID:', existingMonitor.id);
       db.getDatabase().prepare(`
         UPDATE email_monitors
         SET oauth_provider = 'google',
@@ -126,9 +133,12 @@ router.get('/google/callback', async (req, res) => {
             imap_password_encrypted = NULL,
             last_error = NULL,
             is_active = 1,
+            require_invoice_keywords = 0,
+            check_frequency_minutes = 5,
             updated_at = datetime('now')
         WHERE id = ?
       `).run(tokens.accessToken, tokens.refreshToken, tokens.expiresIn, existingMonitor.id);
+      console.log('[EMAIL-OAUTH] ✅ Monitor updated successfully');
 
       // Restart the monitor with new tokens
       try {
@@ -142,17 +152,26 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // Create new monitor
-    console.log('[EMAIL-OAUTH] Creating new email monitor for user:', stateData.userId);
+    console.log('[EMAIL-OAUTH] 📝 Creating new email monitor for user:', stateData.userId);
     const encryptedRefreshToken = CryptoJS.AES.encrypt(tokens.refreshToken, ENCRYPTION_KEY).toString();
     const monitorName = userInfo.name ? `${userInfo.name}'s Gmail` : 'Gmail Monitor';
 
     try {
+      console.log('[EMAIL-OAUTH] Insert params:', {
+        userId: stateData.userId,
+        email: userInfo.email,
+        monitorName,
+        hasAccessToken: !!tokens.accessToken,
+        hasRefreshToken: !!tokens.refreshToken,
+        expiresIn: tokens.expiresIn
+      });
+
       const result = db.getDatabase().prepare(`
         INSERT INTO email_monitors (
           user_id, account_name, monitor_name, name, email_address, imap_host, imap_port, imap_secure, imap_user, username,
           encrypted_password, oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
-          folder_name, check_frequency_minutes, is_active, created_by_user_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, ?, datetime('now'), datetime('now'))
+          folder_name, check_frequency_minutes, is_active, require_invoice_keywords, created_by_user_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `).run(
         stateData.userId,
         monitorName,  // account_name (NOT NULL)
@@ -170,11 +189,12 @@ router.get('/google/callback', async (req, res) => {
         encryptedRefreshToken,
         tokens.expiresIn,
         'INBOX',
-        15,  // check every 15 minutes
+        5,  // check every 5 minutes for faster response
         1,   // active
+        0,   // require_invoice_keywords = false (process ALL PDFs for dedicated invoice emails)
         stateData.userId  // created_by_user_id
       );
-      console.log('[EMAIL-OAUTH] Monitor created successfully, ID:', result.lastInsertRowid);
+      console.log('[EMAIL-OAUTH] ✅ Monitor created successfully, ID:', result.lastInsertRowid);
 
       // Start the email monitor immediately
       try {

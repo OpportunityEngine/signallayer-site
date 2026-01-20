@@ -4857,13 +4857,23 @@
             const statusText = monitor.is_active ? 'Active' : 'Paused';
             const lastError = monitor.last_error ? `<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">⚠️ ${monitor.last_error}</div>` : '';
 
+            // Check if OAuth monitor needs re-authentication (has oauth_provider but no token or inactive)
+            const needsReconnect = monitor.oauth_provider && !monitor.is_active && !monitor.oauth_access_token;
+            const reconnectButton = needsReconnect ? `
+              <button onclick="connectOAuthEmail('${monitor.oauth_provider}')" class="btn" style="font-size: 12px; padding: 8px 12px; background: linear-gradient(135deg, #4285F4, #34A853); color: white;">
+                🔗 Reconnect ${monitor.oauth_provider === 'google' ? 'Gmail' : 'Outlook'}
+              </button>
+            ` : '';
+
             return `
             <div style="background: var(--panel2); padding: 20px; border-radius: 8px; border: 1px solid ${monitor.is_active ? 'var(--border-gold)' : 'var(--border)'};">
+              ${needsReconnect ? '<div style="background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 12px;">⚠️ OAuth session expired. Please reconnect to resume email monitoring.</div>' : ''}
               <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 200px;">
                   <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="width: 8px; height: 8px; background: ${statusColor}; border-radius: 50%; ${monitor.is_active ? 'box-shadow: 0 0 8px ' + statusColor : ''};"></span>
                     <span style="font-weight: 600; color: var(--text); font-size: 16px;">${escapeHtml(monitor.name)}</span>
+                    ${monitor.oauth_provider ? `<span style="font-size: 10px; background: ${monitor.oauth_provider === 'google' ? '#4285F4' : '#0078D4'}; color: white; padding: 2px 6px; border-radius: 4px;">${monitor.oauth_provider === 'google' ? 'Gmail' : 'Outlook'}</span>` : ''}
                   </div>
                   <div style="font-size: 13px; color: var(--muted2); margin-bottom: 4px;">📧 ${escapeHtml(monitor.email_address)}</div>
                   <div style="font-size: 12px; color: var(--muted2);">
@@ -4887,19 +4897,23 @@
                   </div>
                 </div>
 
-                <div style="display: flex; flex-direction: column; gap: 8px; min-width: 120px;">
+                <div style="display: flex; flex-direction: column; gap: 8px; min-width: 140px;">
+                  ${needsReconnect ? reconnectButton : `
                   <button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 12px; padding: 8px 12px; background: #6366f1;">
                     ⚡ Check Now
                   </button>
+                  `}
                   <button onclick="viewMonitorActivity(${monitor.id}, '${escapeHtml(monitor.name)}')" class="btn" style="font-size: 12px; padding: 8px 12px; background: var(--panel);">
                     📊 Activity
                   </button>
                   <div style="display: flex; gap: 8px;">
+                    ${!needsReconnect ? `
                     <button onclick="toggleEmailMonitor(${monitor.id}, ${!monitor.is_active})" class="btn" style="flex: 1; font-size: 11px; padding: 6px 8px; background: ${monitor.is_active ? '#6b7280' : '#10b981'};">
                       ${monitor.is_active ? 'Pause' : 'Start'}
                     </button>
-                    <button onclick="deleteEmailMonitor(${monitor.id}, '${escapeHtml(monitor.name)}')" class="btn" style="font-size: 11px; padding: 6px 8px; background: #dc2626;">
-                      🗑️
+                    ` : ''}
+                    <button onclick="deleteEmailMonitor(${monitor.id}, '${escapeHtml(monitor.name)}')" class="btn" style="${needsReconnect ? 'flex: 1;' : ''} font-size: 11px; padding: 6px 8px; background: #dc2626;">
+                      🗑️ ${needsReconnect ? 'Remove' : ''}
                     </button>
                   </div>
                 </div>
@@ -4966,17 +4980,31 @@
 
           // Build the monitor list HTML
           const monitorsHtml = monitors.map(monitor => {
+            // Check if OAuth monitor needs reconnection
+            const needsReconnect = monitor.oauth_provider && !monitor.is_active && !monitor.oauth_access_token;
+
             const statusDot = monitor.is_active
               ? '<span style="width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 6px #10b981;"></span>'
-              : '<span style="width: 6px; height: 6px; background: #6b7280; border-radius: 50%;"></span>';
+              : needsReconnect
+                ? '<span style="width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; animation: pulse 2s infinite;"></span>'
+                : '<span style="width: 6px; height: 6px; background: #6b7280; border-radius: 50%;"></span>';
 
             const lastChecked = monitor.last_checked_at ? formatRelativeTime(monitor.last_checked_at) : 'Never';
             const invoiceCount = monitor.invoices_created_count || 0;
 
+            // Different button based on state
+            const actionButton = needsReconnect
+              ? `<button onclick="connectOAuthEmail('${monitor.oauth_provider}')" class="btn" style="font-size: 10px; padding: 4px 10px; background: linear-gradient(135deg, #4285F4, #34A853); margin-left: auto; white-space: nowrap;">
+                   🔗 Reconnect
+                 </button>`
+              : `<button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 10px; padding: 4px 8px; background: #6366f1; margin-left: auto; white-space: nowrap;">
+                   ⚡ Check
+                 </button>`;
+
             return `
               <div class="email-monitor-item" style="display: flex; align-items: center; gap: 8px;">
                 ${statusDot}
-                <span class="monitor-email">${escapeHtml(monitor.email_address)}</span>
+                <span class="monitor-email" style="${needsReconnect ? 'color: #f59e0b;' : ''}">${escapeHtml(monitor.email_address)}</span>
                 <div class="monitor-stats">
                   <span class="monitor-stat">
                     <span class="monitor-stat-value">${invoiceCount}</span> invoices
@@ -4985,9 +5013,7 @@
                     Last: <span class="monitor-stat-value">${lastChecked}</span>
                   </span>
                 </div>
-                <button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 10px; padding: 4px 8px; background: #6366f1; margin-left: auto; white-space: nowrap;">
-                  ⚡ Check
-                </button>
+                ${actionButton}
               </div>
             `;
           }).join('');
@@ -5072,6 +5098,36 @@
         console.error('Failed to check OAuth status:', error);
         // Hide OAuth section on error
         document.getElementById('oauthConnectSection').style.display = 'none';
+      }
+    }
+
+    // Generic OAuth connect function (works for reconnecting too)
+    async function connectOAuthEmail(provider) {
+      const providerName = provider === 'google' ? 'Google' : 'Microsoft';
+      showToast(`Connecting to ${providerName}...`, 'info');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/email-oauth/${provider}/auth`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data.authUrl) {
+          // Redirect to OAuth
+          window.location.href = result.data.authUrl;
+        } else {
+          // Check if OAuth is not configured
+          if (result.error && result.error.includes('not configured')) {
+            showToast(`${providerName} OAuth is not configured on this server. Please contact your administrator to set up GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET environment variables.`, 'error');
+            // Open the manual setup modal instead
+            openAddEmailMonitor();
+          } else {
+            showToast(`Failed: ${result.error || 'Unknown error'}`, 'error');
+          }
+        }
+      } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
       }
     }
 

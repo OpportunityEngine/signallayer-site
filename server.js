@@ -1694,7 +1694,8 @@ if (telemetryMod && typeof telemetryMod.appendEvent === "function") {
 }
 
 if (dashboardRoutes) {
-  app.use("/api/dashboard", dashboardRoutes);
+  // Dashboard routes need auth to properly filter data by user
+  app.use("/api/dashboard", optionalAuth, dashboardRoutes);
 }
 
 // Dashboard static files are served earlier in the middleware chain (line ~1096)
