@@ -491,21 +491,24 @@ router.get('/uploads/recent', (req, res) => {
   try {
     const user = getUserContext(req);
     const limit = parseInt(req.query.limit) || 10;
+    const database = db.getDatabase();
 
-    const uploads = db.getDatabase().prepare(`
+    const uploads = database.prepare(`
       SELECT
-        id,
-        run_id,
-        account_name,
-        vendor_name,
-        file_name,
-        file_size,
-        status,
-        created_at,
-        completed_at
-      FROM ingestion_runs
-      WHERE user_id = ?
-      ORDER BY created_at DESC
+        ir.id,
+        ir.run_id,
+        ir.account_name,
+        ir.vendor_name,
+        ir.file_name,
+        ir.file_size,
+        ir.status,
+        ir.created_at,
+        ir.completed_at,
+        (SELECT COUNT(*) FROM invoice_items WHERE run_id = ir.id) as line_item_count,
+        (SELECT SUM(total_cents) FROM invoice_items WHERE run_id = ir.id) as total_cents
+      FROM ingestion_runs ir
+      WHERE ir.user_id = ?
+      ORDER BY ir.created_at DESC
       LIMIT ?
     `).all(user.id, limit);
 
@@ -519,7 +522,9 @@ router.get('/uploads/recent', (req, res) => {
       status: u.status || 'completed',
       fileSize: u.file_size,
       createdAt: u.created_at,
-      completedAt: u.completed_at
+      completedAt: u.completed_at,
+      lineItemCount: u.line_item_count || 0,
+      totalCents: u.total_cents || 0
     }));
 
     res.json({

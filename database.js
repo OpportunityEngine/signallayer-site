@@ -409,7 +409,7 @@ function initDatabase() {
         }
 
         // Check for require_invoice_keywords column
-        const hasRequireInvoiceKeywords = emailMonitorsColumns.includes('require_invoice_keywords');
+        const hasRequireInvoiceKeywords = emailMonitorsInfo.some(col => col.name === 'require_invoice_keywords');
         if (!hasRequireInvoiceKeywords) {
           db.exec(`ALTER TABLE email_monitors ADD COLUMN require_invoice_keywords INTEGER DEFAULT 1`);
           console.log('✅ Migration: Added require_invoice_keywords column to email_monitors');
