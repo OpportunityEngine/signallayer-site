@@ -5005,7 +5005,7 @@
             const invoiceCount = monitor.invoices_created_count || 0;
 
             return `
-              <div class="email-monitor-item">
+              <div class="email-monitor-item" style="display: flex; align-items: center; gap: 8px;">
                 ${statusDot}
                 <span class="monitor-email">${escapeHtml(monitor.email_address)}</span>
                 <div class="monitor-stats">
@@ -5016,6 +5016,9 @@
                     Last: <span class="monitor-stat-value">${lastChecked}</span>
                   </span>
                 </div>
+                <button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 10px; padding: 4px 8px; background: #6366f1; margin-left: auto; white-space: nowrap;">
+                  ⚡ Check
+                </button>
               </div>
             `;
           }).join('');
@@ -5201,6 +5204,14 @@
 
     // Check emails immediately for a monitor
     async function checkEmailNow(monitorId) {
+      // Show loading state on button
+      const btn = event?.target;
+      const originalText = btn?.innerHTML;
+      if (btn) {
+        btn.innerHTML = '⏳ Checking...';
+        btn.disabled = true;
+      }
+
       try {
         const response = await fetch(`${API_BASE}/api/email-monitors/${monitorId}/check-now`, {
           method: 'POST',
@@ -5212,13 +5223,23 @@
         const result = await response.json();
 
         if (result.success) {
-          alert('Email check started! Refresh in a moment to see results.');
-          setTimeout(loadEmailMonitors, 3000);
+          showToast('📧 Email check started! Processing in background...', 'success');
+          // Refresh monitor list after a delay to show updated stats
+          setTimeout(() => {
+            loadEmailMonitors();
+            updateEmailMonitorTileBanner();
+          }, 5000);
         } else {
-          alert(`Failed to check: ${result.error}`);
+          showToast(`Failed to check: ${result.error}`, 'error');
         }
       } catch (error) {
-        alert(`Error: ${error.message}`);
+        showToast(`Error: ${error.message}`, 'error');
+      } finally {
+        // Restore button state
+        if (btn) {
+          btn.innerHTML = originalText || '⚡ Check Now';
+          btn.disabled = false;
+        }
       }
     }
 
