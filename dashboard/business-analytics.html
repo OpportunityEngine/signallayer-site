@@ -847,6 +847,73 @@
       </div>
     </div>
 
+    <!-- Executive Daily Briefing - Premium at-a-glance overview -->
+    <div class="tile-card" style="margin-bottom: 28px; background: linear-gradient(135deg, rgba(17, 21, 37, 0.95) 0%, rgba(10, 15, 26, 0.98) 100%); border: 1px solid rgba(251, 191, 36, 0.2); position: relative; overflow: hidden;">
+      <!-- Subtle accent line -->
+      <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%);"></div>
+      <div class="tile-header" style="padding: 20px 24px 12px 24px; border-bottom: none;">
+        <div class="tile-title" style="font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">
+          <svg width="20" height="20" fill="none" stroke="#fbbf24" viewBox="0 0 24 24" style="margin-right: 10px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+          Executive Daily Briefing
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
+          <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Live</span>
+          <span class="tile-badge" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; margin-left: 8px;">Today's Summary</span>
+        </div>
+      </div>
+      <div class="tile-body" style="padding: 8px 24px 24px 24px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+          <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%); border: 1px solid rgba(34, 197, 94, 0.15); border-radius: 14px; transition: all 0.2s;">
+            <div style="font-size: 10px; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Money Saved Today</div>
+            <div style="font-size: 36px; font-weight: 800; color: #22c55e; line-height: 1;" id="briefingSavedToday">$847</div>
+            <div style="font-size: 12px; color: #22c55e; margin-top: 8px; font-weight: 500;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              3 opportunities captured
+            </div>
+          </div>
+          <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 14px; transition: all 0.2s;">
+            <div style="font-size: 10px; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Invoices Processed</div>
+            <div style="font-size: 36px; font-weight: 800; color: #3b82f6; line-height: 1;" id="briefingInvoices">12</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 8px; font-weight: 500;">
+              <svg width="12" height="12" fill="none" stroke="#22c55e" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              All validated
+            </div>
+          </div>
+          <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 14px; transition: all 0.2s;">
+            <div style="font-size: 10px; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Action Required</div>
+            <div style="font-size: 36px; font-weight: 800; color: #ef4444; line-height: 1;" id="briefingActions">2</div>
+            <div style="font-size: 12px; color: #ef4444; margin-top: 8px; font-weight: 500;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              Price alerts pending
+            </div>
+          </div>
+          <div style="text-align: center; padding: 24px 16px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%); border: 1px solid rgba(251, 191, 36, 0.15); border-radius: 14px; transition: all 0.2s;">
+            <div style="font-size: 10px; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">YTD Savings</div>
+            <div style="font-size: 36px; font-weight: 800; color: #fbbf24; line-height: 1;" id="briefingYTD">$12.8k</div>
+            <div style="font-size: 12px; color: #fbbf24; margin-top: 8px; font-weight: 500;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+              On track for $18k goal
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 18px; padding: 16px 18px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0.02) 100%); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 12px; display: flex; align-items: center; gap: 14px;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(6, 182, 212, 0.1) 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="20" height="20" fill="none" stroke="#06b6d4" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 11px; color: #06b6d4; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">AI Insight</div>
+            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.5;" id="briefingAIInsight">Consider renegotiating with Sysco - your chicken breast pricing is 12% above market. Estimated annual savings: <strong style="color: #22c55e;">$2,400</strong></div>
+          </div>
+          <button style="padding: 8px 16px; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 8px; color: #06b6d4; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(6, 182, 212, 0.25)'" onmouseout="this.style.background='rgba(6, 182, 212, 0.15)'">View Details</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Hero Stats Row -->
     <div class="hero-stats">
       <div class="hero-stat highlight">
@@ -1628,103 +1695,6 @@
       </div>
     </div>
 
-    <!-- Row 7.5: Inventory Management Quick View -->
-    <div class="grid-2" style="margin-bottom: 24px;">
-      <!-- Inventory Status -->
-      <div class="tile-card">
-        <div class="tile-header">
-          <div class="tile-title">
-            <span>📦</span> Inventory Status
-          </div>
-          <a href="/dashboard/inventory.html" class="tile-badge" style="text-decoration: none; cursor: pointer;">Manage →</a>
-        </div>
-        <div class="tile-body">
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
-            <div style="text-align: center;">
-              <div style="font-size: 24px; font-weight: 700; color: #ffffff;" id="invTotalItems">--</div>
-              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Items</div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 24px; font-weight: 700; color: #ef4444;" id="invCriticalCount">0</div>
-              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Critical</div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 24px; font-weight: 700; color: #fbbf24;" id="invLowCount">0</div>
-              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Low Stock</div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 24px; font-weight: 700; color: #22c55e;" id="invTotalValue">$0</div>
-              <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Value</div>
-            </div>
-          </div>
-          <div id="stockoutAlerts" style="max-height: 150px; overflow-y: auto;">
-            <div style="text-align: center; padding: 20px; color: #64748b;">
-              <span style="font-size: 24px; margin-bottom: 8px; display: block;">✓</span>
-              No stockout alerts
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Smart Reorder Recommendations -->
-      <div class="tile-card">
-        <div class="tile-header">
-          <div class="tile-title">
-            <span>🎯</span> Smart Reorder
-          </div>
-          <span class="tile-badge" id="reorderCount">0 Actions</span>
-        </div>
-        <div class="tile-body">
-          <div id="reorderRecommendations" style="max-height: 200px; overflow-y: auto;">
-            <div style="text-align: center; padding: 30px; color: #64748b;">
-              <span style="font-size: 24px; margin-bottom: 8px; display: block;">📋</span>
-              Upload inventory to get smart recommendations
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 8: Business Owner Summary (NEW - AT-A-GLANCE OVERVIEW) -->
-    <div class="tile-card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(15, 19, 32, 0.9) 100%); border-color: rgba(251, 191, 36, 0.25);">
-      <div class="tile-header">
-        <div class="tile-title">
-          <span>👑</span> Owner's Daily Briefing
-        </div>
-        <span class="tile-badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24;">Today's Summary</span>
-      </div>
-      <div class="tile-body">
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
-          <div style="text-align: center; padding: 20px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px;">
-            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Money Saved Today</div>
-            <div style="font-size: 32px; font-weight: 800; color: #22c55e;">$847</div>
-            <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↑ 3 opportunities captured</div>
-          </div>
-          <div style="text-align: center; padding: 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px;">
-            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Invoices Processed</div>
-            <div style="font-size: 32px; font-weight: 800; color: #3b82f6;">12</div>
-            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">All validated ✓</div>
-          </div>
-          <div style="text-align: center; padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px;">
-            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Action Required</div>
-            <div style="font-size: 32px; font-weight: 800; color: #ef4444;">2</div>
-            <div style="font-size: 12px; color: #ef4444; margin-top: 4px;">Price alerts pending</div>
-          </div>
-          <div style="text-align: center; padding: 20px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 12px;">
-            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">YTD Savings</div>
-            <div style="font-size: 32px; font-weight: 800; color: #fbbf24;">$12.8k</div>
-            <div style="font-size: 12px; color: #fbbf24; margin-top: 4px;">On track for $18k goal</div>
-          </div>
-        </div>
-        <div style="margin-top: 16px; padding: 14px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 20px;">🤖</span>
-          <div>
-            <div style="font-size: 12px; color: #06b6d4; font-weight: 600;">AI Recommendation</div>
-            <div style="font-size: 13px; color: #e2e8f0;">Consider renegotiating with Sysco - your chicken breast pricing is 12% above market. Estimated annual savings: <strong style="color: #22c55e;">$2,400</strong></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
   </div>
 

@@ -1235,6 +1235,65 @@
       </div>
     </div>
 
+    <!-- Inventory Quick View - Status Overview -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 32px;">
+      <!-- Inventory Health Status -->
+      <div class="recommendations-section" style="margin-bottom: 0;">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Inventory Health
+          </div>
+          <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;" id="healthBadge">Good</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <div style="text-align: center; padding: 16px; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.15); border-radius: 12px;">
+            <div style="font-size: 28px; font-weight: 800; color: #22c55e;" id="healthyCount">0</div>
+            <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Healthy</div>
+          </div>
+          <div style="text-align: center; padding: 16px; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.15); border-radius: 12px;">
+            <div style="font-size: 28px; font-weight: 800; color: #fbbf24;" id="lowStockHealthCount">0</div>
+            <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Low Stock</div>
+          </div>
+          <div style="text-align: center; padding: 16px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px;">
+            <div style="font-size: 28px; font-weight: 800; color: #ef4444;" id="criticalHealthCount">0</div>
+            <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Critical</div>
+          </div>
+        </div>
+        <div id="stockoutAlertsList" style="margin-top: 16px; max-height: 120px; overflow-y: auto;">
+          <div style="text-align: center; padding: 16px; color: #64748b; font-size: 13px;">
+            <svg width="20" height="20" fill="none" stroke="#22c55e" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 6px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            No stockout alerts at this time
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Reorder Actions -->
+      <div class="recommendations-section" style="margin-bottom: 0;">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Quick Reorder Actions
+          </div>
+          <span class="badge savings" id="quickReorderBadge">0 Items</span>
+        </div>
+        <div id="quickReorderList" style="max-height: 180px; overflow-y: auto;">
+          <div style="text-align: center; padding: 24px; color: #64748b; font-size: 13px;">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: block; margin: 0 auto 8px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            No immediate reorder actions needed
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Smart Recommendations -->
     <div class="recommendations-section">
       <div class="section-header">
@@ -1888,6 +1947,55 @@ ABC123, Chicken Breast
       } else {
         document.getElementById('criticalCard').classList.remove('critical');
       }
+
+      // Update Inventory Health Quick View
+      const healthy = items.filter(i => i.stock_status === 'normal' || i.stock_status === 'healthy' || !i.stock_status).length;
+      const lowCount = items.filter(i => i.stock_status === 'low').length;
+      const criticalCount = items.filter(i => i.stock_status === 'critical').length;
+
+      document.getElementById('healthyCount').textContent = healthy;
+      document.getElementById('lowStockHealthCount').textContent = lowCount;
+      document.getElementById('criticalHealthCount').textContent = criticalCount;
+
+      // Update health badge
+      const healthBadge = document.getElementById('healthBadge');
+      if (criticalCount > 0) {
+        healthBadge.textContent = 'Critical';
+        healthBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        healthBadge.style.color = '#ef4444';
+      } else if (lowCount > 0) {
+        healthBadge.textContent = 'Attention';
+        healthBadge.style.background = 'rgba(251, 191, 36, 0.15)';
+        healthBadge.style.color = '#fbbf24';
+      } else {
+        healthBadge.textContent = 'Good';
+        healthBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+        healthBadge.style.color = '#22c55e';
+      }
+
+      // Update stockout alerts list
+      const criticalItems = items.filter(i => i.stock_status === 'critical');
+      const stockoutList = document.getElementById('stockoutAlertsList');
+      if (criticalItems.length > 0) {
+        stockoutList.innerHTML = criticalItems.slice(0, 3).map(item => `
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 8px; margin-bottom: 8px;">
+            <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; flex-shrink: 0;"></div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.product_name || item.sku)}</div>
+              <div style="font-size: 11px; color: #ef4444;">Only ${item.current_quantity} left</div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        stockoutList.innerHTML = `
+          <div style="text-align: center; padding: 16px; color: #64748b; font-size: 13px;">
+            <svg width="20" height="20" fill="none" stroke="#22c55e" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 6px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            No stockout alerts at this time
+          </div>
+        `;
+      }
     }
 
     function escapeHtml(text) {
@@ -2112,6 +2220,42 @@ ABC123, Chicken Breast
       document.getElementById('criticalBadge').textContent = `${critical} Critical`;
       document.getElementById('savingsBadge').textContent = `$${(totalSavings / 100).toLocaleString()} Savings`;
       document.getElementById('potentialSavings').textContent = `$${(totalSavings / 100).toLocaleString()}`;
+
+      // Update Quick Reorder Actions section
+      const urgentReorders = recommendations.filter(r =>
+        r.recommendation_type === 'urgent_reorder' ||
+        r.recommendation_type === 'reorder_soon' ||
+        r.priority === 'critical'
+      );
+
+      document.getElementById('quickReorderBadge').textContent = `${urgentReorders.length} Items`;
+
+      const quickReorderList = document.getElementById('quickReorderList');
+      if (urgentReorders.length > 0) {
+        quickReorderList.innerHTML = urgentReorders.slice(0, 4).map(rec => `
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.12); border-radius: 10px; margin-bottom: 8px;">
+            <div style="width: 36px; height: 36px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="18" height="18" fill="none" stroke="#ef4444" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(rec.product_name || rec.title)}</div>
+              <div style="font-size: 11px; color: #94a3b8;">${rec.suggested_quantity ? `Order ${rec.suggested_quantity} units` : rec.description?.slice(0, 40) + '...'}</div>
+            </div>
+            <button onclick="actionRecommendation(${rec.id}, ${rec.suggested_quantity || 1})" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; color: #ef4444; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;">Order</button>
+          </div>
+        `).join('');
+      } else {
+        quickReorderList.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: #64748b; font-size: 13px;">
+            <svg width="24" height="24" fill="none" stroke="#22c55e" viewBox="0 0 24 24" style="display: block; margin: 0 auto 8px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            No immediate reorder actions needed
+          </div>
+        `;
+      }
     }
 
     async function actionRecommendation(id, quantity) {
