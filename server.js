@@ -140,6 +140,7 @@ const eventCateringRoutes = require('./event-catering-routes');  // Private Even
 const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware');  // Trial enforcement
 const InventoryIntelligence = require('./inventory-intelligence');  // Inventory tracking & price intelligence
 const universalInvoiceProcessor = require('./universal-invoice-processor');  // Universal invoice processing (PDF, images, OCR)
+const invoiceImagePipeline = require('./services/invoice_image_pipeline');  // v2 phone photo OCR pipeline
 
 // Initialize inventory intelligence for auto-processing
 const inventoryIntelligence = new InventoryIntelligence();
@@ -2127,12 +2128,95 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       );
     } else if (raw_text.startsWith("IMAGE_FILE_BASE64:")) {
       // Base64-encoded image (phone photo, screenshot, scan)
-      console.log("[INGEST] Processing base64 image with universal processor (OCR)...");
       const base64Data = raw_text.substring("IMAGE_FILE_BASE64:".length);
-      processorResult = await universalInvoiceProcessor.processInvoice(
-        { base64: base64Data, mimeType: body.mimeType || 'image/jpeg', filename: body.fileName },
-        { source: source_type, includeRawText: true, preprocessImages: true }
-      );
+
+      // Try v2 pipeline first if enabled
+      if (invoiceImagePipeline.PIPELINE_V2_ENABLED) {
+        console.log("[INGEST] Processing base64 image with v2 pipeline (enhanced OCR)...");
+        try {
+          const pipelineResult = await invoiceImagePipeline.processInvoiceImageUpload({
+            userId: req.user?.id || null,
+            file: base64Data,
+            metadata: {
+              filename: body.fileName,
+              mimeType: body.mimeType || 'image/jpeg',
+              fileSize: base64Data.length
+            }
+          });
+
+          // Convert pipeline result to processor result format
+          if (pipelineResult.ok || pipelineResult.confidence?.overallScore >= 0.3) {
+            console.log(`[INGEST] v2 pipeline: confidence=${(pipelineResult.confidence?.overallScore * 100).toFixed(1)}%, ok=${pipelineResult.ok}`);
+            processorResult = {
+              ok: pipelineResult.ok,
+              fileType: 'image',
+              extractionMethod: 'pipeline_v2_ocr',
+              extractionConfidence: pipelineResult.confidence?.overallScore || 0,
+              rawText: '', // v2 pipeline doesn't expose raw text directly
+              items: pipelineResult.extracted?.lineItems?.map(item => ({
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unitPriceCents: item.unitCents || 0,
+                totalCents: item.totalCents || 0,
+                sku: item.sku || ''
+              })) || [],
+              totals: pipelineResult.extracted?.totals || {},
+              vendor: pipelineResult.extracted?.vendor ? { name: pipelineResult.extracted.vendor } : null,
+              metadata: {
+                invoiceNumber: pipelineResult.extracted?.invoiceNumber,
+                invoiceDate: pipelineResult.extracted?.date,
+                currency: pipelineResult.extracted?.currency
+              },
+              confidence: {
+                overall: pipelineResult.confidence?.overallScore || 0,
+                ocr: pipelineResult.confidence?.ocrAvgConfidence || 0,
+                fields: pipelineResult.confidence?.fields || {}
+              },
+              warnings: pipelineResult.failureReasons || [],
+              pipelineV2: {
+                pipelineId: pipelineResult.pipelineId,
+                quality: pipelineResult.quality,
+                attempts: pipelineResult.attempts,
+                processingTimeMs: pipelineResult.processingTimeMs
+              },
+              processingTimeMs: pipelineResult.processingTimeMs
+            };
+          } else {
+            // v2 pipeline failed or very low confidence - fall back to universal processor
+            console.log(`[INGEST] v2 pipeline low confidence (${(pipelineResult.confidence?.overallScore * 100).toFixed(1)}%), falling back to universal processor`);
+            console.log(`[INGEST] v2 failure reasons: ${pipelineResult.failureReasons?.join(', ') || 'none'}`);
+            processorResult = await universalInvoiceProcessor.processInvoice(
+              { base64: base64Data, mimeType: body.mimeType || 'image/jpeg', filename: body.fileName },
+              { source: source_type, includeRawText: true, preprocessImages: true }
+            );
+            // Add v2 diagnostic info to the fallback result
+            if (processorResult) {
+              processorResult.pipelineV2Fallback = {
+                reason: 'low_confidence',
+                v2Score: pipelineResult.confidence?.overallScore || 0,
+                v2FailureReasons: pipelineResult.failureReasons || [],
+                v2PipelineId: pipelineResult.pipelineId
+              };
+            }
+          }
+        } catch (v2Error) {
+          console.error(`[INGEST] v2 pipeline error, falling back:`, v2Error.message);
+          processorResult = await universalInvoiceProcessor.processInvoice(
+            { base64: base64Data, mimeType: body.mimeType || 'image/jpeg', filename: body.fileName },
+            { source: source_type, includeRawText: true, preprocessImages: true }
+          );
+          if (processorResult) {
+            processorResult.pipelineV2Fallback = { reason: 'error', error: v2Error.message };
+          }
+        }
+      } else {
+        // v2 pipeline disabled - use universal processor
+        console.log("[INGEST] Processing base64 image with universal processor (OCR)...");
+        processorResult = await universalInvoiceProcessor.processInvoice(
+          { base64: base64Data, mimeType: body.mimeType || 'image/jpeg', filename: body.fileName },
+          { source: source_type, includeRawText: true, preprocessImages: true }
+        );
+      }
     } else if (raw_text.startsWith("FILE_BASE64:")) {
       // Generic base64 file - let universal processor auto-detect type
       console.log("[INGEST] Processing base64 file with universal processor (auto-detect)...");

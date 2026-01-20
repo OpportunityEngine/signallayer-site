@@ -537,6 +537,178 @@
       border: 1px solid rgba(34, 197, 94, 0.3);
       color: #22c55e;
     }
+
+    .alert.warning {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+
+    .alert.info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
+    }
+
+    /* Confidence indicator */
+    .confidence-indicator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .confidence-bar-container {
+      flex: 1;
+      height: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 50px;
+      overflow: hidden;
+    }
+
+    .confidence-bar {
+      height: 100%;
+      border-radius: 50px;
+      transition: width 0.5s ease;
+    }
+
+    .confidence-bar.high { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .confidence-bar.medium { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .confidence-bar.low { background: linear-gradient(90deg, #ef4444, #dc2626); }
+
+    .confidence-label {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 80px;
+    }
+
+    .confidence-label.high { color: #22c55e; }
+    .confidence-label.medium { color: #fbbf24; }
+    .confidence-label.low { color: #ef4444; }
+
+    /* OCR Tips */
+    .ocr-tips {
+      background: rgba(251, 191, 36, 0.05);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .ocr-tips-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ocr-tips-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .ocr-tips-list li {
+      font-size: 13px;
+      color: #94a3b8;
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .ocr-tips-list li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #fbbf24;
+    }
+
+    /* Quality metrics */
+    .quality-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .quality-metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .quality-metric {
+      text-align: center;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 8px;
+    }
+
+    .quality-metric-value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .quality-metric-value.good { color: #22c55e; }
+    .quality-metric-value.warn { color: #fbbf24; }
+    .quality-metric-value.bad { color: #ef4444; }
+
+    .quality-metric-label {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* Low confidence warning card */
+    .low-confidence-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(185, 28, 28, 0.1) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      display: none;
+    }
+
+    .low-confidence-card.active {
+      display: block;
+      animation: slideIn 0.4s ease;
+    }
+
+    .low-confidence-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .low-confidence-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .low-confidence-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #ef4444;
+    }
+
+    .low-confidence-subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -613,14 +785,70 @@
       </div>
     </div>
 
-    <!-- Results Card -->
-    <div class="results-card" id="resultsCard">
-      <div class="results-header">
-        <div class="results-icon">✓</div>
+    <!-- Low Confidence Card (for OCR failures) -->
+    <div class="low-confidence-card" id="lowConfidenceCard">
+      <div class="low-confidence-header">
+        <div class="low-confidence-icon">⚠️</div>
         <div>
-          <div class="results-title">Invoice Processed Successfully!</div>
+          <div class="low-confidence-title">Could Not Extract Invoice Data</div>
+          <div class="low-confidence-subtitle" id="lowConfSubtitle">The image quality may be too low for accurate extraction</div>
+        </div>
+      </div>
+      <div class="confidence-indicator">
+        <span class="confidence-label low">Confidence</span>
+        <div class="confidence-bar-container">
+          <div class="confidence-bar low" id="lowConfBar" style="width: 20%"></div>
+        </div>
+        <span id="lowConfPercent" style="font-size: 13px; color: #ef4444; font-weight: 700;">20%</span>
+      </div>
+      <div class="ocr-tips" id="ocrTipsSection">
+        <div class="ocr-tips-title">📷 Tips for Better Results</div>
+        <ul class="ocr-tips-list" id="ocrTipsList">
+          <li>Hold your phone steady and ensure the invoice is in focus</li>
+          <li>Take the photo in a well-lit area</li>
+          <li>Make sure the entire invoice is visible</li>
+        </ul>
+      </div>
+      <div class="quality-metrics" id="qualityMetrics" style="display: none;">
+        <div class="quality-metric">
+          <div class="quality-metric-value" id="qmBlur">-</div>
+          <div class="quality-metric-label">Focus</div>
+        </div>
+        <div class="quality-metric">
+          <div class="quality-metric-value" id="qmGlare">-</div>
+          <div class="quality-metric-label">Glare</div>
+        </div>
+        <div class="quality-metric">
+          <div class="quality-metric-value" id="qmBrightness">-</div>
+          <div class="quality-metric-label">Lighting</div>
+        </div>
+        <div class="quality-metric">
+          <div class="quality-metric-value" id="qmOcr">-</div>
+          <div class="quality-metric-label">OCR</div>
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="resetUpload()">Try Again</button>
+        <button class="btn btn-secondary" onclick="enterManually()">Enter Manually</button>
+      </div>
+    </div>
+
+    <!-- Results Card -->
+      <div class="results-header">
+        <div class="results-icon" id="resultsIcon">✓</div>
+        <div>
+          <div class="results-title" id="resultsTitle">Invoice Processed Successfully!</div>
           <div class="results-subtitle" id="resultsFilename">invoice.pdf</div>
         </div>
+      </div>
+
+      <!-- Confidence indicator for successful results -->
+      <div class="confidence-indicator" id="successConfidence" style="display: none;">
+        <span class="confidence-label" id="confLabelSuccess">Confidence</span>
+        <div class="confidence-bar-container">
+          <div class="confidence-bar" id="confBarSuccess" style="width: 0%"></div>
+        </div>
+        <span id="confPercentSuccess" style="font-size: 13px; font-weight: 700;">0%</span>
       </div>
 
       <div class="results-stats">
@@ -870,12 +1098,76 @@
       document.getElementById('progressBar').style.width = '0%';
     }
 
+    // Map of failure reasons to user-friendly tips
+    const FAILURE_TIPS = {
+      'too_blurry': 'Hold your phone steady and ensure the invoice is in focus',
+      'glare_detected': 'Avoid taking photos under bright lights or direct sunlight',
+      'image_too_dark': 'Take the photo in a well-lit area',
+      'image_too_bright': 'Move away from bright light sources',
+      'document_not_detected': 'Make sure the entire invoice is visible and flat against a surface',
+      'low_resolution': 'Move closer to the invoice or use a higher camera resolution',
+      'skew_too_severe': 'Try to position your phone directly above the invoice',
+      'no_supported_text_detected': 'Ensure the invoice text is legible and not covered',
+      'totals_not_found': 'Make sure the total amount is visible in the photo',
+      'line_items_not_detected': 'Ensure line items are clearly visible in the image'
+    };
+
     function showResults(filename, result) {
       resetProgress();
+      console.log('[Results] Full response:', result);
+
+      // Check for v2 pipeline results with low confidence
+      const pipelineV2 = result.extracted?.processorMeta?.pipelineV2 || result.pipelineV2;
+      const pipelineV2Fallback = result.extracted?.processorMeta?.pipelineV2Fallback;
+      const confidence = result.extracted?.processorMeta?.extractionConfidence ||
+                        result.confidence?.overall ||
+                        (pipelineV2 ? pipelineV2.confidence?.overallScore : null) || 0;
+      const warnings = result.extracted?.processorMeta?.warnings || [];
+
+      // Check if this is a low confidence image upload that should show the warning card
+      const isImageUpload = result.extracted?.processorMeta?.fileType === 'image' ||
+                           result.extracted?.processorMeta?.extractionMethod?.includes('ocr');
+      const isLowConfidence = confidence < 0.4 && isImageUpload;
+
+      if (isLowConfidence && (warnings.length > 0 || pipelineV2Fallback)) {
+        showLowConfidenceCard(filename, result, confidence, warnings, pipelineV2);
+        return;
+      }
+
+      // Normal success flow
       document.getElementById('resultsCard').classList.add('active');
       document.getElementById('resultsFilename').textContent = filename;
 
-      console.log('[Results] Full response:', result);
+      // Show confidence indicator if we have confidence data
+      if (confidence > 0) {
+        const confPercent = Math.round(confidence * 100);
+        let confClass = 'low';
+        if (confidence >= 0.8) confClass = 'high';
+        else if (confidence >= 0.5) confClass = 'medium';
+
+        document.getElementById('successConfidence').style.display = 'flex';
+        document.getElementById('confBarSuccess').style.width = confPercent + '%';
+        document.getElementById('confBarSuccess').className = 'confidence-bar ' + confClass;
+        document.getElementById('confPercentSuccess').textContent = confPercent + '%';
+        document.getElementById('confPercentSuccess').style.color = confClass === 'high' ? '#22c55e' : confClass === 'medium' ? '#fbbf24' : '#ef4444';
+        document.getElementById('confLabelSuccess').className = 'confidence-label ' + confClass;
+
+        // Adjust title based on confidence
+        if (confidence >= 0.8) {
+          document.getElementById('resultsTitle').textContent = 'Invoice Processed Successfully!';
+          document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+        } else if (confidence >= 0.5) {
+          document.getElementById('resultsTitle').textContent = 'Invoice Processed - Please Verify';
+          document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
+        } else {
+          document.getElementById('resultsTitle').textContent = 'Invoice Processed - Manual Review Recommended';
+          document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)';
+        }
+      } else {
+        document.getElementById('successConfidence').style.display = 'none';
+        document.getElementById('resultsTitle').textContent = 'Invoice Processed Successfully!';
+        document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+      }
 
       // Populate stats - check multiple possible locations for data
       // Items can be in: extracted.items, canonical.line_items, or debug.extractedItemsCount
@@ -975,8 +1267,99 @@
       loadRecentUploads();
     }
 
+    function showLowConfidenceCard(filename, result, confidence, warnings, pipelineV2) {
+      document.getElementById('lowConfidenceCard').classList.add('active');
+
+      // Set confidence bar
+      const confPercent = Math.round(confidence * 100);
+      document.getElementById('lowConfBar').style.width = confPercent + '%';
+      document.getElementById('lowConfPercent').textContent = confPercent + '%';
+
+      // Determine subtitle based on failure reasons
+      let subtitle = 'The image quality may be too low for accurate extraction';
+      if (warnings.includes('too_blurry')) {
+        subtitle = 'The image appears to be blurry or out of focus';
+      } else if (warnings.includes('glare_detected')) {
+        subtitle = 'Glare was detected in the image';
+      } else if (warnings.includes('image_too_dark')) {
+        subtitle = 'The image is too dark';
+      } else if (warnings.includes('no_supported_text_detected')) {
+        subtitle = 'Could not detect invoice text in the image';
+      }
+      document.getElementById('lowConfSubtitle').textContent = subtitle;
+
+      // Build tips list from failure reasons
+      const tipsList = document.getElementById('ocrTipsList');
+      let tips = [];
+
+      warnings.forEach(reason => {
+        if (FAILURE_TIPS[reason]) {
+          tips.push(FAILURE_TIPS[reason]);
+        }
+      });
+
+      // Add generic tips if none specific
+      if (tips.length === 0) {
+        tips = [
+          'Hold your phone steady and ensure the invoice is in focus',
+          'Take the photo in a well-lit area',
+          'Make sure the entire invoice is visible'
+        ];
+      }
+
+      tipsList.innerHTML = tips.map(tip => `<li>${tip}</li>`).join('');
+
+      // Show quality metrics if available from v2 pipeline
+      if (pipelineV2?.quality) {
+        const q = pipelineV2.quality;
+        document.getElementById('qualityMetrics').style.display = 'grid';
+
+        // Focus (inverse of blur score - higher is better)
+        const focusScore = 1 - (q.blurScore || 0);
+        setQualityMetric('qmBlur', focusScore, 'Focus');
+
+        // Glare (inverse - lower is better)
+        const glareScore = 1 - (q.glareScore || 0);
+        setQualityMetric('qmGlare', glareScore, 'Glare');
+
+        // Brightness (0.5 is ideal)
+        const brightnessScore = 1 - Math.abs((q.brightness || 0.5) - 0.5) * 2;
+        setQualityMetric('qmBrightness', brightnessScore, 'Lighting');
+
+        // OCR confidence
+        const ocrScore = result.confidence?.ocr || 0;
+        setQualityMetric('qmOcr', ocrScore, 'OCR');
+      }
+    }
+
+    function setQualityMetric(elementId, score, label) {
+      const el = document.getElementById(elementId);
+      const percent = Math.round(score * 100);
+
+      // Determine quality class
+      let qualityClass = 'bad';
+      let icon = '✗';
+      if (score >= 0.7) {
+        qualityClass = 'good';
+        icon = '✓';
+      } else if (score >= 0.4) {
+        qualityClass = 'warn';
+        icon = '~';
+      }
+
+      el.textContent = icon;
+      el.className = 'quality-metric-value ' + qualityClass;
+    }
+
+    function enterManually() {
+      // For now, redirect to dashboard where they can edit
+      showAlert('info', 'Manual entry feature coming soon. You can edit invoice data in the dashboard.');
+      resetUpload();
+    }
+
     function resetUpload() {
       document.getElementById('resultsCard').classList.remove('active');
+      document.getElementById('lowConfidenceCard').classList.remove('active');
       document.getElementById('fileInput').value = '';
       document.getElementById('accountName').value = '';
       document.getElementById('vendorName').value = '';
