@@ -376,6 +376,15 @@ function initDatabase() {
           console.log('✅ Migration: Added name column to email_monitors');
         }
 
+        // user_id column (new column to link monitors to users properly)
+        const hasUserId = emailMonitorsInfo.some(col => col.name === 'user_id');
+        if (!hasUserId) {
+          db.exec(`ALTER TABLE email_monitors ADD COLUMN user_id INTEGER`);
+          // Copy created_by_user_id to user_id for existing records
+          db.exec(`UPDATE email_monitors SET user_id = created_by_user_id WHERE user_id IS NULL AND created_by_user_id IS NOT NULL`);
+          console.log('✅ Migration: Added user_id column to email_monitors');
+        }
+
         // OAuth columns for Google/Microsoft authentication
         const hasOAuthProvider = emailMonitorsInfo.some(col => col.name === 'oauth_provider');
         const hasOAuthAccessToken = emailMonitorsInfo.some(col => col.name === 'oauth_access_token');

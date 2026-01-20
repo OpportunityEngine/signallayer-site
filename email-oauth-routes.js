@@ -123,28 +123,34 @@ router.get('/google/callback', async (req, res) => {
 
     // Create new monitor
     const encryptedRefreshToken = CryptoJS.AES.encrypt(tokens.refreshToken, ENCRYPTION_KEY).toString();
+    const monitorName = userInfo.name ? `${userInfo.name}'s Gmail` : 'Gmail Monitor';
 
     db.getDatabase().prepare(`
       INSERT INTO email_monitors (
-        user_id, name, email_address, imap_host, imap_port, imap_secure, imap_user,
-        oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
-        folder_name, check_frequency_minutes, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, datetime('now'), datetime('now'))
+        user_id, account_name, monitor_name, name, email_address, imap_host, imap_port, imap_secure, imap_user, username,
+        encrypted_password, oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
+        folder_name, check_frequency_minutes, is_active, created_by_user_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(
       stateData.userId,
-      userInfo.name ? `${userInfo.name}'s Gmail` : 'Gmail Monitor',
+      monitorName,  // account_name (NOT NULL)
+      monitorName,  // monitor_name
+      monitorName,  // name
       userInfo.email,
       'imap.gmail.com',
       993,
       1,  // secure
-      userInfo.email,
+      userInfo.email,  // imap_user
+      userInfo.email,  // username (NOT NULL in original schema)
+      'OAUTH',  // encrypted_password placeholder (NOT NULL in original schema)
       'google',
       tokens.accessToken,
       encryptedRefreshToken,
       tokens.expiresIn,
       'INBOX',
       15,  // check every 15 minutes
-      1    // active
+      1,   // active
+      stateData.userId  // created_by_user_id
     );
 
     res.redirect('/dashboard/vp-view.html?oauth_success=created&email=' + encodeURIComponent(userInfo.email));
@@ -241,28 +247,34 @@ router.get('/microsoft/callback', async (req, res) => {
 
     // Create new monitor
     const encryptedRefreshToken = CryptoJS.AES.encrypt(tokens.refreshToken, ENCRYPTION_KEY).toString();
+    const monitorName = userInfo.name ? `${userInfo.name}'s Outlook` : 'Outlook Monitor';
 
     db.getDatabase().prepare(`
       INSERT INTO email_monitors (
-        user_id, name, email_address, imap_host, imap_port, imap_secure, imap_user,
-        oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
-        folder_name, check_frequency_minutes, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, datetime('now'), datetime('now'))
+        user_id, account_name, monitor_name, name, email_address, imap_host, imap_port, imap_secure, imap_user, username,
+        encrypted_password, oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
+        folder_name, check_frequency_minutes, is_active, created_by_user_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(
       stateData.userId,
-      userInfo.name ? `${userInfo.name}'s Outlook` : 'Outlook Monitor',
+      monitorName,  // account_name (NOT NULL)
+      monitorName,  // monitor_name
+      monitorName,  // name
       userInfo.email,
       'outlook.office365.com',
       993,
       1,  // secure
-      userInfo.email,
+      userInfo.email,  // imap_user
+      userInfo.email,  // username (NOT NULL in original schema)
+      'OAUTH',  // encrypted_password placeholder (NOT NULL in original schema)
       'microsoft',
       tokens.accessToken,
       encryptedRefreshToken,
       tokens.expiresIn,
       'INBOX',
       15,  // check every 15 minutes
-      1    // active
+      1,   // active
+      stateData.userId  // created_by_user_id
     );
 
     res.redirect('/dashboard/vp-view.html?oauth_success=created&email=' + encodeURIComponent(userInfo.email));
