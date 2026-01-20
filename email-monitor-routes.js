@@ -14,7 +14,15 @@ const router = express.Router();
 const db = require('./database');
 const { requireAuth, requireRole, sanitizeInput } = require('./auth-middleware');
 const emailService = require('./email-imap-service');
+const emailCheckService = require('./email-check-service');
 const { detectIMAPConfig, testIMAPConnection } = require('./imap-config-detector');
+
+// Initialize email check service tables on module load
+try {
+  emailCheckService.initTables();
+} catch (err) {
+  console.error('[EMAIL-MONITORS] Failed to init check service tables:', err.message);
+}
 
 // Apply authentication and sanitization to all routes
 router.use(requireAuth);
@@ -500,12 +508,14 @@ router.post('/:id/stop', async (req, res) => {
 
 /**
  * POST /api/email-monitors/:id/check-now
- * Trigger immediate email check (don't wait for next interval)
+ * Trigger immediate email check with full tracing
+ * Returns run_uuid for tracking progress
  */
 router.post('/:id/check-now', async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
+    const { waitForResult } = req.query; // Optional: wait for result instead of background
 
     const monitor = db.getEmailMonitor(id);
 
@@ -524,15 +534,47 @@ router.post('/:id/check-now', async (req, res) => {
       });
     }
 
-    // Trigger immediate check (don't await - let it run in background)
-    emailService.checkEmails(id).catch(err => {
-      console.error('[EMAIL-MONITORS] Check now error:', err);
-    });
+    // Use new email check service with full tracing
+    if (waitForResult === '1' || waitForResult === 'true') {
+      // Synchronous: wait for result (useful for debugging)
+      try {
+        const result = await emailCheckService.checkEmails(parseInt(id), 'manual');
+        res.json({
+          success: true,
+          message: result.success ? 'Email check completed' : 'Email check completed with errors',
+          result: {
+            runUuid: result.runUuid,
+            found: result.found,
+            fetched: result.fetched,
+            processed: result.processed,
+            skipped: result.skipped,
+            invoicesCreated: result.invoicesCreated,
+            errors: result.errors,
+            totalTimeMs: result.totalTimeMs,
+            error: result.error
+          }
+        });
+      } catch (checkErr) {
+        res.status(500).json({
+          success: false,
+          error: checkErr.message
+        });
+      }
+    } else {
+      // Async: run in background, return immediately with run_uuid
+      const runUuid = require('crypto').randomUUID();
 
-    res.json({
-      success: true,
-      message: 'Email check triggered. Processing in background...'
-    });
+      // Start check in background
+      emailCheckService.checkEmails(parseInt(id), 'manual').catch(err => {
+        console.error('[EMAIL-MONITORS] Check now error:', err.message);
+      });
+
+      res.json({
+        success: true,
+        message: 'Email check triggered. Check /api/email-monitors/' + id + '/check-runs for progress.',
+        hint: 'Use ?waitForResult=1 to get immediate results'
+      });
+    }
 
   } catch (error) {
     console.error('[EMAIL-MONITORS] Check now error:', error);
@@ -545,12 +587,21 @@ router.post('/:id/check-now', async (req, res) => {
 
 /**
  * POST /api/email-monitors/:id/diagnose
- * Run diagnostic check on email monitor - returns detailed results
+ * Run comprehensive diagnostic check on email monitor
+ * Returns detailed connection info, mailbox stats, and email analysis
+ *
+ * Query params:
+ * - folder: Override folder to check (default: monitor's folder_name or INBOX)
+ * - sinceDays: Days to look back (default: 7)
+ * - limit: Max emails to analyze (default: 20)
+ * - ignoreDedupe: Show emails that would normally be skipped as duplicates
+ * - ignoreKeywords: Show emails that would fail keyword filter
  */
 router.post('/:id/diagnose', async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
+    const { folder, sinceDays, limit, ignoreDedupe, ignoreKeywords } = req.query;
 
     const monitor = db.getEmailMonitor(id);
 
@@ -569,44 +620,14 @@ router.post('/:id/diagnose', async (req, res) => {
       });
     }
 
-    // Run diagnostic
-    const diagnostic = {
-      monitor: {
-        id: monitor.id,
-        email: monitor.email_address,
-        is_active: monitor.is_active,
-        oauth_provider: monitor.oauth_provider,
-        has_oauth_token: !!monitor.oauth_access_token,
-        has_refresh_token: !!monitor.oauth_refresh_token,
-        token_expires: monitor.oauth_token_expires_at,
-        imap_host: monitor.imap_host,
-        imap_port: monitor.imap_port,
-        last_checked: monitor.last_checked_at,
-        last_error: monitor.last_error,
-        emails_processed: monitor.emails_processed_count,
-        invoices_created: monitor.invoices_created_count
-      },
-      checks: {}
-    };
-
-    // Check OAuth token validity
-    if (monitor.oauth_provider) {
-      const expiresAt = new Date(monitor.oauth_token_expires_at);
-      const now = new Date();
-      diagnostic.checks.oauth_token_valid = expiresAt > now;
-      diagnostic.checks.oauth_token_expires_in = Math.round((expiresAt - now) / 1000 / 60) + ' minutes';
-    }
-
-    // Try to connect and check inbox
-    try {
-      const result = await emailService.diagnoseMonitor(id);
-      diagnostic.checks.connection = result;
-    } catch (err) {
-      diagnostic.checks.connection = {
-        success: false,
-        error: err.message
-      };
-    }
+    // Run comprehensive diagnostic using new service
+    const diagnostic = await emailCheckService.diagnose(parseInt(id), {
+      folder: folder || undefined,
+      sinceDays: sinceDays ? parseInt(sinceDays) : 7,
+      limit: limit ? parseInt(limit) : 20,
+      ignoreDedupe: ignoreDedupe === '1' || ignoreDedupe === 'true',
+      ignoreKeywords: ignoreKeywords === '1' || ignoreKeywords === 'true'
+    });
 
     res.json({
       success: true,
@@ -883,6 +904,226 @@ router.get('/system/status', requireRole(['admin']), async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve system status'
+    });
+  }
+});
+
+// =====================================================
+// CHECK RUNS & PROCESSING LOGS (New observability endpoints)
+// =====================================================
+
+/**
+ * GET /api/email-monitors/:id/check-runs
+ * Get recent check runs for a monitor with full tracing data
+ */
+router.get('/:id/check-runs', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    const { limit = 20 } = req.query;
+
+    const monitor = db.getEmailMonitor(id);
+
+    if (!monitor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email monitor not found'
+      });
+    }
+
+    // Check ownership
+    if (user.role !== 'admin' && monitor.user_id !== user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    const checkRuns = emailCheckService.getCheckRuns(parseInt(id), parseInt(limit));
+
+    res.json({
+      success: true,
+      data: checkRuns
+    });
+
+  } catch (error) {
+    console.error('[EMAIL-MONITORS] Check runs error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve check runs'
+    });
+  }
+});
+
+/**
+ * GET /api/email-monitors/:id/processing-logs
+ * Get processing logs for a monitor (shows every email including skips)
+ */
+router.get('/:id/processing-logs', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    const { limit = 100, checkRunUuid } = req.query;
+
+    const monitor = db.getEmailMonitor(id);
+
+    if (!monitor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email monitor not found'
+      });
+    }
+
+    // Check ownership
+    if (user.role !== 'admin' && monitor.user_id !== user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    let logs;
+    if (checkRunUuid) {
+      logs = emailCheckService.getProcessingLogs(checkRunUuid, parseInt(limit));
+    } else {
+      logs = emailCheckService.getMonitorProcessingLogs(parseInt(id), parseInt(limit));
+    }
+
+    res.json({
+      success: true,
+      data: logs
+    });
+
+  } catch (error) {
+    console.error('[EMAIL-MONITORS] Processing logs error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve processing logs'
+    });
+  }
+});
+
+/**
+ * GET /api/email-monitors/admin/all-check-runs
+ * Admin only: Get all recent check runs across all monitors
+ */
+router.get('/admin/all-check-runs', requireRole(['admin']), async (req, res) => {
+  try {
+    const { limit = 50 } = req.query;
+
+    const checkRuns = db.getDatabase().prepare(`
+      SELECT
+        ecr.*,
+        em.email_address,
+        em.name as monitor_name,
+        u.name as user_name
+      FROM email_check_runs ecr
+      JOIN email_monitors em ON ecr.monitor_id = em.id
+      LEFT JOIN users u ON em.user_id = u.id
+      ORDER BY ecr.started_at DESC
+      LIMIT ?
+    `).all(parseInt(limit));
+
+    res.json({
+      success: true,
+      data: checkRuns
+    });
+
+  } catch (error) {
+    console.error('[EMAIL-MONITORS] Admin check runs error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve check runs'
+    });
+  }
+});
+
+/**
+ * GET /api/email-monitors/admin/debug-summary
+ * Admin only: Get comprehensive debug summary for email system
+ */
+router.get('/admin/debug-summary', requireRole(['admin']), async (req, res) => {
+  try {
+    const database = db.getDatabase();
+
+    // Get monitor counts
+    const monitorCounts = database.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN oauth_provider IS NOT NULL THEN 1 ELSE 0 END) as oauth,
+        SUM(CASE WHEN last_error IS NOT NULL THEN 1 ELSE 0 END) as with_errors
+      FROM email_monitors
+    `).get();
+
+    // Get recent check run stats
+    const recentRunStats = database.prepare(`
+      SELECT
+        COUNT(*) as total_runs,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors,
+        SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial,
+        SUM(found_messages) as total_found,
+        SUM(emails_processed) as total_processed,
+        SUM(invoices_created) as total_invoices,
+        AVG(total_time_ms) as avg_time_ms
+      FROM email_check_runs
+      WHERE started_at > datetime('now', '-24 hours')
+    `).get();
+
+    // Get skip reason breakdown
+    const skipReasons = database.prepare(`
+      SELECT skip_reason, COUNT(*) as count
+      FROM email_processing_log
+      WHERE skip_reason IS NOT NULL
+        AND processed_at > datetime('now', '-24 hours')
+      GROUP BY skip_reason
+      ORDER BY count DESC
+    `).all();
+
+    // Get monitors with errors
+    const monitorsWithErrors = database.prepare(`
+      SELECT id, email_address, name, last_error, last_checked_at
+      FROM email_monitors
+      WHERE last_error IS NOT NULL
+      ORDER BY last_checked_at DESC
+      LIMIT 10
+    `).all();
+
+    // Get recent processing activity
+    const recentActivity = database.prepare(`
+      SELECT
+        epl.monitor_id,
+        em.email_address,
+        epl.status,
+        epl.skip_reason,
+        epl.email_subject,
+        epl.attachments_count,
+        epl.attachments_supported,
+        epl.invoices_created,
+        epl.processed_at
+      FROM email_processing_log epl
+      JOIN email_monitors em ON epl.monitor_id = em.id
+      ORDER BY epl.processed_at DESC
+      LIMIT 20
+    `).all();
+
+    res.json({
+      success: true,
+      data: {
+        monitors: monitorCounts,
+        last24Hours: recentRunStats,
+        skipReasonBreakdown: skipReasons,
+        monitorsWithErrors,
+        recentActivity
+      }
+    });
+
+  } catch (error) {
+    console.error('[EMAIL-MONITORS] Debug summary error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve debug summary'
     });
   }
 });

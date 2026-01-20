@@ -1163,6 +1163,55 @@
       </div>
     </div>
 
+    <!-- Email Autopilot Debug Section -->
+    <div class="section-header">
+      <h2 class="section-title">Email Autopilot Debug</h2>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span id="emailDebugSummaryBadge"></span>
+        <button onclick="refreshEmailDebug()" class="filter-btn active" style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 14px;">↻</span> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Email Monitors Overview -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-title">Active Email Monitors</div>
+      <div id="emailMonitorsDebug" class="scrollable-container-small">
+        <div class="loading">Loading email monitors...</div>
+      </div>
+    </div>
+
+    <!-- Recent Check Runs & Processing Logs -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Recent Check Runs</div>
+        <div id="emailCheckRuns" class="scrollable-container-small">
+          <div class="loading">Loading check runs...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Processing Logs (Last 50)</div>
+        <div id="emailProcessingLogs" class="scrollable-container-small">
+          <div class="loading">Loading processing logs...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Debug Detail Modal -->
+    <div id="emailDebugModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
+      <div class="modal-content" style="background: linear-gradient(135deg, rgba(17, 21, 37, 0.98) 0%, rgba(15, 19, 32, 0.98) 100%); border-radius: 16px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; border: 2px solid rgba(251, 191, 36, 0.3); padding: 24px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 style="color: #fbbf24; font-size: 18px; font-weight: 700;">Check Run Details</h3>
+          <button onclick="closeEmailDebugModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        <div id="emailDebugModalContent">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Create/Edit User Modal -->
@@ -2317,6 +2366,372 @@ Login URL: ${window.location.origin}/dashboard/login.html
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('errorSeverityFilter').addEventListener('change', loadErrorMonitoring);
     });
+
+    // =====================================================
+    // EMAIL AUTOPILOT DEBUG FUNCTIONS
+    // =====================================================
+
+    async function refreshEmailDebug() {
+      await Promise.all([
+        loadEmailMonitorsDebug(),
+        loadEmailCheckRuns(),
+        loadEmailProcessingLogs()
+      ]);
+    }
+
+    async function loadEmailMonitorsDebug() {
+      const container = document.getElementById('emailMonitorsDebug');
+      try {
+        const token = authToken || window.AuthManager.getToken();
+        const response = await fetch('/api/email-monitors/admin/debug-summary', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load email monitors');
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.data) {
+          container.innerHTML = '<div style="color: #64748b; padding: 16px; text-align: center;">No email monitors configured</div>';
+          updateEmailDebugSummary({ total: 0, active: 0, errors: 0 });
+          return;
+        }
+
+        const summary = data.data;
+        updateEmailDebugSummary(summary);
+
+        if (!summary.monitors || summary.monitors.length === 0) {
+          container.innerHTML = '<div style="color: #64748b; padding: 16px; text-align: center;">No email monitors configured</div>';
+          return;
+        }
+
+        container.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Last Check</th>
+                <th>Processed (24h)</th>
+                <th>Errors</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${summary.monitors.map(m => `
+                <tr>
+                  <td style="font-weight: 600;">${m.email || 'Unknown'}</td>
+                  <td>
+                    <span class="status-badge ${m.is_active ? 'approved' : 'pending'}">
+                      ${m.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td>${m.last_check_at ? formatTimeAgo(new Date(m.last_check_at)) : 'Never'}</td>
+                  <td>${m.processed_24h || 0}</td>
+                  <td style="color: ${m.errors_24h > 0 ? '#ef4444' : '#10b981'};">${m.errors_24h || 0}</td>
+                  <td style="display: flex; gap: 6px;">
+                    <button onclick="triggerCheckNow(${m.id})" class="action-btn approve" title="Check Now">Check</button>
+                    <button onclick="runDiagnose(${m.id})" class="action-btn" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6;" title="Run Diagnosis">Diagnose</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        console.error('Error loading email monitors debug:', error);
+        container.innerHTML = `<div style="color: #ef4444; padding: 16px;">Error: ${error.message}</div>`;
+      }
+    }
+
+    function updateEmailDebugSummary(summary) {
+      const badge = document.getElementById('emailDebugSummaryBadge');
+      if (!badge) return;
+
+      const total = summary.total_monitors || summary.total || 0;
+      const active = summary.active_monitors || summary.active || 0;
+      const errors = summary.errors_24h || summary.errors || 0;
+
+      if (errors > 0) {
+        badge.innerHTML = `<span class="badge error">${errors} Errors (24h)</span>`;
+      } else if (active > 0) {
+        badge.innerHTML = `<span class="badge success">${active} Active Monitors</span>`;
+      } else {
+        badge.innerHTML = `<span class="badge warning">No Active Monitors</span>`;
+      }
+    }
+
+    async function loadEmailCheckRuns() {
+      const container = document.getElementById('emailCheckRuns');
+      try {
+        const token = authToken || window.AuthManager.getToken();
+        const response = await fetch('/api/email-monitors/admin/all-check-runs?limit=20', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load check runs');
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.data || data.data.length === 0) {
+          container.innerHTML = '<div style="color: #64748b; padding: 16px; text-align: center;">No check runs yet</div>';
+          return;
+        }
+
+        container.innerHTML = data.data.map(run => {
+          const statusColor = {
+            'success': '#10b981',
+            'partial': '#f59e0b',
+            'error': '#ef4444',
+            'started': '#3b82f6'
+          }[run.status] || '#64748b';
+
+          const duration = run.total_time_ms ? `${(run.total_time_ms / 1000).toFixed(1)}s` : '-';
+
+          return `
+            <div class="error-item" style="border-color: ${statusColor}40; cursor: pointer;" onclick="showCheckRunDetail('${run.run_uuid}')">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: ${statusColor}; font-weight: 700; text-transform: uppercase; font-size: 11px;">${run.status}</span>
+                  <span style="color: #64748b; font-size: 12px;">${run.triggered_by}</span>
+                </div>
+                <span style="color: #64748b; font-size: 12px;">${formatTimeAgo(new Date(run.started_at))}</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 12px;">
+                <div><span style="color: #64748b;">Found:</span> <span style="color: #e2e8f0; font-weight: 600;">${run.found_messages || 0}</span></div>
+                <div><span style="color: #64748b;">Processed:</span> <span style="color: #10b981; font-weight: 600;">${run.emails_processed || 0}</span></div>
+                <div><span style="color: #64748b;">Skipped:</span> <span style="color: #f59e0b; font-weight: 600;">${run.emails_skipped || 0}</span></div>
+                <div><span style="color: #64748b;">Duration:</span> <span style="color: #e2e8f0; font-weight: 600;">${duration}</span></div>
+              </div>
+              ${run.error_message ? `<div style="margin-top: 8px; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; font-size: 12px; color: #ef4444;">${run.error_message}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading check runs:', error);
+        container.innerHTML = `<div style="color: #ef4444; padding: 16px;">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function loadEmailProcessingLogs() {
+      const container = document.getElementById('emailProcessingLogs');
+      try {
+        const token = authToken || window.AuthManager.getToken();
+
+        // Try to get processing logs from any monitor (admin endpoint)
+        const monitorsResponse = await fetch('/api/email-monitors/admin/debug-summary', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!monitorsResponse.ok) {
+          throw new Error('Failed to load monitors');
+        }
+
+        const monitorsData = await monitorsResponse.json();
+
+        if (!monitorsData.success || !monitorsData.data?.monitors?.length) {
+          container.innerHTML = '<div style="color: #64748b; padding: 16px; text-align: center;">No monitors to show logs for</div>';
+          return;
+        }
+
+        // Get logs from the first monitor (for now - ideally we'd have an all-logs endpoint)
+        const monitorId = monitorsData.data.monitors[0].id;
+        const response = await fetch(`/api/email-monitors/${monitorId}/processing-logs?limit=50`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load processing logs');
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.data || data.data.length === 0) {
+          container.innerHTML = '<div style="color: #64748b; padding: 16px; text-align: center;">No processing logs yet</div>';
+          return;
+        }
+
+        container.innerHTML = data.data.map(log => {
+          const statusColor = {
+            'processed': '#10b981',
+            'skipped': '#f59e0b',
+            'error': '#ef4444',
+            'duplicate': '#64748b'
+          }[log.status] || '#64748b';
+
+          const skipReason = log.skip_reason || log.status;
+
+          return `
+            <div style="padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: start;">
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: #e2e8f0; margin-bottom: 4px; word-break: break-all;">${log.subject || '(no subject)'}</div>
+                <div style="font-size: 11px; color: #64748b;">${log.sender || 'Unknown sender'}</div>
+              </div>
+              <div style="text-align: right; margin-left: 12px;">
+                <span style="display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; background: ${statusColor}20; color: ${statusColor};">${skipReason}</span>
+                <div style="font-size: 10px; color: #64748b; margin-top: 4px;">${formatTimeAgo(new Date(log.processed_at))}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading processing logs:', error);
+        container.innerHTML = `<div style="color: #ef4444; padding: 16px;">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function triggerCheckNow(monitorId) {
+      try {
+        const token = authToken || window.AuthManager.getToken();
+        const response = await fetch(`/api/email-monitors/${monitorId}/check-now?waitForResult=true`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const result = data.result || {};
+          alert(`Check completed!\n\nFound: ${result.found || 0} emails\nProcessed: ${result.processed || 0}\nSkipped: ${result.skipped || 0}\nInvoices: ${result.invoices || 0}`);
+          refreshEmailDebug();
+        } else {
+          alert('Check failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error triggering check:', error);
+        alert('Error: ' + error.message);
+      }
+    }
+
+    async function runDiagnose(monitorId) {
+      try {
+        const token = authToken || window.AuthManager.getToken();
+        const response = await fetch(`/api/email-monitors/${monitorId}/diagnose?sinceDays=7&limit=20&ignoreDedupe=true`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showDiagnoseResults(data.data);
+        } else {
+          alert('Diagnose failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error running diagnose:', error);
+        alert('Error: ' + error.message);
+      }
+    }
+
+    function showDiagnoseResults(diagData) {
+      const modal = document.getElementById('emailDebugModal');
+      const content = document.getElementById('emailDebugModalContent');
+
+      const conn = diagData.connection || {};
+      const mailbox = diagData.mailbox || {};
+      const emails = diagData.emails || [];
+
+      content.innerHTML = `
+        <div style="margin-bottom: 20px;">
+          <h4 style="color: #fbbf24; margin-bottom: 12px;">Connection Status</h4>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Status</div>
+              <div style="font-size: 18px; font-weight: 700; color: ${conn.connected ? '#10b981' : '#ef4444'};">${conn.connected ? 'Connected' : 'Failed'}</div>
+            </div>
+            <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Auth Type</div>
+              <div style="font-size: 18px; font-weight: 700; color: #e2e8f0;">${conn.auth_type || '-'}</div>
+            </div>
+          </div>
+          ${conn.error ? `<div style="margin-top: 12px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #ef4444;">${conn.error}</div>` : ''}
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h4 style="color: #fbbf24; margin-bottom: 12px;">Mailbox Info</h4>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+            <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Folder</div>
+              <div style="font-size: 14px; font-weight: 600; color: #e2e8f0;">${mailbox.folder || '-'}</div>
+            </div>
+            <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Messages</div>
+              <div style="font-size: 18px; font-weight: 700; color: #e2e8f0;">${mailbox.total_messages ?? '-'}</div>
+            </div>
+            <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+              <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Found in Search</div>
+              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">${mailbox.found_count ?? '-'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 style="color: #fbbf24; margin-bottom: 12px;">Sample Emails (${emails.length})</h4>
+          <div style="max-height: 300px; overflow-y: auto;">
+            ${emails.length === 0 ? '<div style="color: #64748b; padding: 16px; text-align: center;">No emails found matching criteria</div>' : emails.map(email => `
+              <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="font-weight: 600; color: #e2e8f0;">${email.subject || '(no subject)'}</span>
+                  <span style="font-size: 12px; color: #64748b;">${email.date || '-'}</span>
+                </div>
+                <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">From: ${email.from || '-'}</div>
+                ${email.attachments && email.attachments.length > 0 ? `
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    ${email.attachments.map(att => `
+                      <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: ${att.supported ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)'}; color: ${att.supported ? '#10b981' : '#64748b'}; border-radius: 4px; font-size: 11px;">
+                        ${att.filename || 'attachment'} (${att.size ? Math.round(att.size/1024) + 'KB' : '-'})
+                      </span>
+                    `).join('')}
+                  </div>
+                ` : '<div style="font-size: 12px; color: #64748b;">No attachments</div>'}
+                ${email.would_skip ? `<div style="margin-top: 8px; font-size: 11px; color: #f59e0b;">Would skip: ${email.skip_reason || 'unknown'}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      modal.style.display = 'flex';
+    }
+
+    async function showCheckRunDetail(runUuid) {
+      const modal = document.getElementById('emailDebugModal');
+      const content = document.getElementById('emailDebugModalContent');
+
+      content.innerHTML = '<div class="loading">Loading check run details...</div>';
+      modal.style.display = 'flex';
+
+      try {
+        const token = authToken || window.AuthManager.getToken();
+
+        // For now, just show the UUID - we could add a detail endpoint later
+        content.innerHTML = `
+          <div style="padding: 16px;">
+            <p style="color: #64748b; margin-bottom: 12px;">Run UUID:</p>
+            <code style="display: block; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; color: #fbbf24; word-break: break-all;">${runUuid}</code>
+            <p style="color: #64748b; margin-top: 16px; font-size: 13px;">View the server logs for detailed information about this check run.</p>
+          </div>
+        `;
+      } catch (error) {
+        content.innerHTML = `<div style="color: #ef4444; padding: 16px;">Error: ${error.message}</div>`;
+      }
+    }
+
+    function closeEmailDebugModal() {
+      document.getElementById('emailDebugModal').style.display = 'none';
+    }
+
+    // Add email debug to the refresh cycle
+    const originalRefreshAllData = refreshAllData;
+    refreshAllData = async function() {
+      await originalRefreshAllData();
+      await refreshEmailDebug();
+    };
   </script>
 </body>
 </html>
