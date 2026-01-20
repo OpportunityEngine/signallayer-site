@@ -74,29 +74,39 @@ router.get('/google/auth', requireAuth, (req, res) => {
  * Handle Google OAuth callback
  */
 router.get('/google/callback', async (req, res) => {
+  console.log('[EMAIL-OAUTH] Google callback received:', { code: req.query.code ? 'present' : 'missing', state: req.query.state ? 'present' : 'missing', error: req.query.error });
+
   try {
     const { code, state, error } = req.query;
 
     if (error) {
-      console.error('[EMAIL-OAUTH] Google callback error:', error);
+      console.error('[EMAIL-OAUTH] Google callback error from Google:', error);
       return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent(error));
     }
 
     if (!code || !state) {
+      console.error('[EMAIL-OAUTH] Missing code or state');
       return res.redirect('/dashboard/vp-view.html?oauth_error=missing_params');
     }
 
     // Validate state
     const stateData = emailOAuth.validateState(state);
+    console.log('[EMAIL-OAUTH] State validation result:', stateData ? { userId: stateData.userId, provider: stateData.provider } : 'INVALID');
+
     if (!stateData || stateData.provider !== 'google') {
-      return res.redirect('/dashboard/vp-view.html?oauth_error=invalid_state');
+      console.error('[EMAIL-OAUTH] Invalid state - this usually means the server restarted during OAuth flow. Please try again.');
+      return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent('Session expired. Please try connecting again.'));
     }
 
     // Exchange code for tokens
+    console.log('[EMAIL-OAUTH] Exchanging code for tokens...');
     const tokens = await emailOAuth.exchangeGoogleCode(code);
+    console.log('[EMAIL-OAUTH] Token exchange successful, got access token:', tokens.accessToken ? 'yes' : 'no');
 
     // Get user info
+    console.log('[EMAIL-OAUTH] Getting user info...');
     const userInfo = await emailOAuth.getGoogleUserInfo(tokens.accessToken);
+    console.log('[EMAIL-OAUTH] User info:', { email: userInfo.email, name: userInfo.name });
 
     // Check if monitor already exists for this email
     const existingMonitor = db.getDatabase().prepare(`
@@ -122,42 +132,52 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // Create new monitor
+    console.log('[EMAIL-OAUTH] Creating new email monitor for user:', stateData.userId);
     const encryptedRefreshToken = CryptoJS.AES.encrypt(tokens.refreshToken, ENCRYPTION_KEY).toString();
     const monitorName = userInfo.name ? `${userInfo.name}'s Gmail` : 'Gmail Monitor';
 
-    db.getDatabase().prepare(`
-      INSERT INTO email_monitors (
-        user_id, account_name, monitor_name, name, email_address, imap_host, imap_port, imap_secure, imap_user, username,
-        encrypted_password, oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
-        folder_name, check_frequency_minutes, is_active, created_by_user_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).run(
-      stateData.userId,
-      monitorName,  // account_name (NOT NULL)
-      monitorName,  // monitor_name
-      monitorName,  // name
-      userInfo.email,
-      'imap.gmail.com',
-      993,
-      1,  // secure
-      userInfo.email,  // imap_user
-      userInfo.email,  // username (NOT NULL in original schema)
-      'OAUTH',  // encrypted_password placeholder (NOT NULL in original schema)
-      'google',
-      tokens.accessToken,
-      encryptedRefreshToken,
-      tokens.expiresIn,
-      'INBOX',
-      15,  // check every 15 minutes
-      1,   // active
-      stateData.userId  // created_by_user_id
-    );
+    try {
+      const result = db.getDatabase().prepare(`
+        INSERT INTO email_monitors (
+          user_id, account_name, monitor_name, name, email_address, imap_host, imap_port, imap_secure, imap_user, username,
+          encrypted_password, oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
+          folder_name, check_frequency_minutes, is_active, created_by_user_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+' || ? || ' seconds'), ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run(
+        stateData.userId,
+        monitorName,  // account_name (NOT NULL)
+        monitorName,  // monitor_name
+        monitorName,  // name
+        userInfo.email,
+        'imap.gmail.com',
+        993,
+        1,  // secure
+        userInfo.email,  // imap_user
+        userInfo.email,  // username (NOT NULL in original schema)
+        'OAUTH',  // encrypted_password placeholder (NOT NULL in original schema)
+        'google',
+        tokens.accessToken,
+        encryptedRefreshToken,
+        tokens.expiresIn,
+        'INBOX',
+        15,  // check every 15 minutes
+        1,   // active
+        stateData.userId  // created_by_user_id
+      );
+      console.log('[EMAIL-OAUTH] Monitor created successfully, ID:', result.lastInsertRowid);
+    } catch (dbError) {
+      console.error('[EMAIL-OAUTH] Database insert failed:', dbError.message);
+      console.error('[EMAIL-OAUTH] Full error:', dbError);
+      return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent('Database error: ' + dbError.message));
+    }
 
+    console.log('[EMAIL-OAUTH] Redirecting with success for:', userInfo.email);
     res.redirect('/dashboard/vp-view.html?oauth_success=created&email=' + encodeURIComponent(userInfo.email));
 
   } catch (error) {
-    console.error('[EMAIL-OAUTH] Google callback error:', error);
-    res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent(error.message));
+    console.error('[EMAIL-OAUTH] Google callback error:', error.message);
+    console.error('[EMAIL-OAUTH] Full error stack:', error.stack);
+    res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent(error.message || 'Unknown error'));
   }
 });
 

@@ -5156,16 +5156,20 @@
       const oauthError = params.get('oauth_error');
       const email = params.get('email');
 
+      console.log('[OAuth Callback] Checking URL params:', { oauthSuccess, oauthError, email });
+
       if (oauthSuccess) {
         const action = oauthSuccess === 'created' ? 'created' : 'updated';
-        showAlert('success', `Email monitor ${action} successfully for ${email || 'your account'}!`);
+        console.log('[OAuth Callback] Success! Showing toast...');
+        showToast(`Email monitor ${action} successfully for ${email || 'your account'}!`, 'success');
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
         // Reload monitors
         loadEmailMonitors();
-        loadEmailMonitorStats();
+        updateEmailMonitorTileBanner();
       } else if (oauthError) {
-        showAlert('error', `OAuth failed: ${decodeURIComponent(oauthError)}`);
+        console.log('[OAuth Callback] Error:', oauthError);
+        showToast(`OAuth failed: ${decodeURIComponent(oauthError)}`, 'error');
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
