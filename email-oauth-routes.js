@@ -9,6 +9,7 @@ const router = express.Router();
 const db = require('./database');
 const { requireAuth } = require('./auth-middleware');
 const emailOAuth = require('./email-oauth-service');
+const emailService = require('./email-imap-service');
 const CryptoJS = require('crypto-js');
 
 const ENCRYPTION_KEY = process.env.EMAIL_ENCRYPTION_KEY || 'revenue-radar-email-key-2026';
@@ -115,7 +116,7 @@ router.get('/google/callback', async (req, res) => {
     `).get(stateData.userId, userInfo.email);
 
     if (existingMonitor) {
-      // Update existing monitor with new tokens
+      // Update existing monitor with new tokens and ensure it's active
       db.getDatabase().prepare(`
         UPDATE email_monitors
         SET oauth_provider = 'google',
@@ -124,9 +125,18 @@ router.get('/google/callback', async (req, res) => {
             oauth_token_expires_at = datetime('now', '+' || ? || ' seconds'),
             imap_password_encrypted = NULL,
             last_error = NULL,
+            is_active = 1,
             updated_at = datetime('now')
         WHERE id = ?
       `).run(tokens.accessToken, tokens.refreshToken, tokens.expiresIn, existingMonitor.id);
+
+      // Restart the monitor with new tokens
+      try {
+        emailService.startMonitor(existingMonitor.id);
+        console.log('[EMAIL-OAUTH] ✓ Email monitor restarted with new tokens for:', userInfo.email);
+      } catch (startError) {
+        console.error('[EMAIL-OAUTH] Warning: Monitor updated but failed to restart:', startError.message);
+      }
 
       return res.redirect('/dashboard/vp-view.html?oauth_success=updated&email=' + encodeURIComponent(userInfo.email));
     }
@@ -165,6 +175,15 @@ router.get('/google/callback', async (req, res) => {
         stateData.userId  // created_by_user_id
       );
       console.log('[EMAIL-OAUTH] Monitor created successfully, ID:', result.lastInsertRowid);
+
+      // Start the email monitor immediately
+      try {
+        emailService.startMonitor(result.lastInsertRowid);
+        console.log('[EMAIL-OAUTH] ✓ Email monitor started for:', userInfo.email);
+      } catch (startError) {
+        console.error('[EMAIL-OAUTH] Warning: Monitor created but failed to start:', startError.message);
+        // Don't fail the OAuth - monitor can be started manually or on next server restart
+      }
     } catch (dbError) {
       console.error('[EMAIL-OAUTH] Database insert failed:', dbError.message);
       console.error('[EMAIL-OAUTH] Full error:', dbError);
@@ -249,7 +268,7 @@ router.get('/microsoft/callback', async (req, res) => {
     `).get(stateData.userId, userInfo.email);
 
     if (existingMonitor) {
-      // Update existing monitor with new tokens
+      // Update existing monitor with new tokens and ensure it's active
       db.getDatabase().prepare(`
         UPDATE email_monitors
         SET oauth_provider = 'microsoft',
@@ -258,9 +277,18 @@ router.get('/microsoft/callback', async (req, res) => {
             oauth_token_expires_at = datetime('now', '+' || ? || ' seconds'),
             imap_password_encrypted = NULL,
             last_error = NULL,
+            is_active = 1,
             updated_at = datetime('now')
         WHERE id = ?
       `).run(tokens.accessToken, tokens.refreshToken, tokens.expiresIn, existingMonitor.id);
+
+      // Restart the monitor with new tokens
+      try {
+        emailService.startMonitor(existingMonitor.id);
+        console.log('[EMAIL-OAUTH] ✓ Email monitor restarted with new tokens for:', userInfo.email);
+      } catch (startError) {
+        console.error('[EMAIL-OAUTH] Warning: Monitor updated but failed to restart:', startError.message);
+      }
 
       return res.redirect('/dashboard/vp-view.html?oauth_success=updated&email=' + encodeURIComponent(userInfo.email));
     }
@@ -269,7 +297,7 @@ router.get('/microsoft/callback', async (req, res) => {
     const encryptedRefreshToken = CryptoJS.AES.encrypt(tokens.refreshToken, ENCRYPTION_KEY).toString();
     const monitorName = userInfo.name ? `${userInfo.name}'s Outlook` : 'Outlook Monitor';
 
-    db.getDatabase().prepare(`
+    const result = db.getDatabase().prepare(`
       INSERT INTO email_monitors (
         user_id, account_name, monitor_name, name, email_address, imap_host, imap_port, imap_secure, imap_user, username,
         encrypted_password, oauth_provider, oauth_access_token, oauth_refresh_token, oauth_token_expires_at,
@@ -296,6 +324,16 @@ router.get('/microsoft/callback', async (req, res) => {
       1,   // active
       stateData.userId  // created_by_user_id
     );
+
+    console.log('[EMAIL-OAUTH] Monitor created successfully, ID:', result.lastInsertRowid);
+
+    // Start the email monitor immediately
+    try {
+      emailService.startMonitor(result.lastInsertRowid);
+      console.log('[EMAIL-OAUTH] ✓ Email monitor started for:', userInfo.email);
+    } catch (startError) {
+      console.error('[EMAIL-OAUTH] Warning: Monitor created but failed to start:', startError.message);
+    }
 
     res.redirect('/dashboard/vp-view.html?oauth_success=created&email=' + encodeURIComponent(userInfo.email));
 
