@@ -840,20 +840,10 @@
         <h1>Business Intelligence Command Center</h1>
         <p class="subtitle">Real-time financial analytics, spend intelligence, and cost optimization insights</p>
       </div>
-      <!-- Demo Mode Toggle -->
-      <div id="demoToggleContainer" class="demo-toggle-container" style="display: none;">
-        <div class="demo-toggle-wrapper">
-          <span class="demo-toggle-label" id="demoModeLabel">Demo</span>
-          <label class="demo-toggle">
-            <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
-            <span class="demo-toggle-slider"></span>
-          </label>
-          <span class="demo-toggle-label" id="realDataLabel">Live</span>
-        </div>
-        <div class="demo-mode-indicator" id="demoModeIndicator">
-          <span class="indicator-dot"></span>
-          <span id="modeText">Demo Mode</span>
-        </div>
+      <!-- Live Data Indicator (shown for real users) -->
+      <div id="liveDataIndicator" class="demo-mode-indicator real" style="display: none;">
+        <span class="indicator-dot"></span>
+        <span>+ LIVE DATA</span>
       </div>
     </div>
 
@@ -1688,42 +1678,34 @@
       window.location.href = '/dashboard/login.html';
     }
 
-    // Demo Mode Management
+    // Demo Mode Management - Automatic based on user role/email
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const isAdmin = currentUser.role === 'admin';
-    let demoModeEnabled = localStorage.getItem('demoModeEnabled') !== 'false';
 
-    if (isAdmin) {
-      document.getElementById('demoToggleContainer').style.display = 'flex';
-      document.getElementById('demoModeToggle').checked = !demoModeEnabled;
-      updateDemoModeUI();
-    }
+    // Demo accounts: demo@revenueradar.com (demo_viewer), business@demo.revenueradar.com (demo_business)
+    const DEMO_ROLES = ['demo_viewer', 'demo_business'];
+    const DEMO_EMAILS = ['demo@revenueradar.com', 'business@demo.revenueradar.com'];
 
-    function toggleDemoMode() {
-      demoModeEnabled = !document.getElementById('demoModeToggle').checked;
-      localStorage.setItem('demoModeEnabled', demoModeEnabled);
-      updateDemoModeUI();
-      loadAnalytics();
-      showToast(demoModeEnabled ? 'Switched to Demo Data' : 'Switched to Real Data', 'info');
-    }
+    // Check if this is a demo user
+    const isDemoUser = DEMO_ROLES.includes(currentUser.role) ||
+                       DEMO_EMAILS.includes(currentUser.email?.toLowerCase());
 
-    function updateDemoModeUI() {
-      const indicator = document.getElementById('demoModeIndicator');
-      const modeText = document.getElementById('modeText');
-      const demoLabel = document.getElementById('demoModeLabel');
-      const realLabel = document.getElementById('realDataLabel');
+    // Demo mode is automatic - no toggle needed
+    let demoModeEnabled = isDemoUser;
 
-      if (demoModeEnabled) {
-        indicator.className = 'demo-mode-indicator demo';
-        modeText.textContent = 'Demo Mode';
-        demoLabel.classList.add('active');
-        realLabel.classList.remove('active');
-      } else {
-        indicator.className = 'demo-mode-indicator real';
-        modeText.textContent = 'Live Data';
-        demoLabel.classList.remove('active');
-        realLabel.classList.add('active');
+    // Show "Live Data" indicator for real users only
+    if (!isDemoUser) {
+      const liveIndicator = document.getElementById('liveDataIndicator');
+      if (liveIndicator) {
+        liveIndicator.style.display = 'flex';
       }
+    }
+
+    // Log mode for debugging
+    console.log('[Analytics] User mode:', isDemoUser ? 'DEMO' : 'LIVE', '| Email:', currentUser.email, '| Role:', currentUser.role);
+
+    // Helper function to check if demo mode is active
+    function isDemoMode() {
+      return demoModeEnabled;
     }
 
     // Chart.js Configuration

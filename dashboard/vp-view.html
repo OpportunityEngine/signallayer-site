@@ -3047,20 +3047,10 @@
             <span>Expense Entry</span>
           </button>
 
-          <!-- Demo Mode Toggle (Admin Only) -->
-          <div id="demoToggleContainer" class="demo-toggle-container" style="display: none;">
-            <div class="demo-toggle-wrapper">
-              <span class="demo-toggle-label" id="demoModeLabel">Demo</span>
-              <label class="demo-toggle">
-                <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
-                <span class="demo-toggle-slider"></span>
-              </label>
-              <span class="demo-toggle-label" id="realDataLabel">Real</span>
-            </div>
-            <div class="demo-mode-indicator" id="demoModeIndicator">
-              <span class="indicator-dot"></span>
-              <span id="modeText">Demo Mode</span>
-            </div>
+          <!-- Live Data Indicator (shown for real users) -->
+          <div id="liveDataIndicator" class="demo-mode-indicator real" style="display: none;">
+            <span class="indicator-dot"></span>
+            <span>+ LIVE DATA</span>
           </div>
         </div>
       </div>
@@ -3741,56 +3731,35 @@
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     const isAdmin = currentUser.role === 'admin';
 
-    // Initialize demo mode state from localStorage (default: demo mode ON)
-    let demoModeEnabled = localStorage.getItem('demoModeEnabled') !== 'false';
+    // Demo mode is now automatic based on user role/email
+    // Demo accounts: demo@revenueradar.com (demo_viewer), business@demo.revenueradar.com (demo_business)
+    const DEMO_ROLES = ['demo_viewer', 'demo_business'];
+    const DEMO_EMAILS = ['demo@revenueradar.com', 'business@demo.revenueradar.com'];
 
-    // Show toggle only for admin users
-    if (isAdmin) {
-      const toggleContainer = document.getElementById('demoToggleContainer');
-      if (toggleContainer) {
-        toggleContainer.style.display = 'flex';
+    // Check if this is a demo user
+    const isDemoUser = DEMO_ROLES.includes(currentUser.role) ||
+                       DEMO_EMAILS.includes(currentUser.email?.toLowerCase());
+
+    // Demo mode is automatic - no toggle needed
+    let demoModeEnabled = isDemoUser;
+
+    // Set filter mode based on user type
+    filters.mode = demoModeEnabled ? 'demo' : 'runs';
+
+    // Show "Live Data" indicator for real users only
+    if (!isDemoUser) {
+      const liveIndicator = document.getElementById('liveDataIndicator');
+      if (liveIndicator) {
+        liveIndicator.style.display = 'flex';
       }
-      // Initialize toggle state
-      const toggle = document.getElementById('demoModeToggle');
-      if (toggle) {
-        toggle.checked = !demoModeEnabled; // Checked = Real Data
-      }
-      updateDemoModeUI();
-      // Set initial filter mode based on demo state
-      filters.mode = demoModeEnabled ? 'demo' : 'runs';
     }
 
-    function toggleDemoMode() {
-      const toggle = document.getElementById('demoModeToggle');
-      demoModeEnabled = !toggle.checked; // Unchecked = Demo, Checked = Real
-      localStorage.setItem('demoModeEnabled', demoModeEnabled);
-      updateDemoModeUI();
-      // Update filters mode
-      filters.mode = demoModeEnabled ? 'demo' : 'runs';
-      // Reload dashboard with new mode
-      loadDashboard();
-      showToast(demoModeEnabled ? 'Switched to Demo Data' : 'Switched to Real Data', 'info');
-    }
+    // Log mode for debugging
+    console.log('[Dashboard] User mode:', isDemoUser ? 'DEMO' : 'LIVE', '| Email:', currentUser.email, '| Role:', currentUser.role);
 
-    function updateDemoModeUI() {
-      const indicator = document.getElementById('demoModeIndicator');
-      const modeText = document.getElementById('modeText');
-      const demoLabel = document.getElementById('demoModeLabel');
-      const realLabel = document.getElementById('realDataLabel');
-
-      if (!indicator) return;
-
-      if (demoModeEnabled) {
-        indicator.className = 'demo-mode-indicator demo';
-        modeText.textContent = 'Demo Mode';
-        demoLabel.classList.add('active');
-        realLabel.classList.remove('active');
-      } else {
-        indicator.className = 'demo-mode-indicator real';
-        modeText.textContent = 'Live Data';
-        demoLabel.classList.remove('active');
-        realLabel.classList.add('active');
-      }
+    // Helper function to check if demo mode is active (for use throughout the dashboard)
+    function isDemoMode() {
+      return demoModeEnabled;
     }
 
     // =====================================================
