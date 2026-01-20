@@ -306,6 +306,31 @@ class EmailCheckService {
   logEmailProcessing(data) {
     const database = db.getDatabase();
 
+    // Convert Date objects to ISO strings for SQLite
+    let receivedDate = data.receivedDate;
+    if (receivedDate instanceof Date) {
+      receivedDate = receivedDate.toISOString();
+    } else if (receivedDate && typeof receivedDate === 'object') {
+      // Handle other date-like objects
+      try {
+        receivedDate = new Date(receivedDate).toISOString();
+      } catch (e) {
+        receivedDate = String(receivedDate);
+      }
+    }
+
+    // Ensure fromAddress is a string (mailparser can return objects)
+    let fromAddress = data.fromAddress;
+    if (fromAddress && typeof fromAddress === 'object') {
+      if (fromAddress.text) {
+        fromAddress = fromAddress.text;
+      } else if (fromAddress.value && Array.isArray(fromAddress.value)) {
+        fromAddress = fromAddress.value.map(v => v.address || v.name || String(v)).join(', ');
+      } else {
+        fromAddress = JSON.stringify(fromAddress);
+      }
+    }
+
     database.prepare(`
       INSERT INTO email_processing_log (
         monitor_id, check_run_uuid, uidvalidity, uid, message_id_header,
@@ -321,9 +346,9 @@ class EmailCheckService {
       data.uid || null,
       data.messageIdHeader || null,
       data.emailUid || null,
-      data.subject || null,
-      data.fromAddress || null,
-      data.receivedDate || null,
+      data.subject ? String(data.subject).substring(0, 500) : null,
+      fromAddress ? String(fromAddress).substring(0, 500) : null,
+      receivedDate || null,
       data.status || 'found',
       data.skipReason || null,
       data.attachmentsCount || 0,
@@ -333,7 +358,7 @@ class EmailCheckService {
       data.invoicesCreated || 0,
       data.invoiceIds || null,
       data.processingTimeMs || 0,
-      data.errorMessage || null
+      data.errorMessage ? String(data.errorMessage).substring(0, 1000) : null
     );
   }
 
@@ -987,19 +1012,22 @@ class EmailCheckService {
       for (const attachment of attachments) {
         try {
           // Create ingestion run
-          const runId = `email-${monitor.id}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+          const runIdText = `email-${monitor.id}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
-          database.prepare(`
+          const insertResult = database.prepare(`
             INSERT INTO ingestion_runs (run_id, user_id, account_name, vendor_name, file_name, file_size, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'processing', datetime('now'))
           `).run(
-            runId,
+            runIdText,
             user.id,
             monitor.account_name || monitor.name || 'Email Import',
             email.from?.split('@')[1]?.split('>')[0] || 'Unknown Vendor',
             attachment.filename || 'attachment.pdf',
             attachment.size || 0
           );
+
+          // Get the auto-increment ID for foreign key references
+          const runIdInt = insertResult.lastInsertRowid;
 
           // Try to process with universal invoice processor
           let processed = false;
@@ -1019,13 +1047,13 @@ class EmailCheckService {
             );
 
             if (result.ok && result.items && result.items.length > 0) {
-              // Store invoice items
+              // Store invoice items - use INTEGER id, not TEXT run_id
               for (const item of result.items) {
                 database.prepare(`
                   INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
                   VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
                 `).run(
-                  runId,
+                  runIdInt,
                   item.description || 'Item',
                   item.quantity || 1,
                   item.unitPriceCents || 0,
@@ -1042,11 +1070,11 @@ class EmailCheckService {
           // Update run status
           database.prepare(`
             UPDATE ingestion_runs SET status = ?, completed_at = datetime('now') WHERE run_id = ?
-          `).run(processed ? 'completed' : 'failed', runId);
+          `).run(processed ? 'completed' : 'failed', runIdText);
 
           if (processed) {
             invoicesCreated++;
-            invoiceIds.push(runId);
+            invoiceIds.push(runIdText);
           }
 
         } catch (attErr) {
