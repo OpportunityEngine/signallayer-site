@@ -2940,6 +2940,8 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
 
     return res.status(200).json(unified);
   } catch (err) {
+    const errorMessage = String(err?.message || err);
+
     const unified = {
       ok: false,
       run_id,
@@ -2951,8 +2953,33 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       validation: { attempted: false, ok: false, errors: [] },
       legacy: null,
       debug: { version: VERSION },
-      error: { message: String(err?.message || err), stack: String(err?.stack || "") }
+      error: { message: errorMessage, stack: String(err?.stack || "") }
     };
+
+    // Store failed ingestion in database for tracking
+    try {
+      const userId = req.user?.id || null;
+      const fileName = req.body?.fileName || req.body?.file_name || 'Unknown';
+      const vendorName = req.body?.vendor?.name || req.body?.vendorName || 'Unknown';
+      const accountName = req.body?.accountName || req.body?.customer?.name || null;
+
+      db.getDatabase().prepare(`
+        INSERT INTO ingestion_runs (
+          run_id, user_id, account_name, vendor_name,
+          file_name, status, error_message, created_at
+        ) VALUES (?, ?, ?, ?, ?, 'failed', ?, datetime('now'))
+      `).run(
+        run_id,
+        userId,
+        accountName,
+        vendorName,
+        fileName,
+        errorMessage
+      );
+      console.log(`[INGEST] ❌ Stored failed ingestion: ${run_id} - ${errorMessage.slice(0, 100)}`);
+    } catch (dbErr) {
+      console.error('[INGEST] Failed to store failed ingestion:', dbErr.message);
+    }
 
     try {
       writeRunJson(run_id, "ingest_error.json", unified);

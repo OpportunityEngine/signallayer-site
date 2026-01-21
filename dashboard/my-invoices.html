@@ -280,6 +280,73 @@
       color: #ef4444;
     }
 
+    /* Error message bar for failed invoices */
+    .error-row {
+      background: rgba(239, 68, 68, 0.08) !important;
+    }
+
+    .error-message-bar {
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .error-message-bar .error-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .error-message-bar .error-icon svg {
+      width: 12px;
+      height: 12px;
+      color: #ef4444;
+    }
+
+    .error-message-bar .error-content {
+      flex: 1;
+    }
+
+    .error-message-bar .error-title {
+      color: #fca5a5;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .error-message-bar .error-text {
+      color: #94a3b8;
+    }
+
+    .error-message-bar .error-help {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(239, 68, 68, 0.15);
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .error-message-bar .error-help a {
+      color: #fbbf24;
+      text-decoration: none;
+    }
+
+    .error-message-bar .error-help a:hover {
+      text-decoration: underline;
+    }
+
     .action-btn {
       padding: 8px 12px;
       border-radius: 8px;
@@ -558,11 +625,18 @@
         const statusIcon = invoice.status === 'completed' ? '✓' :
                           invoice.status === 'processing' ? '⟳' : '✕';
 
+        const isFailed = invoice.status === 'failed';
+        const rowClass = isFailed ? 'error-row' : '';
+
+        // Create user-friendly error message
+        const errorBar = isFailed ? createErrorMessageBar(invoice) : '';
+
         return `
-          <tr data-id="${invoice.id}" data-vendor="${(invoice.vendorName || '').toLowerCase()}" data-status="${invoice.status}">
+          <tr class="${rowClass}" data-id="${invoice.id}" data-vendor="${(invoice.vendorName || '').toLowerCase()}" data-status="${invoice.status}">
             <td>
               <div class="invoice-name">${escapeHtml(invoice.fileName)}</div>
               <div class="invoice-meta">${escapeHtml(invoice.accountName || 'No account')}</div>
+              ${errorBar}
             </td>
             <td>${escapeHtml(invoice.vendorName || 'Unknown')}</td>
             <td>
@@ -640,6 +714,63 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // Create user-friendly error message for failed invoices (6th grade reading level)
+    function createErrorMessageBar(invoice) {
+      const errorMessage = invoice.errorMessage || '';
+      const fileName = invoice.fileName || 'this file';
+
+      // Determine the error type and create friendly message
+      let friendlyTitle = "We couldn't read this invoice";
+      let friendlyText = "Something went wrong when we tried to read the file.";
+      let helpText = "";
+
+      // Check for common error patterns and explain in simple terms
+      if (errorMessage.toLowerCase().includes('pdf') || errorMessage.toLowerCase().includes('parse')) {
+        friendlyTitle = "PDF file problem";
+        friendlyText = "We had trouble reading this PDF. The file might be damaged, or it might be a scanned image instead of text.";
+        helpText = "Try re-saving the PDF or use a different version of the invoice.";
+      } else if (errorMessage.toLowerCase().includes('empty') || errorMessage.toLowerCase().includes('no text')) {
+        friendlyTitle = "No text found";
+        friendlyText = "This file looks empty or is a picture-only PDF. We need text to read the invoice.";
+        helpText = "Make sure your PDF has real text, not just a scanned picture.";
+      } else if (errorMessage.toLowerCase().includes('timeout') || errorMessage.toLowerCase().includes('time')) {
+        friendlyTitle = "Took too long";
+        friendlyText = "The file took too long to process. It might be very large or complex.";
+        helpText = "Try uploading a smaller file or wait a few minutes and try again.";
+      } else if (errorMessage.toLowerCase().includes('format') || errorMessage.toLowerCase().includes('invalid')) {
+        friendlyTitle = "Wrong file type";
+        friendlyText = "This file isn't in a format we can read. We work best with PDF invoices.";
+        helpText = "Please upload a PDF version of your invoice.";
+      } else if (errorMessage.toLowerCase().includes('size') || errorMessage.toLowerCase().includes('large')) {
+        friendlyTitle = "File too big";
+        friendlyText = "This file is too large for us to process right now.";
+        helpText = "Try uploading a smaller version of the file (under 10MB works best).";
+      } else if (errorMessage.toLowerCase().includes('extract') || errorMessage.toLowerCase().includes('items')) {
+        friendlyTitle = "Couldn't find invoice details";
+        friendlyText = "We found the file but couldn't find the prices and items on the invoice.";
+        helpText = "This invoice format might be new to us. We're always improving!";
+      } else if (!errorMessage) {
+        friendlyTitle = "Processing failed";
+        friendlyText = "We weren't able to read this invoice. This sometimes happens with unusual file formats.";
+        helpText = "Try uploading the invoice again, or use a different file format.";
+      }
+
+      return \`
+        <div class="error-message-bar">
+          <div class="error-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div class="error-content">
+            <div class="error-title">\${friendlyTitle}</div>
+            <div class="error-text">\${friendlyText}</div>
+            \${helpText ? \`<div class="error-help">\${helpText}</div>\` : ''}
+          </div>
+        </div>
+      \`;
     }
 
     function showToast(message, type = 'info') {

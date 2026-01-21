@@ -924,6 +924,19 @@ class EmailIMAPService {
       };
     } catch (error) {
       console.error('[EMAIL IMAP] Ingest error:', error);
+
+      // Update the ingestion run to failed status with error message
+      try {
+        db.getDatabase().prepare(`
+          UPDATE ingestion_runs
+          SET status = 'failed', error_message = ?, completed_at = CURRENT_TIMESTAMP
+          WHERE run_id = ?
+        `).run(error.message, runId);
+        console.log(`[EMAIL IMAP] ❌ Marked ingestion as failed: ${runId}`);
+      } catch (dbError) {
+        console.error('[EMAIL IMAP] Failed to update failed status:', dbError.message);
+      }
+
       return { success: false, error: error.message };
     }
   }
