@@ -12,7 +12,30 @@
  * - Opportunity detection (price anomalies, upsell signals)
  * - Vendor/customer extraction
  * - Smart categorization
+ *
+ * V2 Parser (INVOICE_PARSER_V2=true):
+ * - State-machine based vendor-specific parsing
+ * - Robust totals detection (scan from bottom)
+ * - Validation scoring to choose best parse
+ * - Better handling of multi-page invoices
  */
+
+// Feature flag for V2 parser
+const USE_PARSER_V2 = process.env.INVOICE_PARSER_V2 === 'true';
+
+// V2 Parser import (lazy loaded)
+let parserV2 = null;
+function getParserV2() {
+  if (!parserV2) {
+    try {
+      parserV2 = require('./services/invoice_parsing_v2');
+    } catch (e) {
+      console.error('[PARSER] Failed to load V2 parser:', e.message);
+      parserV2 = { parseInvoiceText: null };
+    }
+  }
+  return parserV2;
+}
 
 // ============ MAIN PARSING FUNCTION ============
 
@@ -40,6 +63,60 @@ function parseInvoice(text, options = {}) {
     };
   }
 
+  // ========== V2 PARSER (if enabled) ==========
+  if (USE_PARSER_V2 || options.useV2) {
+    try {
+      const v2 = getParserV2();
+      if (v2.parseInvoiceText) {
+        console.log('[PARSER] Using V2 parser');
+        const v2Result = v2.parseInvoiceText(text, { debug: true });
+
+        if (v2Result.success && v2Result.confidence?.score >= 50) {
+          // Convert V2 result to V1 format for compatibility
+          const v1Compat = v2.convertToV1Format(v2Result);
+
+          // Add opportunities detection using V1 logic
+          const cleanedText = normalizeText(text);
+          const opportunities = detectOpportunities(v1Compat.items, v1Compat.totals, v1Compat.vendor, cleanedText);
+
+          console.log(`[PARSER V2] Score: ${v2Result.confidence.score}, Total: $${(v2Result.totals.totalCents/100).toFixed(2)}, Items: ${v2Result.lineItems.length}`);
+          if (v2Result.confidence.issues?.length > 0) {
+            console.log(`[PARSER V2] Issues: ${v2Result.confidence.issues.join(', ')}`);
+          }
+
+          return {
+            ok: true,
+            parserVersion: 'v2',
+            items: v1Compat.items,
+            totals: v1Compat.totals,
+            vendor: v1Compat.vendor,
+            customer: { name: v1Compat.accountName },
+            metadata: {
+              invoiceNumber: v1Compat.invoiceNumber,
+              invoiceDate: v1Compat.invoiceDate
+            },
+            employees: v1Compat.employees,
+            accountName: v1Compat.accountName,
+            confidence: {
+              overall: v2Result.confidence.score / 100,
+              items: v2Result.lineItems.length > 0 ? 0.8 : 0.2,
+              totals: v2Result.totals.totalCents > 0 ? 0.9 : 0.3,
+              parties: v1Compat.vendor?.name ? 0.7 : 0.3
+            },
+            opportunities: opportunities,
+            parseTimeMs: Date.now() - startTime,
+            v2Debug: v2Result.debug
+          };
+        } else {
+          console.log(`[PARSER V2] Score too low (${v2Result.confidence?.score || 0}), falling back to V1`);
+        }
+      }
+    } catch (e) {
+      console.error('[PARSER V2] Error, falling back to V1:', e.message);
+    }
+  }
+
+  // ========== V1 PARSER (original) ==========
   // Clean and normalize text
   const cleanedText = normalizeText(text);
 
