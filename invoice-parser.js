@@ -623,7 +623,8 @@ function extractVendorSpecificFormat(text) {
 
     // 1. Extract employee subtotals (most reliable for uniform services)
     // Pattern: "LEVI HENDRIX SUBTOTAL - 18.46" or "0001 LEVI HENDRIX SUBTOTAL - 18.46"
-    const subtotalPattern = /([A-Z][A-Z\s,\.\-']+?)\s+SUBTOTAL\s*-?\s*([\d,\.]+)/g;
+    // Use [A-Z ,.'-] without \s to avoid matching across newlines
+    const subtotalPattern = /([A-Z][A-Z ,.'\-]+?)\s+SUBTOTAL\s*-?\s*([\d,\.]+)/g;
     let match;
     const seenEmployees = new Set();
 
@@ -633,12 +634,26 @@ function extractVendorSpecificFormat(text) {
 
       // Skip department/bulk subtotals and already-seen employees
       const empNameUpper = empName.toUpperCase();
-      if (subtotal > 0 && empName.length >= 3 &&
+      // Must be a valid employee name: typically 2-3 words, each 2+ chars
+      // Examples: "MARK HOWELL", "JOHN SMITH JR", "MARY O'BRIEN"
+      const nameParts = empNameUpper.trim().split(/\s+/).filter(p => p.length >= 2);
+      const looksLikeEmployee = nameParts.length >= 2 && nameParts.length <= 4 &&
+                                 empName.length <= 40;  // Employee names shouldn't be too long
+
+      if (subtotal > 0 && empName.length >= 3 && looksLikeEmployee &&
           !empNameUpper.includes('INVOICE') &&
           !empNameUpper.includes('BULK') &&
           !empNameUpper.includes('FR DEPT') &&
+          !empNameUpper.includes('IT SUBTOTAL') &&
+          !empNameUpper.includes('CORPORATION') &&
+          !empNameUpper.includes('COMPANY') &&
+          !empNameUpper.includes('INC') &&
+          !empNameUpper.includes('LLC') &&
+          !empNameUpper.includes('CINTAS') &&
           !empNameUpper.startsWith('IT ') &&
           !empNameUpper.startsWith('DEPT') &&
+          !empNameUpper.startsWith('N ') &&
+          !/^[A-Z]\s+[A-Z]{1,3}$/.test(empNameUpper) && // Skip things like "N IT"
           !seenEmployees.has(empNameUpper)) {
         seenEmployees.add(empNameUpper);
         items.push({
@@ -857,10 +872,22 @@ function extractTotals(text) {
     }
   }
 
-  // Subtotal
-  const subtotalMatch = text.match(/(?:sub[\s\-]?total)[:\s]*\$?([\d,]+\.?\d{0,2})/i);
-  if (subtotalMatch) {
-    totals.subtotalCents = parsePrice(subtotalMatch[1]);
+  // Subtotal - look for standalone SUBTOTAL (not IT SUBTOTAL or employee SUBTOTAL)
+  // For Cintas, we want the final "SUBTOTAL 2248.11" not "IT SUBTOTAL 22.75" or department subtotals
+  // Use matchAll to find ALL subtotal values and keep the largest (which is typically the final invoice subtotal)
+  const subtotalPatterns = [
+    /(?:^|\n)\s*SUBTOTAL\s*\$?([\d,]+\.?\d{0,2})/gim,  // SUBTOTAL at line start (global)
+    /(?:^|\n)\s*SUB[\s\-]?TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/gim  // SUB-TOTAL or SUB TOTAL at line start (global)
+  ];
+  for (const pattern of subtotalPatterns) {
+    const matches = [...text.matchAll(pattern)];
+    for (const match of matches) {
+      const subtotal = parsePrice(match[1]);
+      // Keep the larger subtotal (for multi-section invoices, the final total is usually largest)
+      if (subtotal > totals.subtotalCents) {
+        totals.subtotalCents = subtotal;
+      }
+    }
   }
 
   // Tax (with optional rate)

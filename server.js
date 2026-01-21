@@ -2693,18 +2693,28 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
 
       // Store ingestion run in database
       const fileName = body.fileName || body.file_name || body.source_ref?.value || 'upload';
+
+      // Get the invoice total from parser or canonical data
+      // Priority: parser total > canonical total > sum of items
+      const invoiceTotalCents = parsedInvoice?.totals?.totalCents ||
+                                 canonical?.total_amount_cents ||
+                                 (canonical?.line_items || []).reduce((sum, item) => sum + (item.total_price?.amount || 0), 0);
+
+      console.log(`[INGEST] Invoice total: $${(invoiceTotalCents/100).toFixed(2)} (parser: $${((parsedInvoice?.totals?.totalCents || 0)/100).toFixed(2)})`);
+
       const runRecord = db.getDatabase().prepare(`
         INSERT INTO ingestion_runs (
           run_id, user_id, account_name, vendor_name,
-          file_name, file_size, status, completed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'completed', datetime('now'))
+          file_name, file_size, status, completed_at, invoice_total_cents
+        ) VALUES (?, ?, ?, ?, ?, ?, 'completed', datetime('now'), ?)
       `).run(
         run_id,
         userId,
         accountName || 'Unknown',
         vendorName,
         fileName,
-        JSON.stringify(body).length
+        JSON.stringify(body).length,
+        invoiceTotalCents
       );
 
       const internalRunId = runRecord.lastInsertRowid;
