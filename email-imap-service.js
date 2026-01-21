@@ -504,7 +504,7 @@ class EmailIMAPService {
     }
 
     // Default behavior: Check subject and attachment names for invoice keywords
-    const subject = (emailData.subject || '').toLowerCase();
+    // Note: 'subject' already defined at top of function in dev filter
     const attachmentNames = invoiceAttachments.map(a => (a.filename || '').toLowerCase()).join(' ');
     const searchText = subject + ' ' + attachmentNames;
 
