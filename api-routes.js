@@ -528,7 +528,11 @@ router.get('/uploads/recent', (req, res) => {
         ir.created_at,
         ir.completed_at,
         (SELECT COUNT(*) FROM invoice_items WHERE run_id = ir.id) as line_item_count,
-        (SELECT SUM(total_cents) FROM invoice_items WHERE run_id = ir.id) as total_cents
+        -- Use stored invoice_total_cents (parser-extracted total) with fallback to sum of items
+        COALESCE(
+          NULLIF(ir.invoice_total_cents, 0),
+          (SELECT SUM(total_cents) FROM invoice_items WHERE run_id = ir.id)
+        ) as total_cents
       FROM ingestion_runs ir
       WHERE ir.user_id = ?
       ORDER BY ir.created_at DESC

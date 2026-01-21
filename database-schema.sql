@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS ingestion_runs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     completed_at DATETIME,
     error_message TEXT,
+    invoice_total_cents INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 CREATE TABLE IF NOT EXISTS invoice_items (

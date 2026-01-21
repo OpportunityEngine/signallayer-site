@@ -449,6 +449,28 @@ class EmailIMAPService {
    * @returns {boolean} True if email is invoice-related
    */
   isInvoiceEmail(emailData, monitor) {
+    // ===== TEMPORARY DEVELOPMENT FILTER =====
+    // Only process emails from taylorray379@gmail.com with "invoice" in the subject
+    // TODO: Remove this filter once invoice extraction accuracy is confirmed
+    const DEV_ALLOWED_SENDER = 'taylorray379@gmail.com';
+    const DEV_REQUIRE_SUBJECT_KEYWORD = 'invoice';
+
+    const fromAddress = (emailData.from || '').toLowerCase();
+    const subject = (emailData.subject || '').toLowerCase();
+
+    if (!fromAddress.includes(DEV_ALLOWED_SENDER)) {
+      console.log(`[EMAIL IMAP] DEV FILTER: Skipping email from "${emailData.from}" - only processing emails from ${DEV_ALLOWED_SENDER}`);
+      return false;
+    }
+
+    if (!subject.includes(DEV_REQUIRE_SUBJECT_KEYWORD)) {
+      console.log(`[EMAIL IMAP] DEV FILTER: Skipping email "${emailData.subject}" - subject must contain "${DEV_REQUIRE_SUBJECT_KEYWORD}"`);
+      return false;
+    }
+
+    console.log(`[EMAIL IMAP] DEV FILTER: ✓ Email from ${DEV_ALLOWED_SENDER} with "invoice" in subject - processing`);
+    // ===== END TEMPORARY DEVELOPMENT FILTER =====
+
     // Check if email has attachments
     if (emailData.attachments.length === 0) {
       console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no attachments`);
@@ -860,12 +882,13 @@ class EmailIMAPService {
         console.error('[EMAIL IMAP] Rules engine error:', rulesError.message);
       }
 
-      // Mark run as complete
+      // Mark run as complete and store the parser-extracted total
+      // Use totalCents which is from parser's extracted total (not sum of items)
       db.getDatabase().prepare(`
         UPDATE ingestion_runs
-        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP, invoice_total_cents = ?
         WHERE run_id = ?
-      `).run(runId);
+      `).run(totalCents, runId);
 
       // Update user's invoice count if on trial
       if (user.is_trial) {

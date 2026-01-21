@@ -593,20 +593,36 @@ function cleanOCRDescription(desc) {
  * Strategy 0: Vendor-specific format extraction
  * Handles known vendor invoice formats (Cintas, Sysco, US Foods, etc.)
  * Uses the same logic approach as the browser extension for consistency
+ *
+ * IMPORTANT: For Cintas invoices, we ONLY extract employee subtotals (not individual
+ * garment line items) because the subtotals are roll-ups of the line items.
+ * Extracting both would cause double-counting.
  */
 function extractVendorSpecificFormat(text) {
   const items = [];
   const textLower = text.toLowerCase();
 
   // ===== CINTAS FORMAT =====
-  // Cintas uniform invoices have:
-  // 1. Employee subtotals (e.g., "CHARLES SHAW SUBTOTAL - 1.01")
-  // 2. Facility items (mats, mops, wipes)
-  // 3. Fee items (EMBLEM ADVANTAGE, UNIFORM ADVANTAGE, PREP ADVANTAGE, SERVICE CHARGE)
-  // 4. Department subtotals (BULK SUBTOTAL, IT SUBTOTAL)
+  // Cintas uniform invoices structure:
+  // - Individual garment items per employee (X59294, X61356, etc.)
+  // - Employee SUBTOTAL lines that SUM the garments above
+  // - UNIFORM ADVANTAGE fees (separate line items, NOT included in employee subtotals)
+  // - Department SUBTOTAL (sum of employee subtotals in that dept)
+  // - Final SUBTOTAL (before tax)
+  // - SALES TAX
+  // - TOTAL USD
+  //
+  // To avoid double-counting, we extract ONLY:
+  // 1. Employee subtotals (rolled-up uniform costs per employee)
+  // 2. UNIFORM ADVANTAGE fees (these are SEPARATE from employee subtotals)
+  // 3. Facility items (mats, mops - usually non-taxable "N" items)
+  //
+  // We DO NOT extract individual garment lines because they're already
+  // included in employee subtotals.
   if (textLower.includes('cintas') || /X\d{5}/.test(text)) {
 
     // 1. Extract employee subtotals (most reliable for uniform services)
+    // Pattern: "LEVI HENDRIX SUBTOTAL - 18.46" or "0001 LEVI HENDRIX SUBTOTAL - 18.46"
     const subtotalPattern = /([A-Z][A-Z\s,\.\-']+?)\s+SUBTOTAL\s*-?\s*([\d,\.]+)/g;
     let match;
     const seenEmployees = new Set();
@@ -615,11 +631,12 @@ function extractVendorSpecificFormat(text) {
       const empName = match[1].trim();
       const subtotal = parsePrice(match[2]);
 
-      // Skip if it's a department/bulk subtotal or already seen
+      // Skip department/bulk subtotals and already-seen employees
       const empNameUpper = empName.toUpperCase();
       if (subtotal > 0 && empName.length >= 3 &&
           !empNameUpper.includes('INVOICE') &&
           !empNameUpper.includes('BULK') &&
+          !empNameUpper.includes('FR DEPT') &&
           !empNameUpper.startsWith('IT ') &&
           !empNameUpper.startsWith('DEPT') &&
           !seenEmployees.has(empNameUpper)) {
@@ -635,8 +652,8 @@ function extractVendorSpecificFormat(text) {
       }
     }
 
-    // 2. Extract facility items (mats, mops, towels at the beginning before employee items)
-    // Pattern: X##### DESCRIPTION 01 F QTY PRICE TOTAL
+    // 2. Extract facility items (mats, mops, towels - usually marked with "N" for no tax)
+    // Pattern: X##### DESCRIPTION 01 F QTY PRICE TOTAL N
     const facilityPattern = /^(X\d{4,6})\s+([A-Z0-9\s\/\-"]+?)\s+01\s+F\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)\s+N$/gm;
     let facilityMatch;
     while ((facilityMatch = facilityPattern.exec(text)) !== null) {
@@ -663,33 +680,47 @@ function extractVendorSpecificFormat(text) {
       }
     }
 
-    // 3. Extract Cintas fee/advantage items
-    // These appear as: "EMBLEM ADVANTAGE 170.85 N" or "SERVICE CHARGE 4.18 N"
-    const feePatterns = [
-      /EMBLEM\s+ADVANTAGE\s+([\d,\.]+)/gi,
-      /UNIFORM\s+ADVANTAGE\s+([\d,\.]+)/gi,
-      /PREP\s+ADVANTAGE\s+([\d,\.]+)/gi,
-      /SERVICE\s+CHARGE\s+([\d,\.]+)/gi
+    // 3. Extract UNIFORM ADVANTAGE fees
+    // These appear as standalone lines: "UNIFORM ADVANTAGE 104.48 Y"
+    // They are SEPARATE from employee subtotals and must be included
+    // Note: There can be multiple UNIFORM ADVANTAGE entries (e.g., per department)
+    const uniformAdvPattern = /^\s*UNIFORM\s+ADVANTAGE\s+([\d,\.]+)\s+Y$/gm;
+    let uaMatch;
+    let uniformAdvTotal = 0;
+    while ((uaMatch = uniformAdvPattern.exec(text)) !== null) {
+      uniformAdvTotal += parsePrice(uaMatch[1]);
+    }
+    if (uniformAdvTotal > 0) {
+      items.push({
+        description: 'Uniform Advantage Fee',
+        quantity: 1,
+        unitPriceCents: uniformAdvTotal,
+        totalCents: uniformAdvTotal,
+        sku: null,
+        category: 'fees'
+      });
+    }
+
+    // 4. Extract other Cintas fee items (if present)
+    // EMBLEM ADVANTAGE, PREP ADVANTAGE, SERVICE CHARGE
+    const otherFeePatterns = [
+      { pattern: /^\s*EMBLEM\s+ADVANTAGE\s+([\d,\.]+)\s+Y$/gm, name: 'Emblem Advantage Fee' },
+      { pattern: /^\s*PREP\s+ADVANTAGE\s+([\d,\.]+)\s+Y$/gm, name: 'Prep Advantage Fee' },
+      { pattern: /^\s*SERVICE\s+CHARGE\s+([\d,\.]+)\s+Y$/gm, name: 'Service Charge' }
     ];
 
-    const feeNames = ['Emblem Advantage Fee', 'Uniform Advantage Fee', 'Prep Advantage Fee', 'Service Charge'];
-
-    for (let i = 0; i < feePatterns.length; i++) {
+    for (const { pattern, name } of otherFeePatterns) {
       let feeMatch;
-      let totalForFee = 0;
-      const pattern = feePatterns[i];
-      pattern.lastIndex = 0; // Reset regex
-
+      let feeTotal = 0;
       while ((feeMatch = pattern.exec(text)) !== null) {
-        totalForFee += parsePrice(feeMatch[1]);
+        feeTotal += parsePrice(feeMatch[1]);
       }
-
-      if (totalForFee > 0) {
+      if (feeTotal > 0) {
         items.push({
-          description: feeNames[i],
+          description: name,
           quantity: 1,
-          unitPriceCents: totalForFee,
-          totalCents: totalForFee,
+          unitPriceCents: feeTotal,
+          totalCents: feeTotal,
           sku: null,
           category: 'fees'
         });
@@ -833,13 +864,16 @@ function extractTotals(text) {
   }
 
   // Tax (with optional rate)
+  // Cintas uses "SALES TAX 91.38" format without dollar sign
   const taxPatterns = [
+    /SALES\s+TAX[:\s]*([\d,]+\.?\d{0,2})/i,  // Cintas format
     /(?:sales\s*tax|tax)\s*\(?(\d+\.?\d*)%?\)?[:\s]*\$?([\d,]+\.?\d{0,2})/i,
     /(?:tax|vat)[:\s]*\$?([\d,]+\.?\d{0,2})/i
   ];
   for (const pattern of taxPatterns) {
     const match = text.match(pattern);
     if (match) {
+      // Handle different capture group scenarios
       if (match[2]) {
         totals.taxRate = parseFloat(match[1]);
         totals.taxCents = parsePrice(match[2]);
