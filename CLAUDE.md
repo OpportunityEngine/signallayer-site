@@ -1,0 +1,198 @@
+# Revenue Radar / QuietSignal - Claude Code Guide
+
+## Quick Start
+
+### Start Server Locally
+```bash
+npm install
+node server.js
+# Server runs on http://localhost:3000
+```
+
+### Run Tests
+```bash
+npm test                          # All tests
+npm test -- --grep "invoice"      # Invoice parsing tests
+npm test -- --grep "parser"       # Parser-specific tests
+```
+
+### Database
+- SQLite: `database.sqlite` in project root
+- Schema/migrations in `database.js`
+- Key tables: `users`, `ingestion_runs`, `invoice_items`, `email_monitors`, `email_processing_log`
+
+---
+
+## Code Architecture
+
+### Invoice Parsing
+| Path | Purpose |
+|------|---------|
+| `/services/invoice_parsing_v2/` | V2 parser architecture (current) |
+| `/services/invoice_parsing_v2/index.js` | Main entry point |
+| `/services/invoice_parsing_v2/vendorDetector.js` | Vendor identification |
+| `/services/invoice_parsing_v2/parsers/cintasParser.js` | Cintas-specific parser |
+| `/services/invoice_parsing_v2/genericParser.js` | Fallback parser |
+| `/services/invoice_parsing_v2/validator.js` | Validation & confidence scoring |
+| `/services/invoice_parsing_v2/utils.js` | Shared utilities |
+| `/invoice-parser.js` | Legacy V1 parser |
+| `/universal-invoice-processor.js` | Orchestrates PDF extraction + parsing |
+
+### Email Autopilot
+| Path | Purpose |
+|------|---------|
+| `/email-imap-service.js` | Main IMAP service (OAuth + password) |
+| `/email-check-service.js` | Alternative service with detailed logging |
+| `/email-oauth-routes.js` | OAuth callback, monitor creation |
+| `/email-monitor-routes.js` | Monitor management API |
+| `/email-oauth-service.js` | Token refresh logic |
+
+### API Routes
+| Path | Purpose |
+|------|---------|
+| `/api-routes.js` | Main API (uploads, debug endpoints) |
+| `/server.js` | Express server, /ingest endpoint |
+
+### Dashboards
+| Path | Purpose |
+|------|---------|
+| `/dashboard/my-invoices.html` | User's invoice history |
+| `/dashboard/vp-view.html` | Business dashboard, email monitor status |
+| `/dashboard/business-analytics.html` | Analytics dashboard |
+
+---
+
+## Database Schema (Key Tables)
+
+```sql
+-- Users
+users(id, email, name, is_trial, trial_invoices_used)
+
+-- Invoice records
+ingestion_runs(id, run_id TEXT, user_id, account_name, vendor_name,
+               file_name, status, invoice_total_cents, error_message, created_at)
+
+-- Line items (run_id is INTEGER FK to ingestion_runs.id)
+invoice_items(id, run_id INTEGER, description, quantity, unit_price_cents,
+              total_cents, category)
+
+-- Email monitors
+email_monitors(id, user_id, created_by_user_id, email_address, oauth_provider,
+               invoices_created_count, is_active, require_invoice_keywords)
+
+-- Processing log
+email_processing_log(id, monitor_id, email_uid, status, skip_reason,
+                     invoices_created, error_message)
+```
+
+---
+
+## Definition of Done
+
+### Invoice Parsing Fix
+- [ ] Root cause identified with specific line numbers
+- [ ] Fix implemented with null-safety checks
+- [ ] Math validation passes (line items → subtotal, subtotal + tax → total)
+- [ ] Fixture added for the bug case
+- [ ] Regression tests pass
+- [ ] No new security issues (checked by regression-guardian)
+
+### Email Autopilot Fix
+- [ ] Root cause traced through data flow
+- [ ] skip_reason logged for debugging
+- [ ] user_id correctly set on all records
+- [ ] Fix verified with /api/debug/invoices endpoint
+- [ ] No invoice data loss
+- [ ] Regression tests pass
+
+---
+
+## Workflow Playbook (Using Subagents)
+
+### A) Debugging Email Autopilot Issues
+
+**Parallel approach for maximum speed:**
+
+1. **Main task** → Ask `email-autopilot-debugger` to instrument & fix
+2. **Background** → Run `test-runner` to reproduce with minimal script
+3. **After fix** → Have `regression-guardian` review diffs
+
+```
+# Example prompt:
+"Email monitor shows 6 invoices but My Invoices shows 0.
+- email-autopilot-debugger: trace the data flow and fix
+- test-runner (background): query database state and check logs
+- regression-guardian: review the fix for regressions"
+```
+
+### B) Improving Invoice Parsing Accuracy
+
+**Parallel approach:**
+
+1. **Main task** → Ask `invoice-parser-specialist` to implement fix
+2. **Background** → Have `data-fixture-curator` create test fixtures
+3. **Background** → Run `test-runner` for parsing tests only
+4. **After fix** → `regression-guardian` reviews
+
+```
+# Example prompt:
+"Cintas invoice showing wrong subtotal - picking department subtotal instead of invoice total.
+- invoice-parser-specialist: fix the bottom-up totals detection
+- data-fixture-curator (background): create fixture for this invoice
+- test-runner (background): run invoice parsing tests"
+```
+
+### C) General Code Changes
+
+After any significant changes:
+```
+# Run regression-guardian to review:
+"Review the last commit for regressions and security issues"
+```
+
+---
+
+## Background Agent Notes
+
+When running agents in background:
+- Use `run_in_background: true` in Task tool
+- Check output with `Read` tool on the output file
+- If agent hits permission prompt, it will pause
+- Resume with the agent ID to continue
+
+Example background usage:
+```
+# Start test-runner in background
+Task(test-runner, "Run npm test and report failures", run_in_background=true)
+
+# Continue working while tests run...
+
+# Check results later
+Read(output_file_path)
+```
+
+---
+
+## Debug Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/debug/invoices` | Show all users, invoice counts, monitor assignments |
+| `POST /api/debug/fix-all` | Auto-fix user_id mismatches |
+| `GET /api/email-monitors/:id/diagnose` | IMAP connection diagnostics |
+| `GET /api/uploads/recent` | User's invoices (auto-heals on load) |
+
+---
+
+## Environment Variables
+
+```bash
+# Required for email OAuth
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=...
+
+# Optional
+EMAIL_ENCRYPTION_KEY=...
+INVOICE_PARSER_V2=true  # Enable V2 parser
+```
