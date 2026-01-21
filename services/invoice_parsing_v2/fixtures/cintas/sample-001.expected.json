@@ -1,0 +1,93 @@
+{
+  "vendorKey": "cintas",
+  "parserVersion": "2.0.0",
+  "header": {
+    "vendorName": "Cintas Corporation",
+    "invoiceNumber": "1234567890",
+    "invoiceDate": "01/15/2025",
+    "accountNumber": "987654",
+    "customerName": "ACME MANUFACTURING INC",
+    "soldTo": "ACME MANUFACTURING INC",
+    "billTo": "ACME MANUFACTURING INC",
+    "shipTo": "ACME MANUFACTURING INC"
+  },
+  "totals": {
+    "subtotalCents": 9600,
+    "taxCents": 768,
+    "totalCents": 10368,
+    "currency": "USD"
+  },
+  "lineItems": [
+    {
+      "type": "item",
+      "sku": "X59294",
+      "description": "PANTS INDUST HW",
+      "qty": 2,
+      "unitPriceCents": 1250,
+      "lineTotalCents": 2500,
+      "taxFlag": "Y",
+      "employeeId": "0001"
+    },
+    {
+      "type": "item",
+      "sku": "X48172",
+      "description": "SHIRT WORK LS",
+      "qty": 3,
+      "unitPriceCents": 800,
+      "lineTotalCents": 2400,
+      "taxFlag": "Y",
+      "employeeId": "0001"
+    },
+    {
+      "type": "item",
+      "sku": "X59294",
+      "description": "PANTS INDUST HW",
+      "qty": 1,
+      "unitPriceCents": 1250,
+      "lineTotalCents": 1250,
+      "taxFlag": "Y",
+      "employeeId": "0002"
+    },
+    {
+      "type": "item",
+      "sku": "X48172",
+      "description": "SHIRT WORK LS",
+      "qty": 2,
+      "unitPriceCents": 800,
+      "lineTotalCents": 1600,
+      "taxFlag": "Y",
+      "employeeId": "0002"
+    },
+    {
+      "type": "fee",
+      "sku": null,
+      "description": "UNIFORM ADVANTAGE",
+      "qty": 1,
+      "unitPriceCents": 1550,
+      "lineTotalCents": 1550,
+      "taxFlag": "Y",
+      "employeeId": null
+    },
+    {
+      "type": "fee",
+      "sku": null,
+      "description": "ENERGY SURCHARGE",
+      "qty": 1,
+      "unitPriceCents": 300,
+      "lineTotalCents": 300,
+      "taxFlag": "N",
+      "employeeId": null
+    }
+  ],
+  "employees": [
+    {
+      "name": "JOHN DOE",
+      "subtotalCents": 4900
+    },
+    {
+      "name": "JANE SMITH",
+      "subtotalCents": 2850
+    }
+  ],
+  "departments": []
+}

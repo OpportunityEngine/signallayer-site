@@ -356,12 +356,37 @@ class EmailIMAPService {
           // Check if this email was already processed
           if (db.isEmailAlreadyProcessed(monitor.id, emailData.uid)) {
             console.log(`[EMAIL IMAP] Email UID ${emailData.uid} already processed, skipping`);
+            // Log the skip with reason
+            db.logEmailProcessing({
+              monitorId: monitor.id,
+              emailUid: emailData.uid,
+              subject: emailData.subject,
+              fromAddress: emailData.from,
+              receivedDate: emailData.receivedDate,
+              status: 'skipped',
+              attachmentsCount: emailData.attachments.length,
+              invoicesCreated: 0,
+              skipReason: 'already_processed'
+            });
             return resolve();
           }
 
           // Filter for invoice-related emails
-          if (!this.isInvoiceEmail(emailData, monitor)) {
-            console.log(`[EMAIL IMAP] Email doesn't match invoice criteria, skipping`);
+          const invoiceCheck = this.isInvoiceEmail(emailData, monitor);
+          if (!invoiceCheck.shouldProcess) {
+            console.log(`[EMAIL IMAP] Email doesn't match invoice criteria, skipping (reason: ${invoiceCheck.skipReason})`);
+            // Log the skip with reason
+            db.logEmailProcessing({
+              monitorId: monitor.id,
+              emailUid: emailData.uid,
+              subject: emailData.subject,
+              fromAddress: emailData.from,
+              receivedDate: emailData.receivedDate,
+              status: 'skipped',
+              attachmentsCount: emailData.attachments.length,
+              invoicesCreated: 0,
+              skipReason: invoiceCheck.skipReason
+            });
             return resolve();
           }
 
@@ -446,35 +471,13 @@ class EmailIMAPService {
    * Check if email matches invoice criteria
    * @param {Object} emailData - Parsed email data
    * @param {Object} monitor - Email monitor configuration
-   * @returns {boolean} True if email is invoice-related
+   * @returns {Object} { shouldProcess: boolean, skipReason: string|null }
    */
   isInvoiceEmail(emailData, monitor) {
-    // ===== TEMPORARY DEVELOPMENT FILTER =====
-    // Only process emails from taylorray379@gmail.com with "invoice" in the subject
-    // TODO: Remove this filter once invoice extraction accuracy is confirmed
-    const DEV_ALLOWED_SENDER = 'taylorray379@gmail.com';
-    const DEV_REQUIRE_SUBJECT_KEYWORD = 'invoice';
-
-    const fromAddress = (emailData.from || '').toLowerCase();
-    const subject = (emailData.subject || '').toLowerCase();
-
-    if (!fromAddress.includes(DEV_ALLOWED_SENDER)) {
-      console.log(`[EMAIL IMAP] DEV FILTER: Skipping email from "${emailData.from}" - only processing emails from ${DEV_ALLOWED_SENDER}`);
-      return false;
-    }
-
-    if (!subject.includes(DEV_REQUIRE_SUBJECT_KEYWORD)) {
-      console.log(`[EMAIL IMAP] DEV FILTER: Skipping email "${emailData.subject}" - subject must contain "${DEV_REQUIRE_SUBJECT_KEYWORD}"`);
-      return false;
-    }
-
-    console.log(`[EMAIL IMAP] DEV FILTER: ✓ Email from ${DEV_ALLOWED_SENDER} with "invoice" in subject - processing`);
-    // ===== END TEMPORARY DEVELOPMENT FILTER =====
-
     // Check if email has attachments
     if (emailData.attachments.length === 0) {
       console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no attachments`);
-      return false;
+      return { shouldProcess: false, skipReason: 'no_attachments' };
     }
 
     // Supported file types for invoice processing (PDF and images for scanned invoices)
@@ -492,7 +495,7 @@ class EmailIMAPService {
 
     if (invoiceAttachments.length === 0) {
       console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no PDF/image attachments (found: ${emailData.attachments.map(a => a.filename || a.contentType).join(', ')})`);
-      return false;
+      return { shouldProcess: false, skipReason: 'unsupported_attachments' };
     }
 
     console.log(`[EMAIL IMAP] ✓ Email "${emailData.subject}" has ${invoiceAttachments.length} processable attachment(s): ${invoiceAttachments.map(a => a.filename).join(', ')}`);
@@ -500,7 +503,7 @@ class EmailIMAPService {
     // Check if monitor requires keyword filtering (optional - allows processing all PDFs)
     if (monitor.require_invoice_keywords === false || monitor.require_invoice_keywords === 0) {
       // Process ALL emails with supported attachments (best for dedicated invoice email addresses)
-      return true;
+      return { shouldProcess: true, skipReason: null };
     }
 
     // Default behavior: Check subject and attachment names for invoice keywords
@@ -519,10 +522,10 @@ class EmailIMAPService {
 
     if (!hasInvoiceKeyword && !hasInvoiceFilePattern) {
       console.log(`[EMAIL IMAP] Skipping email "${emailData.subject}" - no invoice keywords found in subject or filenames`);
-      return false;
+      return { shouldProcess: false, skipReason: 'keyword_filter' };
     }
 
-    return true;
+    return { shouldProcess: true, skipReason: null };
   }
 
   /**
@@ -724,17 +727,22 @@ class EmailIMAPService {
       // Get user from monitor (use user_id first, fallback to created_by_user_id for backwards compatibility)
       const monitorUserId = monitor.user_id || monitor.created_by_user_id;
       console.log(`[EMAIL IMAP] Ingesting for monitor user_id=${monitorUserId} (monitor.user_id=${monitor.user_id}, monitor.created_by_user_id=${monitor.created_by_user_id})`);
+      console.log(`[USER_ID_TRACE] source=email_autopilot monitorId=${monitor.id} monitorUserId=${monitor.user_id} monitorCreatedBy=${monitor.created_by_user_id} resolvedUserId=${monitorUserId}`);
 
       const user = db.getDatabase().prepare('SELECT * FROM users WHERE id = ?').get(monitorUserId);
 
       if (!user) {
         console.error(`[EMAIL IMAP] User not found for monitor - user_id: ${monitorUserId}`);
+        console.log(`[USER_ID_TRACE] source=email_autopilot error=user_not_found attemptedUserId=${monitorUserId}`);
         return { success: false, error: `Monitor user not found (id: ${monitorUserId})` };
       }
 
       console.log(`[EMAIL IMAP] Using user: id=${user.id}, email=${user.email}`);
+      console.log(`[USER_ID_TRACE] source=email_autopilot monitorId=${monitor.id} finalUserId=${user.id} email=${user.email}`);
 
       // Store ingestion run and get the auto-increment ID for foreign key references
+      console.log(`[USER_ID_TRACE] source=email_autopilot action=insert_ingestion_run runId=${runId} userId=${user.id} email=${user.email} monitorId=${monitor.id}`);
+
       const insertResult = db.getDatabase().prepare(`
         INSERT INTO ingestion_runs (run_id, user_id, account_name, vendor_name, file_name, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'processing', CURRENT_TIMESTAMP)

@@ -250,8 +250,11 @@ Read(output_file_path)
 |----------|---------|
 | `GET /api/debug/invoices` | Show all users, invoice counts, monitor assignments |
 | `POST /api/debug/fix-all` | Auto-fix user_id mismatches |
+| `GET /api/debug/user-id-audit` | Audit user_id attribution (admin/manager only) |
 | `GET /api/email-monitors/:id/diagnose` | IMAP connection diagnostics |
 | `GET /api/uploads/recent` | User's invoices (auto-heals on load) |
+
+**Note:** All trace logs use `[USER_ID_TRACE]` prefix - see `USER_ID_TRACE_FORMAT.md` for details.
 
 ---
 

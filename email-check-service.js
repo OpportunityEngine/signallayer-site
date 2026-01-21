@@ -1014,6 +1014,9 @@ class EmailCheckService {
           // Create ingestion run
           const runIdText = `email-${monitor.id}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
+          console.log(`[USER_ID_TRACE] source=email_check_service monitorId=${monitor.id} monitorUserId=${monitor.user_id} finalUserId=${user.id} email=${user.email}`);
+          console.log(`[USER_ID_TRACE] source=email_check_service action=insert_ingestion_run runId=${runIdText} userId=${user.id} email=${user.email} monitorId=${monitor.id}`);
+
           const insertResult = database.prepare(`
             INSERT INTO ingestion_runs (run_id, user_id, account_name, vendor_name, file_name, file_size, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'processing', datetime('now'))

@@ -453,6 +453,151 @@ function initDatabase() {
       }
     }
 
+    // Migration: Add user_id guardrails (prevent NULL user_id on ingestion_runs)
+    try {
+      // Check if migration is needed by checking for NULL user_id values
+      const nullUserIds = db.prepare('SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL').get();
+
+      if (nullUserIds.count > 0) {
+        console.log(`🔄 Running user_id backfill migration (${nullUserIds.count} NULL values found)...`);
+
+        // Backfill email-based ingestion runs
+        const emailBackfilled = db.prepare(`
+          UPDATE ingestion_runs
+          SET user_id = (
+            SELECT em.user_id
+            FROM email_monitors em
+            WHERE em.id = CAST(
+              SUBSTR(
+                ingestion_runs.run_id,
+                7,
+                INSTR(SUBSTR(ingestion_runs.run_id, 7), '-') - 1
+              ) AS INTEGER
+            )
+            AND ingestion_runs.run_id LIKE 'email-%'
+          )
+          WHERE user_id IS NULL
+            AND run_id LIKE 'email-%'
+        `).run();
+
+        if (emailBackfilled.changes > 0) {
+          console.log(`   ✅ Backfilled ${emailBackfilled.changes} email-based invoice(s)`);
+        }
+
+        // Backfill upload-based ingestion runs to admin (user 1)
+        const uploadBackfilled = db.prepare(`
+          UPDATE ingestion_runs
+          SET user_id = 1
+          WHERE user_id IS NULL
+            AND run_id LIKE 'upload-%'
+        `).run();
+
+        if (uploadBackfilled.changes > 0) {
+          console.log(`   ✅ Backfilled ${uploadBackfilled.changes} upload-based invoice(s) to admin`);
+        }
+
+        // Catch-all: assign remaining NULL to admin
+        const remainingBackfilled = db.prepare(`
+          UPDATE ingestion_runs
+          SET user_id = 1
+          WHERE user_id IS NULL
+        `).run();
+
+        if (remainingBackfilled.changes > 0) {
+          console.log(`   ✅ Backfilled ${remainingBackfilled.changes} remaining invoice(s) to admin`);
+        }
+      }
+
+      // Check if triggers already exist
+      const triggers = db.prepare(`
+        SELECT name FROM sqlite_master
+        WHERE type = 'trigger'
+        AND name IN ('enforce_ingestion_runs_user_id', 'enforce_ingestion_runs_user_id_update')
+      `).all();
+
+      if (triggers.length < 2) {
+        // Create triggers to enforce user_id NOT NULL
+        db.exec(`
+          DROP TRIGGER IF EXISTS enforce_ingestion_runs_user_id;
+          CREATE TRIGGER enforce_ingestion_runs_user_id
+          BEFORE INSERT ON ingestion_runs
+          FOR EACH ROW
+          WHEN NEW.user_id IS NULL
+          BEGIN
+            SELECT RAISE(ABORT, 'ingestion_runs.user_id cannot be NULL - every invoice must have an owner');
+          END;
+        `);
+
+        db.exec(`
+          DROP TRIGGER IF EXISTS enforce_ingestion_runs_user_id_update;
+          CREATE TRIGGER enforce_ingestion_runs_user_id_update
+          BEFORE UPDATE ON ingestion_runs
+          FOR EACH ROW
+          WHEN NEW.user_id IS NULL
+          BEGIN
+            SELECT RAISE(ABORT, 'ingestion_runs.user_id cannot be NULL - every invoice must have an owner');
+          END;
+        `);
+
+        console.log('✅ Migration: Added user_id guardrail triggers on ingestion_runs');
+      }
+
+      // Verify migration success
+      const remainingNulls = db.prepare('SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL').get();
+      if (remainingNulls.count === 0) {
+        console.log('✅ Migration: All ingestion_runs have valid user_id');
+      } else {
+        console.log(`⚠️  Warning: ${remainingNulls.count} ingestion_runs still have NULL user_id`);
+      }
+
+      // Also backfill email_monitors.user_id if needed
+      const nullMonitorUserIds = db.prepare('SELECT COUNT(*) as count FROM email_monitors WHERE user_id IS NULL').get();
+      if (nullMonitorUserIds.count > 0) {
+        db.prepare(`
+          UPDATE email_monitors
+          SET user_id = COALESCE(created_by_user_id, 1)
+          WHERE user_id IS NULL
+        `).run();
+        console.log(`✅ Migration: Backfilled ${nullMonitorUserIds.count} email_monitors with user_id`);
+      }
+
+      // Add email_monitors guardrail triggers
+      const monitorTriggers = db.prepare(`
+        SELECT name FROM sqlite_master
+        WHERE type = 'trigger'
+        AND name IN ('enforce_email_monitors_user_id', 'enforce_email_monitors_user_id_update')
+      `).all();
+
+      if (monitorTriggers.length < 2) {
+        db.exec(`
+          DROP TRIGGER IF EXISTS enforce_email_monitors_user_id;
+          CREATE TRIGGER enforce_email_monitors_user_id
+          BEFORE INSERT ON email_monitors
+          FOR EACH ROW
+          WHEN NEW.user_id IS NULL
+          BEGIN
+            SELECT RAISE(ABORT, 'email_monitors.user_id cannot be NULL - every monitor must have an owner');
+          END;
+        `);
+
+        db.exec(`
+          DROP TRIGGER IF EXISTS enforce_email_monitors_user_id_update;
+          CREATE TRIGGER enforce_email_monitors_user_id_update
+          BEFORE UPDATE ON email_monitors
+          FOR EACH ROW
+          WHEN NEW.user_id IS NULL
+          BEGIN
+            SELECT RAISE(ABORT, 'email_monitors.user_id cannot be NULL - every monitor must have an owner');
+          END;
+        `);
+
+        console.log('✅ Migration: Added user_id guardrail triggers on email_monitors');
+      }
+
+    } catch (userIdMigrationError) {
+      console.log('⚠️  User ID guardrail migration (safe to ignore):', userIdMigrationError.message);
+    }
+
     console.log(`✅ Database initialized at ${DB_PATH}`);
 
     // Seed demo data if database is empty (only in development)
@@ -1727,13 +1872,14 @@ function createEmailMonitor(data) {
 
   const result = db.prepare(`
     INSERT INTO email_monitors (
-      account_name, monitor_name, email_address, imap_host, imap_port,
+      user_id, account_name, monitor_name, email_address, imap_host, imap_port,
       username, encrypted_password, industry, customer_type,
       check_interval_minutes, enable_cost_savings_detection,
       enable_duplicate_detection, enable_price_increase_alerts,
       enable_contract_validation, alert_email, created_by_user_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
+    data.createdByUserId,  // user_id (primary owner)
     data.accountName,
     data.monitorName || null,
     data.emailAddress,
@@ -1749,7 +1895,7 @@ function createEmailMonitor(data) {
     data.enablePriceIncreaseAlerts !== false ? 1 : 0,
     data.enableContractValidation || 0,
     data.alertEmail || null,
-    data.createdByUserId
+    data.createdByUserId  // created_by_user_id (for audit trail)
   );
 
   console.log(`[EMAIL MONITOR] Created monitor for ${data.emailAddress} (ID: ${result.lastInsertRowid})`);
@@ -2156,12 +2302,24 @@ function isEmailAlreadyProcessed(monitorId, emailUid) {
 }
 
 function logEmailProcessing(data) {
+  // Ensure skip_reason column exists (migration)
+  try {
+    const columns = db.prepare(`PRAGMA table_info(email_processing_log)`).all();
+    const hasSkipReason = columns.some(c => c.name === 'skip_reason');
+    if (!hasSkipReason) {
+      db.exec(`ALTER TABLE email_processing_log ADD COLUMN skip_reason TEXT`);
+      console.log('[DB] Added skip_reason column to email_processing_log');
+    }
+  } catch (e) {
+    // Column might already exist or table doesn't exist yet
+  }
+
   db.prepare(`
     INSERT INTO email_processing_log (
       monitor_id, email_uid, email_subject, from_address, received_date,
       status, attachments_count, invoices_created, invoice_ids,
-      processing_time_ms, error_message
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      processing_time_ms, error_message, skip_reason
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     data.monitorId,
     data.emailUid,
@@ -2173,7 +2331,8 @@ function logEmailProcessing(data) {
     data.invoicesCreated || 0,
     data.invoiceIds || null,
     data.processingTimeMs || 0,
-    data.errorMessage || null
+    data.errorMessage || null,
+    data.skipReason || null
   );
 }
 

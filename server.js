@@ -2681,10 +2681,24 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
     // ===== Revenue Radar Database Integration =====
     let revenueRadarData = { ingestion_run_id: null, opportunity_id: null, opportunity_detected: false };
     try {
-      // Get or create user from request header
-      const userEmail = req.headers['x-user-email'] || req.headers['user-email'] || 'demo@revenueradar.com';
-      const userName = userEmail.split('@')[0];
-      const userId = db.createOrUpdateUser(userEmail, userName, 'rep');
+      // Get user from JWT authentication (requireAuth middleware already validated this)
+      // Fallback to headers only for backwards compatibility with legacy extension
+      let userId, userEmail;
+
+      if (req.user && req.user.id) {
+        // Use authenticated user from JWT
+        userId = req.user.id;
+        userEmail = req.user.email;
+        console.log(`[INGEST] Using authenticated user: ${userEmail} (ID: ${userId})`);
+        console.log(`[USER_ID_TRACE] source=manual_upload userId=${userId} email=${userEmail} authMethod=jwt`);
+      } else {
+        // Fallback to header-based (legacy support)
+        userEmail = req.headers['x-user-email'] || req.headers['user-email'] || 'demo@revenueradar.com';
+        const userName = userEmail.split('@')[0];
+        userId = db.createOrUpdateUser(userEmail, userName, 'rep');
+        console.log(`[INGEST] Using legacy header auth: ${userEmail} (ID: ${userId})`);
+        console.log(`[USER_ID_TRACE] source=manual_upload userId=${userId} email=${userEmail} authMethod=header`);
+      }
 
       // Extract vendor name from canonical data
       const vendorName = (canonical.parties && canonical.parties.vendor && canonical.parties.vendor.name) ||
@@ -2701,6 +2715,8 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
                                  (canonical?.line_items || []).reduce((sum, item) => sum + (item.total_price?.amount || 0), 0);
 
       console.log(`[INGEST] Invoice total: $${(invoiceTotalCents/100).toFixed(2)} (parser: $${((parsedInvoice?.totals?.totalCents || 0)/100).toFixed(2)})`);
+
+      console.log(`[USER_ID_TRACE] source=manual_upload action=insert_ingestion_run runId=${run_id} userId=${userId} email=${userEmail}`);
 
       const runRecord = db.getDatabase().prepare(`
         INSERT INTO ingestion_runs (
@@ -2959,9 +2975,12 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
     // Store failed ingestion in database for tracking
     try {
       const userId = req.user?.id || null;
+      const userEmail = req.user?.email || req.headers['x-user-email'] || 'unknown';
       const fileName = req.body?.fileName || req.body?.file_name || 'Unknown';
       const vendorName = req.body?.vendor?.name || req.body?.vendorName || 'Unknown';
       const accountName = req.body?.accountName || req.body?.customer?.name || null;
+
+      console.log(`[USER_ID_TRACE] source=manual_upload action=insert_failed_ingestion_run runId=${run_id} userId=${userId} email=${userEmail}`);
 
       db.getDatabase().prepare(`
         INSERT INTO ingestion_runs (

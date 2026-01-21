@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "batch:pdf": "node tools/batchCapturePdf.js ./fixtures/invoices --ocr=false --maxPages=4",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/**/*.test.js --reporter spec --timeout 10000"
   },
   "keywords": [],
   "author": "",
@@ -38,5 +38,10 @@
     "sharp": "^0.34.5",
     "stripe": "^20.1.2",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "sinon": "^21.0.1"
   }
 }

@@ -623,10 +623,19 @@ router.get('/uploads/recent', (req, res) => {
 });
 
 // ===== DIAGNOSTIC ENDPOINT =====
-// GET /api/debug/invoices - Debug invoice visibility issues
+// GET /api/debug/invoices - Debug invoice visibility issues (Admin/Manager only)
 router.get('/debug/invoices', (req, res) => {
   try {
     const user = getUserContext(req);
+
+    // Require admin or manager role to view all users' data
+    if (user.role !== 'admin' && user.role !== 'manager') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin or manager access required'
+      });
+    }
+
     const database = db.getDatabase();
 
     // Get all users and their invoice counts
@@ -668,6 +677,59 @@ router.get('/debug/invoices', (req, res) => {
       LEFT JOIN users u2 ON em.created_by_user_id = u2.id
     `).all();
 
+    // Get skip_reason counts from email_processing_log
+    let skipReasonCounts = [];
+    try {
+      skipReasonCounts = database.prepare(`
+        SELECT
+          skip_reason,
+          COUNT(*) as count,
+          MAX(processed_at) as last_occurrence
+        FROM email_processing_log
+        WHERE skip_reason IS NOT NULL
+        GROUP BY skip_reason
+        ORDER BY count DESC
+      `).all();
+    } catch (e) {
+      // Table or column might not exist yet
+      skipReasonCounts = [{ error: 'skip_reason column not available yet' }];
+    }
+
+    // Get recent skipped emails with reasons
+    let recentSkippedEmails = [];
+    try {
+      recentSkippedEmails = database.prepare(`
+        SELECT
+          epl.id, epl.monitor_id, epl.email_uid, epl.email_subject,
+          epl.from_address, epl.skip_reason, epl.status, epl.processed_at,
+          em.email_address as monitor_email
+        FROM email_processing_log epl
+        LEFT JOIN email_monitors em ON epl.monitor_id = em.id
+        WHERE epl.status = 'skipped' OR epl.skip_reason IS NOT NULL
+        ORDER BY epl.processed_at DESC
+        LIMIT 20
+      `).all();
+    } catch (e) {
+      // Table might not exist yet
+      recentSkippedEmails = [];
+    }
+
+    // Get email processing summary by status
+    let emailProcessingSummary = {};
+    try {
+      const statuses = database.prepare(`
+        SELECT status, COUNT(*) as count
+        FROM email_processing_log
+        GROUP BY status
+      `).all();
+      emailProcessingSummary = statuses.reduce((acc, s) => {
+        acc[s.status || 'unknown'] = s.count;
+        return acc;
+      }, {});
+    } catch (e) {
+      emailProcessingSummary = { error: 'email_processing_log table not available' };
+    }
+
     res.json({
       success: true,
       currentUser: {
@@ -681,7 +743,12 @@ router.get('/debug/invoices', (req, res) => {
       },
       userInvoiceCounts,
       recentInvoices,
-      emailMonitors: monitors
+      emailMonitors: monitors,
+      emailProcessing: {
+        statusSummary: emailProcessingSummary,
+        skipReasonCounts: skipReasonCounts,
+        recentSkippedEmails: recentSkippedEmails
+      }
     });
   } catch (error) {
     console.error('[API] Debug invoices error:', error);
@@ -876,6 +943,104 @@ router.post('/debug/fix-invoice-ownership', (req, res) => {
     });
   } catch (error) {
     console.error('[API] Fix invoice ownership error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/debug/user-id-audit - Audit user_id attribution for all ingestion_runs (Admin only)
+router.get('/debug/user-id-audit', (req, res) => {
+  try {
+    const user = getUserContext(req);
+
+    // Require admin role to view sensitive attribution data
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
+    const database = db.getDatabase();
+
+    // Count of ingestion_runs by user_id
+    const countsByUserId = database.prepare(`
+      SELECT
+        user_id,
+        u.email,
+        u.name,
+        COUNT(*) as count,
+        MIN(ir.created_at) as first_invoice,
+        MAX(ir.created_at) as last_invoice
+      FROM ingestion_runs ir
+      LEFT JOIN users u ON ir.user_id = u.id
+      GROUP BY user_id
+      ORDER BY count DESC
+    `).all();
+
+    // Count with NULL user_id
+    const nullCount = database.prepare(`
+      SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL
+    `).get();
+
+    // Recent inserts with user_id info (last 50)
+    const recentInserts = database.prepare(`
+      SELECT
+        ir.id,
+        ir.run_id,
+        ir.user_id,
+        ir.account_name,
+        ir.vendor_name,
+        ir.file_name,
+        ir.status,
+        ir.created_at,
+        u.email as user_email,
+        u.name as user_name,
+        CASE
+          WHEN ir.run_id LIKE 'email-%' THEN 'email_autopilot'
+          WHEN ir.run_id LIKE 'ext-%' THEN 'browser_extension'
+          ELSE 'manual_upload'
+        END as ingest_source
+      FROM ingestion_runs ir
+      LEFT JOIN users u ON ir.user_id = u.id
+      ORDER BY ir.created_at DESC
+      LIMIT 50
+    `).all();
+
+    // Summary stats
+    const totalRuns = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
+    const uniqueUsers = database.prepare(`SELECT COUNT(DISTINCT user_id) as count FROM ingestion_runs WHERE user_id IS NOT NULL`).get();
+
+    // Breakdown by source
+    const sourceBreakdown = database.prepare(`
+      SELECT
+        CASE
+          WHEN run_id LIKE 'email-%' THEN 'email_autopilot'
+          WHEN run_id LIKE 'ext-%' THEN 'browser_extension'
+          ELSE 'manual_upload'
+        END as source,
+        COUNT(*) as count,
+        SUM(CASE WHEN user_id IS NULL THEN 1 ELSE 0 END) as null_user_count
+      FROM ingestion_runs
+      GROUP BY source
+    `).all();
+
+    res.json({
+      success: true,
+      summary: {
+        totalInvoices: totalRuns.count,
+        uniqueUsers: uniqueUsers.count,
+        nullUserIdCount: nullCount.count,
+        nullUserIdPercentage: totalRuns.count > 0
+          ? ((nullCount.count / totalRuns.count) * 100).toFixed(2) + '%'
+          : '0%'
+      },
+      sourceBreakdown,
+      countsByUserId,
+      recentInserts,
+      hint: 'Use [USER_ID_TRACE] logs to debug attribution issues'
+    });
+  } catch (error) {
+    console.error('[API] User ID audit error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1425,10 +1590,20 @@ router.post('/email-service/stop', (req, res) => {
 // ===================================================================
 
 /**
- * GET /api/admin/database-stats - Database statistics
+ * GET /api/admin/database-stats - Database statistics (Admin only)
  */
 router.get('/admin/database-stats', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const fs = require('fs');
     const dbPath = './revenue-radar.db';
 
@@ -1468,10 +1643,20 @@ router.get('/admin/database-stats', (req, res) => {
 });
 
 /**
- * GET /api/admin/usage-analytics - Usage analytics
+ * GET /api/admin/usage-analytics - Usage analytics (Admin only)
  */
 router.get('/admin/usage-analytics', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const database = db.getDatabase();
 
     // User counts
@@ -1545,10 +1730,20 @@ router.get('/admin/usage-analytics', (req, res) => {
 });
 
 /**
- * GET /api/admin/financial-metrics - Financial metrics
+ * GET /api/admin/financial-metrics - Financial metrics (Admin only)
  */
 router.get('/admin/financial-metrics', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const database = db.getDatabase();
 
     // Total savings detected
@@ -1602,10 +1797,20 @@ router.get('/admin/financial-metrics', (req, res) => {
 });
 
 /**
- * GET /api/admin/top-customers - Top customers by usage
+ * GET /api/admin/top-customers - Top customers by usage (Admin only)
  */
 router.get('/admin/top-customers', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const database = db.getDatabase();
     const limit = parseInt(req.query.limit) || 10;
 
@@ -1637,10 +1842,20 @@ router.get('/admin/top-customers', (req, res) => {
 });
 
 /**
- * GET /api/admin/system-alerts - System health alerts
+ * GET /api/admin/system-alerts - System health alerts (Admin only)
  */
 router.get('/admin/system-alerts', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const database = db.getDatabase();
     const alerts = [];
 
@@ -1710,9 +1925,19 @@ router.get('/admin/system-alerts', (req, res) => {
 // ERROR TRACKING ADMIN ENDPOINTS
 // =====================================================
 
-// GET /api/admin/errors - Get recent errors with plain English descriptions
+// GET /api/admin/errors - Get recent errors with plain English descriptions (Admin only)
 router.get('/admin/errors', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const ErrorHandler = require('./error-handler');
     const limit = parseInt(req.query.limit) || 20;
     const severity = req.query.severity || null;
@@ -1729,9 +1954,19 @@ router.get('/admin/errors', (req, res) => {
   }
 });
 
-// GET /api/admin/errors/summary - Get error summary statistics
+// GET /api/admin/errors/summary - Get error summary statistics (Admin only)
 router.get('/admin/errors/summary', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const ErrorHandler = require('./error-handler');
     const hours = parseInt(req.query.hours) || 24;
 
@@ -1747,9 +1982,19 @@ router.get('/admin/errors/summary', (req, res) => {
   }
 });
 
-// PUT /api/admin/errors/:id/resolve - Mark error as resolved
+// PUT /api/admin/errors/:id/resolve - Mark error as resolved (Admin only)
 router.put('/admin/errors/:id/resolve', (req, res) => {
   try {
+    const user = getUserContext(req);
+
+    // Require admin role
+    if (user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
     const ErrorHandler = require('./error-handler');
     const errorId = parseInt(req.params.id);
     const { resolvedBy, notes } = req.body;
