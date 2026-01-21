@@ -773,8 +773,10 @@ class EmailIMAPService {
       }
 
       // Use parsed items, fall back to legacy extraction if parser finds nothing
-      const items = parsedInvoice.items.length > 0
-        ? parsedInvoice.items.map(item => ({
+      // Ensure items is always an array (fix potential undefined access)
+      const parsedItems = parsedInvoice?.items || [];
+      const items = parsedItems.length > 0
+        ? parsedItems.map(item => ({
             description: item.description,
             quantity: item.quantity,
             unitPriceCents: item.unitPriceCents,
@@ -923,8 +925,8 @@ class EmailIMAPService {
         opportunitiesDetected,
         savingsDetectedCents: 0,
         // Include parser metadata for debugging/analytics
-        parserConfidence: parsedInvoice.confidence?.overall || 0,
-        extractionStrategy: parsedInvoice.items[0]?.extractionStrategy || 'unknown',
+        parserConfidence: parsedInvoice?.confidence?.overall || 0,
+        extractionStrategy: parsedItems[0]?.extractionStrategy || 'unknown',
         vendorDetected: vendorName,
         customerDetected: customerName
       };

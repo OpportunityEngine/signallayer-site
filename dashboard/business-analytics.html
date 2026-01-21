@@ -851,41 +851,32 @@
     <div class="hero-stats">
       <div class="hero-stat highlight">
         <div class="hero-stat-label">Total Savings (YTD)</div>
-        <div class="hero-stat-value green" id="totalSavings">$12,847</div>
-        <div class="hero-stat-change up">
-          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-          +23% vs last year
-        </div>
+        <div class="hero-stat-value green" id="totalSavings">$0</div>
+        <div class="hero-stat-change neutral" id="totalSavingsChange">Loading...</div>
         <div class="hero-stat-icon">💰</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">Invoices Analyzed</div>
-        <div class="hero-stat-value" id="invoicesAnalyzed">1,247</div>
-        <div class="hero-stat-change neutral">This month: 156</div>
+        <div class="hero-stat-value" id="invoicesAnalyzed">0</div>
+        <div class="hero-stat-change neutral" id="invoicesChange">Loading...</div>
         <div class="hero-stat-icon">📄</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">Issues Detected</div>
-        <div class="hero-stat-value gold" id="issuesDetected">89</div>
-        <div class="hero-stat-change down">
-          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-          -12% vs last month
-        </div>
+        <div class="hero-stat-value gold" id="issuesDetected">0</div>
+        <div class="hero-stat-change neutral" id="issuesChange">Loading...</div>
         <div class="hero-stat-icon">⚠️</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">Recovery Rate</div>
-        <div class="hero-stat-value blue" id="recoveryRate">94.2%</div>
-        <div class="hero-stat-change up">
-          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-          +5.8% improvement
-        </div>
+        <div class="hero-stat-value blue" id="recoveryRate">0.0%</div>
+        <div class="hero-stat-change neutral" id="recoveryChange">Loading...</div>
         <div class="hero-stat-icon">📈</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">Active Vendors</div>
-        <div class="hero-stat-value" id="activeVendors">34</div>
-        <div class="hero-stat-change neutral">8 need review</div>
+        <div class="hero-stat-value" id="activeVendors">0</div>
+        <div class="hero-stat-change neutral" id="vendorsChange">Loading...</div>
         <div class="hero-stat-icon">🏢</div>
       </div>
     </div>
@@ -902,45 +893,9 @@
         </div>
         <div class="tile-body scrollable-section" style="max-height: 320px; padding: 0;">
           <div id="activityFeed">
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">✓</div>
-              <div class="activity-content">
-                <div class="activity-title">Invoice #INV-2847 processed</div>
-                <div class="activity-meta">Sysco Foods • 2 min ago</div>
-              </div>
-              <div class="activity-amount">$1,247.50</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(239, 68, 68, 0.15);">⚠️</div>
-              <div class="activity-content">
-                <div class="activity-title">Price discrepancy flagged</div>
-                <div class="activity-meta">US Foods • 15 min ago</div>
-              </div>
-              <div class="activity-amount" style="color: #ef4444;">+$84.20</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(59, 130, 246, 0.15);">📧</div>
-              <div class="activity-content">
-                <div class="activity-title">Invoice received via email</div>
-                <div class="activity-meta">Cintas • 32 min ago</div>
-              </div>
-              <div class="activity-amount">$456.00</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">💰</div>
-              <div class="activity-content">
-                <div class="activity-title">Credit recovered</div>
-                <div class="activity-meta">Republic National • 1 hr ago</div>
-              </div>
-              <div class="activity-amount" style="color: #22c55e;">+$127.80</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon" style="background: rgba(251, 191, 36, 0.15);">🔄</div>
-              <div class="activity-content">
-                <div class="activity-title">Bulk import completed</div>
-                <div class="activity-meta">12 invoices • 2 hrs ago</div>
-              </div>
-              <div class="activity-amount">$8,420.00</div>
+            <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+              <div style="font-size: 32px; margin-bottom: 12px;">📄</div>
+              <div style="font-size: 13px;">Loading activity...</div>
             </div>
           </div>
         </div>
@@ -961,17 +916,17 @@
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
             <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
               <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">This Week</div>
-              <div style="font-size: 18px; font-weight: 700; color: #ffffff;">$12,400</div>
+              <div style="font-size: 18px; font-weight: 700; color: #ffffff;" id="forecastThisWeek">$0</div>
               <div style="font-size: 10px; color: #64748b;">Committed</div>
             </div>
             <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
               <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Next Week</div>
-              <div style="font-size: 18px; font-weight: 700; color: #fbbf24;">$14,800</div>
+              <div style="font-size: 18px; font-weight: 700; color: #fbbf24;" id="forecastNextWeek">$0</div>
               <div style="font-size: 10px; color: #64748b;">Projected</div>
             </div>
             <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
               <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">30 Days</div>
-              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">$52,200</div>
+              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;" id="forecast30Days">$0</div>
               <div style="font-size: 10px; color: #64748b;">Forecast</div>
             </div>
           </div>
@@ -986,36 +941,10 @@
           </div>
           <span class="tile-badge">AI Powered</span>
         </div>
-        <div class="tile-body">
-          <div style="margin-bottom: 12px; padding: 10px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px;">
-            <div style="font-size: 11px; color: #06b6d4; font-weight: 600; margin-bottom: 2px;">💡 Market Insight</div>
-            <div style="font-size: 12px; color: #e2e8f0;">Beef prices expected to rise 8-12% next quarter. Consider locking in current pricing.</div>
-          </div>
-          <div class="data-list">
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-info">
-                  <h4>Ground Beef 80/20</h4>
-                  <p>Your price: $4.29/lb</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">-8%</div>
-                <div class="change" style="color: #64748b;">vs market $4.65</div>
-              </div>
-            </div>
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-info">
-                  <h4>Chicken Breast 10lb</h4>
-                  <p>Your price: $52.50/case</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #ef4444;">+12%</div>
-                <div class="change" style="color: #64748b;">vs market $46.80</div>
-              </div>
-            </div>
+        <div class="tile-body" id="marketIntelBody">
+          <div style="text-align: center; padding: 30px 20px; color: var(--muted);">
+            <div style="font-size: 24px; margin-bottom: 8px;">🌍</div>
+            <div style="font-size: 13px;">Loading price intelligence...</div>
           </div>
         </div>
       </div>
@@ -1132,57 +1061,9 @@
         </div>
         <div class="tile-body scrollable-section" style="max-height: 280px;">
           <div class="data-list" id="locationPerformanceList">
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-icon" style="background: rgba(239, 68, 68, 0.15);">🔥</div>
-                <div class="data-row-info">
-                  <h4>Downtown Location</h4>
-                  <p>12 issues found • 156 invoices</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">$4,280</div>
-                <div class="change down">↓ Top Saver</div>
-              </div>
-            </div>
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-icon" style="background: rgba(245, 158, 11, 0.15);">⚠️</div>
-                <div class="data-row-info">
-                  <h4>Westside Branch</h4>
-                  <p>8 issues found • 98 invoices</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">$2,450</div>
-                <div class="change" style="color: #f59e0b;">Needs Review</div>
-              </div>
-            </div>
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-icon" style="background: rgba(34, 197, 94, 0.15);">✓</div>
-                <div class="data-row-info">
-                  <h4>Airport Store</h4>
-                  <p>5 issues found • 87 invoices</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">$1,517</div>
-                <div class="change down">On Track</div>
-              </div>
-            </div>
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-icon" style="background: rgba(59, 130, 246, 0.15);">📊</div>
-                <div class="data-row-info">
-                  <h4>North Campus</h4>
-                  <p>3 issues found • 64 invoices</p>
-                </div>
-              </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">$890</div>
-                <div class="change down">Improving</div>
-              </div>
+            <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+              <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
+              <div style="font-size: 13px;">Loading location data...</div>
             </div>
           </div>
         </div>
@@ -1200,40 +1081,40 @@
           <div class="grid-4" style="margin-bottom: 16px;">
             <div class="metric-mini">
               <div class="metric-mini-icon">🔍</div>
-              <div class="metric-mini-value" id="pipelineDetected">24</div>
+              <div class="metric-mini-value" id="pipelineDetected">0</div>
               <div class="metric-mini-label">Detected</div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">$12,400</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;" id="pipelineDetectedValue">$0</div>
             </div>
             <div class="metric-mini">
               <div class="metric-mini-icon">📋</div>
-              <div class="metric-mini-value" id="pipelineReviewing">12</div>
+              <div class="metric-mini-value" id="pipelineReviewing">0</div>
               <div class="metric-mini-label">Reviewing</div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">$6,800</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;" id="pipelineReviewingValue">$0</div>
             </div>
             <div class="metric-mini">
               <div class="metric-mini-icon">⚡</div>
-              <div class="metric-mini-value" id="pipelineProgress">8</div>
+              <div class="metric-mini-value" id="pipelineProgress">0</div>
               <div class="metric-mini-label">In Progress</div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">$4,200</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;" id="pipelineProgressValue">$0</div>
             </div>
             <div class="metric-mini" style="background: rgba(34, 197, 94, 0.1);">
               <div class="metric-mini-icon">✅</div>
-              <div class="metric-mini-value" style="color: #22c55e;" id="pipelineRecovered">47</div>
+              <div class="metric-mini-value" style="color: #22c55e;" id="pipelineRecovered">0</div>
               <div class="metric-mini-label">Recovered</div>
-              <div style="font-size: 11px; color: #22c55e; margin-top: 4px;">$8,247</div>
+              <div style="font-size: 11px; color: #22c55e; margin-top: 4px;" id="pipelineRecoveredValue">$0</div>
             </div>
           </div>
-          <div class="progress-bar" style="height: 10px; margin-top: 8px;">
+          <div class="progress-bar" style="height: 10px; margin-top: 8px;" id="pipelineProgressBar">
             <div style="display: flex; height: 100%;">
-              <div style="width: 26%; background: #f59e0b; border-radius: 5px 0 0 5px;"></div>
-              <div style="width: 14%; background: #3b82f6;"></div>
-              <div style="width: 9%; background: #8b5cf6;"></div>
-              <div style="width: 51%; background: #22c55e; border-radius: 0 5px 5px 0;"></div>
+              <div style="width: 25%; background: #f59e0b; border-radius: 5px 0 0 5px;"></div>
+              <div style="width: 25%; background: #3b82f6;"></div>
+              <div style="width: 25%; background: #8b5cf6;"></div>
+              <div style="width: 25%; background: #22c55e; border-radius: 0 5px 5px 0;"></div>
             </div>
           </div>
           <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #64748b;">
-            <span>Pipeline: $23,400</span>
-            <span>Recovery Rate: 94.2%</span>
+            <span id="pipelineTotal">Pipeline: $0</span>
+            <span id="pipelineRecoveryRate">Recovery Rate: 0%</span>
           </div>
         </div>
       </div>
@@ -1251,60 +1132,9 @@
         </div>
         <div class="tile-body scrollable-section" style="max-height: 320px;">
           <div id="vendorsList">
-            <div class="vendor-row">
-              <div class="vendor-rank">1</div>
-              <div class="vendor-info">
-                <div class="vendor-name">Sysco Foods</div>
-                <div class="vendor-meta">47 invoices • Last: 2 days ago</div>
-              </div>
-              <div class="vendor-spend">
-                <div class="vendor-amount">$24,850</div>
-                <div class="vendor-change" style="color: #ef4444;">↑ 8.2%</div>
-              </div>
-            </div>
-            <div class="vendor-row">
-              <div class="vendor-rank">2</div>
-              <div class="vendor-info">
-                <div class="vendor-name">US Foods</div>
-                <div class="vendor-meta">32 invoices • Last: 3 days ago</div>
-              </div>
-              <div class="vendor-spend">
-                <div class="vendor-amount">$18,420</div>
-                <div class="vendor-change" style="color: #22c55e;">↓ 3.1%</div>
-              </div>
-            </div>
-            <div class="vendor-row">
-              <div class="vendor-rank">3</div>
-              <div class="vendor-info">
-                <div class="vendor-name">Cintas</div>
-                <div class="vendor-meta">12 invoices • Last: 1 week ago</div>
-              </div>
-              <div class="vendor-spend">
-                <div class="vendor-amount">$8,750</div>
-                <div class="vendor-change" style="color: #64748b;">→ 0%</div>
-              </div>
-            </div>
-            <div class="vendor-row">
-              <div class="vendor-rank">4</div>
-              <div class="vendor-info">
-                <div class="vendor-name">Republic National</div>
-                <div class="vendor-meta">28 invoices • Last: 4 days ago</div>
-              </div>
-              <div class="vendor-spend">
-                <div class="vendor-amount">$7,230</div>
-                <div class="vendor-change" style="color: #ef4444;">↑ 12.4%</div>
-              </div>
-            </div>
-            <div class="vendor-row">
-              <div class="vendor-rank">5</div>
-              <div class="vendor-info">
-                <div class="vendor-name">Southern Glazers</div>
-                <div class="vendor-meta">19 invoices • Last: 5 days ago</div>
-              </div>
-              <div class="vendor-spend">
-                <div class="vendor-amount">$5,890</div>
-                <div class="vendor-change" style="color: #22c55e;">↓ 5.7%</div>
-              </div>
+            <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+              <div style="font-size: 24px; margin-bottom: 8px;">🏢</div>
+              <div style="font-size: 13px;">Loading vendor data...</div>
             </div>
           </div>
         </div>
@@ -1316,33 +1146,12 @@
           <div class="tile-title">
             <span>🚨</span> Cost Anomaly Alerts
           </div>
-          <span class="tile-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">3 Active</span>
+          <span class="tile-badge" id="anomalyAlertsBadge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">0 Active</span>
         </div>
-        <div class="tile-body scrollable-section" style="max-height: 320px;">
-          <div class="anomaly-alert">
-            <div class="anomaly-alert-icon">⚠️</div>
-            <div class="anomaly-alert-content">
-              <h5>Price spike: Chicken Breast 10lb</h5>
-              <p>$48.99 → $62.50 (+27.6%) from Sysco. Market avg: $51.20</p>
-            </div>
-          </div>
-          <div class="anomaly-alert warning">
-            <div class="anomaly-alert-icon">📊</div>
-            <div class="anomaly-alert-content">
-              <h5>Unusual quantity: Paper Towels</h5>
-              <p>Order of 48 cases vs typical 12 cases. Verify with team.</p>
-            </div>
-          </div>
-          <div class="anomaly-alert">
-            <div class="anomaly-alert-icon">💰</div>
-            <div class="anomaly-alert-content">
-              <h5>Duplicate charge detected</h5>
-              <p>Invoice #84521 from US Foods may be duplicate of #84519 ($847.50)</p>
-            </div>
-          </div>
-          <div style="margin-top: 16px; padding: 12px; background: rgba(34, 197, 94, 0.08); border-radius: 10px; text-align: center;">
-            <div style="font-size: 12px; color: #22c55e; font-weight: 600;">AI monitoring 1,247 invoices for anomalies</div>
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Last scan: 2 minutes ago</div>
+        <div class="tile-body scrollable-section" style="max-height: 320px;" id="anomalyAlertsList">
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 24px; margin-bottom: 8px;">🚨</div>
+            <div style="font-size: 13px;">Loading alerts...</div>
           </div>
         </div>
       </div>
@@ -1382,230 +1191,91 @@
           </div>
           <span class="tile-badge">This Month</span>
         </div>
-        <div class="tile-body">
+        <div class="tile-body" id="expenseBreakdownBody">
           <div class="chart-container-small">
             <canvas id="breakdownChart"></canvas>
           </div>
-          <div class="breakdown-list" style="margin-top: 12px;">
-            <div class="breakdown-item">
-              <div class="breakdown-color" style="background: #fbbf24;"></div>
-              <span class="breakdown-label">COGS</span>
-              <span class="breakdown-value">$34,500</span>
-              <span class="breakdown-pct">42.1%</span>
-            </div>
-            <div class="breakdown-item">
-              <div class="breakdown-color" style="background: #3b82f6;"></div>
-              <span class="breakdown-label">Labor</span>
-              <span class="breakdown-value">$28,200</span>
-              <span class="breakdown-pct">34.4%</span>
-            </div>
-            <div class="breakdown-item">
-              <div class="breakdown-color" style="background: #22c55e;"></div>
-              <span class="breakdown-label">Utilities</span>
-              <span class="breakdown-value">$8,900</span>
-              <span class="breakdown-pct">10.9%</span>
-            </div>
-            <div class="breakdown-item">
-              <div class="breakdown-color" style="background: #8b5cf6;"></div>
-              <span class="breakdown-label">Other</span>
-              <span class="breakdown-value">$10,400</span>
-              <span class="breakdown-pct">12.6%</span>
+          <div class="breakdown-list" id="breakdownList" style="margin-top: 12px;">
+            <div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">
+              Loading expense data...
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Row 5: KPI Targets + Profit Margin Tracker (NEW) -->
+    <!-- Row 5: KPI Targets + Profit Margin Tracker -->
     <div class="grid-2">
       <!-- KPI Targets -->
-      <div class="tile-card">
+      <div class="tile-card" style="position: relative;">
         <div class="tile-header">
           <div class="tile-title">
             <span>🎯</span> Key Performance Targets
           </div>
-          <span class="tile-badge">vs Industry</span>
+          <span class="tile-badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">Coming Soon</span>
         </div>
-        <div class="tile-body">
-          <div class="data-list">
-            <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center;">
-              <span style="font-size: 13px; color: #e2e8f0;">Food Cost %</span>
-              <span style="font-size: 14px; font-weight: 700; color: #22c55e;">28.5%</span>
-              <span style="font-size: 12px; color: #64748b;">Target: 30%</span>
-              <span class="status-badge success">Under</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center;">
-              <span style="font-size: 13px; color: #e2e8f0;">Labor Cost %</span>
-              <span style="font-size: 14px; font-weight: 700; color: #22c55e;">26.2%</span>
-              <span style="font-size: 12px; color: #64748b;">Target: 28%</span>
-              <span class="status-badge success">Under</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center;">
-              <span style="font-size: 13px; color: #e2e8f0;">Prime Cost %</span>
-              <span style="font-size: 14px; font-weight: 700; color: #fbbf24;">62.3%</span>
-              <span style="font-size: 12px; color: #64748b;">Target: 60%</span>
-              <span class="status-badge warning">Over</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center;">
-              <span style="font-size: 13px; color: #e2e8f0;">Beverage Cost %</span>
-              <span style="font-size: 14px; font-weight: 700; color: #22c55e;">18.4%</span>
-              <span style="font-size: 12px; color: #64748b;">Target: 22%</span>
-              <span class="status-badge success">Under</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; padding: 12px 0; align-items: center;">
-              <span style="font-size: 13px; color: #e2e8f0;">Waste %</span>
-              <span style="font-size: 14px; font-weight: 700; color: #22c55e;">2.1%</span>
-              <span style="font-size: 12px; color: #64748b;">Target: 3%</span>
-              <span class="status-badge success">Under</span>
-            </div>
+        <div class="tile-body" id="kpiTargetsBody">
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">🎯</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">KPI Tracking Coming Soon</div>
+            <div style="font-size: 12px; color: #64748b;">Set custom targets for food cost, labor, and more</div>
+            <div style="font-size: 11px; color: #8b5cf6; margin-top: 12px;">Requires revenue data integration</div>
           </div>
         </div>
       </div>
 
-      <!-- Profit Margin Tracker (NEW) -->
-      <div class="tile-card">
+      <!-- Profit Margin Tracker -->
+      <div class="tile-card" style="position: relative;">
         <div class="tile-header">
           <div class="tile-title">
             <span>💎</span> Profit Margin Tracker
           </div>
-          <span class="tile-badge">Goal: 15%</span>
+          <span class="tile-badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">Coming Soon</span>
         </div>
-        <div class="tile-body">
-          <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 20px;">
-            <div style="text-align: center;">
-              <div style="font-size: 48px; font-weight: 900; color: #22c55e; line-height: 1;">12.8%</div>
-              <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Current Margin</div>
-            </div>
-            <div style="flex: 1;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span style="font-size: 11px; color: #64748b;">Progress to Goal</span>
-                <span style="font-size: 11px; font-weight: 600; color: #fbbf24;">85%</span>
-              </div>
-              <div class="progress-bar" style="height: 12px;">
-                <div class="progress-fill gold" style="width: 85%;"></div>
-              </div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 6px;">+2.2% from last month</div>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-            <div style="text-align: center; padding: 12px; background: rgba(34, 197, 94, 0.1); border-radius: 10px;">
-              <div style="font-size: 16px; font-weight: 700; color: #22c55e;">$18.2k</div>
-              <div style="font-size: 10px; color: #64748b;">Gross Profit</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 10px;">
-              <div style="font-size: 16px; font-weight: 700; color: #3b82f6;">$142k</div>
-              <div style="font-size: 10px; color: #64748b;">Revenue MTD</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 10px;">
-              <div style="font-size: 16px; font-weight: 700; color: #fbbf24;">$3.1k</div>
-              <div style="font-size: 10px; color: #64748b;">Savings Impact</div>
-            </div>
+        <div class="tile-body" id="profitMarginBody">
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">💎</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Profit Tracking Coming Soon</div>
+            <div style="font-size: 12px; color: #64748b;">Track margin goals, revenue, and profit metrics</div>
+            <div style="font-size: 11px; color: #8b5cf6; margin-top: 12px;">Requires POS/revenue integration</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Row 6: Cash Flow Calendar + Weekly Comparison (NEW BUSINESS OWNER FEATURES) -->
+    <!-- Row 6: Cash Flow Calendar + Weekly Comparison -->
     <div class="grid-2">
       <!-- Cash Flow Calendar -->
-      <div class="tile-card">
+      <div class="tile-card" style="position: relative;">
         <div class="tile-header">
           <div class="tile-title">
             <span>📅</span> Cash Flow Calendar
           </div>
-          <span class="tile-badge">This Week</span>
+          <span class="tile-badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">Coming Soon</span>
         </div>
-        <div class="tile-body">
-          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center;">
-            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Mon</div>
-              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$4.2k</div>
-            </div>
-            <div style="padding: 8px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Tue</div>
-              <div style="font-size: 12px; font-weight: 700; color: #ef4444;">-$2.8k</div>
-            </div>
-            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Wed</div>
-              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$5.1k</div>
-            </div>
-            <div style="padding: 8px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Thu</div>
-              <div style="font-size: 12px; font-weight: 700; color: #ef4444;">-$6.4k</div>
-            </div>
-            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Fri</div>
-              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$8.9k</div>
-            </div>
-            <div style="padding: 8px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Sat</div>
-              <div style="font-size: 12px; font-weight: 700; color: #22c55e;">+$7.2k</div>
-            </div>
-            <div style="padding: 8px; background: rgba(59, 130, 246, 0.15); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
-              <div style="font-size: 10px; color: #64748b;">Sun</div>
-              <div style="font-size: 12px; font-weight: 700; color: #3b82f6;">~$3.8k</div>
-            </div>
-          </div>
-          <div style="margin-top: 16px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-size: 11px; color: #64748b;">Weekly Net Cash Flow</div>
-                <div style="font-size: 20px; font-weight: 700; color: #22c55e;">+$20,000</div>
-              </div>
-              <div style="text-align: right;">
-                <div style="font-size: 11px; color: #64748b;">Upcoming Bills</div>
-                <div style="font-size: 14px; font-weight: 600; color: #ef4444;">$8,450 due Thu</div>
-              </div>
-            </div>
+        <div class="tile-body" id="cashFlowBody">
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📅</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Cash Flow Calendar Coming Soon</div>
+            <div style="font-size: 12px; color: #64748b;">Visualize daily cash flow and upcoming bills</div>
+            <div style="font-size: 11px; color: #8b5cf6; margin-top: 12px;">Requires bank/payment integration</div>
           </div>
         </div>
       </div>
 
-      <!-- Week-over-Week Comparison (NEW) -->
-      <div class="tile-card">
+      <!-- Week-over-Week Comparison -->
+      <div class="tile-card" style="position: relative;">
         <div class="tile-header">
           <div class="tile-title">
             <span>📊</span> Week-over-Week Comparison
           </div>
-          <span class="tile-badge">vs Last Week</span>
+          <span class="tile-badge" id="wowBadge">vs Last Week</span>
         </div>
-        <div class="tile-body">
-          <div class="data-list">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <span style="font-size: 13px; color: #e2e8f0;">Total Spend</span>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 14px; color: #64748b;">$18.4k → $17.2k</span>
-                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↓ 6.5%</span>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <span style="font-size: 13px; color: #e2e8f0;">Invoices Processed</span>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 14px; color: #64748b;">42 → 47</span>
-                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↑ 12%</span>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <span style="font-size: 13px; color: #e2e8f0;">Savings Found</span>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 14px; color: #64748b;">$890 → $1,247</span>
-                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↑ 40%</span>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <span style="font-size: 13px; color: #e2e8f0;">Price Alerts</span>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 14px; color: #64748b;">5 → 3</span>
-                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↓ 40%</span>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
-              <span style="font-size: 13px; color: #e2e8f0;">Avg Invoice Value</span>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 14px; color: #64748b;">$438 → $366</span>
-                <span style="font-size: 12px; font-weight: 600; color: #22c55e;">↓ 16%</span>
-              </div>
-            </div>
+        <div class="tile-body" id="weekComparisonBody">
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Loading comparison data...</div>
+            <div style="font-size: 12px; color: #64748b;">Analyzing your weekly trends</div>
           </div>
         </div>
       </div>
@@ -1619,47 +1289,12 @@
           <div class="tile-title">
             <span>🎯</span> Financial Health Score
           </div>
-          <span class="tile-badge">Real-time</span>
+          <span class="tile-badge" id="healthBadge">Real-time</span>
         </div>
-        <div class="tile-body">
-          <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; align-items: center;">
-            <div class="health-gauge">
-              <div class="health-score excellent" id="healthScore">A+</div>
-              <div class="health-label">Excellent</div>
-              <div class="health-sublabel">Top 5% of businesses</div>
-            </div>
-            <div>
-              <div class="data-list">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <span style="font-size: 13px; color: #94a3b8;">Cost Control</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 92%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">92%</span>
-                  </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <span style="font-size: 13px; color: #94a3b8;">Invoice Accuracy</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 88%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">88%</span>
-                  </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <span style="font-size: 13px; color: #94a3b8;">Vendor Compliance</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill gold" style="width: 78%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #fbbf24;">78%</span>
-                  </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
-                  <span style="font-size: 13px; color: #94a3b8;">Price Consistency</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="progress-bar" style="width: 80px;"><div class="progress-fill green" style="width: 95%;"></div></div>
-                    <span style="font-size: 12px; font-weight: 600; color: #22c55e;">95%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div class="tile-body" id="financialHealthBody">
+          <div style="text-align: center; padding: 30px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+            <div style="font-size: 13px;">Loading health metrics...</div>
           </div>
         </div>
       </div>
@@ -1927,7 +1562,7 @@
     Chart.defaults.color = '#64748b';
     Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
 
-    // Spending Velocity Chart
+    // Spending Velocity Chart - initialize with zeros (data populated from API)
     const velocityCtx = document.getElementById('velocityChart').getContext('2d');
     const velocityChart = new Chart(velocityCtx, {
       type: 'line',
@@ -1936,7 +1571,7 @@
         datasets: [
           {
             label: 'Actual',
-            data: [18200, 19400, 17800, 20100, 19600, 18900, 21200, 20800, 19500, 18700, 20400, 19800],
+            data: demoModeEnabled ? [18200, 19400, 17800, 20100, 19600, 18900, 21200, 20800, 19500, 18700, 20400, 19800] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             borderColor: '#fbbf24',
             backgroundColor: 'rgba(251, 191, 36, 0.1)',
             fill: true,
@@ -1944,7 +1579,7 @@
           },
           {
             label: 'Budget',
-            data: [20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000],
+            data: demoModeEnabled ? [20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             borderColor: '#3b82f6',
             borderDash: [5, 5],
             fill: false,
@@ -1952,7 +1587,7 @@
           },
           {
             label: 'Savings',
-            data: [1800, 600, 2200, -100, 400, 1100, -1200, -800, 500, 1300, -400, 200],
+            data: demoModeEnabled ? [1800, 600, 2200, -100, 400, 1100, -1200, -800, 500, 1300, -400, 200] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             borderColor: '#22c55e',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
             fill: true,
@@ -1983,7 +1618,7 @@
       }
     });
 
-    // Trend Chart
+    // Trend Chart - initialize with zeros (data populated from API)
     const trendCtx = document.getElementById('trendChart').getContext('2d');
     const trendChart = new Chart(trendCtx, {
       type: 'line',
@@ -1992,7 +1627,7 @@
         datasets: [
           {
             label: 'COGS',
-            data: [8200, 8800, 8400, 9100, 8700, 8500, 9200, 9000, 8600, 8300, 8900, 8700],
+            data: demoModeEnabled ? [8200, 8800, 8400, 9100, 8700, 8500, 9200, 9000, 8600, 8300, 8900, 8700] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             borderColor: '#fbbf24',
             backgroundColor: 'rgba(251, 191, 36, 0.1)',
             fill: true,
@@ -2000,7 +1635,7 @@
           },
           {
             label: 'Labor',
-            data: [6800, 7100, 6900, 7300, 7000, 6800, 7200, 7100, 6900, 6700, 7000, 6900],
+            data: demoModeEnabled ? [6800, 7100, 6900, 7300, 7000, 6800, 7200, 7100, 6900, 6700, 7000, 6900] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
@@ -2008,7 +1643,7 @@
           },
           {
             label: 'Operating',
-            data: [3200, 3400, 3100, 3500, 3300, 3200, 3600, 3400, 3200, 3100, 3300, 3200],
+            data: demoModeEnabled ? [3200, 3400, 3100, 3500, 3300, 3200, 3600, 3400, 3200, 3100, 3300, 3200] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             borderColor: '#22c55e',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
             fill: true,
@@ -2033,15 +1668,15 @@
       }
     });
 
-    // Breakdown Donut Chart
+    // Breakdown Donut Chart - initialize with zeros (data populated from API)
     const breakdownCtx = document.getElementById('breakdownChart').getContext('2d');
     const breakdownChart = new Chart(breakdownCtx, {
       type: 'doughnut',
       data: {
-        labels: ['COGS', 'Labor', 'Utilities', 'Other'],
+        labels: demoModeEnabled ? ['COGS', 'Labor', 'Utilities', 'Other'] : ['No data'],
         datasets: [{
-          data: [42.1, 34.4, 10.9, 12.6],
-          backgroundColor: ['#fbbf24', '#3b82f6', '#22c55e', '#8b5cf6'],
+          data: demoModeEnabled ? [42.1, 34.4, 10.9, 12.6] : [100],
+          backgroundColor: demoModeEnabled ? ['#fbbf24', '#3b82f6', '#22c55e', '#8b5cf6'] : ['#1e293b'],
           borderWidth: 0,
           hoverOffset: 8
         }]
@@ -2059,7 +1694,7 @@
       }
     });
 
-    // Forecast Chart
+    // Forecast Chart - initialize with zeros (data populated from API)
     const forecastCtx = document.getElementById('forecastChart').getContext('2d');
     const forecastChart = new Chart(forecastCtx, {
       type: 'bar',
@@ -2067,7 +1702,7 @@
         labels: ['This Week', 'Week 2', 'Week 3', 'Week 4'],
         datasets: [{
           label: 'Projected Spend',
-          data: [12400, 14800, 13200, 11800],
+          data: demoModeEnabled ? [12400, 14800, 13200, 11800] : [0, 0, 0, 0],
           backgroundColor: ['#3b82f6', 'rgba(251, 191, 36, 0.6)', 'rgba(251, 191, 36, 0.4)', 'rgba(251, 191, 36, 0.3)'],
           borderRadius: 6
         }]
@@ -2105,7 +1740,8 @@
           reorderRecsRes,
           expensesRes,
           payrollRes,
-          emailMonitorsRes
+          emailMonitorsRes,
+          recentUploadsRes
         ] = await Promise.all([
           fetch('/api/bi/financial-summary?days=90', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/savings/summary', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
@@ -2118,7 +1754,8 @@
           fetch('/api/bi/inventory/recommendations', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/expenses?period=90', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
           fetch('/api/bi/payroll?period=90', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
-          fetch('/api/email-monitors', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null)
+          fetch('/api/email-monitors', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null),
+          fetch('/api/uploads/recent?limit=50', { headers: { 'Authorization': `Bearer ${authToken}` } }).catch(e => null)
         ]);
 
         // Parse all responses
@@ -2134,9 +1771,22 @@
         const expensesData = expensesRes?.ok ? await expensesRes.json() : null;
         const payrollData = payrollRes?.ok ? await payrollRes.json() : null;
         const emailMonitorsData = emailMonitorsRes?.ok ? await emailMonitorsRes.json() : null;
+        const recentUploadsData = recentUploadsRes?.ok ? await recentUploadsRes.json() : null;
+
+        // Calculate invoice stats from recent uploads
+        const invoiceStats = {
+          total: recentUploadsData?.data?.length || 0,
+          this_month: 0
+        };
+        if (recentUploadsData?.data) {
+          const thisMonth = new Date();
+          thisMonth.setDate(1);
+          thisMonth.setHours(0, 0, 0, 0);
+          invoiceStats.this_month = recentUploadsData.data.filter(u => new Date(u.created_at) >= thisMonth).length;
+        }
 
         // Update all dashboard components
-        updateHeroStats(savingsData?.data, opportunitiesData?.data, suppliersData?.data, emailMonitorsData?.data);
+        updateHeroStats(savingsData?.data, opportunitiesData?.data, suppliersData?.data, emailMonitorsData?.monitors || emailMonitorsData?.data, invoiceStats);
         updateFinancialHealth(inventoryHealthData?.data);
         updateInventoryStatus(inventoryDashboardData?.data, stockoutAlertsData?.data);
         updateReorderRecommendations(reorderRecsData?.data);
@@ -2147,9 +1797,10 @@
         updatePriceAlerts(priceAlertsData?.data);
         updateExpenseBreakdown(financialData?.data);
         updateSpendingTrends(financialData?.data, payrollData?.data, expensesData?.data);
-        updateActivityFeed(expensesData?.data, savingsData?.data);
+        updateActivityFeed(recentUploadsData?.data, savingsData?.data);
         updateMarketIntelligence(priceAlertsData?.data, suppliersData?.data);
         updateForecast(financialData?.data);
+        updateWeekComparison(recentUploadsData?.data, savingsData?.data, priceAlertsData?.data);
 
         console.log('[Analytics] Dashboard updated with real data');
 
@@ -2263,56 +1914,102 @@
     }
 
     // Update Hero Stats Row
-    function updateHeroStats(savingsData, opportunitiesData, suppliersData, emailMonitorsData) {
+    function updateHeroStats(savingsData, opportunitiesData, suppliersData, emailMonitorsData, invoiceStats) {
       // Total Savings (YTD)
+      const totalSavingsEl = document.getElementById('totalSavings');
+      const totalSavingsChangeEl = document.getElementById('totalSavingsChange');
       if (savingsData?.summary) {
         const totalSavings = (savingsData.summary.total_savings_cents || 0) / 100;
-        document.getElementById('totalSavings').textContent = formatCurrency(totalSavings);
+        totalSavingsEl.textContent = formatCurrency(totalSavings);
+        totalSavingsChangeEl.textContent = totalSavings > 0 ? 'YTD savings' : 'No savings yet';
+      } else {
+        totalSavingsEl.textContent = '$0';
+        totalSavingsChangeEl.textContent = 'Upload invoices to start';
       }
 
-      // Invoices Analyzed (from email monitors)
+      // Invoices Analyzed - First check invoiceStats, then email monitors
+      const invoicesEl = document.getElementById('invoicesAnalyzed');
+      const invoicesChangeEl = document.getElementById('invoicesChange');
+      let totalInvoices = invoiceStats?.total || 0;
+      const thisMonth = invoiceStats?.this_month || 0;
+
+      // Also add from email monitors if available
       if (emailMonitorsData && Array.isArray(emailMonitorsData)) {
-        const totalInvoices = emailMonitorsData.reduce((sum, monitor) =>
-          sum + (monitor.total_invoices_found || 0), 0);
-        if (totalInvoices > 0) {
-          document.getElementById('invoicesAnalyzed').textContent = totalInvoices.toLocaleString();
-        }
+        const emailInvoices = emailMonitorsData.reduce((sum, monitor) =>
+          sum + (monitor.invoices_created || monitor.total_invoices_found || 0), 0);
+        if (emailInvoices > totalInvoices) totalInvoices = emailInvoices;
       }
+
+      invoicesEl.textContent = totalInvoices.toLocaleString();
+      invoicesChangeEl.textContent = thisMonth > 0 ? `This month: ${thisMonth}` : 'No invoices yet';
 
       // Issues Detected (from opportunities)
+      const issuesEl = document.getElementById('issuesDetected');
+      const issuesChangeEl = document.getElementById('issuesChange');
       if (opportunitiesData) {
         const totalIssues = (opportunitiesData.new || 0) + (opportunitiesData.in_progress || 0) + (opportunitiesData.viewed || 0);
-        document.getElementById('issuesDetected').textContent = totalIssues.toLocaleString();
+        issuesEl.textContent = totalIssues.toLocaleString();
+        const newIssues = opportunitiesData.new || 0;
+        issuesChangeEl.textContent = newIssues > 0 ? `${newIssues} new` : 'No open issues';
+      } else {
+        issuesEl.textContent = '0';
+        issuesChangeEl.textContent = 'No issues detected';
       }
 
       // Active Vendors
-      if (suppliersData) {
-        const vendorCount = Array.isArray(suppliersData) ? suppliersData.length : 0;
-        document.getElementById('activeVendors').textContent = vendorCount.toLocaleString();
+      const vendorsEl = document.getElementById('activeVendors');
+      const vendorsChangeEl = document.getElementById('vendorsChange');
+      if (suppliersData && Array.isArray(suppliersData)) {
+        const vendorCount = suppliersData.length;
+        vendorsEl.textContent = vendorCount.toLocaleString();
+        vendorsChangeEl.textContent = vendorCount > 0 ? `${vendorCount} tracked` : 'No vendors yet';
+      } else {
+        vendorsEl.textContent = '0';
+        vendorsChangeEl.textContent = 'Upload invoices';
       }
 
       // Recovery Rate (from opportunities won vs total)
-      if (opportunitiesData) {
-        const total = (opportunitiesData.total || 1);
-        const won = (opportunitiesData.won || 0);
-        const recoveryRate = total > 0 ? ((won / total) * 100).toFixed(1) : '0.0';
-        document.getElementById('recoveryRate').textContent = recoveryRate + '%';
+      const recoveryEl = document.getElementById('recoveryRate');
+      const recoveryChangeEl = document.getElementById('recoveryChange');
+      if (opportunitiesData && opportunitiesData.total > 0) {
+        const total = opportunitiesData.total;
+        const won = opportunitiesData.won || 0;
+        const recoveryRate = ((won / total) * 100).toFixed(1);
+        recoveryEl.textContent = recoveryRate + '%';
+        recoveryChangeEl.textContent = `${won} of ${total} resolved`;
+      } else {
+        recoveryEl.textContent = '0.0%';
+        recoveryChangeEl.textContent = 'No opportunities yet';
       }
     }
 
     // Update Financial Health Score with real inventory data
     function updateFinancialHealth(healthData) {
-      if (!healthData) return;
+      const container = document.getElementById('financialHealthBody');
+      const badge = document.getElementById('healthBadge');
+      if (!container) return;
 
-      const healthScoreEl = document.getElementById('healthScore');
+      if (!healthData) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 30px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">No health data yet</div>
+            <div style="font-size: 12px; color: #64748b;"><a href="inventory.html" style="color: #fbbf24;">Add inventory</a> to track financial health</div>
+          </div>
+        `;
+        if (badge) badge.textContent = 'No Data';
+        return;
+      }
+
       const score = healthData.score || 85;
       const breakdown = healthData.breakdown || {};
 
       // Determine grade
-      let grade, gradeClass, label;
+      let grade, gradeClass, label, sublabel;
       if (typeof healthData.grade === 'string') {
         grade = healthData.grade;
         gradeClass = grade.startsWith('A') ? 'excellent' : grade.startsWith('B') ? 'good' : grade.startsWith('C') ? 'warning' : 'critical';
+        label = grade.startsWith('A') ? 'Excellent' : grade.startsWith('B') ? 'Good' : grade.startsWith('C') ? 'Needs Attention' : 'Critical';
       } else {
         if (score >= 90) { grade = 'A+'; gradeClass = 'excellent'; label = 'Excellent'; }
         else if (score >= 80) { grade = 'A'; gradeClass = 'excellent'; label = 'Very Good'; }
@@ -2321,58 +2018,54 @@
         else { grade = 'D'; gradeClass = 'critical'; label = 'Critical'; }
       }
 
-      healthScoreEl.textContent = grade;
-      healthScoreEl.className = 'health-score ' + gradeClass;
-
-      // Update the health label
-      const healthLabel = healthScoreEl.nextElementSibling;
-      if (healthLabel) healthLabel.textContent = label || 'Excellent';
+      sublabel = breakdown.itemCount ? `${breakdown.itemCount} items tracked` : 'Based on your data';
 
       // Update the breakdown bars with real data
-      const stockScore = breakdown.stockScore || 85;
-      const priceScore = breakdown.priceScore || 90;
-      const turnoverScore = breakdown.turnoverScore || 80;
-      const accuracyScore = breakdown.accuracyScore || 95;
+      const stockScore = breakdown.stockScore || score;
+      const priceScore = breakdown.priceScore || score;
+      const turnoverScore = breakdown.turnoverScore || score;
+      const accuracyScore = breakdown.accuracyScore || score;
 
-      // Find the data-list and update each row
-      const dataList = document.querySelector('.tile-card:has(#healthScore) .data-list');
-      if (dataList) {
-        const rows = dataList.querySelectorAll('div[style*="display: flex"]');
-        if (rows.length >= 4) {
-          // Update Cost Control (Stock Score)
-          updateHealthRow(rows[0], 'Stock Level', stockScore, breakdown.criticalItems ? `${breakdown.criticalItems} critical` : null);
-          // Update Invoice Accuracy (Price Score)
-          updateHealthRow(rows[1], 'Price Tracking', priceScore);
-          // Update Vendor Compliance (Turnover Score)
-          updateHealthRow(rows[2], 'Turnover Rate', turnoverScore);
-          // Update Price Consistency (Accuracy Score)
-          updateHealthRow(rows[3], 'Data Accuracy', accuracyScore);
-        }
-      }
+      const gradeColors = {
+        excellent: '#22c55e',
+        good: '#3b82f6',
+        warning: '#fbbf24',
+        critical: '#ef4444'
+      };
 
-      // Show item counts if available
-      if (breakdown.itemCount !== undefined) {
-        const sublabel = healthScoreEl.parentElement?.querySelector('.health-sublabel');
-        if (sublabel) {
-          sublabel.textContent = `${breakdown.itemCount} items tracked`;
-        }
-      }
-    }
+      const renderMetricRow = (name, value, borderBottom = true) => {
+        const color = value >= 80 ? '#22c55e' : value >= 60 ? '#fbbf24' : '#ef4444';
+        const colorClass = value >= 80 ? 'green' : value >= 60 ? 'gold' : 'red';
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; ${borderBottom ? 'border-bottom: 1px solid rgba(255,255,255,0.05);' : ''}">
+            <span style="font-size: 13px; color: #94a3b8;">${name}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="progress-bar" style="width: 80px;"><div class="progress-fill ${colorClass}" style="width: ${value}%;"></div></div>
+              <span style="font-size: 12px; font-weight: 600; color: ${color};">${value}%</span>
+            </div>
+          </div>
+        `;
+      };
 
-    function updateHealthRow(row, label, score, alert = null) {
-      const labelEl = row.querySelector('span:first-child');
-      const progressFill = row.querySelector('.progress-fill');
-      const scoreEl = row.querySelector('span:last-child');
+      container.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; align-items: center;">
+          <div class="health-gauge" style="text-align: center;">
+            <div class="health-score ${gradeClass}" style="font-size: 48px; font-weight: 900; color: ${gradeColors[gradeClass]}; line-height: 1;">${grade}</div>
+            <div class="health-label" style="font-size: 14px; font-weight: 600; color: #e2e8f0; margin-top: 8px;">${label}</div>
+            <div class="health-sublabel" style="font-size: 11px; color: #64748b; margin-top: 4px;">${sublabel}</div>
+          </div>
+          <div>
+            <div class="data-list">
+              ${renderMetricRow('Stock Level', stockScore)}
+              ${renderMetricRow('Price Tracking', priceScore)}
+              ${renderMetricRow('Turnover Rate', turnoverScore)}
+              ${renderMetricRow('Data Accuracy', accuracyScore, false)}
+            </div>
+          </div>
+        </div>
+      `;
 
-      if (labelEl) labelEl.textContent = label;
-      if (progressFill) {
-        progressFill.style.width = `${score}%`;
-        progressFill.className = 'progress-fill ' + (score >= 80 ? 'green' : score >= 60 ? 'gold' : 'red');
-      }
-      if (scoreEl) {
-        scoreEl.textContent = alert || `${score}%`;
-        scoreEl.style.color = score >= 80 ? '#22c55e' : score >= 60 ? '#fbbf24' : '#ef4444';
-      }
+      if (badge) badge.textContent = 'Real-time';
     }
 
     // Update Spending Velocity Chart
@@ -2398,41 +2091,103 @@
 
     // Update Opportunity Pipeline
     function updateOpportunityPipeline(opportunitiesData) {
-      if (!opportunitiesData) return;
+      const detected = opportunitiesData?.new || 0;
+      const reviewing = opportunitiesData?.viewed || 0;
+      const inProgress = opportunitiesData?.in_progress || 0;
+      const recovered = opportunitiesData?.won || 0;
+      const total = detected + reviewing + inProgress + recovered;
 
-      document.getElementById('pipelineDetected').textContent = (opportunitiesData.new || 0).toLocaleString();
-      document.getElementById('pipelineReviewing').textContent = (opportunitiesData.viewed || 0).toLocaleString();
-      document.getElementById('pipelineProgress').textContent = (opportunitiesData.in_progress || 0).toLocaleString();
-      document.getElementById('pipelineRecovered').textContent = (opportunitiesData.won || 0).toLocaleString();
+      // Update counts
+      const detectedEl = document.getElementById('pipelineDetected');
+      const reviewingEl = document.getElementById('pipelineReviewing');
+      const progressEl = document.getElementById('pipelineProgress');
+      const recoveredEl = document.getElementById('pipelineRecovered');
+
+      if (detectedEl) detectedEl.textContent = detected.toLocaleString();
+      if (reviewingEl) reviewingEl.textContent = reviewing.toLocaleString();
+      if (progressEl) progressEl.textContent = inProgress.toLocaleString();
+      if (recoveredEl) recoveredEl.textContent = recovered.toLocaleString();
+
+      // Update dollar values if available
+      const detectedValue = document.getElementById('pipelineDetectedValue');
+      const reviewingValue = document.getElementById('pipelineReviewingValue');
+      const progressValue = document.getElementById('pipelineProgressValue');
+      const recoveredValue = document.getElementById('pipelineRecoveredValue');
+
+      if (opportunitiesData?.values) {
+        if (detectedValue) detectedValue.textContent = formatCurrency((opportunitiesData.values.new || 0) / 100);
+        if (reviewingValue) reviewingValue.textContent = formatCurrency((opportunitiesData.values.viewed || 0) / 100);
+        if (progressValue) progressValue.textContent = formatCurrency((opportunitiesData.values.in_progress || 0) / 100);
+        if (recoveredValue) recoveredValue.textContent = formatCurrency((opportunitiesData.values.won || 0) / 100);
+      }
+
+      // Update pipeline total and recovery rate
+      const pipelineTotal = document.getElementById('pipelineTotal');
+      const pipelineRecoveryRate = document.getElementById('pipelineRecoveryRate');
+
+      if (pipelineTotal) {
+        const totalValue = opportunitiesData?.total_value_cents ? (opportunitiesData.total_value_cents / 100) : 0;
+        pipelineTotal.textContent = `Pipeline: ${formatCurrency(totalValue)}`;
+      }
+
+      if (pipelineRecoveryRate) {
+        const recoveryRate = total > 0 ? ((recovered / total) * 100).toFixed(0) : 0;
+        pipelineRecoveryRate.textContent = `Recovery Rate: ${recoveryRate}%`;
+      }
+
+      // Update progress bar widths proportionally
+      const progressBar = document.getElementById('pipelineProgressBar');
+      if (progressBar && total > 0) {
+        const segments = progressBar.querySelectorAll('div > div');
+        if (segments.length >= 4) {
+          segments[0].style.width = `${(detected / total) * 100}%`;
+          segments[1].style.width = `${(reviewing / total) * 100}%`;
+          segments[2].style.width = `${(inProgress / total) * 100}%`;
+          segments[3].style.width = `${(recovered / total) * 100}%`;
+        }
+      }
     }
 
     // Update Top Vendors List
     function updateTopVendors(suppliersData) {
-      if (!suppliersData || !Array.isArray(suppliersData) || suppliersData.length === 0) return;
-
       const vendorsList = document.getElementById('vendorsList');
+      if (!vendorsList) return;
 
-      // Sort by total spend and take top 5
+      if (!suppliersData || !Array.isArray(suppliersData) || suppliersData.length === 0) {
+        // Show empty state
+        vendorsList.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">🏢</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">No vendors yet</div>
+            <div style="font-size: 12px; color: #64748b;"><a href="upload-invoice.html" style="color: #fbbf24;">Upload invoices</a> to track vendors</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort by total spend and take top 8
       const topVendors = suppliersData
-        .sort((a, b) => (b.totalSpendCents || 0) - (a.totalSpendCents || 0))
-        .slice(0, 5);
+        .sort((a, b) => (b.totalSpendCents || b.total_spend_cents || 0) - (a.totalSpendCents || a.total_spend_cents || 0))
+        .slice(0, 8);
 
       vendorsList.innerHTML = topVendors.map((vendor, idx) => {
-        const spend = (vendor.totalSpendCents || 0) / 100;
-        const change = vendor.priceChangePct || 0;
-        const changeClass = change > 0 ? 'color: #ef4444;' : change < 0 ? 'color: #22c55e;' : 'color: #64748b;';
+        const spend = (vendor.totalSpendCents || vendor.total_spend_cents || 0) / 100;
+        const change = vendor.priceChangePct || vendor.price_change_pct || 0;
+        const changeColor = change > 0 ? '#ef4444' : change < 0 ? '#22c55e' : '#64748b';
         const changeSymbol = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+        const invoiceCount = vendor.invoiceCount || vendor.invoice_count || 0;
+        const skuCount = vendor.skuCount || vendor.sku_count || 0;
 
         return `
-          <div class="vendor-row">
-            <div class="vendor-rank">${idx + 1}</div>
-            <div class="vendor-info">
-              <div class="vendor-name">${vendor.vendorName || vendor.vendor_name || 'Unknown'}</div>
-              <div class="vendor-meta">${vendor.invoiceCount || 0} invoices • ${vendor.skuCount || 0} items</div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, rgba(251, 191, 36, ${0.3 - idx * 0.03}) 0%, rgba(251, 191, 36, ${0.1 - idx * 0.01}) 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fbbf24;">${idx + 1}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(vendor.vendorName || vendor.vendor_name || 'Unknown')}</div>
+              <div style="font-size: 11px; color: #64748b;">${invoiceCount} invoice${invoiceCount !== 1 ? 's' : ''} • ${skuCount} item${skuCount !== 1 ? 's' : ''}</div>
             </div>
-            <div class="vendor-spend">
-              <div class="vendor-amount">${formatCurrency(spend)}</div>
-              <div class="vendor-change" style="${changeClass}">${changeSymbol} ${Math.abs(change).toFixed(1)}%</div>
+            <div style="text-align: right;">
+              <div style="font-size: 14px; font-weight: 700; color: #ffffff;">${formatCurrency(spend)}</div>
+              ${change !== 0 ? `<div style="font-size: 11px; color: ${changeColor};">${changeSymbol} ${Math.abs(change).toFixed(1)}%</div>` : ''}
             </div>
           </div>
         `;
@@ -2441,47 +2196,75 @@
 
     // Update Price Alerts (Cost Anomalies)
     function updatePriceAlerts(alertsData) {
-      if (!alertsData?.alerts || alertsData.alerts.length === 0) return;
-
-      const alertsContainer = document.querySelector('.tile-card:has(.tile-title span:contains("🚨")) .tile-body') ||
-                              document.querySelectorAll('.tile-card')[5]?.querySelector('.tile-body');
+      const alertsContainer = document.getElementById('anomalyAlertsList');
+      const alertsBadge = document.getElementById('anomalyAlertsBadge');
 
       if (!alertsContainer) return;
 
-      const alerts = alertsData.alerts.slice(0, 3);
-      const alertsHtml = alerts.map(alert => {
+      // Update the badge
+      const alertCount = alertsData?.alerts?.length || 0;
+      if (alertsBadge) {
+        alertsBadge.textContent = `${alertCount} Active`;
+        alertsBadge.style.background = alertCount > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)';
+        alertsBadge.style.color = alertCount > 0 ? '#ef4444' : '#22c55e';
+      }
+
+      if (!alertsData?.alerts || alertsData.alerts.length === 0) {
+        // Show empty state
+        alertsContainer.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">✓</div>
+            <div style="font-size: 14px; font-weight: 600; color: #22c55e; margin-bottom: 4px;">No anomalies detected</div>
+            <div style="font-size: 12px; color: #64748b;">AI is monitoring your invoices for price changes</div>
+          </div>
+        `;
+        return;
+      }
+
+      const alerts = alertsData.alerts.slice(0, 5);
+      alertsContainer.innerHTML = alerts.map(alert => {
         const isIncrease = alert.pct_change > 0;
-        const alertClass = isIncrease ? '' : 'warning';
+        const bgColor = isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+        const borderColor = isIncrease ? '#ef4444' : '#22c55e';
+        const changeColor = isIncrease ? '#ef4444' : '#22c55e';
 
         return `
-          <div class="anomaly-alert ${alertClass}">
-            <div class="anomaly-alert-icon">${isIncrease ? '⚠️' : '📉'}</div>
-            <div class="anomaly-alert-content">
-              <h5>Price ${isIncrease ? 'spike' : 'drop'}: ${alert.sku}</h5>
-              <p>$${(alert.previous_price/100).toFixed(2)} → $${(alert.current_price/100).toFixed(2)} (${alert.pct_change > 0 ? '+' : ''}${alert.pct_change}%) from ${alert.vendor_name}</p>
+          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: ${bgColor}; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid ${borderColor};">
+            <div style="font-size: 20px;">${isIncrease ? '⚠️' : '📉'}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Price ${isIncrease ? 'increase' : 'decrease'}: ${escapeHtml(alert.sku || alert.item_name || 'Unknown')}</div>
+              <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">$${((alert.previous_price || 0)/100).toFixed(2)} → $${((alert.current_price || 0)/100).toFixed(2)}</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${escapeHtml(alert.vendor_name || 'Unknown vendor')}</div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+              <div style="font-size: 14px; font-weight: 700; color: ${changeColor};">${alert.pct_change > 0 ? '+' : ''}${alert.pct_change?.toFixed(1) || 0}%</div>
             </div>
           </div>
         `;
-      }).join('');
-
-      const summaryHtml = `
-        <div style="margin-top: 16px; padding: 12px; background: rgba(34, 197, 94, 0.08); border-radius: 10px; text-align: center;">
-          <div style="font-size: 12px; color: #22c55e; font-weight: 600;">AI monitoring invoices for anomalies</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">${alertsData.summary?.increases || 0} price increases, ${alertsData.summary?.decreases || 0} decreases detected</div>
+      }).join('') + `
+        <div style="margin-top: 8px; padding: 12px; background: rgba(34, 197, 94, 0.08); border-radius: 10px; text-align: center;">
+          <div style="font-size: 11px; color: #22c55e; font-weight: 600;">AI monitoring active</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${alertsData.summary?.increases || 0} increases, ${alertsData.summary?.decreases || 0} decreases detected</div>
         </div>
       `;
-
-      // Update alerts badge
-      const badge = document.querySelector('.tile-card:nth-child(6) .tile-badge') ||
-                    alertsContainer.closest('.tile-card')?.querySelector('.tile-badge');
-      if (badge) {
-        badge.textContent = `${alertsData.summary?.total || 0} Active`;
-      }
     }
 
     // Update Expense Breakdown Chart
     function updateExpenseBreakdown(financialData) {
-      if (!financialData?.breakdown || financialData.breakdown.length === 0) return;
+      const breakdownList = document.getElementById('breakdownList');
+
+      if (!financialData?.breakdown || financialData.breakdown.length === 0) {
+        // Show empty state
+        if (breakdownList) {
+          breakdownList.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #64748b;">
+              <div style="font-size: 12px;">No expense data yet</div>
+              <div style="font-size: 11px; margin-top: 4px;"><a href="upload-invoice.html" style="color: #fbbf24;">Upload invoices</a> to see breakdown</div>
+            </div>
+          `;
+        }
+        return;
+      }
 
       const categories = financialData.breakdown.map(b => b.category || 'Other');
       const values = financialData.breakdown.map(b => (b.amount || 0) / 100);
@@ -2489,20 +2272,21 @@
       const percentages = values.map(v => total > 0 ? ((v / total) * 100).toFixed(1) : 0);
 
       // Update doughnut chart
-      breakdownChart.data.labels = categories;
-      breakdownChart.data.datasets[0].data = percentages.map(p => parseFloat(p));
-      breakdownChart.update();
+      if (typeof breakdownChart !== 'undefined' && breakdownChart) {
+        breakdownChart.data.labels = categories;
+        breakdownChart.data.datasets[0].data = percentages.map(p => parseFloat(p));
+        breakdownChart.update();
+      }
 
       // Update breakdown list
       const colors = ['#fbbf24', '#3b82f6', '#22c55e', '#8b5cf6', '#f97316', '#06b6d4'];
-      const breakdownList = document.querySelector('.breakdown-list');
       if (breakdownList) {
         breakdownList.innerHTML = categories.slice(0, 4).map((cat, idx) => `
-          <div class="breakdown-item">
-            <div class="breakdown-color" style="background: ${colors[idx % colors.length]};"></div>
-            <span class="breakdown-label">${cat}</span>
-            <span class="breakdown-value">${formatCurrency(values[idx])}</span>
-            <span class="breakdown-pct">${percentages[idx]}%</span>
+          <div class="breakdown-item" style="display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div class="breakdown-color" style="width: 12px; height: 12px; border-radius: 3px; background: ${colors[idx % colors.length]};"></div>
+            <span class="breakdown-label" style="flex: 1; font-size: 13px; color: #e2e8f0;">${escapeHtml(cat)}</span>
+            <span class="breakdown-value" style="font-size: 13px; font-weight: 600; color: #ffffff;">${formatCurrency(values[idx])}</span>
+            <span class="breakdown-pct" style="font-size: 12px; color: #64748b; min-width: 45px; text-align: right;">${percentages[idx]}%</span>
           </div>
         `).join('');
       }
@@ -2527,66 +2311,199 @@
 
     // Update 30-Day Forecast
     function updateForecast(financialData) {
-      if (!financialData?.totals) return;
+      const forecastThisWeek = document.getElementById('forecastThisWeek');
+      const forecastNextWeek = document.getElementById('forecastNextWeek');
+      const forecast30Days = document.getElementById('forecast30Days');
+
+      if (!financialData?.totals) {
+        // Show zeros if no data
+        if (forecastThisWeek) forecastThisWeek.textContent = '$0';
+        if (forecastNextWeek) forecastNextWeek.textContent = '$0';
+        if (forecast30Days) forecast30Days.textContent = '$0';
+        return;
+      }
 
       const weeklyAvg = (financialData.totals.expenses || 0) / 100 / 12; // Rough weekly average from 90 days
+      const thisWeekForecast = Math.round(weeklyAvg);
+      const nextWeekForecast = Math.round(weeklyAvg * 1.05);
+      const monthForecast = Math.round(weeklyAvg * 4.3);
 
-      forecastChart.data.datasets[0].data = [
-        Math.round(weeklyAvg),
-        Math.round(weeklyAvg * 1.1),  // Project slight increase
-        Math.round(weeklyAvg * 1.05),
-        Math.round(weeklyAvg * 0.95)
-      ];
-      forecastChart.update();
+      // Update the displayed values
+      if (forecastThisWeek) forecastThisWeek.textContent = formatCurrency(thisWeekForecast);
+      if (forecastNextWeek) forecastNextWeek.textContent = formatCurrency(nextWeekForecast);
+      if (forecast30Days) forecast30Days.textContent = formatCurrency(monthForecast);
+
+      // Update the chart
+      if (typeof forecastChart !== 'undefined' && forecastChart) {
+        forecastChart.data.datasets[0].data = [
+          thisWeekForecast,
+          nextWeekForecast,
+          Math.round(weeklyAvg * 1.02),
+          Math.round(weeklyAvg * 0.98)
+        ];
+        forecastChart.update();
+      }
     }
 
-    // Update Location Performance (using opportunities grouped by some dimension)
-    function updateLocationPerformance(opportunitiesData, savingsData) {
-      if (!opportunitiesData && !savingsData) return;
+    // Update Week-over-Week Comparison with real data
+    function updateWeekComparison(recentUploadsData, savingsData, priceAlertsData) {
+      const container = document.getElementById('weekComparisonBody');
+      const badge = document.getElementById('wowBadge');
+      if (!container) return;
 
+      // Calculate this week vs last week from uploads
+      const now = new Date();
+      const thisWeekStart = new Date(now);
+      thisWeekStart.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
+      thisWeekStart.setHours(0, 0, 0, 0);
+
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+      const lastWeekEnd = new Date(thisWeekStart);
+      lastWeekEnd.setMilliseconds(-1);
+
+      let thisWeekInvoices = 0, lastWeekInvoices = 0;
+      let thisWeekSpend = 0, lastWeekSpend = 0;
+      let thisWeekItems = 0, lastWeekItems = 0;
+
+      if (recentUploadsData && Array.isArray(recentUploadsData)) {
+        recentUploadsData.forEach(upload => {
+          const uploadDate = new Date(upload.created_at);
+          const total = (upload.invoice_total_cents || upload.total_cents || 0);
+          const items = upload.item_count || 0;
+
+          if (uploadDate >= thisWeekStart) {
+            thisWeekInvoices++;
+            thisWeekSpend += total;
+            thisWeekItems += items;
+          } else if (uploadDate >= lastWeekStart && uploadDate < thisWeekStart) {
+            lastWeekInvoices++;
+            lastWeekSpend += total;
+            lastWeekItems += items;
+          }
+        });
+      }
+
+      // Get savings and alerts counts
+      const thisWeekSavings = (savingsData?.summary?.total_savings_cents || 0) / 100;
+      const alertCount = priceAlertsData?.alerts?.length || 0;
+
+      // If no data at all, show empty state
+      if (thisWeekInvoices === 0 && lastWeekInvoices === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Not enough data yet</div>
+            <div style="font-size: 12px; color: #64748b;">Upload invoices over multiple weeks to see trends</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Helper to calculate % change
+      const pctChange = (current, previous) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous * 100);
+      };
+
+      const formatChange = (current, previous, inverted = false) => {
+        const change = pctChange(current, previous);
+        const isPositive = inverted ? change < 0 : change > 0;
+        const color = isPositive ? '#22c55e' : change === 0 ? '#64748b' : '#ef4444';
+        const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+        return `<span style="font-size: 12px; font-weight: 600; color: ${color};">${arrow} ${Math.abs(change).toFixed(0)}%</span>`;
+      };
+
+      container.innerHTML = `
+        <div class="data-list">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span style="font-size: 13px; color: #e2e8f0;">Total Spend</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 14px; color: #64748b;">${formatCurrency(lastWeekSpend/100)} → ${formatCurrency(thisWeekSpend/100)}</span>
+              ${formatChange(thisWeekSpend, lastWeekSpend, true)}
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span style="font-size: 13px; color: #e2e8f0;">Invoices Processed</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 14px; color: #64748b;">${lastWeekInvoices} → ${thisWeekInvoices}</span>
+              ${formatChange(thisWeekInvoices, lastWeekInvoices)}
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span style="font-size: 13px; color: #e2e8f0;">Items Tracked</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 14px; color: #64748b;">${lastWeekItems} → ${thisWeekItems}</span>
+              ${formatChange(thisWeekItems, lastWeekItems)}
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span style="font-size: 13px; color: #e2e8f0;">Savings Found</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 14px; color: #22c55e;">${formatCurrency(thisWeekSavings)}</span>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+            <span style="font-size: 13px; color: #e2e8f0;">Active Alerts</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 14px; color: ${alertCount > 0 ? '#ef4444' : '#22c55e'};">${alertCount} alerts</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Update Location Performance (using savings by type as categories)
+    function updateLocationPerformance(opportunitiesData, savingsData) {
       const locationList = document.getElementById('locationPerformanceList');
       if (!locationList) return;
 
-      // Build location data from savings by type or from opportunities
-      const locations = [];
+      // Build location data from savings by type
+      const categories = [];
 
       if (savingsData?.byType && savingsData.byType.length > 0) {
-        // Use savings by type as proxy for locations
+        // Use savings by type as categories
         savingsData.byType.forEach((type, idx) => {
-          locations.push({
+          categories.push({
             name: formatSavingsType(type.savings_type),
-            issues: type.count || 0,
-            invoices: Math.floor(Math.random() * 100) + 50, // Estimate
+            count: type.count || 0,
             savings: (type.total_cents || 0) / 100,
             status: idx === 0 ? 'top' : idx < 2 ? 'review' : 'track'
           });
         });
       }
 
-      if (locations.length > 0) {
-        locationList.innerHTML = locations.slice(0, 4).map(loc => {
-          const iconBg = loc.status === 'top' ? 'rgba(239, 68, 68, 0.15)' :
-                        loc.status === 'review' ? 'rgba(245, 158, 11, 0.15)' :
-                        'rgba(34, 197, 94, 0.15)';
-          const icon = loc.status === 'top' ? '🔥' : loc.status === 'review' ? '⚠️' : '✓';
-          const statusText = loc.status === 'top' ? 'Top Saver' : loc.status === 'review' ? 'Needs Review' : 'On Track';
+      if (categories.length > 0) {
+        locationList.innerHTML = categories.slice(0, 5).map(cat => {
+          const iconBg = cat.status === 'top' ? 'rgba(34, 197, 94, 0.15)' :
+                        cat.status === 'review' ? 'rgba(251, 191, 36, 0.15)' :
+                        'rgba(59, 130, 246, 0.15)';
+          const icon = cat.status === 'top' ? '💰' : cat.status === 'review' ? '📊' : '✓';
+          const textColor = cat.status === 'top' ? '#22c55e' : cat.status === 'review' ? '#fbbf24' : '#3b82f6';
 
           return `
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-icon" style="background: ${iconBg};">${icon}</div>
-                <div class="data-row-info">
-                  <h4>${loc.name}</h4>
-                  <p>${loc.issues} items • ${loc.invoices} invoices</p>
-                </div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: ${iconBg}; display: flex; align-items: center; justify-content: center; font-size: 16px;">${icon}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 600; color: #ffffff;">${escapeHtml(cat.name)}</div>
+                <div style="font-size: 11px; color: #64748b;">${cat.count} item${cat.count !== 1 ? 's' : ''} identified</div>
               </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: #22c55e;">${formatCurrency(loc.savings)}</div>
-                <div class="change down">${statusText}</div>
+              <div style="text-align: right;">
+                <div style="font-size: 14px; font-weight: 700; color: ${textColor};">+${formatCurrency(cat.savings)}</div>
               </div>
             </div>
           `;
         }).join('');
+      } else {
+        // Show empty state
+        locationList.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📍</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">No savings categories yet</div>
+            <div style="font-size: 12px; color: #64748b;">Upload invoices to detect savings opportunities</div>
+          </div>
+        `;
       }
     }
 
@@ -2601,33 +2518,41 @@
       return typeMap[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
-    // Update Activity Feed with recent invoice activity
-    function updateActivityFeed(expensesData, savingsData) {
+    // Update Activity Feed with recent invoice uploads
+    function updateActivityFeed(recentUploadsData, savingsData) {
       const activityFeed = document.getElementById('activityFeed');
       if (!activityFeed) return;
 
       const activities = [];
 
-      // Add recent expenses as activity
-      if (expensesData && Array.isArray(expensesData)) {
-        expensesData.slice(0, 3).forEach(exp => {
+      // Add recent invoice uploads as activity
+      if (recentUploadsData && Array.isArray(recentUploadsData)) {
+        recentUploadsData.slice(0, 8).forEach(upload => {
+          const total = (upload.invoice_total_cents || upload.total_cents || 0) / 100;
+          const vendorName = upload.vendor_name || upload.filename?.split('_')[0] || 'Invoice';
+          const status = upload.status || 'processed';
+          const statusIcon = status === 'processed' ? '✓' : status === 'pending' ? '⏳' : status === 'failed' ? '❌' : '📄';
+          const iconBg = status === 'processed' ? 'rgba(34, 197, 94, 0.15)' :
+                         status === 'failed' ? 'rgba(239, 68, 68, 0.15)' :
+                         'rgba(251, 191, 36, 0.15)';
+
           activities.push({
             type: 'invoice',
-            title: `${exp.category || 'Expense'} processed`,
-            meta: `${exp.vendor_name || 'Vendor'} • ${formatTimeAgo(exp.created_at)}`,
-            amount: (exp.amount_cents || 0) / 100,
-            icon: '✓',
-            iconBg: 'rgba(34, 197, 94, 0.15)'
+            title: `${vendorName} invoice ${status}`,
+            meta: `${upload.item_count || 0} items • ${formatTimeAgo(upload.created_at)}`,
+            amount: total,
+            icon: statusIcon,
+            iconBg: iconBg
           });
         });
       }
 
-      // Add recent savings as activity
-      if (savingsData?.byType) {
-        activities.push({
+      // Add savings summary if available
+      if (savingsData?.summary?.total_savings_cents > 0) {
+        activities.unshift({
           type: 'savings',
-          title: 'Savings recorded',
-          meta: `${savingsData.summary?.total_records || 0} items • Today`,
+          title: 'Total savings detected',
+          meta: `${savingsData.summary?.total_records || 0} opportunities found`,
           amount: (savingsData.summary?.total_savings_cents || 0) / 100,
           icon: '💰',
           iconBg: 'rgba(34, 197, 94, 0.15)',
@@ -2636,16 +2561,25 @@
       }
 
       if (activities.length > 0) {
-        activityFeed.innerHTML = activities.slice(0, 5).map(act => `
-          <div class="activity-item">
-            <div class="activity-icon" style="background: ${act.iconBg};">${act.icon}</div>
-            <div class="activity-content">
-              <div class="activity-title">${act.title}</div>
-              <div class="activity-meta">${act.meta}</div>
+        activityFeed.innerHTML = activities.slice(0, 8).map(act => `
+          <div class="activity-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div class="activity-icon" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: ${act.iconBg}; font-size: 16px;">${act.icon}</div>
+            <div class="activity-content" style="flex: 1; min-width: 0;">
+              <div class="activity-title" style="font-size: 13px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(act.title)}</div>
+              <div class="activity-meta" style="font-size: 11px; color: #64748b;">${act.meta}</div>
             </div>
-            <div class="activity-amount" ${act.isPositive ? 'style="color: #22c55e;"' : ''}>${act.isPositive ? '+' : ''}${formatCurrency(act.amount)}</div>
+            <div class="activity-amount" style="font-size: 14px; font-weight: 700; ${act.isPositive ? 'color: #22c55e;' : 'color: #ffffff;'}">${act.isPositive ? '+' : ''}${formatCurrency(act.amount)}</div>
           </div>
         `).join('');
+      } else {
+        // Show empty state
+        activityFeed.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">📄</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">No recent activity</div>
+            <div style="font-size: 12px; color: #64748b;"><a href="upload-invoice.html" style="color: #fbbf24;">Upload an invoice</a> to get started</div>
+          </div>
+        `;
       }
     }
 
@@ -2666,36 +2600,68 @@
 
     // Update Market Price Intelligence
     function updateMarketIntelligence(priceAlertsData, suppliersData) {
-      // This section shows price comparisons - use price alert data
-      if (!priceAlertsData?.alerts) return;
+      const container = document.getElementById('marketIntelBody');
+      if (!container) return;
 
-      // Find items where user is paying more vs less than average
-      const overpriced = priceAlertsData.alerts.filter(a => a.pct_change > 5).slice(0, 2);
-      const underpriced = priceAlertsData.alerts.filter(a => a.pct_change < -5).slice(0, 1);
+      // Check if we have any price data
+      if (!priceAlertsData?.alerts || priceAlertsData.alerts.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 30px 20px; color: var(--muted);">
+            <div style="font-size: 32px; margin-bottom: 12px;">🌍</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">No price changes detected</div>
+            <div style="font-size: 12px; color: #64748b;">Upload multiple invoices to track price trends</div>
+          </div>
+        `;
+        return;
+      }
 
-      const marketList = document.querySelectorAll('.tile-card')[10]?.querySelector('.data-list');
-      if (!marketList) return;
+      // Find significant price changes
+      const increases = priceAlertsData.alerts.filter(a => a.pct_change > 3).slice(0, 2);
+      const decreases = priceAlertsData.alerts.filter(a => a.pct_change < -3).slice(0, 2);
+      const items = [...increases, ...decreases].slice(0, 4);
 
-      const items = [...overpriced, ...underpriced].slice(0, 3);
-      if (items.length > 0) {
-        marketList.innerHTML = items.map(item => {
-          const isOverpriced = item.pct_change > 0;
-          return `
-            <div class="data-row">
-              <div class="data-row-left">
-                <div class="data-row-info">
-                  <h4>${item.sku}</h4>
-                  <p>Your price: $${(item.current_price / 100).toFixed(2)}</p>
+      // Generate insight message
+      const totalIncreases = priceAlertsData.summary?.increases || 0;
+      const totalDecreases = priceAlertsData.summary?.decreases || 0;
+      let insightMessage = '';
+
+      if (totalIncreases > totalDecreases * 2) {
+        insightMessage = 'Prices trending up. Review vendor contracts and consider bulk purchasing.';
+      } else if (totalDecreases > totalIncreases * 2) {
+        insightMessage = 'Prices trending down. Good time to negotiate longer-term pricing.';
+      } else if (totalIncreases > 0 || totalDecreases > 0) {
+        insightMessage = `Monitoring ${totalIncreases + totalDecreases} price movements. AI tracking trends.`;
+      } else {
+        insightMessage = 'Prices stable. Continue monitoring for changes.';
+      }
+
+      container.innerHTML = `
+        <div style="margin-bottom: 12px; padding: 10px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px;">
+          <div style="font-size: 11px; color: #06b6d4; font-weight: 600; margin-bottom: 2px;">💡 AI Insight</div>
+          <div style="font-size: 12px; color: #e2e8f0;">${insightMessage}</div>
+        </div>
+        <div class="data-list">
+          ${items.length > 0 ? items.map(item => {
+            const isIncrease = item.pct_change > 0;
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.sku || item.item_name || 'Item')}</div>
+                  <div style="font-size: 11px; color: #64748b;">$${((item.current_price || 0) / 100).toFixed(2)} from ${escapeHtml(item.vendor_name || 'vendor')}</div>
+                </div>
+                <div style="text-align: right; flex-shrink: 0;">
+                  <div style="font-size: 14px; font-weight: 700; color: ${isIncrease ? '#ef4444' : '#22c55e'};">${isIncrease ? '+' : ''}${(item.pct_change || 0).toFixed(1)}%</div>
+                  <div style="font-size: 10px; color: #64748b;">vs $${((item.previous_price || 0) / 100).toFixed(2)}</div>
                 </div>
               </div>
-              <div class="data-row-value">
-                <div class="amount" style="color: ${isOverpriced ? '#ef4444' : '#22c55e'};">${isOverpriced ? '+' : ''}${item.pct_change}%</div>
-                <div class="change" style="color: #64748b;">vs prev $${(item.previous_price / 100).toFixed(2)}</div>
-              </div>
+            `;
+          }).join('') : `
+            <div style="text-align: center; padding: 20px; color: #64748b;">
+              <div style="font-size: 12px;">No significant price changes</div>
             </div>
-          `;
-        }).join('');
-      }
+          `}
+        </div>
+      `;
     }
 
     // Utility: Format currency

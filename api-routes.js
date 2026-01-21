@@ -523,6 +523,55 @@ router.get('/uploads/recent', (req, res) => {
     const totalCount = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
     console.log(`[API] Invoices for user ${user.id}: ${debugCount.count}, Total in DB: ${totalCount.count}`);
 
+    // AUTO-HEAL: If user has 0 invoices but their monitors have invoices_created_count > 0,
+    // automatically fix the ownership issue
+    if (debugCount.count === 0 && totalCount.count > 0) {
+      const monitorInvoiceCount = database.prepare(`
+        SELECT COALESCE(SUM(invoices_created_count), 0) as count
+        FROM email_monitors
+        WHERE user_id = ? OR created_by_user_id = ?
+      `).get(user.id, user.id);
+
+      if (monitorInvoiceCount.count > 0) {
+        console.log(`[API] AUTO-HEAL: User ${user.id} has 0 invoices but monitors show ${monitorInvoiceCount.count}. Fixing...`);
+
+        // Fix email_monitors user_id if needed
+        database.prepare(`
+          UPDATE email_monitors
+          SET user_id = created_by_user_id
+          WHERE user_id IS NULL AND created_by_user_id IS NOT NULL
+        `).run();
+
+        // Get user's monitors
+        const userMonitors = database.prepare(`
+          SELECT id, account_name FROM email_monitors
+          WHERE user_id = ? OR created_by_user_id = ?
+        `).all(user.id, user.id);
+
+        // Fix ingestion_runs
+        for (const monitor of userMonitors) {
+          const pattern = `email-${monitor.id}-%`;
+          database.prepare(`
+            UPDATE ingestion_runs
+            SET user_id = ?
+            WHERE run_id LIKE ? AND (user_id IS NULL OR user_id != ?)
+          `).run(user.id, pattern, user.id);
+
+          if (monitor.account_name) {
+            database.prepare(`
+              UPDATE ingestion_runs
+              SET user_id = ?
+              WHERE account_name = ? AND (user_id IS NULL OR user_id != ?)
+            `).run(user.id, monitor.account_name, user.id);
+          }
+        }
+
+        // Re-count after fix
+        const fixedCount = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id = ?`).get(user.id);
+        console.log(`[API] AUTO-HEAL: Fixed! User ${user.id} now has ${fixedCount.count} invoices`);
+      }
+    }
+
     const uploads = database.prepare(`
       SELECT
         ir.id,
@@ -636,6 +685,116 @@ router.get('/debug/invoices', (req, res) => {
     });
   } catch (error) {
     console.error('[API] Debug invoices error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/debug/fix-all - Comprehensive fix for monitor user_id and invoice ownership
+router.post('/debug/fix-all', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const database = db.getDatabase();
+    const fixes = [];
+
+    // STEP 1: Fix email_monitors table - ensure user_id is set from created_by_user_id
+    const monitorsToFix = database.prepare(`
+      SELECT id, email_address, user_id, created_by_user_id
+      FROM email_monitors
+      WHERE user_id IS NULL AND created_by_user_id IS NOT NULL
+    `).all();
+
+    if (monitorsToFix.length > 0) {
+      const fixMonitorsResult = database.prepare(`
+        UPDATE email_monitors
+        SET user_id = created_by_user_id
+        WHERE user_id IS NULL AND created_by_user_id IS NOT NULL
+      `).run();
+      fixes.push({
+        step: 'fix_monitors_user_id',
+        fixed: fixMonitorsResult.changes,
+        detail: `Set user_id from created_by_user_id for ${fixMonitorsResult.changes} monitors`
+      });
+    }
+
+    // STEP 2: Fix email_monitors owned by this user that have wrong user_id
+    const userMonitorsFixed = database.prepare(`
+      UPDATE email_monitors
+      SET user_id = ?
+      WHERE (created_by_user_id = ? AND user_id IS NULL)
+    `).run(user.id, user.id);
+    if (userMonitorsFixed.changes > 0) {
+      fixes.push({
+        step: 'fix_user_monitors',
+        fixed: userMonitorsFixed.changes,
+        detail: `Fixed user_id for ${userMonitorsFixed.changes} of your monitors`
+      });
+    }
+
+    // STEP 3: Get all monitors that belong to this user
+    const userMonitors = database.prepare(`
+      SELECT id, email_address, account_name FROM email_monitors
+      WHERE user_id = ? OR created_by_user_id = ?
+    `).all(user.id, user.id);
+
+    // STEP 4: Fix ingestion_runs from these monitors
+    let invoicesFixed = 0;
+    for (const monitor of userMonitors) {
+      const pattern = `email-${monitor.id}-%`;
+
+      const result = database.prepare(`
+        UPDATE ingestion_runs
+        SET user_id = ?
+        WHERE run_id LIKE ? AND (user_id IS NULL OR user_id != ?)
+      `).run(user.id, pattern, user.id);
+
+      if (result.changes > 0) {
+        invoicesFixed += result.changes;
+      }
+
+      // Also fix by account_name if set
+      if (monitor.account_name) {
+        const accountResult = database.prepare(`
+          UPDATE ingestion_runs
+          SET user_id = ?
+          WHERE account_name = ? AND (user_id IS NULL OR user_id != ?)
+        `).run(user.id, monitor.account_name, user.id);
+        if (accountResult.changes > 0) {
+          invoicesFixed += accountResult.changes;
+        }
+      }
+    }
+
+    if (invoicesFixed > 0) {
+      fixes.push({
+        step: 'fix_invoice_ownership',
+        fixed: invoicesFixed,
+        detail: `Fixed user_id for ${invoicesFixed} invoices`
+      });
+    }
+
+    // STEP 5: Get updated counts for verification
+    const yourInvoiceCount = database.prepare(`
+      SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id = ?
+    `).get(user.id);
+
+    const totalInvoices = database.prepare(`
+      SELECT COUNT(*) as count FROM ingestion_runs
+    `).get();
+
+    res.json({
+      success: true,
+      message: fixes.length > 0
+        ? `Applied ${fixes.length} fix(es). Your invoices should now appear.`
+        : 'No fixes needed - data already correct.',
+      fixes,
+      verification: {
+        yourInvoices: yourInvoiceCount.count,
+        totalInvoices: totalInvoices.count,
+        monitorsOwned: userMonitors.length
+      }
+    });
+  } catch (error) {
+    console.error('[API] Fix-all error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
