@@ -4942,11 +4942,16 @@
 
             // Different button based on state
             const actionButton = needsReconnect
-              ? `<button onclick="connectOAuthEmail('${monitor.oauth_provider}')" class="btn" style="font-size: 10px; padding: 4px 10px; background: linear-gradient(135deg, #4285F4, #34A853); margin-left: auto; white-space: nowrap;">
+              ? `<button onclick="connectOAuthEmail('${monitor.oauth_provider}')" class="btn" style="font-size: 10px; padding: 4px 10px; background: linear-gradient(135deg, #4285F4, #34A853); white-space: nowrap;">
                    🔗 Reconnect
                  </button>`
-              : `<button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 10px; padding: 4px 8px; background: #6366f1; margin-left: auto; white-space: nowrap;">
+              : `<button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 10px; padding: 4px 8px; background: #6366f1; white-space: nowrap;">
                    ⚡ Check
+                 </button>`;
+
+            // Delete button - always shown
+            const deleteButton = `<button onclick="deleteEmailMonitor(${monitor.id}, '${escapeHtml(monitor.email_address).replace(/'/g, "\\'")}')" class="btn" style="font-size: 10px; padding: 4px 8px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); white-space: nowrap;" title="Delete monitor">
+                   🗑
                  </button>`;
 
             return `
@@ -4961,7 +4966,10 @@
                     Last: <span class="monitor-stat-value">${lastChecked}</span>
                   </span>
                 </div>
-                ${actionButton}
+                <div style="display: flex; gap: 6px; margin-left: auto;">
+                  ${actionButton}
+                  ${deleteButton}
+                </div>
               </div>
             `;
           }).join('');
@@ -5428,12 +5436,15 @@
         const result = await response.json();
 
         if (result.success) {
+          showToast('🗑 Email monitor deleted', 'success');
           loadEmailMonitors();
+          // Also refresh the tile display
+          loadEmailMonitorStatsForTile();
         } else {
-          alert(`Failed to delete monitor: ${result.error}`);
+          showToast(`Failed to delete: ${result.error}`, 'error');
         }
       } catch (error) {
-        alert(`Error deleting monitor: ${error.message}`);
+        showToast(`Error: ${error.message}`, 'error');
       }
     }
 

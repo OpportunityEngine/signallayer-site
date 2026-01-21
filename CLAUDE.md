@@ -1,12 +1,31 @@
 # Revenue Radar / QuietSignal - Claude Code Guide
 
+## IMPORTANT: Agent Usage Policy
+
+**ALWAYS use our specialized agents for ALL tasks.** This is a core project requirement.
+
+For every task/prompt/command:
+1. **code-quality-engineer** - Run in background alongside ALL work to continuously improve code quality
+2. **regression-guardian** - Run after ANY code changes to verify no breaks
+3. Use the appropriate specialist agent for the task type (see table below)
+
+This policy ensures:
+- Faster development (parallel work)
+- Higher accuracy (specialized agents)
+- Better code quality (continuous improvement)
+- Fewer bugs (regression checks)
+
+**Never work without agents** - even simple tasks benefit from parallel quality checks.
+
+---
+
 ## Quick Start
 
 ### Start Server Locally
 ```bash
 npm install
 node server.js
-# Server runs on http://localhost:3000
+# Server runs on http://localhost:5050
 ```
 
 ### Run Tests
@@ -109,45 +128,97 @@ email_processing_log(id, monitor_id, email_uid, status, skip_reason,
 
 ## Workflow Playbook (Using Subagents)
 
-### A) Debugging Email Autopilot Issues
+### Available Agents (12 total)
+
+| Agent | Purpose | When to Use |
+|-------|---------|-------------|
+| `invoice-parser-specialist` | Fix parsing bugs, improve vendor detection | Invoice showing wrong totals/items |
+| `email-autopilot-debugger` | Debug email processing issues | Emails not being detected/processed |
+| `test-runner` | Execute tests, report failures | After any code changes |
+| `regression-guardian` | Review code for regressions/security | After significant changes |
+| `data-fixture-curator` | Create test fixtures from real data | New invoice format found |
+| `ui-frontend-specialist` | Update dashboard HTML/CSS/JS | UI changes needed |
+| `api-architect` | Design/fix API endpoints | Backend API work |
+| `database-specialist` | Schema changes, query optimization | Database issues |
+| `deploy-assistant` | Git commits, deployments | Ready to commit/deploy |
+| `feature-planner` | Break down features into tasks | Starting a new feature |
+| `error-investigator` | Debug errors, trace code paths | Something is broken |
+| `code-quality-engineer` | Improve code quality as we work | **Use alongside all tasks** |
+
+### A) Continuous Quality Improvement (NEW)
+
+**Always run `code-quality-engineer` alongside feature work:**
+
+```
+# Example: While fixing a bug, also improve surrounding code
+"Fix the OAuth token refresh issue.
+- error-investigator: find root cause
+- api-architect: implement the fix
+- code-quality-engineer (background): review touched files for improvements
+- regression-guardian: verify no breaks"
+```
+
+### B) Debugging Email Autopilot Issues
 
 **Parallel approach for maximum speed:**
 
 1. **Main task** → Ask `email-autopilot-debugger` to instrument & fix
 2. **Background** → Run `test-runner` to reproduce with minimal script
-3. **After fix** → Have `regression-guardian` review diffs
+3. **Background** → `code-quality-engineer` reviews email service code
+4. **After fix** → Have `regression-guardian` review diffs
 
 ```
 # Example prompt:
 "Email monitor shows 6 invoices but My Invoices shows 0.
 - email-autopilot-debugger: trace the data flow and fix
 - test-runner (background): query database state and check logs
+- code-quality-engineer (background): review email service patterns
 - regression-guardian: review the fix for regressions"
 ```
 
-### B) Improving Invoice Parsing Accuracy
+### C) Improving Invoice Parsing Accuracy
 
 **Parallel approach:**
 
 1. **Main task** → Ask `invoice-parser-specialist` to implement fix
 2. **Background** → Have `data-fixture-curator` create test fixtures
 3. **Background** → Run `test-runner` for parsing tests only
-4. **After fix** → `regression-guardian` reviews
+4. **Background** → `code-quality-engineer` reviews parser code
+5. **After fix** → `regression-guardian` reviews
 
 ```
 # Example prompt:
 "Cintas invoice showing wrong subtotal - picking department subtotal instead of invoice total.
 - invoice-parser-specialist: fix the bottom-up totals detection
 - data-fixture-curator (background): create fixture for this invoice
-- test-runner (background): run invoice parsing tests"
+- test-runner (background): run invoice parsing tests
+- code-quality-engineer (background): check parser consistency"
 ```
 
-### C) General Code Changes
+### D) General Code Changes
 
 After any significant changes:
 ```
-# Run regression-guardian to review:
-"Review the last commit for regressions and security issues"
+# Run both quality and regression checks:
+"Review the last commit:
+- code-quality-engineer: identify improvement opportunities
+- regression-guardian: check for regressions and security issues"
+```
+
+### E) New Feature Development
+
+**Use feature-planner first, then parallel execution:**
+
+```
+# Example: Adding a new dashboard widget
+"Plan and implement a cost savings chart on the analytics dashboard.
+1. feature-planner: break down into tasks
+2. (parallel) api-architect: create data endpoint
+2. (parallel) ui-frontend-specialist: build the chart component
+3. database-specialist: optimize query if needed
+4. code-quality-engineer: ensure patterns match existing code
+5. regression-guardian: final review
+6. deploy-assistant: commit when approved"
 ```
 
 ---
