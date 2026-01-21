@@ -640,6 +640,87 @@ router.get('/debug/invoices', (req, res) => {
   }
 });
 
+// POST /api/debug/fix-invoice-ownership - Fix invoices with wrong/null user_id
+router.post('/debug/fix-invoice-ownership', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const database = db.getDatabase();
+
+    // Find email monitors owned by this user
+    const userMonitors = database.prepare(`
+      SELECT id, email_address FROM email_monitors
+      WHERE user_id = ? OR created_by_user_id = ?
+    `).all(user.id, user.id);
+
+    if (userMonitors.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No email monitors found for your account',
+        fixed: 0
+      });
+    }
+
+    const monitorIds = userMonitors.map(m => m.id);
+
+    // Fix invoices from email autopilot that have wrong user_id
+    // These have run_id starting with 'email-{monitorId}-'
+    let totalFixed = 0;
+
+    for (const monitor of userMonitors) {
+      const pattern = `email-${monitor.id}-%`;
+
+      // Count before fix
+      const beforeCount = database.prepare(`
+        SELECT COUNT(*) as count FROM ingestion_runs
+        WHERE run_id LIKE ? AND (user_id IS NULL OR user_id != ?)
+      `).get(pattern, user.id);
+
+      if (beforeCount.count > 0) {
+        // Fix the user_id
+        const result = database.prepare(`
+          UPDATE ingestion_runs
+          SET user_id = ?
+          WHERE run_id LIKE ? AND (user_id IS NULL OR user_id != ?)
+        `).run(user.id, pattern, user.id);
+
+        totalFixed += result.changes;
+        console.log(`[API] Fixed ${result.changes} invoices from monitor ${monitor.id} (${monitor.email_address}) for user ${user.id}`);
+      }
+    }
+
+    // Also fix any invoices where account matches user's monitors
+    const accountNames = userMonitors.map(m => {
+      const monitor = database.prepare('SELECT account_name FROM email_monitors WHERE id = ?').get(m.id);
+      return monitor?.account_name;
+    }).filter(Boolean);
+
+    for (const accountName of accountNames) {
+      const result = database.prepare(`
+        UPDATE ingestion_runs
+        SET user_id = ?
+        WHERE account_name = ? AND (user_id IS NULL OR user_id != ?)
+      `).run(user.id, accountName, user.id);
+
+      if (result.changes > 0) {
+        totalFixed += result.changes;
+        console.log(`[API] Fixed ${result.changes} invoices for account "${accountName}" for user ${user.id}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: totalFixed > 0
+        ? `Fixed ${totalFixed} invoice(s) - they should now appear in My Invoices`
+        : 'All invoices already have correct ownership',
+      fixed: totalFixed,
+      monitors: userMonitors.map(m => m.email_address)
+    });
+  } catch (error) {
+    console.error('[API] Fix invoice ownership error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DEMO MODE ENDPOINT =====
 
 // GET /api/demo/status - Check if we should use demo or production data
