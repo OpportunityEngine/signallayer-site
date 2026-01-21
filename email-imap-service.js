@@ -721,12 +721,18 @@ class EmailIMAPService {
     try {
       const runId = `email-${monitor.id}-${Date.now()}`;
 
-      // Get user from monitor
-      const user = db.getDatabase().prepare('SELECT * FROM users WHERE id = ?').get(monitor.created_by_user_id);
+      // Get user from monitor (use user_id first, fallback to created_by_user_id for backwards compatibility)
+      const monitorUserId = monitor.user_id || monitor.created_by_user_id;
+      console.log(`[EMAIL IMAP] Ingesting for monitor user_id=${monitorUserId} (monitor.user_id=${monitor.user_id}, monitor.created_by_user_id=${monitor.created_by_user_id})`);
+
+      const user = db.getDatabase().prepare('SELECT * FROM users WHERE id = ?').get(monitorUserId);
 
       if (!user) {
-        return { success: false, error: 'Monitor user not found' };
+        console.error(`[EMAIL IMAP] User not found for monitor - user_id: ${monitorUserId}`);
+        return { success: false, error: `Monitor user not found (id: ${monitorUserId})` };
       }
+
+      console.log(`[EMAIL IMAP] Using user: id=${user.id}, email=${user.email}`);
 
       // Store ingestion run and get the auto-increment ID for foreign key references
       const insertResult = db.getDatabase().prepare(`

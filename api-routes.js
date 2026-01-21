@@ -505,6 +505,8 @@ router.get('/uploads/recent', (req, res) => {
     const user = getUserContext(req);
     const limit = parseInt(req.query.limit) || 10;
 
+    console.log(`[API] /uploads/recent - User ID: ${user?.id}, Email: ${user?.email}`);
+
     // Demo users get demo invoice data
     if (isDemoUser(user)) {
       const demoInvoices = demoData.invoices.slice(0, limit);
@@ -515,6 +517,11 @@ router.get('/uploads/recent', (req, res) => {
     }
 
     const database = db.getDatabase();
+
+    // Debug: Check how many invoices exist for this user
+    const debugCount = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id = ?`).get(user.id);
+    const totalCount = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
+    console.log(`[API] Invoices for user ${user.id}: ${debugCount.count}, Total in DB: ${totalCount.count}`);
 
     const uploads = database.prepare(`
       SELECT
@@ -562,6 +569,73 @@ router.get('/uploads/recent', (req, res) => {
     });
   } catch (error) {
     console.error('[API] Error fetching recent uploads:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===== DIAGNOSTIC ENDPOINT =====
+// GET /api/debug/invoices - Debug invoice visibility issues
+router.get('/debug/invoices', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const database = db.getDatabase();
+
+    // Get all users and their invoice counts
+    const userInvoiceCounts = database.prepare(`
+      SELECT
+        u.id, u.email, u.name,
+        (SELECT COUNT(*) FROM ingestion_runs WHERE user_id = u.id) as invoice_count
+      FROM users u
+      ORDER BY invoice_count DESC
+    `).all();
+
+    // Get total invoices
+    const totalInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
+
+    // Get invoices with null user_id
+    const nullUserInvoices = database.prepare(`
+      SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL
+    `).get();
+
+    // Get recent invoices with user info
+    const recentInvoices = database.prepare(`
+      SELECT
+        ir.id, ir.run_id, ir.user_id, ir.file_name, ir.vendor_name, ir.status, ir.created_at,
+        u.email as user_email
+      FROM ingestion_runs ir
+      LEFT JOIN users u ON ir.user_id = u.id
+      ORDER BY ir.created_at DESC
+      LIMIT 10
+    `).all();
+
+    // Get email monitors with their user assignments
+    const monitors = database.prepare(`
+      SELECT
+        em.id, em.email_address, em.user_id, em.created_by_user_id, em.invoices_created_count,
+        u1.email as user_email,
+        u2.email as created_by_email
+      FROM email_monitors em
+      LEFT JOIN users u1 ON em.user_id = u1.id
+      LEFT JOIN users u2 ON em.created_by_user_id = u2.id
+    `).all();
+
+    res.json({
+      success: true,
+      currentUser: {
+        id: user.id,
+        email: user.email
+      },
+      summary: {
+        totalInvoices: totalInvoices.count,
+        invoicesWithNullUser: nullUserInvoices.count,
+        yourInvoices: userInvoiceCounts.find(u => u.id === user.id)?.invoice_count || 0
+      },
+      userInvoiceCounts,
+      recentInvoices,
+      emailMonitors: monitors
+    });
+  } catch (error) {
+    console.error('[API] Debug invoices error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
