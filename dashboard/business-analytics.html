@@ -1063,7 +1063,7 @@
       </div>
     </div>
 
-    <!-- Email Invoice Autopilot - Savings Summary -->
+    <!-- Email Invoice Autopilot - Full Management UI -->
     <div class="tile-card" style="margin-bottom: 24px;">
       <div class="tile-header">
         <div class="tile-title">
@@ -1071,7 +1071,12 @@
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <span id="autopilotStatus" class="tile-badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">Active</span>
-          <a href="manager-view.html#email-autopilot" style="font-size: 12px; color: #fbbf24; text-decoration: none;">Manage →</a>
+          <button onclick="refreshEmailMonitors()" class="btn" style="font-size: 11px; padding: 6px 12px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">
+            🔄 Refresh
+          </button>
+          <button onclick="openAddEmailMonitor()" class="btn" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+            + Add Monitor
+          </button>
         </div>
       </div>
       <div class="tile-body">
@@ -1098,9 +1103,12 @@
           </div>
         </div>
 
-        <!-- Active Monitors Mini List -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-          <div id="autopilotMonitorsList">
+        <!-- Active Email Monitors Section -->
+        <div style="margin-top: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--text); margin: 0;">Active Email Monitors</h3>
+          </div>
+          <div id="autopilotMonitorsList" style="display: flex; flex-direction: column; gap: 12px;">
             <div style="text-align: center; padding: 20px; color: #64748b; font-size: 13px;">
               Loading email monitors...
             </div>
@@ -1676,6 +1684,204 @@
 
 
   </div>
+
+  <!-- Add Email Monitor Modal (VP Style) -->
+  <div class="modal-overlay" id="addEmailMonitorModal" onclick="closeAddEmailMonitor(event)">
+    <div class="modal-content" style="max-width: 700px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 24px;">📧</span>
+          <span>Add Email Monitor</span>
+          <span style="font-size: 11px; background: rgba(6, 182, 212, 0.15); color: #06b6d4; padding: 4px 10px; border-radius: 20px; font-weight: 600;">Invoice Autopilot</span>
+        </div>
+        <button class="modal-close" onclick="closeAddEmailMonitor()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Quick Connect Section (OAuth) -->
+        <div id="oauthConnectSection">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px;">Quick Connect</div>
+            <div style="font-size: 13px; color: var(--muted);">Connect with one click - no passwords needed!</div>
+          </div>
+
+          <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 24px;">
+            <!-- Google OAuth Button -->
+            <button onclick="connectWithGoogle()" id="googleOAuthBtn" class="btn" style="display: flex; align-items: center; gap: 12px; padding: 14px 28px; background: white; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; font-weight: 500; color: #3c4043; cursor: pointer; transition: all 0.2s;">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Connect with Google
+            </button>
+
+            <!-- Microsoft OAuth Button -->
+            <button onclick="connectWithMicrosoft()" id="microsoftOAuthBtn" class="btn" style="display: flex; align-items: center; gap: 12px; padding: 14px 28px; background: white; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; font-weight: 500; color: #3c4043; cursor: pointer; transition: all 0.2s;">
+              <svg width="20" height="20" viewBox="0 0 23 23"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>
+              Connect with Microsoft
+            </button>
+          </div>
+
+          <div id="oauthStatus" style="text-align: center; margin-bottom: 16px; display: none;"></div>
+
+          <!-- Divider -->
+          <div style="display: flex; align-items: center; gap: 16px; margin: 24px 0;">
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <span style="color: var(--muted); font-size: 12px; font-weight: 500;">OR CONNECT MANUALLY</span>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+          </div>
+        </div>
+
+        <!-- Manual Setup Section -->
+        <div id="manualSetupSection">
+          <!-- Info Banner -->
+          <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="font-size: 12px; color: var(--muted);">
+              <strong style="color: #f59e0b;">For Gmail users:</strong> You'll need an App Password.
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #06b6d4;">Generate one here</a>
+              (requires 2-factor auth enabled).
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Left Column -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">Monitor Name <span style="color: var(--muted);">*</span></label>
+                <input type="text" id="newMonitorName" placeholder="e.g., Main Invoice Inbox" required style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">Email Address <span style="color: var(--muted);">*</span></label>
+                <input type="email" id="newMonitorEmail" placeholder="invoices@yourcompany.com" required onblur="detectIMAPSettings()" style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">App Password <span style="color: var(--muted);">*</span></label>
+                <input type="password" id="newMonitorPassword" placeholder="Enter app password" required style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">IMAP Server <span style="color: var(--muted);">*</span></label>
+                <input type="text" id="newMonitorImapHost" placeholder="imap.gmail.com" required style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+                <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Auto-detected for Gmail, Outlook, Yahoo</div>
+              </div>
+
+              <div>
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 13px;">IMAP Port</label>
+                <input type="number" id="newMonitorImapPort" placeholder="993" value="993" style="width: 100%; padding: 11px 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;">
+              </div>
+
+              <div>
+                <button onclick="testIMAPConnection()" type="button" class="btn" style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; padding: 11px; font-size: 13px; font-weight: 600;">
+                  Test Connection
+                </button>
+                <div id="testConnectionResult" style="margin-top: 8px; display: none; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+            <button onclick="createEmailMonitor()" class="btn" style="flex: 1; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; padding: 14px; font-size: 14px; font-weight: 600;">
+              Create Email Monitor
+            </button>
+            <button onclick="closeAddEmailMonitor()" class="btn" style="padding: 14px 28px; background: var(--panel2); font-size: 14px;">Cancel</button>
+          </div>
+        </div>
+
+        <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-content {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.98) 0%, rgba(15, 19, 32, 0.98) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 16px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+    .modal-body {
+      padding: 24px;
+    }
+
+    /* Button Styles for Modal */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      color: white;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+  </style>
 
   <script>
     const authToken = localStorage.getItem('accessToken');
@@ -2557,6 +2763,32 @@
     document.head.appendChild(style);
 
     // ===== EMAIL AUTOPILOT FUNCTIONS =====
+
+    // Helper: Format relative time
+    function formatRelativeTime(dateStr) {
+      if (!dateStr) return 'Never';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    }
+
+    // Helper: Escape HTML
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     async function loadEmailAutopilotData() {
       try {
         // Load monitors
@@ -2566,7 +2798,7 @@
 
         if (monitorsResponse.ok) {
           const monitorsData = await monitorsResponse.json();
-          const monitors = monitorsData.monitors || [];
+          const monitors = monitorsData.monitors || monitorsData.data || [];
 
           // Update status badge
           const activeCount = monitors.filter(m => m.is_active).length;
@@ -2583,29 +2815,58 @@
             }
           }
 
-          // Display mini monitors list
+          // Display full monitors list with action buttons
           const monitorsList = document.getElementById('autopilotMonitorsList');
           if (monitorsList && monitors.length > 0) {
-            monitorsList.innerHTML = monitors.slice(0, 3).map(m => `
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); border-radius: 10px; border: 1px solid rgba(251, 191, 36, 0.1);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <div style="width: 10px; height: 10px; border-radius: 50%; background: ${m.is_active ? '#22c55e' : '#6b7280'};"></div>
+            monitorsList.innerHTML = monitors.map(m => {
+              const needsReconnect = m.oauth_provider && !m.is_active && !m.oauth_access_token;
+              const statusColor = m.is_active ? '#22c55e' : needsReconnect ? '#f59e0b' : '#6b7280';
+              const statusText = m.is_active ? 'Active' : needsReconnect ? 'Reconnect' : 'Paused';
+              const lastChecked = formatRelativeTime(m.last_checked_at);
+
+              return `
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: rgba(15, 23, 42, 0.6); border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.1);">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                  <div style="width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; box-shadow: 0 0 8px ${statusColor};"></div>
                   <div>
-                    <div style="font-weight: 600; font-size: 13px; color: #e2e8f0;">${m.name || 'Email Monitor'}</div>
-                    <div style="font-size: 11px; color: #64748b;">${m.email_address || ''}</div>
+                    <div style="font-weight: 600; font-size: 14px; color: #e2e8f0;">${escapeHtml(m.name || 'Email Monitor')}</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">${escapeHtml(m.email_address || '')}</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                      <span style="color: #22c55e; font-weight: 600;">${m.invoices_created || 0}</span> invoices
+                      <span style="margin: 0 8px; color: #334155;">|</span>
+                      Last check: ${lastChecked}
+                    </div>
                   </div>
                 </div>
-                <div style="text-align: right;">
-                  <div style="font-size: 13px; font-weight: 700; color: #22c55e;">${m.invoices_created || 0}</div>
-                  <div style="font-size: 10px; color: #64748b;">invoices</div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  ${needsReconnect ? `
+                    <button onclick="reconnectOAuth('${m.oauth_provider}')" class="btn" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, #f59e0b, #d97706);">
+                      🔗 Reconnect
+                    </button>
+                  ` : `
+                    <button onclick="checkEmailNow(${m.id})" class="btn" style="font-size: 11px; padding: 6px 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">
+                      ⚡ Check Now
+                    </button>
+                    <button onclick="toggleEmailMonitor(${m.id}, ${!m.is_active})" class="btn" style="font-size: 11px; padding: 6px 12px; background: ${m.is_active ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)'}; color: ${m.is_active ? '#f59e0b' : '#22c55e'}; border: 1px solid ${m.is_active ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.3)'};">
+                      ${m.is_active ? '⏸ Pause' : '▶ Activate'}
+                    </button>
+                  `}
+                  <button onclick="deleteEmailMonitor(${m.id}, '${escapeHtml(m.name || m.email_address)}')" class="btn" style="font-size: 11px; padding: 6px 10px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+                    🗑
+                  </button>
                 </div>
               </div>
-            `).join('');
+            `;
+            }).join('');
           } else if (monitorsList) {
             monitorsList.innerHTML = `
-              <div style="text-align: center; padding: 20px; color: #64748b;">
-                <div style="font-size: 13px;">No email monitors configured</div>
-                <a href="manager-view.html" style="font-size: 12px; color: #fbbf24; text-decoration: none; margin-top: 8px; display: inline-block;">Set up email autopilot →</a>
+              <div style="text-align: center; padding: 30px; color: #64748b; background: rgba(15, 23, 42, 0.4); border-radius: 12px; border: 1px dashed rgba(251, 191, 36, 0.2);">
+                <div style="font-size: 32px; margin-bottom: 12px;">📧</div>
+                <div style="font-size: 14px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">No email monitors configured</div>
+                <div style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Set up autopilot to automatically process invoices from your inbox</div>
+                <button onclick="openAddEmailMonitor()" class="btn" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 10px 20px;">
+                  + Add Your First Monitor
+                </button>
               </div>
             `;
           }
@@ -2645,6 +2906,391 @@
         `;
       }
     }
+
+    // Refresh monitors
+    function refreshEmailMonitors() {
+      showToast('🔄 Refreshing monitors...', 'info');
+      loadEmailAutopilotData();
+    }
+
+    // ===== MODAL FUNCTIONS =====
+    function openAddEmailMonitor() {
+      const modal = document.getElementById('addEmailMonitorModal');
+      if (modal) {
+        modal.classList.add('active');
+        checkOAuthStatus();
+      }
+    }
+
+    function closeAddEmailMonitor(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('addEmailMonitorModal');
+      if (modal) {
+        modal.classList.remove('active');
+        // Clear form
+        const nameEl = document.getElementById('newMonitorName');
+        const emailEl = document.getElementById('newMonitorEmail');
+        const passwordEl = document.getElementById('newMonitorPassword');
+        const hostEl = document.getElementById('newMonitorImapHost');
+        const portEl = document.getElementById('newMonitorImapPort');
+        const resultEl = document.getElementById('testConnectionResult');
+        const oauthEl = document.getElementById('oauthStatus');
+
+        if (nameEl) nameEl.value = '';
+        if (emailEl) emailEl.value = '';
+        if (passwordEl) passwordEl.value = '';
+        if (hostEl) hostEl.value = '';
+        if (portEl) portEl.value = '993';
+        if (resultEl) resultEl.style.display = 'none';
+        if (oauthEl) oauthEl.style.display = 'none';
+      }
+    }
+
+    // ===== OAUTH FUNCTIONS =====
+    async function checkOAuthStatus() {
+      try {
+        const response = await fetch('/api/email-oauth/status', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          const googleBtn = document.getElementById('googleOAuthBtn');
+          const microsoftBtn = document.getElementById('microsoftOAuthBtn');
+          const oauthSection = document.getElementById('oauthConnectSection');
+
+          // Enable/disable buttons based on configuration
+          if (result.data?.google?.configured) {
+            if (googleBtn) {
+              googleBtn.disabled = false;
+              googleBtn.style.opacity = '1';
+              googleBtn.title = 'Connect your Gmail account';
+            }
+          } else {
+            if (googleBtn) {
+              googleBtn.disabled = true;
+              googleBtn.style.opacity = '0.5';
+              googleBtn.title = 'Google OAuth not configured';
+            }
+          }
+
+          if (result.data?.microsoft?.configured) {
+            if (microsoftBtn) {
+              microsoftBtn.disabled = false;
+              microsoftBtn.style.opacity = '1';
+              microsoftBtn.title = 'Connect your Outlook account';
+            }
+          } else {
+            if (microsoftBtn) {
+              microsoftBtn.disabled = true;
+              microsoftBtn.style.opacity = '0.5';
+              microsoftBtn.title = 'Microsoft OAuth not configured';
+            }
+          }
+
+          // If neither is configured, hide the OAuth section
+          if (!result.data?.google?.configured && !result.data?.microsoft?.configured) {
+            if (oauthSection) oauthSection.style.display = 'none';
+          } else {
+            if (oauthSection) oauthSection.style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check OAuth status:', error);
+        const oauthSection = document.getElementById('oauthConnectSection');
+        if (oauthSection) oauthSection.style.display = 'none';
+      }
+    }
+
+    async function connectWithGoogle() {
+      const statusDiv = document.getElementById('oauthStatus');
+      if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<div style="color: var(--muted);">Connecting to Google...</div>';
+      }
+
+      try {
+        const response = await fetch('/api/email-oauth/google/auth', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data?.authUrl) {
+          window.location.href = result.data.authUrl;
+        } else {
+          if (statusDiv) statusDiv.innerHTML = `<div style="color: #ef4444;">Failed: ${result.error || 'Unknown error'}</div>`;
+        }
+      } catch (error) {
+        if (statusDiv) statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function connectWithMicrosoft() {
+      const statusDiv = document.getElementById('oauthStatus');
+      if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<div style="color: var(--muted);">Connecting to Microsoft...</div>';
+      }
+
+      try {
+        const response = await fetch('/api/email-oauth/microsoft/auth', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data?.authUrl) {
+          window.location.href = result.data.authUrl;
+        } else {
+          if (statusDiv) statusDiv.innerHTML = `<div style="color: #ef4444;">Failed: ${result.error || 'Unknown error'}</div>`;
+        }
+      } catch (error) {
+        if (statusDiv) statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+      }
+    }
+
+    async function reconnectOAuth(provider) {
+      showToast(`Reconnecting to ${provider}...`, 'info');
+      try {
+        const response = await fetch(`/api/email-oauth/${provider}/auth`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const result = await response.json();
+        if (result.success && result.data?.authUrl) {
+          window.location.href = result.data.authUrl;
+        } else {
+          showToast(`Failed: ${result.error || 'Unknown error'}`, 'error');
+        }
+      } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Check OAuth callback on page load
+    function checkOAuthCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const oauthSuccess = params.get('oauth_success');
+      const oauthError = params.get('oauth_error');
+      const email = params.get('email');
+
+      if (oauthSuccess) {
+        const action = oauthSuccess === 'created' ? 'created' : 'updated';
+        showToast(`Email monitor ${action} successfully for ${email || 'your account'}!`, 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        loadEmailAutopilotData();
+      } else if (oauthError) {
+        showToast(`OAuth failed: ${decodeURIComponent(oauthError)}`, 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    // ===== IMAP FUNCTIONS =====
+    async function detectIMAPSettings() {
+      const email = document.getElementById('newMonitorEmail')?.value?.trim();
+      if (!email) return;
+
+      try {
+        const response = await fetch('/api/email-monitors/detect-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ email })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.settings) {
+            const hostEl = document.getElementById('newMonitorImapHost');
+            const portEl = document.getElementById('newMonitorImapPort');
+            if (hostEl) hostEl.value = result.settings.imap_host;
+            if (portEl) portEl.value = result.settings.imap_port;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to detect IMAP settings:', error);
+      }
+    }
+
+    async function testIMAPConnection() {
+      const email = document.getElementById('newMonitorEmail')?.value?.trim();
+      const password = document.getElementById('newMonitorPassword')?.value;
+      const imapHost = document.getElementById('newMonitorImapHost')?.value?.trim();
+      const imapPort = document.getElementById('newMonitorImapPort')?.value;
+
+      if (!email || !password || !imapHost) {
+        alert('Please fill in email, password, and IMAP server first');
+        return;
+      }
+
+      const resultDiv = document.getElementById('testConnectionResult');
+      if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="color: var(--muted);">Testing connection...</div>';
+      }
+
+      try {
+        const response = await fetch('/api/email-monitors/test-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            host: imapHost,
+            port: parseInt(imapPort),
+            secure: true
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          if (resultDiv) resultDiv.innerHTML = '<div style="color: #10b981; font-weight: 600;">✓ Connection successful!</div>';
+        } else {
+          if (resultDiv) resultDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">✗ Connection failed: ${result.error}</div>`;
+        }
+      } catch (error) {
+        if (resultDiv) resultDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">✗ Connection failed: ${error.message}</div>`;
+      }
+    }
+
+    async function createEmailMonitor() {
+      const name = document.getElementById('newMonitorName')?.value?.trim();
+      const email_address = document.getElementById('newMonitorEmail')?.value?.trim();
+      const email_password = document.getElementById('newMonitorPassword')?.value;
+      const imap_host = document.getElementById('newMonitorImapHost')?.value?.trim();
+      const imap_port = parseInt(document.getElementById('newMonitorImapPort')?.value || '993');
+
+      if (!name || !email_address || !email_password || !imap_host) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/email-monitors', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            name,
+            email_address,
+            imap_host,
+            imap_port,
+            imap_secure: true,
+            imap_user: email_address,
+            imap_password: email_password,
+            folder_name: 'INBOX',
+            check_frequency_minutes: 15
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('Email monitor created successfully!', 'success');
+          closeAddEmailMonitor();
+          loadEmailAutopilotData();
+        } else {
+          alert(`Failed to create monitor: ${result.error}`);
+        }
+      } catch (error) {
+        alert(`Error creating monitor: ${error.message}`);
+      }
+    }
+
+    // ===== MONITOR ACTION FUNCTIONS =====
+    async function checkEmailNow(monitorId) {
+      const btn = event?.target;
+      const originalText = btn?.innerHTML;
+      if (btn) {
+        btn.innerHTML = '⏳...';
+        btn.disabled = true;
+      }
+
+      try {
+        const response = await fetch(`/api/email-monitors/${monitorId}/check-now`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('📧 Email check started! Processing in background...', 'success');
+          setTimeout(() => loadEmailAutopilotData(), 5000);
+        } else {
+          showToast(`Failed to check: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.innerHTML = originalText || '⚡ Check Now';
+          btn.disabled = false;
+        }
+      }
+    }
+
+    async function toggleEmailMonitor(monitorId, activate) {
+      try {
+        const url = activate ?
+          `/api/email-monitors/${monitorId}/start` :
+          `/api/email-monitors/${monitorId}/stop`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showToast(activate ? '✅ Monitor activated!' : '⏸ Monitor paused', 'success');
+          loadEmailAutopilotData();
+        } else {
+          showToast(`Failed: ${result.error}`, 'error');
+          loadEmailAutopilotData();
+        }
+      } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+        loadEmailAutopilotData();
+      }
+    }
+
+    async function deleteEmailMonitor(monitorId, monitorName) {
+      if (!confirm(`Are you sure you want to delete "${monitorName}"?\n\nThis will stop monitoring this email and cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/email-monitors/${monitorId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('🗑 Monitor deleted', 'success');
+          loadEmailAutopilotData();
+        } else {
+          showToast(`Failed to delete: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Initialize OAuth callback check on page load
+    document.addEventListener('DOMContentLoaded', checkOAuthCallback);
 
     // Initialize
     loadAnalytics();
