@@ -1907,7 +1907,8 @@ function createEmailMonitor(data) {
  * @returns {Array} Active monitors
  */
 function getActiveEmailMonitors() {
-  const monitors = db.prepare(`
+  const database = getDatabase();
+  const monitors = database.prepare(`
     SELECT * FROM email_monitors
     WHERE is_active = 1
     ORDER BY id
@@ -1922,10 +1923,11 @@ function getActiveEmailMonitors() {
  * @returns {Object|null} Monitor with decrypted password
  */
 function getEmailMonitorById(monitorId) {
+  const database = getDatabase();
   const CryptoJS = require('crypto-js');
   const ENCRYPTION_KEY = process.env.EMAIL_PASSWORD_KEY || 'revenue-radar-email-key-2026';
 
-  const monitor = db.prepare(`
+  const monitor = database.prepare(`
     SELECT * FROM email_monitors WHERE id = ?
   `).get(monitorId);
 
@@ -1950,7 +1952,8 @@ function getEmailMonitorById(monitorId) {
  * @returns {Array} Monitors (without passwords)
  */
 function getEmailMonitorsByAccount(accountName) {
-  const monitors = db.prepare(`
+  const database = getDatabase();
+  const monitors = database.prepare(`
     SELECT
       id, account_name, monitor_name, email_address, imap_host,
       is_active, check_interval_minutes, industry, customer_type,
@@ -1969,7 +1972,8 @@ function getEmailMonitorsByAccount(accountName) {
  * @param {number} monitorId
  */
 function updateEmailMonitorLastCheck(monitorId, success = true) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     UPDATE email_monitors
     SET
       last_check_at = CURRENT_TIMESTAMP,
@@ -1984,7 +1988,8 @@ function updateEmailMonitorLastCheck(monitorId, success = true) {
  * @param {Object} stats - {emailsProcessed, invoicesFound, opportunitiesDetected, savingsCents}
  */
 function updateEmailMonitorStats(monitorId, stats) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     UPDATE email_monitors
     SET
       total_emails_processed = total_emails_processed + ?,
@@ -2007,7 +2012,8 @@ function updateEmailMonitorStats(monitorId, stats) {
  * @param {boolean} isActive
  */
 function toggleEmailMonitor(monitorId, isActive) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     UPDATE email_monitors SET is_active = ? WHERE id = ?
   `).run(isActive ? 1 : 0, monitorId);
 
@@ -2020,7 +2026,8 @@ function toggleEmailMonitor(monitorId, isActive) {
  * @returns {number} Queue ID
  */
 function addEmailToQueue(data) {
-  const result = db.prepare(`
+  const database = getDatabase();
+  const result = database.prepare(`
     INSERT INTO email_invoice_queue (
       monitor_id, email_uid, sender_email, sender_name, subject,
       received_at, attachment_count, attachment_filenames
@@ -2045,6 +2052,7 @@ function addEmailToQueue(data) {
  * @param {Object} updates
  */
 function updateEmailQueueItem(queueId, updates) {
+  const database = getDatabase();
   const fields = [];
   const values = [];
 
@@ -2076,7 +2084,7 @@ function updateEmailQueueItem(queueId, updates) {
   fields.push('processed_at = CURRENT_TIMESTAMP');
   values.push(queueId);
 
-  db.prepare(`
+  database.prepare(`
     UPDATE email_invoice_queue
     SET ${fields.join(', ')}
     WHERE id = ?
@@ -2090,15 +2098,16 @@ function updateEmailQueueItem(queueId, updates) {
  * @returns {Array} Recent emails
  */
 function getRecentEmailQueue(monitorId = null, limit = 50) {
+  const database = getDatabase();
   if (monitorId) {
-    return db.prepare(`
+    return database.prepare(`
       SELECT * FROM email_invoice_queue
       WHERE monitor_id = ?
       ORDER BY received_at DESC
       LIMIT ?
     `).all(monitorId, limit);
   } else {
-    return db.prepare(`
+    return database.prepare(`
       SELECT eq.*, em.account_name, em.email_address
       FROM email_invoice_queue eq
       JOIN email_monitors em ON eq.monitor_id = em.id
@@ -2114,7 +2123,8 @@ function getRecentEmailQueue(monitorId = null, limit = 50) {
  * @returns {number} Savings ID
  */
 function recordDetectedSavings(data) {
-  const result = db.prepare(`
+  const database = getDatabase();
+  const result = database.prepare(`
     INSERT INTO detected_savings (
       monitor_id, ingestion_run_id, invoice_date, vendor_name,
       savings_type, description, amount_charged_cents, correct_amount_cents,
@@ -2151,10 +2161,11 @@ function recordDetectedSavings(data) {
  * @returns {Object} Summary statistics
  */
 function getDetectedSavingsSummary(monitorId = null, days = 30) {
+  const database = getDatabase();
   const whereClause = monitorId ? 'WHERE monitor_id = ? AND' : 'WHERE';
   const params = monitorId ? [monitorId] : [];
 
-  const summary = db.prepare(`
+  const summary = database.prepare(`
     SELECT
       COUNT(*) as total_findings,
       SUM(savings_amount_cents) as total_savings_cents,
@@ -2165,7 +2176,7 @@ function getDetectedSavingsSummary(monitorId = null, days = 30) {
     ${whereClause} detected_at >= datetime('now', '-${days} days')
   `).get(...params);
 
-  const byType = db.prepare(`
+  const byType = database.prepare(`
     SELECT
       savings_type,
       COUNT(*) as count,
@@ -2191,7 +2202,8 @@ function getDetectedSavingsSummary(monitorId = null, days = 30) {
  * @param {Object} metadata
  */
 function logEmailActivity(monitorId, activityType, message, severity = 'info', metadata = {}) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     INSERT INTO email_monitor_activity (
       monitor_id, activity_type, message, severity, metadata_json
     ) VALUES (?, ?, ?, ?, ?)
@@ -2211,15 +2223,16 @@ function logEmailActivity(monitorId, activityType, message, severity = 'info', m
  * @returns {Array} Recent activities
  */
 function getRecentEmailActivity(monitorId = null, limit = 100) {
+  const database = getDatabase();
   if (monitorId) {
-    return db.prepare(`
+    return database.prepare(`
       SELECT * FROM email_monitor_activity
       WHERE monitor_id = ?
       ORDER BY created_at DESC
       LIMIT ?
     `).all(monitorId, limit);
   } else {
-    return db.prepare(`
+    return database.prepare(`
       SELECT ea.*, em.account_name, em.email_address
       FROM email_monitor_activity ea
       JOIN email_monitors em ON ea.monitor_id = em.id
@@ -2236,14 +2249,15 @@ function getRecentEmailActivity(monitorId = null, limit = 100) {
  * @param {Object} data - {vendorEmail, invoiceAmountCents, skus}
  */
 function trackVendor(monitorId, vendorName, data) {
-  const existing = db.prepare(`
+  const database = getDatabase();
+  const existing = database.prepare(`
     SELECT * FROM auto_detected_vendors
     WHERE monitor_id = ? AND vendor_name = ?
   `).get(monitorId, vendorName);
 
   if (existing) {
     // Update existing vendor
-    db.prepare(`
+    database.prepare(`
       UPDATE auto_detected_vendors
       SET
         last_seen_at = CURRENT_TIMESTAMP,
@@ -2254,7 +2268,7 @@ function trackVendor(monitorId, vendorName, data) {
     `).run(data.invoiceAmountCents || 0, data.invoiceAmountCents || 0, existing.id);
   } else {
     // Create new vendor
-    db.prepare(`
+    database.prepare(`
       INSERT INTO auto_detected_vendors (
         monitor_id, vendor_name, vendor_email, invoice_count,
         total_spend_cents, avg_invoice_amount_cents
@@ -2274,11 +2288,13 @@ function trackVendor(monitorId, vendorName, data) {
 // =====================================================
 
 function getEmailMonitor(monitorId) {
-  return db.prepare('SELECT * FROM email_monitors WHERE id = ?').get(monitorId);
+  const database = getDatabase();
+  return database.prepare('SELECT * FROM email_monitors WHERE id = ?').get(monitorId);
 }
 
 function updateEmailMonitorLastChecked(monitorId, timestamp) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     UPDATE email_monitors
     SET last_checked_at = ?, last_success_at = ?
     WHERE id = ?
@@ -2286,7 +2302,8 @@ function updateEmailMonitorLastChecked(monitorId, timestamp) {
 }
 
 function updateEmailMonitorError(monitorId, errorMessage) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     UPDATE email_monitors
     SET last_error = ?, last_checked_at = CURRENT_TIMESTAMP
     WHERE id = ?
@@ -2294,7 +2311,8 @@ function updateEmailMonitorError(monitorId, errorMessage) {
 }
 
 function isEmailAlreadyProcessed(monitorId, emailUid) {
-  const exists = db.prepare(`
+  const database = getDatabase();
+  const exists = database.prepare(`
     SELECT id FROM email_processing_log
     WHERE monitor_id = ? AND email_uid = ?
   `).get(monitorId, emailUid);
@@ -2302,19 +2320,20 @@ function isEmailAlreadyProcessed(monitorId, emailUid) {
 }
 
 function logEmailProcessing(data) {
+  const database = getDatabase();
   // Ensure skip_reason column exists (migration)
   try {
-    const columns = db.prepare(`PRAGMA table_info(email_processing_log)`).all();
+    const columns = database.prepare(`PRAGMA table_info(email_processing_log)`).all();
     const hasSkipReason = columns.some(c => c.name === 'skip_reason');
     if (!hasSkipReason) {
-      db.exec(`ALTER TABLE email_processing_log ADD COLUMN skip_reason TEXT`);
+      database.exec(`ALTER TABLE email_processing_log ADD COLUMN skip_reason TEXT`);
       console.log('[DB] Added skip_reason column to email_processing_log');
     }
   } catch (e) {
     // Column might already exist or table doesn't exist yet
   }
 
-  db.prepare(`
+  database.prepare(`
     INSERT INTO email_processing_log (
       monitor_id, email_uid, email_subject, from_address, received_date,
       status, attachments_count, invoices_created, invoice_ids,
@@ -2337,7 +2356,8 @@ function logEmailProcessing(data) {
 }
 
 function incrementEmailMonitorStats(monitorId, invoicesCreated) {
-  db.prepare(`
+  const database = getDatabase();
+  database.prepare(`
     UPDATE email_monitors
     SET
       emails_processed_count = emails_processed_count + 1,

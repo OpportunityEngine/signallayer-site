@@ -108,7 +108,25 @@ router.get('/google/callback', async (req, res) => {
     // Exchange code for tokens
     console.log('[EMAIL-OAUTH] Exchanging code for tokens...');
     const tokens = await emailOAuth.exchangeGoogleCode(code);
-    console.log('[EMAIL-OAUTH] Token exchange successful, got access token:', tokens.accessToken ? 'yes' : 'no');
+    console.log('[EMAIL-OAUTH] Token exchange result:', {
+      hasAccessToken: !!tokens.accessToken,
+      hasRefreshToken: !!tokens.refreshToken,
+      expiresIn: tokens.expiresIn
+    });
+
+    // Validate we got both tokens - refresh token is REQUIRED for long-term access
+    if (!tokens.accessToken) {
+      console.error('[EMAIL-OAUTH] ❌ Google did not return access_token');
+      return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent('Google authorization failed. Please try again.'));
+    }
+
+    if (!tokens.refreshToken) {
+      console.error('[EMAIL-OAUTH] ❌ Google did not return refresh_token!');
+      console.error('[EMAIL-OAUTH] This happens when user previously authorized. User must revoke access and try again.');
+      return res.redirect('/dashboard/vp-view.html?oauth_error=' + encodeURIComponent(
+        'Google did not grant offline access. Please go to https://myaccount.google.com/permissions, revoke access for this app, and try connecting again.'
+      ));
+    }
 
     // Get user info
     console.log('[EMAIL-OAUTH] Getting user info...');
