@@ -1411,12 +1411,21 @@ app.get('/debug-invoice-status', (req, res) => {
       FROM email_monitors
     `).all();
 
-    const recentProcessing = database.prepare(`
-      SELECT monitor_id, status, skip_reason, invoices_created, error_message, created_at
-      FROM email_processing_log
-      ORDER BY created_at DESC
-      LIMIT 20
-    `).all();
+    // Get column info for email_processing_log to handle schema differences
+    let recentProcessing = [];
+    try {
+      const columns = database.prepare(`PRAGMA table_info(email_processing_log)`).all();
+      const hasCreatedAt = columns.some(c => c.name === 'created_at');
+      const orderBy = hasCreatedAt ? 'created_at DESC' : 'id DESC';
+      recentProcessing = database.prepare(`
+        SELECT monitor_id, status, skip_reason, invoices_created, error_message
+        FROM email_processing_log
+        ORDER BY ${orderBy}
+        LIMIT 20
+      `).all();
+    } catch (e) {
+      recentProcessing = [{ error: e.message }];
+    }
 
     const recentInvoices = database.prepare(`
       SELECT id, run_id, user_id, vendor_name, file_name, status, created_at
