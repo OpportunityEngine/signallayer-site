@@ -17,9 +17,10 @@ router.get('/public-debug-invoice-status', (req, res) => {
     const completedInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE status = 'completed'`).get();
     const nullUserInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL`).get();
 
-    // Get email monitors
+    // Get email monitors with created_by_user_id and account_name
     const monitors = database.prepare(`
-      SELECT id, email_address, user_id, is_active, invoices_created_count, emails_processed_count,
+      SELECT id, email_address, user_id, created_by_user_id, account_name,
+             is_active, invoices_created_count, emails_processed_count,
              last_checked_at, last_error,
              oauth_access_token IS NOT NULL as has_token
       FROM email_monitors
@@ -33,13 +34,45 @@ router.get('/public-debug-invoice-status', (req, res) => {
       LIMIT 20
     `).all();
 
+    // Get ALL ingestion_runs with their run_id patterns for debugging
+    const allInvoices = database.prepare(`
+      SELECT id, run_id, user_id, account_name, vendor_name, status, invoice_total_cents, created_at
+      FROM ingestion_runs
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all();
+
     // Get users with invoice counts
     const userCounts = database.prepare(`
-      SELECT u.id, u.email,
-             (SELECT COUNT(*) FROM ingestion_runs WHERE user_id = u.id) as invoice_count
+      SELECT u.id, u.email, u.name,
+             (SELECT COUNT(*) FROM ingestion_runs WHERE user_id = u.id) as invoice_count,
+             (SELECT COUNT(*) FROM email_monitors WHERE user_id = u.id OR created_by_user_id = u.id) as monitor_count
       FROM users u
-      WHERE u.id IN (SELECT DISTINCT user_id FROM email_monitors WHERE user_id IS NOT NULL)
+      ORDER BY invoice_count DESC
+      LIMIT 20
     `).all();
+
+    // For each monitor, show what invoices would match via run_id pattern
+    const monitorMatches = monitors.map(m => {
+      const pattern = `email-${m.id}-%`;
+      const matchingByRunId = database.prepare(`
+        SELECT COUNT(*) as count FROM ingestion_runs WHERE run_id LIKE ?
+      `).get(pattern);
+      const matchingByAccountName = m.account_name ? database.prepare(`
+        SELECT COUNT(*) as count FROM ingestion_runs WHERE account_name = ?
+      `).get(m.account_name) : { count: 0 };
+
+      return {
+        monitorId: m.id,
+        email: m.email_address,
+        userId: m.user_id,
+        createdByUserId: m.created_by_user_id,
+        accountName: m.account_name,
+        runIdPattern: pattern,
+        invoicesMatchingByRunId: matchingByRunId.count,
+        invoicesMatchingByAccountName: matchingByAccountName.count
+      };
+    });
 
     res.json({
       success: true,
@@ -53,6 +86,8 @@ router.get('/public-debug-invoice-status', (req, res) => {
         id: m.id,
         email: m.email_address,
         userId: m.user_id,
+        createdByUserId: m.created_by_user_id,
+        accountName: m.account_name,
         isActive: m.is_active,
         hasToken: m.has_token,
         invoicesCreated: m.invoices_created_count,
@@ -60,6 +95,8 @@ router.get('/public-debug-invoice-status', (req, res) => {
         lastChecked: m.last_checked_at,
         lastError: m.last_error
       })),
+      monitorMatches: monitorMatches,
+      recentInvoices: allInvoices,
       recentProcessing: recentProcessing,
       userInvoiceCounts: userCounts
     });
