@@ -1435,9 +1435,9 @@ app.get('/debug-invoice-status', (req, res) => {
     `).all();
 
     // Get the actual database path being used
-    const dbPath = process.env.DB_PATH || require('path').join(__dirname, 'revenue-radar.db');
-    const dbExists = require('fs').existsSync(dbPath);
-    const dbStats = dbExists ? require('fs').statSync(dbPath) : null;
+    const dbPath = process.env.DB_PATH || path.join(__dirname, 'revenue-radar.db');
+    const dbExists = fs.existsSync(dbPath);
+    const dbStats = dbExists ? fs.statSync(dbPath) : null;
 
     res.json({
       success: true,
