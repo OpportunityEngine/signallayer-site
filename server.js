@@ -1434,9 +1434,22 @@ app.get('/debug-invoice-status', (req, res) => {
       LIMIT 10
     `).all();
 
+    // Get the actual database path being used
+    const dbPath = process.env.DB_PATH || require('path').join(__dirname, 'revenue-radar.db');
+    const dbExists = require('fs').existsSync(dbPath);
+    const dbStats = dbExists ? require('fs').statSync(dbPath) : null;
+
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
+      dbIdentity: {
+        path: dbPath,
+        exists: dbExists,
+        sizeBytes: dbStats ? dbStats.size : 0,
+        modifiedAt: dbStats ? dbStats.mtime.toISOString() : null,
+        envDbPath: process.env.DB_PATH || '(not set - using default)',
+        cwd: process.cwd()
+      },
       database: {
         totalInvoices: totalInvoices.count,
         completedInvoices: completedInvoices.count,
