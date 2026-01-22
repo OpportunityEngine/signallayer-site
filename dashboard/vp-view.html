@@ -3975,6 +3975,27 @@
             <div class="metricSub">MONTHLY view</div>
           </div>
         `;
+
+        // Update Quick Action Tiles with real data
+        const savingsEl = document.getElementById('tileSavingsFound');
+        if (savingsEl) savingsEl.textContent = formatMoney(metrics.totalPotentialOverbillingCents) + ' Found';
+
+        const pipelineEl = document.getElementById('tilePipelineTotal');
+        if (pipelineEl) pipelineEl.textContent = formatMoney(metrics.totalPotentialOverbillingCents);
+
+        const pipelineCountEl = document.getElementById('tilePipelineCount');
+        if (pipelineCountEl) pipelineCountEl.textContent = metrics.flaggedIssuesCount + ' issues flagged';
+
+        // Update Command Center stats with real data
+        const ccOverbillingEl = document.getElementById('ccTotalOverbilling');
+        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(metrics.totalPotentialOverbillingCents);
+
+        const ccInvoicesEl = document.getElementById('ccInvoicesAnalyzed');
+        if (ccInvoicesEl) ccInvoicesEl.textContent = metrics.invoicesAnalyzedCount.toLocaleString();
+
+        const ccFlaggedEl = document.getElementById('ccFlaggedIssues');
+        if (ccFlaggedEl) ccFlaggedEl.textContent = metrics.flaggedIssuesCount.toLocaleString();
+
       } catch (error) {
         document.getElementById('metricsRow').innerHTML = `
           <div class="errorState">

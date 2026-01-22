@@ -109,6 +109,13 @@ services:
       - key: OSM_ENABLE
         value: "1"
 
+    # Persistent disk storage for SQLite database
+    # This ensures data survives deployments and restarts
+    disk:
+      name: data
+      size_gb: 1
+      mount_path: /data
+
 # Persistent storage for database and backups
 databases:
   # Using DigitalOcean managed database is recommended for production
