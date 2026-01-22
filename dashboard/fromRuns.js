@@ -101,8 +101,102 @@ try {
   console.warn('[fromRuns] Could not load database module:', e.message);
 }
 
+/**
+ * Load invoices from SQLite database and convert to canonical format
+ * This allows Email Autopilot invoices to appear in the BI dashboard
+ */
+function loadFromDatabase(userId = null) {
+  if (!db) return [];
+
+  try {
+    const database = db.getDatabase();
+
+    // Query ingestion_runs with their invoice_items
+    let query = `
+      SELECT
+        ir.id,
+        ir.run_id,
+        ir.user_id,
+        ir.account_name,
+        ir.vendor_name,
+        ir.file_name,
+        ir.status,
+        ir.invoice_total_cents,
+        ir.created_at
+      FROM ingestion_runs ir
+      WHERE ir.status = 'completed'
+    `;
+    const params = [];
+
+    if (userId) {
+      query += ` AND ir.user_id = ?`;
+      params.push(userId);
+    }
+
+    query += ` ORDER BY ir.created_at DESC LIMIT 500`;
+
+    const runs = database.prepare(query).all(...params);
+
+    const canonicals = [];
+
+    for (const run of runs) {
+      // Get line items for this run
+      const items = database.prepare(`
+        SELECT description, quantity, unit_price_cents, total_cents, category
+        FROM invoice_items
+        WHERE run_id = ?
+      `).all(run.id);
+
+      // Convert to canonical format expected by dashboard
+      const canonical = {
+        doc: {
+          invoice_number: run.run_id,
+          issued_at: run.created_at,
+          doc_id: run.run_id
+        },
+        parties: {
+          vendor: { name: run.vendor_name || 'Unknown Vendor' },
+          customer: { name: run.account_name || 'Unknown Customer' }
+        },
+        line_items: items.map(item => ({
+          raw_description: item.description,
+          normalized_description: item.description,
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price_cents ? { amount: item.unit_price_cents / 100 } : null,
+          sku: '',
+          category: item.category
+        })),
+        totals: {
+          total: run.invoice_total_cents ? { amount: run.invoice_total_cents / 100 } : null
+        },
+        provenance: {
+          source: 'database',
+          captured_at: run.created_at
+        }
+      };
+
+      canonicals.push({ runId: run.run_id, canonical });
+    }
+
+    console.log(`[fromRuns] Loaded ${canonicals.length} invoices from database for user ${userId || 'all'}`);
+    return canonicals;
+
+  } catch (e) {
+    console.warn('[fromRuns] Database load failed:', e.message);
+    return [];
+  }
+}
+
 function loadCanonicals(userId = null) {
-  if (!fs.existsSync(RUNS_DIR)) return [];
+  const fromFiles = [];
+  const fromDb = loadFromDatabase(userId);
+  const seenRunIds = new Set(fromDb.map(c => c.runId));
+
+  // Load from files (for backwards compatibility)
+  if (!fs.existsSync(RUNS_DIR)) {
+    console.log(`[fromRuns] No RUNS_DIR, returning ${fromDb.length} DB invoices`);
+    return fromDb;
+  }
 
   let allowedRunIds = null;
 
@@ -114,18 +208,17 @@ function loadCanonicals(userId = null) {
         SELECT run_id FROM ingestion_runs WHERE user_id = ?
       `).all(userId);
       allowedRunIds = new Set(userRuns.map(r => r.run_id));
-
-      // If user has no runs in the database, also check _SUMMARY.json files
-      // for user_id metadata (for runs not yet in DB)
     } catch (e) {
       console.warn('[fromRuns] Database query failed:', e.message);
     }
   }
 
   const runIds = fs.readdirSync(RUNS_DIR).filter((d) => !d.startsWith(".")).sort();
-  const out = [];
 
   for (const runId of runIds) {
+    // Skip if already loaded from database
+    if (seenRunIds.has(runId)) continue;
+
     // If we have a user filter, check if this run belongs to the user
     if (allowedRunIds !== null && !allowedRunIds.has(runId)) {
       // Also check the _SUMMARY.json for user_id in case not in DB yet
@@ -136,10 +229,7 @@ function loadCanonicals(userId = null) {
           if (summary.user_id && summary.user_id !== userId) {
             continue; // Skip - belongs to a different user
           }
-          // If summary has matching user_id or no user_id, continue
-          if (summary.user_id && summary.user_id === userId) {
-            // Allow this run
-          } else {
+          if (!(summary.user_id && summary.user_id === userId)) {
             continue; // Skip runs without user ownership
           }
         } catch (_) {
@@ -154,10 +244,14 @@ function loadCanonicals(userId = null) {
     if (!fs.existsSync(fp)) continue;
     try {
       const c = JSON.parse(fs.readFileSync(fp, "utf-8"));
-      out.push({ runId, canonical: c });
+      fromFiles.push({ runId, canonical: c });
     } catch (_) {}
   }
-  return out;
+
+  // Merge: database invoices first (most recent), then file-based
+  const merged = [...fromDb, ...fromFiles];
+  console.log(`[fromRuns] Total: ${merged.length} invoices (${fromDb.length} from DB, ${fromFiles.length} from files)`);
+  return merged;
 }
 
 function getCanonicalBasics(c, runId) {
