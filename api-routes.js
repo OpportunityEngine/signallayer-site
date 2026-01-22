@@ -634,6 +634,36 @@ router.get('/uploads/recent', (req, res) => {
       }
     }
 
+    // Get user's monitor IDs to find invoices via run_id pattern or account_name
+    const userMonitors = database.prepare(`
+      SELECT id, account_name FROM email_monitors
+      WHERE user_id = ? OR created_by_user_id = ?
+    `).all(user.id, user.id);
+
+    const monitorIds = userMonitors.map(m => m.id);
+    const accountNames = userMonitors.map(m => m.account_name).filter(Boolean);
+
+    // Build a robust WHERE clause that finds invoices by:
+    // 1. Direct user_id match
+    // 2. run_id pattern matching email monitor (email-{monitor_id}-%)
+    // 3. account_name matching a monitor
+    let whereClause = `ir.user_id = ?`;
+    const queryParams = [user.id];
+
+    if (monitorIds.length > 0) {
+      const runIdPatterns = monitorIds.map(id => `ir.run_id LIKE 'email-${id}-%'`).join(' OR ');
+      whereClause = `(${whereClause} OR ${runIdPatterns})`;
+    }
+    if (accountNames.length > 0) {
+      const accountPlaceholders = accountNames.map(() => '?').join(', ');
+      whereClause = `(${whereClause} OR ir.account_name IN (${accountPlaceholders}))`;
+      queryParams.push(...accountNames);
+    }
+
+    queryParams.push(limit);
+
+    console.log(`[API] /uploads/recent - Robust query for user ${user.id}, monitors: [${monitorIds.join(',')}], accounts: [${accountNames.join(',')}]`);
+
     const uploads = database.prepare(`
       SELECT
         ir.id,
@@ -653,10 +683,10 @@ router.get('/uploads/recent', (req, res) => {
           (SELECT SUM(total_cents) FROM invoice_items WHERE run_id = ir.id)
         ) as total_cents
       FROM ingestion_runs ir
-      WHERE ir.user_id = ?
+      WHERE ${whereClause}
       ORDER BY ir.created_at DESC
       LIMIT ?
-    `).all(user.id, limit);
+    `).all(...queryParams);
 
     // Format the uploads for frontend display
     const formattedUploads = uploads.map(u => ({

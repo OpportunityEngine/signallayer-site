@@ -110,9 +110,43 @@ function loadFromDatabase(userId = null) {
 
   try {
     const database = db.getDatabase();
+    const params = [];
+    let whereClause = `ir.status = 'completed'`;
+
+    // If userId is provided, use robust matching that includes:
+    // 1. Direct user_id match
+    // 2. run_id pattern matching email monitor (email-{monitor_id}-%)
+    // 3. account_name matching a monitor
+    if (userId) {
+      // Get user's monitor IDs and account names
+      const userMonitors = database.prepare(`
+        SELECT id, account_name FROM email_monitors
+        WHERE user_id = ? OR created_by_user_id = ?
+      `).all(userId, userId);
+
+      const monitorIds = userMonitors.map(m => m.id);
+      const accountNames = userMonitors.map(m => m.account_name).filter(Boolean);
+
+      // Build the ownership condition
+      let ownershipClause = `ir.user_id = ?`;
+      params.push(userId);
+
+      if (monitorIds.length > 0) {
+        const runIdPatterns = monitorIds.map(id => `ir.run_id LIKE 'email-${id}-%'`).join(' OR ');
+        ownershipClause = `(${ownershipClause} OR ${runIdPatterns})`;
+      }
+      if (accountNames.length > 0) {
+        const accountPlaceholders = accountNames.map(() => '?').join(', ');
+        ownershipClause = `(${ownershipClause} OR ir.account_name IN (${accountPlaceholders}))`;
+        params.push(...accountNames);
+      }
+
+      whereClause += ` AND (${ownershipClause})`;
+      console.log(`[fromRuns] Robust query for user ${userId}, monitors: [${monitorIds.join(',')}], accounts: [${accountNames.join(',')}]`);
+    }
 
     // Query ingestion_runs with their invoice_items
-    let query = `
+    const query = `
       SELECT
         ir.id,
         ir.run_id,
@@ -124,16 +158,9 @@ function loadFromDatabase(userId = null) {
         ir.invoice_total_cents,
         ir.created_at
       FROM ingestion_runs ir
-      WHERE ir.status = 'completed'
+      WHERE ${whereClause}
+      ORDER BY ir.created_at DESC LIMIT 500
     `;
-    const params = [];
-
-    if (userId) {
-      query += ` AND ir.user_id = ?`;
-      params.push(userId);
-    }
-
-    query += ` ORDER BY ir.created_at DESC LIMIT 500`;
 
     const runs = database.prepare(query).all(...params);
 

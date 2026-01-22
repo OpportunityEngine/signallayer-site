@@ -1203,6 +1203,57 @@ router.get('/financial-summary', (req, res) => {
         AND realized_date >= date('now', '-' || ? || ' days')
     `).get(user.id, days);
 
+    // ===== INVOICE DATA FROM EMAIL AUTOPILOT =====
+    // Get user's monitor IDs to find invoices via account_name or run_id pattern
+    const userMonitors = database.prepare(`
+      SELECT id, account_name FROM email_monitors
+      WHERE user_id = ? OR created_by_user_id = ?
+    `).all(user.id, user.id);
+
+    const monitorIds = userMonitors.map(m => m.id);
+    const accountNames = userMonitors.map(m => m.account_name).filter(Boolean);
+
+    // Build a query that finds invoices by:
+    // 1. Direct user_id match
+    // 2. run_id pattern matching email monitor (email-{monitor_id}-%)
+    // 3. account_name matching a monitor
+    let invoiceWhereClause = `user_id = ?`;
+    const invoiceParams = [user.id, days];
+
+    if (monitorIds.length > 0) {
+      const runIdPatterns = monitorIds.map(id => `run_id LIKE 'email-${id}-%'`).join(' OR ');
+      invoiceWhereClause = `(${invoiceWhereClause} OR ${runIdPatterns})`;
+    }
+    if (accountNames.length > 0) {
+      const accountPlaceholders = accountNames.map(() => '?').join(', ');
+      invoiceWhereClause = `(${invoiceWhereClause} OR account_name IN (${accountPlaceholders}))`;
+      invoiceParams.push(...accountNames);
+    }
+
+    // Get invoice totals from ingestion_runs (processed by email autopilot)
+    const invoiceData = database.prepare(`
+      SELECT
+        COUNT(*) as invoice_count,
+        COALESCE(SUM(invoice_total_cents), 0) as total_cents
+      FROM ingestion_runs
+      WHERE ${invoiceWhereClause}
+        AND status = 'completed'
+        AND created_at >= datetime('now', '-' || ? || ' days')
+    `).get(...invoiceParams);
+
+    // Get invoice breakdown by vendor
+    const invoicesByVendor = database.prepare(`
+      SELECT
+        COALESCE(vendor_name, 'Unknown') as category,
+        SUM(invoice_total_cents) as amount
+      FROM ingestion_runs
+      WHERE ${invoiceWhereClause}
+        AND status = 'completed'
+        AND created_at >= datetime('now', '-' || ? || ' days')
+      GROUP BY vendor_name
+      ORDER BY amount DESC
+    `).all(...invoiceParams);
+
     // Get expense breakdown by category
     const breakdown = database.prepare(`
       SELECT category, SUM(amount_cents) as amount
@@ -1218,7 +1269,14 @@ router.get('/financial-summary', (req, res) => {
       breakdown.unshift({ category: 'Payroll', amount: payrollTotal.total });
     }
 
-    // Get daily spending trend
+    // Add invoice vendors to breakdown
+    invoicesByVendor.forEach(v => {
+      if (v.amount > 0) {
+        breakdown.push({ category: `Invoice: ${v.category}`, amount: v.amount });
+      }
+    });
+
+    // Get daily spending trend (combine expenses and invoices)
     const trend = database.prepare(`
       SELECT
         period_start as date,
@@ -1230,21 +1288,54 @@ router.get('/financial-summary', (req, res) => {
       ORDER BY period_start
     `).all(user.id, days);
 
+    // Add invoice spending to trend (using same robust matching)
+    const invoiceTrend = database.prepare(`
+      SELECT
+        DATE(created_at) as date,
+        SUM(invoice_total_cents) as amount
+      FROM ingestion_runs
+      WHERE ${invoiceWhereClause}
+        AND status = 'completed'
+        AND created_at >= datetime('now', '-' || ? || ' days')
+      GROUP BY DATE(created_at)
+      ORDER BY date
+    `).all(...invoiceParams);
+
+    // Merge trends
+    const trendMap = new Map();
+    trend.forEach(t => trendMap.set(t.date, t.amount || 0));
+    invoiceTrend.forEach(t => {
+      const existing = trendMap.get(t.date) || 0;
+      trendMap.set(t.date, existing + (t.amount || 0));
+    });
+
+    const mergedTrend = Array.from(trendMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, amount]) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        amount
+      }));
+
+    // Calculate total expenses including invoices
+    const totalExpenses = expensesTotal.total + payrollTotal.total + (invoiceData.total_cents || 0);
+
     res.json({
       success: true,
       data: {
         totals: {
-          expenses: expensesTotal.total + payrollTotal.total,
+          expenses: totalExpenses,
           payroll: payrollTotal.total,
-          inventory: 0, // Placeholder for inventory spend
-          savings: savingsTotal.total
+          inventory: 0,
+          savings: savingsTotal.total,
+          invoices: invoiceData.total_cents || 0,
+          invoiceCount: invoiceData.invoice_count || 0
         },
         breakdown,
-        trend: trend.map(t => ({
+        trend: mergedTrend.length > 0 ? mergedTrend : trend.map(t => ({
           date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           amount: t.amount
         })),
-        budget: [] // Budget comparison would require budget settings table
+        budget: []
       }
     });
   } catch (error) {
