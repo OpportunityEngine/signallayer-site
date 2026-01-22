@@ -3977,24 +3977,36 @@
         `;
 
         // Update Quick Action Tiles with real data
+        console.log('[Dashboard] Updating tiles with metrics:', metrics);
+
+        const overbilling = metrics.totalPotentialOverbillingCents || 0;
+        const invoicesCount = metrics.invoicesAnalyzedCount || 0;
+        const flaggedCount = metrics.flaggedIssuesCount || 0;
+        const avgImpact = metrics.avgMonthlyImpactCents || 0;
+
         const savingsEl = document.getElementById('tileSavingsFound');
-        if (savingsEl) savingsEl.textContent = formatMoney(metrics.totalPotentialOverbillingCents) + ' Found';
+        if (savingsEl) savingsEl.textContent = formatMoney(overbilling) + ' Found';
 
         const pipelineEl = document.getElementById('tilePipelineTotal');
-        if (pipelineEl) pipelineEl.textContent = formatMoney(metrics.totalPotentialOverbillingCents);
+        if (pipelineEl) pipelineEl.textContent = formatMoney(overbilling);
 
         const pipelineCountEl = document.getElementById('tilePipelineCount');
-        if (pipelineCountEl) pipelineCountEl.textContent = metrics.flaggedIssuesCount + ' issues flagged';
+        if (pipelineCountEl) pipelineCountEl.textContent = flaggedCount + ' issues flagged';
 
-        // Update Command Center stats with real data
+        // Update Command Center / Financial Overview stats with real data
         const ccOverbillingEl = document.getElementById('ccTotalOverbilling');
-        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(metrics.totalPotentialOverbillingCents);
+        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(overbilling);
 
         const ccInvoicesEl = document.getElementById('ccInvoicesAnalyzed');
-        if (ccInvoicesEl) ccInvoicesEl.textContent = metrics.invoicesAnalyzedCount.toLocaleString();
+        if (ccInvoicesEl) ccInvoicesEl.textContent = invoicesCount.toLocaleString();
 
         const ccFlaggedEl = document.getElementById('ccFlaggedIssues');
-        if (ccFlaggedEl) ccFlaggedEl.textContent = metrics.flaggedIssuesCount.toLocaleString();
+        if (ccFlaggedEl) ccFlaggedEl.textContent = flaggedCount.toLocaleString();
+
+        const ccAvgImpactEl = document.getElementById('ccAvgImpact');
+        if (ccAvgImpactEl) ccAvgImpactEl.textContent = formatMoney(avgImpact);
+
+        console.log('[Dashboard] Tiles updated successfully');
 
       } catch (error) {
         document.getElementById('metricsRow').innerHTML = `
