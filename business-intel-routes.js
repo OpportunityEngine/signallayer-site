@@ -1218,7 +1218,7 @@ router.get('/financial-summary', (req, res) => {
     // 2. run_id pattern matching email monitor (email-{monitor_id}-%)
     // 3. account_name matching a monitor
     let invoiceWhereClause = `user_id = ?`;
-    const invoiceParams = [user.id, days];
+    const invoiceParams = [user.id];  // Start with just user.id
 
     if (monitorIds.length > 0) {
       const runIdPatterns = monitorIds.map(id => `run_id LIKE 'email-${id}-%'`).join(' OR ');
@@ -1229,6 +1229,8 @@ router.get('/financial-summary', (req, res) => {
       invoiceWhereClause = `(${invoiceWhereClause} OR account_name IN (${accountPlaceholders}))`;
       invoiceParams.push(...accountNames);
     }
+    // Add days parameter LAST (for the datetime clause)
+    invoiceParams.push(days);
 
     // Get invoice totals from ingestion_runs (processed by email autopilot)
     const invoiceData = database.prepare(`
