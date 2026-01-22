@@ -6,6 +6,68 @@ const demoData = require('./dashboard/demoData');
 
 const router = express.Router();
 
+// ===== TEMPORARY PUBLIC DEBUG ENDPOINT =====
+// TODO: Remove after debugging production issue
+router.get('/public-debug-invoice-status', (req, res) => {
+  try {
+    const database = db.getDatabase();
+
+    // Get counts
+    const totalInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
+    const completedInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE status = 'completed'`).get();
+    const nullUserInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL`).get();
+
+    // Get email monitors
+    const monitors = database.prepare(`
+      SELECT id, email_address, user_id, is_active, invoices_created_count, emails_processed_count,
+             last_checked_at, last_error,
+             oauth_access_token IS NOT NULL as has_token
+      FROM email_monitors
+    `).all();
+
+    // Get recent processing log
+    const recentProcessing = database.prepare(`
+      SELECT monitor_id, status, skip_reason, invoices_created, error_message, created_at
+      FROM email_processing_log
+      ORDER BY created_at DESC
+      LIMIT 20
+    `).all();
+
+    // Get users with invoice counts
+    const userCounts = database.prepare(`
+      SELECT u.id, u.email,
+             (SELECT COUNT(*) FROM ingestion_runs WHERE user_id = u.id) as invoice_count
+      FROM users u
+      WHERE u.id IN (SELECT DISTINCT user_id FROM email_monitors WHERE user_id IS NOT NULL)
+    `).all();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      database: {
+        totalInvoices: totalInvoices.count,
+        completedInvoices: completedInvoices.count,
+        nullUserIdInvoices: nullUserInvoices.count
+      },
+      monitors: monitors.map(m => ({
+        id: m.id,
+        email: m.email_address,
+        userId: m.user_id,
+        isActive: m.is_active,
+        hasToken: m.has_token,
+        invoicesCreated: m.invoices_created_count,
+        emailsProcessed: m.emails_processed_count,
+        lastChecked: m.last_checked_at,
+        lastError: m.last_error
+      })),
+      recentProcessing: recentProcessing,
+      userInvoiceCounts: userCounts
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Demo user detection
 const DEMO_ROLES = ['demo_viewer', 'demo_business'];
 const DEMO_EMAILS = ['demo@revenueradar.com', 'business@demo.revenueradar.com'];
