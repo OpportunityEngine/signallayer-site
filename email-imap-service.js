@@ -410,9 +410,21 @@ class EmailIMAPService {
             errorMessage: result.error || null
           });
 
-          // Update monitor stats
-          if (result.success) {
-            db.incrementEmailMonitorStats(monitor.id, result.invoicesCreated || 0);
+          // Update monitor stats - ONLY if inserts were verified
+          if (result.success && result.invoicesCreated > 0) {
+            // INTEGRITY CHECK: Verify ingestion_runs actually exist before updating counter
+            const verifyCount = db.getDatabase().prepare(`
+              SELECT COUNT(*) as cnt FROM ingestion_runs
+              WHERE user_id = ? AND created_at > datetime('now', '-1 hour')
+            `).get(monitor.user_id || monitor.created_by_user_id);
+
+            const actualCount = Math.min(result.invoicesCreated, verifyCount?.cnt || 0);
+            if (actualCount > 0) {
+              db.incrementEmailMonitorStats(monitor.id, actualCount);
+              console.log(`[EMAIL IMAP] ✅ Counter updated: +${actualCount} invoices (verified)`);
+            } else {
+              console.error(`[EMAIL IMAP] ⚠️ Counter update BLOCKED: claimed ${result.invoicesCreated} but verified ${verifyCount?.cnt || 0}`);
+            }
           }
 
           console.log(`[EMAIL IMAP] ✓ Email processed in ${processingTime}ms: ${result.invoicesCreated || 0} invoice(s) created`);
@@ -750,6 +762,27 @@ class EmailIMAPService {
 
       // Use INTEGER id for foreign key references to invoice_items
       const runIdInt = insertResult.lastInsertRowid;
+
+      // ===== VERIFIED INSERT CHECK =====
+      // Immediately verify the insert actually persisted to prevent phantom counters
+      const verifyRow = db.getDatabase().prepare(`
+        SELECT id, user_id, run_id FROM ingestion_runs WHERE id = ?
+      `).get(runIdInt);
+
+      if (!verifyRow) {
+        console.error(`[EMAIL IMAP] ❌ CRITICAL: Insert verification FAILED - row not found after insert! runIdInt=${runIdInt}`);
+        console.log(`[USER_ID_TRACE] source=email_autopilot action=insert_verification_failed runId=${runId} runIdInt=${runIdInt}`);
+        return { success: false, error: 'Insert verification failed - data not persisted' };
+      }
+
+      if (verifyRow.user_id !== user.id) {
+        console.error(`[EMAIL IMAP] ❌ CRITICAL: user_id MISMATCH after insert! Expected ${user.id}, got ${verifyRow.user_id}`);
+        console.log(`[USER_ID_TRACE] source=email_autopilot action=user_id_mismatch expected=${user.id} actual=${verifyRow.user_id}`);
+        // Attempt to fix it
+        db.getDatabase().prepare(`UPDATE ingestion_runs SET user_id = ? WHERE id = ?`).run(user.id, runIdInt);
+      }
+
+      console.log(`[EMAIL IMAP] ✅ Insert VERIFIED: id=${verifyRow.id}, user_id=${verifyRow.user_id}, run_id=${verifyRow.run_id}`);
 
       // ===== USE UNIVERSAL INVOICE PROCESSOR =====
       // This ensures consistent extraction across upload, email, and browser extension
