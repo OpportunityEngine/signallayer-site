@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Database file location
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'revenue-radar.db');
+// Support both DB_PATH and DATABASE_PATH (DigitalOcean uses DATABASE_PATH in app.yaml)
+const DB_PATH = process.env.DB_PATH || process.env.DATABASE_PATH || path.join(__dirname, 'revenue-radar.db');
 const SCHEMA_PATH = path.join(__dirname, 'database-schema.sql');
 
 // Initialize database
