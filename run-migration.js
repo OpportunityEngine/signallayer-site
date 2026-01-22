@@ -32,8 +32,8 @@ if (!fs.existsSync(migrationPath)) {
   process.exit(1);
 }
 
-// Database path (same as database.js)
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'revenue-radar.db');
+// Database path (same as database.js - check both env vars)
+const DB_PATH = process.env.DB_PATH || process.env.DATABASE_PATH || path.join(__dirname, 'revenue-radar.db');
 
 if (!fs.existsSync(DB_PATH)) {
   console.error(`❌ Database not found: ${DB_PATH}`);

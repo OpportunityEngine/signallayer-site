@@ -138,7 +138,7 @@ class Config {
 
   // Database
   get databasePath() {
-    return process.env.DATABASE_PATH || './revenue-radar.db';
+    return process.env.DB_PATH || process.env.DATABASE_PATH || './revenue-radar.db';
   }
 
   get databaseBackupEnabled() {
