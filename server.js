@@ -1399,8 +1399,13 @@ app.get('/debug-invoice-status', (req, res) => {
   try {
     const database = db.getDatabase();
 
+    // Use centralized DB identity helper
+    const dbIdentity = db.getDbIdentity();
+
     const totalInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
     const completedInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE status = 'completed'`).get();
+    const failedInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE status = 'failed'`).get();
+    const processingInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE status = 'processing'`).get();
     const nullUserInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL`).get();
 
     const monitors = database.prepare(`
@@ -1428,31 +1433,47 @@ app.get('/debug-invoice-status', (req, res) => {
     }
 
     const recentInvoices = database.prepare(`
-      SELECT id, run_id, user_id, vendor_name, file_name, status, created_at
+      SELECT id, run_id, user_id, vendor_name, file_name, status, invoice_total_cents, created_at
       FROM ingestion_runs
       ORDER BY created_at DESC
       LIMIT 10
     `).all();
 
-    // Get the actual database path being used (check both env vars)
-    const dbPath = process.env.DB_PATH || process.env.DATABASE_PATH || path.join(__dirname, 'revenue-radar.db');
-    const dbExists = fs.existsSync(dbPath);
-    const dbStats = dbExists ? fs.statSync(dbPath) : null;
+    // Count processing log entries by status
+    let processingLogStats = {};
+    try {
+      const logStats = database.prepare(`
+        SELECT status, COUNT(*) as count FROM email_processing_log GROUP BY status
+      `).all();
+      processingLogStats = logStats.reduce((acc, row) => {
+        acc[row.status || 'unknown'] = row.count;
+        return acc;
+      }, {});
+    } catch (e) {
+      processingLogStats = { error: e.message };
+    }
 
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
       dbIdentity: {
-        path: dbPath,
-        exists: dbExists,
-        sizeBytes: dbStats ? dbStats.size : 0,
-        modifiedAt: dbStats ? dbStats.mtime.toISOString() : null,
-        envDbPath: process.env.DB_PATH || process.env.DATABASE_PATH || '(not set - using default)',
-        cwd: process.cwd()
+        path: dbIdentity.dbPathResolved,
+        pathHash: dbIdentity.pathHash,
+        pathSource: dbIdentity.dbPathSource,
+        exists: dbIdentity.fileExists,
+        sizeBytes: dbIdentity.fileSizeBytes,
+        sizeHuman: dbIdentity.fileSizeHuman,
+        modifiedAt: dbIdentity.fileModified,
+        journalMode: dbIdentity.journalMode,
+        processId: dbIdentity.processId,
+        nodeEnv: dbIdentity.nodeEnv,
+        cwd: dbIdentity.cwd
       },
       database: {
         totalInvoices: totalInvoices.count,
         completedInvoices: completedInvoices.count,
+        failedInvoices: failedInvoices.count,
+        processingInvoices: processingInvoices.count,
         nullUserIdInvoices: nullUserInvoices.count
       },
       monitors: monitors.map(m => ({
@@ -1467,6 +1488,7 @@ app.get('/debug-invoice-status', (req, res) => {
         lastChecked: m.last_checked_at,
         lastError: m.last_error
       })),
+      processingLogStats,
       recentProcessing,
       recentInvoices
     });
@@ -1475,6 +1497,119 @@ app.get('/debug-invoice-status', (req, res) => {
   }
 });
 console.log('✅ Temporary debug endpoint at /debug-invoice-status');
+
+// ===== ADMIN DEBUG ENDPOINTS =====
+// These require admin authentication and provide detailed DB diagnostics
+
+// GET /api/admin/db-identity - Returns database identity for debugging path mismatches
+app.get('/api/admin/db-identity', requireAuth, (req, res) => {
+  try {
+    // Only admin/manager can access
+    if (!['admin', 'manager'].includes(req.user?.role)) {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    const dbIdentity = db.getDbIdentity();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      requestedBy: { id: req.user.id, email: req.user.email, role: req.user.role },
+      dbIdentity
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+console.log('✅ Admin endpoint at /api/admin/db-identity');
+
+// GET /api/admin/db-state - Returns full database state for debugging
+app.get('/api/admin/db-state', requireAuth, (req, res) => {
+  try {
+    // Only admin/manager can access
+    if (!['admin', 'manager'].includes(req.user?.role)) {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    const dbState = db.getDbState();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      requestedBy: { id: req.user.id, email: req.user.email, role: req.user.role },
+      ...dbState
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+console.log('✅ Admin endpoint at /api/admin/db-state');
+
+// GET /api/admin/email-monitors/raw - Returns raw email monitor data from DB
+app.get('/api/admin/email-monitors/raw', requireAuth, (req, res) => {
+  try {
+    // Only admin/manager can access
+    if (!['admin', 'manager'].includes(req.user?.role)) {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    const database = db.getDatabase();
+
+    // Get all monitors with full details
+    const monitors = database.prepare(`
+      SELECT id, user_id, created_by_user_id, email_address, account_name,
+             is_active, invoices_created_count, emails_processed_count,
+             last_checked_at, last_success_at, last_error,
+             oauth_provider, oauth_access_token IS NOT NULL as has_access_token,
+             oauth_refresh_token IS NOT NULL as has_refresh_token,
+             check_frequency_minutes, folder_name, require_invoice_keywords
+      FROM email_monitors
+      ORDER BY id DESC
+      LIMIT 50
+    `).all();
+
+    // Get count
+    const countResult = database.prepare('SELECT COUNT(*) as count FROM email_monitors').get();
+
+    // Get DB identity for verification
+    const dbIdentity = db.getDbIdentity();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      requestedBy: { id: req.user.id, email: req.user.email, role: req.user.role },
+      dbIdentity: {
+        path: dbIdentity.dbPathResolved,
+        pathHash: dbIdentity.pathHash,
+        fileExists: dbIdentity.fileExists,
+        fileSizeHuman: dbIdentity.fileSizeHuman
+      },
+      monitorCount: countResult.count,
+      monitors: monitors.map(m => ({
+        id: m.id,
+        userId: m.user_id,
+        createdByUserId: m.created_by_user_id,
+        email: m.email_address,
+        accountName: m.account_name,
+        isActive: m.is_active === 1,
+        invoicesCreatedCount: m.invoices_created_count,
+        emailsProcessedCount: m.emails_processed_count,
+        lastCheckedAt: m.last_checked_at,
+        lastSuccessAt: m.last_success_at,
+        lastError: m.last_error,
+        oauthProvider: m.oauth_provider,
+        hasAccessToken: m.has_access_token === 1,
+        hasRefreshToken: m.has_refresh_token === 1,
+        checkFrequencyMinutes: m.check_frequency_minutes,
+        folderName: m.folder_name,
+        requireInvoiceKeywords: m.require_invoice_keywords === 1
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+console.log('✅ Admin endpoint at /api/admin/email-monitors/raw');
 
 // Backup management routes (admin only)
 app.use('/backups', backupRoutes);

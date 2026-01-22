@@ -992,31 +992,35 @@ class EmailCheckService {
 
   /**
    * Process email attachments (invoke invoice processor)
+   * CRITICAL: Only counts invoices as created if DB insert is VERIFIED
    */
   async processEmailAttachments(email, attachments, monitor, runUuid, uidvalidity) {
-    // This will be implemented to call the universal invoice processor
-    // For now, return a placeholder that shows the pipeline is working
-
     try {
       const database = db.getDatabase();
 
       // Get user from monitor
       const user = database.prepare('SELECT * FROM users WHERE id = ?').get(monitor.user_id || monitor.created_by_user_id);
       if (!user) {
-        return { success: false, error: 'Monitor user not found' };
+        // Log the failure to email_processing_log
+        this.logProcessingResult(monitor.id, email.uid, 'error', 'user_not_found', 0, 'Monitor user not found in database');
+        return { success: false, error: 'Monitor user not found', invoicesCreated: 0 };
       }
 
       let invoicesCreated = 0;
       const invoiceIds = [];
+      const failures = [];
 
       for (const attachment of attachments) {
-        try {
-          // Create ingestion run
-          const runIdText = `email-${monitor.id}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        const runIdText = `email-${monitor.id}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        let runIdInt = null;
+        let insertVerified = false;
 
+        try {
           console.log(`[USER_ID_TRACE] source=email_check_service monitorId=${monitor.id} monitorUserId=${monitor.user_id} finalUserId=${user.id} email=${user.email}`);
           console.log(`[USER_ID_TRACE] source=email_check_service action=insert_ingestion_run runId=${runIdText} userId=${user.id} email=${user.email} monitorId=${monitor.id}`);
 
+          // ========== PHASE 4: VERIFIED INSERT ==========
+          // Step 1: Insert the ingestion run
           const insertResult = database.prepare(`
             INSERT INTO ingestion_runs (run_id, user_id, account_name, vendor_name, file_name, file_size, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'processing', datetime('now'))
@@ -1029,11 +1033,38 @@ class EmailCheckService {
             attachment.size || 0
           );
 
-          // Get the auto-increment ID for foreign key references
-          const runIdInt = insertResult.lastInsertRowid;
+          runIdInt = insertResult.lastInsertRowid;
 
-          // Try to process with universal invoice processor
+          // Step 2: VERIFY the insert actually succeeded (read back from DB)
+          const verifyRow = database.prepare(`
+            SELECT id, run_id, user_id FROM ingestion_runs WHERE id = ?
+          `).get(runIdInt);
+
+          if (!verifyRow) {
+            // INSERT appeared to succeed but row not found - critical error
+            console.error(`[EMAIL-CHECK] CRITICAL: INSERT returned rowid ${runIdInt} but row not found in DB!`);
+            this.logProcessingResult(monitor.id, email.uid, 'error', 'db_insert_unverified', 0,
+              `INSERT returned rowid ${runIdInt} but verification SELECT found nothing`);
+            failures.push({ filename: attachment.filename, error: 'db_insert_unverified' });
+            continue; // Skip to next attachment, do NOT count this as created
+          }
+
+          // Step 3: Verify user_id was correctly stored
+          if (verifyRow.user_id !== user.id) {
+            console.error(`[EMAIL-CHECK] CRITICAL: user_id mismatch! Expected ${user.id}, got ${verifyRow.user_id}`);
+            this.logProcessingResult(monitor.id, email.uid, 'error', 'user_id_mismatch', 0,
+              `user_id mismatch: expected ${user.id}, stored ${verifyRow.user_id}`);
+            failures.push({ filename: attachment.filename, error: 'user_id_mismatch' });
+            continue;
+          }
+
+          insertVerified = true;
+          console.log(`[EMAIL-CHECK] ✅ INSERT verified: rowid=${runIdInt}, run_id=${verifyRow.run_id}, user_id=${verifyRow.user_id}`);
+
+          // ========== PROCESS INVOICE ==========
           let processed = false;
+          let totalCents = 0;
+
           try {
             const universalProcessor = require('./universal-invoice-processor');
 
@@ -1050,7 +1081,7 @@ class EmailCheckService {
             );
 
             if (result.ok && result.items && result.items.length > 0) {
-              // Store invoice items - use INTEGER id, not TEXT run_id
+              // Store invoice items - use INTEGER id for FK
               for (const item of result.items) {
                 database.prepare(`
                   INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
@@ -1063,40 +1094,85 @@ class EmailCheckService {
                   item.totalCents || 0,
                   item.category || 'general'
                 );
+                totalCents += (item.totalCents || 0);
               }
               processed = true;
             }
           } catch (procErr) {
             console.error('[EMAIL-CHECK] Invoice processor error:', procErr.message);
+            // Still mark as failed, not error - the run exists
           }
 
-          // Update run status
+          // ========== UPDATE RUN STATUS ==========
+          const finalStatus = processed ? 'completed' : 'failed';
           database.prepare(`
-            UPDATE ingestion_runs SET status = ?, completed_at = datetime('now') WHERE run_id = ?
-          `).run(processed ? 'completed' : 'failed', runIdText);
+            UPDATE ingestion_runs
+            SET status = ?, invoice_total_cents = ?, completed_at = datetime('now')
+            WHERE id = ?
+          `).run(finalStatus, totalCents, runIdInt);
 
-          if (processed) {
+          // ========== PHASE 5: ONLY COUNT IF VERIFIED INSERT + COMPLETED ==========
+          if (insertVerified && processed) {
             invoicesCreated++;
             invoiceIds.push(runIdText);
+            console.log(`[EMAIL-CHECK] ✅ Invoice created and verified: ${runIdText}, total=${totalCents} cents`);
+          } else if (insertVerified && !processed) {
+            // Run exists but parsing failed - still in DB as 'failed'
+            console.log(`[EMAIL-CHECK] ⚠️ Run created but parsing failed: ${runIdText}`);
           }
 
         } catch (attErr) {
           console.error('[EMAIL-CHECK] Attachment processing error:', attErr.message);
+
+          // Log to email_processing_log with specific skip_reason
+          const skipReason = attErr.message.includes('UNIQUE constraint') ? 'duplicate_run_id' :
+                            attErr.message.includes('SQLITE') ? 'db_error' : 'processing_error';
+
+          this.logProcessingResult(monitor.id, email.uid, 'error', skipReason, 0, attErr.message);
+          failures.push({ filename: attachment.filename, error: attErr.message });
         }
+      }
+
+      // Log success/partial result
+      if (invoicesCreated > 0) {
+        this.logProcessingResult(monitor.id, email.uid, 'success', null, invoicesCreated, null);
+      } else if (failures.length > 0) {
+        this.logProcessingResult(monitor.id, email.uid, 'error', 'all_attachments_failed', 0,
+          `${failures.length} attachment(s) failed: ${failures.map(f => f.error).join(', ')}`);
       }
 
       return {
         success: true,
         invoicesCreated,
-        invoiceIds
+        invoiceIds,
+        failures: failures.length > 0 ? failures : undefined
       };
 
     } catch (err) {
+      console.error('[EMAIL-CHECK] processEmailAttachments critical error:', err.message);
+      this.logProcessingResult(monitor.id, email.uid, 'error', 'critical_error', 0, err.message);
       return {
         success: false,
         error: err.message,
         invoicesCreated: 0
       };
+    }
+  }
+
+  /**
+   * Helper: Log processing result to email_processing_log
+   * Ensures every email processing attempt is recorded for debugging
+   */
+  logProcessingResult(monitorId, emailUid, status, skipReason, invoicesCreated, errorMessage) {
+    try {
+      const database = db.getDatabase();
+      database.prepare(`
+        INSERT INTO email_processing_log (monitor_id, email_uid, status, skip_reason, invoices_created, error_message)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(monitorId, emailUid || 'unknown', status, skipReason, invoicesCreated, errorMessage);
+    } catch (logErr) {
+      // Don't let logging failures break the main flow
+      console.error('[EMAIL-CHECK] Failed to log processing result:', logErr.message);
     }
   }
 

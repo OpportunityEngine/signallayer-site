@@ -2572,10 +2572,152 @@ function updateUserSubscriptionStatus(userId, status) {
   `).run(status, status === 'trial' ? 1 : 0, userId);
 }
 
+// =====================================================
+// DATABASE IDENTITY HELPER (for debugging DB path issues)
+// =====================================================
+
+/**
+ * Get comprehensive database identity information for debugging
+ * Helps identify DB path mismatches between processes/environments
+ * @returns {Object} Database identity information
+ */
+function getDbIdentity() {
+  const crypto = require('crypto');
+
+  // Resolve the actual DB path being used
+  const dbPathResolved = path.resolve(DB_PATH);
+  const fileExists = fs.existsSync(dbPathResolved);
+  let fileSize = 0;
+  let fileModified = null;
+
+  if (fileExists) {
+    try {
+      const stats = fs.statSync(dbPathResolved);
+      fileSize = stats.size;
+      fileModified = stats.mtime.toISOString();
+    } catch (e) {
+      // Ignore stat errors
+    }
+  }
+
+  // Get SQLite PRAGMA info
+  let databaseList = [];
+  let journalMode = 'unknown';
+  let walMode = false;
+
+  try {
+    if (db) {
+      databaseList = db.prepare('PRAGMA database_list').all();
+      const journalResult = db.prepare('PRAGMA journal_mode').get();
+      journalMode = journalResult?.journal_mode || 'unknown';
+      walMode = journalMode === 'wal';
+    }
+  } catch (e) {
+    // DB not initialized yet
+  }
+
+  // Create a stable hash for this DB path (for comparison across processes)
+  const pathHash = crypto.createHash('sha1').update(dbPathResolved).digest('hex').substring(0, 12);
+
+  return {
+    // Path information
+    dbPathResolved,
+    dbPathEnvVar: process.env.DB_PATH || process.env.DATABASE_PATH || '(not set - using default)',
+    dbPathSource: process.env.DB_PATH ? 'DB_PATH' : (process.env.DATABASE_PATH ? 'DATABASE_PATH' : 'default'),
+    pathHash,
+
+    // File information
+    fileExists,
+    fileSizeBytes: fileSize,
+    fileSizeHuman: fileSize > 1024*1024 ? `${(fileSize/(1024*1024)).toFixed(2)} MB` : `${(fileSize/1024).toFixed(2)} KB`,
+    fileModified,
+
+    // SQLite information
+    databaseList,
+    journalMode,
+    walMode,
+
+    // Process information
+    processId: process.pid,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    cwd: process.cwd(),
+
+    // Timestamp
+    checkedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Get raw database state for debugging
+ * @returns {Object} Database state including counts and recent records
+ */
+function getDbState() {
+  if (!db) {
+    return { error: 'Database not initialized' };
+  }
+
+  try {
+    // Get counts
+    const monitorCount = db.prepare('SELECT COUNT(*) as count FROM email_monitors').get()?.count || 0;
+    const ingestionRunCount = db.prepare('SELECT COUNT(*) as count FROM ingestion_runs').get()?.count || 0;
+    const processingLogCount = db.prepare('SELECT COUNT(*) as count FROM email_processing_log').get()?.count || 0;
+
+    // Get recent monitors
+    const recentMonitors = db.prepare(`
+      SELECT id, email_address, user_id, is_active, invoices_created_count,
+             emails_processed_count, last_checked_at, last_error
+      FROM email_monitors
+      ORDER BY id DESC
+      LIMIT 10
+    `).all();
+
+    // Get recent ingestion runs
+    const recentRuns = db.prepare(`
+      SELECT id, run_id, user_id, vendor_name, file_name, status,
+             invoice_total_cents, created_at
+      FROM ingestion_runs
+      ORDER BY id DESC
+      LIMIT 10
+    `).all();
+
+    // Get recent processing log entries
+    let recentProcessing = [];
+    try {
+      recentProcessing = db.prepare(`
+        SELECT id, monitor_id, email_uid, status, skip_reason,
+               invoices_created, error_message
+        FROM email_processing_log
+        ORDER BY id DESC
+        LIMIT 10
+      `).all();
+    } catch (e) {
+      recentProcessing = [{ error: e.message }];
+    }
+
+    return {
+      dbIdentity: getDbIdentity(),
+      counts: {
+        monitors: monitorCount,
+        ingestionRuns: ingestionRunCount,
+        processingLog: processingLogCount
+      },
+      recentMonitors,
+      recentRuns,
+      recentProcessing
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
 module.exports = {
   initDatabase,
   getDatabase,
   seedDemoData,
+
+  // Database identity/debugging functions
+  getDbIdentity,
+  getDbState,
 
   // SPIF functions
   getActiveSPIFs,
