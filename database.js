@@ -2619,6 +2619,18 @@ function getDbIdentity() {
   // Create a stable hash for this DB path (for comparison across processes)
   const pathHash = crypto.createHash('sha1').update(dbPathResolved).digest('hex').substring(0, 12);
 
+  // Check if /data directory exists (critical for production persistent storage)
+  const dataDirectoryExists = fs.existsSync('/data');
+  let dataDirectoryWritable = false;
+  if (dataDirectoryExists) {
+    try {
+      fs.accessSync('/data', fs.constants.W_OK);
+      dataDirectoryWritable = true;
+    } catch (e) {
+      dataDirectoryWritable = false;
+    }
+  }
+
   return {
     // Path information
     dbPathResolved,
@@ -2631,6 +2643,11 @@ function getDbIdentity() {
     fileSizeBytes: fileSize,
     fileSizeHuman: fileSize > 1024*1024 ? `${(fileSize/(1024*1024)).toFixed(2)} MB` : `${(fileSize/1024).toFixed(2)} KB`,
     fileModified,
+
+    // Production storage check
+    dataDirectoryExists,
+    dataDirectoryWritable,
+    isPersistentStorage: dbPathResolved.startsWith('/data/'),
 
     // SQLite information
     databaseList,

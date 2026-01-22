@@ -876,16 +876,44 @@ class EmailCheckService {
         errorsCount: results.errors
       });
 
-      // Update monitor stats
+      // Update monitor stats - ONLY if we have verified invoices created
       if (results.invoicesCreated > 0) {
-        database.prepare(`
-          UPDATE email_monitors SET
-            emails_processed_count = emails_processed_count + ?,
-            invoices_created_count = invoices_created_count + ?,
-            last_checked_at = datetime('now'),
-            last_error = NULL
-          WHERE id = ?
-        `).run(results.processed, results.invoicesCreated, monitorId);
+        // INTEGRITY CHECK: Verify the ingestion_runs actually exist before updating counter
+        const verifyCount = database.prepare(`
+          SELECT COUNT(*) as cnt FROM ingestion_runs
+          WHERE user_id = (SELECT user_id FROM email_monitors WHERE id = ?)
+          AND created_at > datetime('now', '-1 hour')
+        `).get(monitorId);
+
+        console.log(`[EMAIL-CHECK] Counter update verification: claimed=${results.invoicesCreated}, recent_runs_in_db=${verifyCount?.cnt || 0}`);
+
+        // Only update counter if we can verify runs exist
+        const actualInvoicesToCount = Math.min(results.invoicesCreated, verifyCount?.cnt || 0);
+
+        if (actualInvoicesToCount > 0) {
+          database.prepare(`
+            UPDATE email_monitors SET
+              emails_processed_count = emails_processed_count + ?,
+              invoices_created_count = invoices_created_count + ?,
+              last_checked_at = datetime('now'),
+              last_error = NULL
+            WHERE id = ?
+          `).run(results.processed, actualInvoicesToCount, monitorId);
+          console.log(`[EMAIL-CHECK] ✅ Updated monitor ${monitorId}: +${actualInvoicesToCount} invoices`);
+        } else {
+          console.error(`[EMAIL-CHECK] ⚠️ PREVENTED counter update! Claimed ${results.invoicesCreated} invoices but verification found ${verifyCount?.cnt || 0} recent runs`);
+          // Log this as a critical issue
+          this.logProcessingResult(monitorId, 'counter_integrity_check', 'error', 'counter_mismatch', 0,
+            `Counter update blocked: claimed ${results.invoicesCreated}, verified ${verifyCount?.cnt || 0}`);
+
+          // Still update last_checked_at
+          database.prepare(`
+            UPDATE email_monitors SET
+              last_checked_at = datetime('now'),
+              last_error = 'Counter integrity check failed - invoices claimed but not found in DB'
+            WHERE id = ?
+          `).run(monitorId);
+        }
       } else {
         database.prepare(`
           UPDATE email_monitors SET

@@ -1611,6 +1611,139 @@ app.get('/api/admin/email-monitors/raw', requireAuth, (req, res) => {
 });
 console.log('✅ Admin endpoint at /api/admin/email-monitors/raw');
 
+// GET /api/admin/invoice-pipeline-status - Comprehensive diagnostic for invoice persistence
+// Returns: db identity, monitors, ingestion_runs, processing_logs for a specific user
+app.get('/api/admin/invoice-pipeline-status', requireAuth, (req, res) => {
+  try {
+    // Only admin can access
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    const userId = req.query.user_id ? parseInt(req.query.user_id) : null;
+    const database = db.getDatabase();
+
+    // 1. Get DB identity
+    const dbIdentity = db.getDbIdentity();
+
+    // 2. Get email_monitors for user (or all if no user_id)
+    let monitors;
+    if (userId) {
+      monitors = database.prepare(`
+        SELECT id, user_id, email_address, account_name, is_active,
+               invoices_created_count, emails_processed_count,
+               last_checked_at, last_success_at, last_error,
+               oauth_provider, created_at
+        FROM email_monitors
+        WHERE user_id = ?
+        ORDER BY id DESC
+      `).all(userId);
+    } else {
+      monitors = database.prepare(`
+        SELECT id, user_id, email_address, account_name, is_active,
+               invoices_created_count, emails_processed_count,
+               last_checked_at, last_success_at, last_error,
+               oauth_provider, created_at
+        FROM email_monitors
+        ORDER BY id DESC
+        LIMIT 50
+      `).all();
+    }
+
+    // 3. Get ingestion_runs for user (last 20)
+    let ingestionRuns;
+    if (userId) {
+      ingestionRuns = database.prepare(`
+        SELECT id, run_id, user_id, vendor_name, file_name, status,
+               invoice_total_cents, created_at, completed_at, error_message
+        FROM ingestion_runs
+        WHERE user_id = ?
+        ORDER BY id DESC
+        LIMIT 20
+      `).all(userId);
+    } else {
+      ingestionRuns = database.prepare(`
+        SELECT id, run_id, user_id, vendor_name, file_name, status,
+               invoice_total_cents, created_at, completed_at, error_message
+        FROM ingestion_runs
+        ORDER BY id DESC
+        LIMIT 20
+      `).all();
+    }
+
+    // 4. Get email_processing_log for monitors (last 50)
+    const monitorIds = monitors.map(m => m.id);
+    let processingLogs = [];
+    if (monitorIds.length > 0) {
+      const placeholders = monitorIds.map(() => '?').join(',');
+      processingLogs = database.prepare(`
+        SELECT id, monitor_id, email_uid, status, skip_reason,
+               invoices_created, error_message, processed_at
+        FROM email_processing_log
+        WHERE monitor_id IN (${placeholders})
+        ORDER BY id DESC
+        LIMIT 50
+      `).all(...monitorIds);
+    }
+
+    // 5. Summary counts
+    const summary = {
+      monitorsCount: monitors.length,
+      activeMonitorsCount: monitors.filter(m => m.is_active).length,
+      totalInvoicesCreatedByMonitors: monitors.reduce((sum, m) => sum + (m.invoices_created_count || 0), 0),
+      ingestionRunsCount: ingestionRuns.length,
+      completedRunsCount: ingestionRuns.filter(r => r.status === 'completed').length,
+      failedRunsCount: ingestionRuns.filter(r => r.status === 'failed').length,
+      processingLogsCount: processingLogs.length,
+      successfulProcessingCount: processingLogs.filter(l => l.status === 'success' || l.status === 'db_ok').length,
+      skippedProcessingCount: processingLogs.filter(l => l.status === 'skipped').length,
+      errorProcessingCount: processingLogs.filter(l => l.status === 'error').length
+    };
+
+    // 6. Mismatch detection - key diagnostic
+    const mismatch = {
+      monitorsShowInvoices: summary.totalInvoicesCreatedByMonitors > 0,
+      ingestionRunsExist: summary.ingestionRunsCount > 0,
+      possibleDataLoss: summary.totalInvoicesCreatedByMonitors > 0 && summary.ingestionRunsCount === 0,
+      diagnosis: ''
+    };
+
+    if (mismatch.possibleDataLoss) {
+      mismatch.diagnosis = 'CRITICAL: Monitors show invoices but no ingestion_runs found! Possible causes: ' +
+        '(1) DB path mismatch - counters in one DB, runs in another; ' +
+        '(2) Counter incremented before verified insert; ' +
+        '(3) Database was reset/recreated';
+    } else if (!mismatch.monitorsShowInvoices && !mismatch.ingestionRunsExist) {
+      mismatch.diagnosis = 'No invoices created yet - this is expected for new monitors';
+    } else if (mismatch.monitorsShowInvoices && mismatch.ingestionRunsExist) {
+      mismatch.diagnosis = 'OK: Monitor counts match ingestion_runs existence';
+    }
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      requestedBy: { id: req.user.id, email: req.user.email, role: req.user.role },
+      queryUserId: userId,
+      dbIdentity: {
+        path: dbIdentity.dbPathResolved,
+        fileExists: dbIdentity.fileExists,
+        fileSizeHuman: dbIdentity.fileSizeHuman,
+        dataDirectoryExists: dbIdentity.dataDirectoryExists,
+        isPersistentStorage: dbIdentity.isPersistentStorage,
+        journalMode: dbIdentity.journalMode
+      },
+      summary,
+      mismatch,
+      monitors,
+      ingestionRuns,
+      processingLogs
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+console.log('✅ Admin endpoint at /api/admin/invoice-pipeline-status');
+
 // Backup management routes (admin only)
 app.use('/backups', backupRoutes);
 console.log('✅ Backup management routes registered at /backups');
