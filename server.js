@@ -1393,6 +1393,67 @@ console.log('✅ Admin analytics routes registered at /api/admin');
 app.use('/health', healthRoutes);
 console.log('✅ Health monitoring routes registered at /health');
 
+// ===== TEMPORARY PUBLIC DEBUG ENDPOINT =====
+// TODO: Remove after debugging production invoice visibility issue
+app.get('/debug-invoice-status', (req, res) => {
+  try {
+    const database = db.getDatabase();
+
+    const totalInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs`).get();
+    const completedInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE status = 'completed'`).get();
+    const nullUserInvoices = database.prepare(`SELECT COUNT(*) as count FROM ingestion_runs WHERE user_id IS NULL`).get();
+
+    const monitors = database.prepare(`
+      SELECT id, email_address, user_id, is_active, invoices_created_count, emails_processed_count,
+             last_checked_at, last_error,
+             oauth_access_token IS NOT NULL as has_access_token,
+             oauth_refresh_token IS NOT NULL as has_refresh_token
+      FROM email_monitors
+    `).all();
+
+    const recentProcessing = database.prepare(`
+      SELECT monitor_id, status, skip_reason, invoices_created, error_message, created_at
+      FROM email_processing_log
+      ORDER BY created_at DESC
+      LIMIT 20
+    `).all();
+
+    const recentInvoices = database.prepare(`
+      SELECT id, run_id, user_id, vendor_name, file_name, status, created_at
+      FROM ingestion_runs
+      ORDER BY created_at DESC
+      LIMIT 10
+    `).all();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      database: {
+        totalInvoices: totalInvoices.count,
+        completedInvoices: completedInvoices.count,
+        nullUserIdInvoices: nullUserInvoices.count
+      },
+      monitors: monitors.map(m => ({
+        id: m.id,
+        email: m.email_address,
+        userId: m.user_id,
+        isActive: m.is_active,
+        hasAccessToken: m.has_access_token,
+        hasRefreshToken: m.has_refresh_token,
+        invoicesCreatedCount: m.invoices_created_count,
+        emailsProcessedCount: m.emails_processed_count,
+        lastChecked: m.last_checked_at,
+        lastError: m.last_error
+      })),
+      recentProcessing,
+      recentInvoices
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+console.log('✅ Temporary debug endpoint at /debug-invoice-status');
+
 // Backup management routes (admin only)
 app.use('/backups', backupRoutes);
 console.log('✅ Backup management routes registered at /backups');
