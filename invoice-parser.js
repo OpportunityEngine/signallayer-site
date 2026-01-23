@@ -931,13 +931,31 @@ function extractTotals(text) {
 
   // Grand total patterns (most specific to least)
   // Cintas uses "TOTAL USD" format, Sysco uses "INVOICE TOTAL" format
+  // Made patterns more flexible to handle OCR/text extraction variations
   const totalPatterns = [
-    /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i,  // Sysco format
+    /INVOICE[\s\n]+TOTAL[\s:\n]*\$?([\d,]+\.?\d{0,2})/i,  // Sysco format (handles line breaks)
+    /INVOICE\s*\n?\s*TOTAL[\s:\n]*\$?([\d,]+\.?\d{0,2})/i,  // Sysco with possible newline
     /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,2})/i,  // Cintas format
     /(?:grand\s*total|total\s*amount|amount\s*due|balance\s*due|total\s*due)[:\s]*\$?([\d,]+\.?\d{0,2})/i,
     /(?:^|\s)total[:\s]+\$?([\d,]+\.?\d{2})(?:\s|$)/im,
     /\$?([\d,]+\.?\d{2})\s*(?:total|due)(?:\s|$)/i
   ];
+
+  // Also try to find "INVOICE TOTAL" by scanning backwards from the end of the document
+  // This catches cases where there are multiple "TOTAL" values and we want the final one
+  const invoiceTotalMatch = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d{0,2})/gi);
+  if (invoiceTotalMatch && invoiceTotalMatch.length > 0) {
+    // Get the last match (final INVOICE TOTAL on the document)
+    const lastMatch = invoiceTotalMatch[invoiceTotalMatch.length - 1];
+    const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d{0,2})\s*$/);
+    if (valueMatch) {
+      const total = parsePrice(valueMatch[1]);
+      if (total > 0) {
+        totals.totalCents = total;
+        return totals;  // Return early with the found INVOICE TOTAL
+      }
+    }
+  }
 
   for (const pattern of totalPatterns) {
     const match = text.match(pattern);

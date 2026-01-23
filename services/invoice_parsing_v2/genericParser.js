@@ -100,9 +100,25 @@ function extractGenericTotals(text, lines) {
     debug: {}
   };
 
+  // First, try to find "INVOICE TOTAL" specifically (handles line breaks)
+  // This is most reliable for Sysco invoices
+  const invoiceTotalMatch = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d*)/gi);
+  if (invoiceTotalMatch && invoiceTotalMatch.length > 0) {
+    // Get the last match (final INVOICE TOTAL on the document)
+    const lastMatch = invoiceTotalMatch[invoiceTotalMatch.length - 1];
+    const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d*)\s*$/);
+    if (valueMatch) {
+      const total = parseMoney(valueMatch[1]);
+      if (total > 0) {
+        totals.totalCents = total;
+        // Continue to find subtotal and tax but don't overwrite total
+      }
+    }
+  }
+
   // Common total patterns - ordered by specificity (most specific first)
   const totalPatterns = [
-    /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,  // Sysco uses "INVOICE TOTAL"
+    /INVOICE[\s\n]+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,  // Sysco uses "INVOICE TOTAL"
     /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,
     /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
     /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
@@ -130,12 +146,14 @@ function extractGenericTotals(text, lines) {
     const value = parseMoney(match[1]);
     if (value <= 0) continue;
 
-    // Categorize the match
+    // Categorize the match (don't overwrite if already found via INVOICE TOTAL)
     if (totalPatterns.some(p => p.source === pattern.source) && totals.totalCents === 0) {
       totals.totalCents = value;
-    } else if (subtotalPatterns.some(p => p.source === pattern.source) && totals.subtotalCents === 0) {
+    }
+    if (subtotalPatterns.some(p => p.source === pattern.source) && totals.subtotalCents === 0) {
       totals.subtotalCents = value;
-    } else if (taxPatterns.some(p => p.source === pattern.source) && totals.taxCents === 0) {
+    }
+    if (taxPatterns.some(p => p.source === pattern.source) && totals.taxCents === 0) {
       totals.taxCents = value;
     }
   }
