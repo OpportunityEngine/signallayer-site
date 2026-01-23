@@ -751,6 +751,116 @@ router.get('/uploads/recent', (req, res) => {
   }
 });
 
+// ===== SINGLE INVOICE DETAIL ENDPOINT =====
+
+/**
+ * GET /api/invoice/:runId - Get detailed invoice information including line items
+ * Used by the invoice-detail.html page to show full invoice breakdown
+ */
+router.get('/invoice/:runId', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const runId = req.params.runId;
+
+    console.log(`[API] /invoice/${runId} - User ID: ${user?.id}`);
+
+    if (!runId) {
+      return res.status(400).json({ success: false, error: 'Invoice ID required' });
+    }
+
+    const database = db.getDatabase();
+
+    // Get the invoice run
+    const invoice = database.prepare(`
+      SELECT
+        ir.id,
+        ir.run_id,
+        ir.user_id,
+        ir.account_name,
+        ir.vendor_name,
+        ir.file_name,
+        ir.file_size,
+        ir.status,
+        ir.error_message,
+        ir.created_at,
+        ir.completed_at,
+        ir.invoice_total_cents
+      FROM ingestion_runs ir
+      WHERE ir.run_id = ?
+    `).get(runId);
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, error: 'Invoice not found' });
+    }
+
+    // Get user's monitors for ownership verification
+    const userMonitors = database.prepare(`
+      SELECT id, account_name FROM email_monitors
+      WHERE user_id = ? OR created_by_user_id = ?
+    `).all(user.id, user.id);
+
+    const monitorIds = userMonitors.map(m => m.id);
+    const accountNames = userMonitors.map(m => m.account_name).filter(Boolean);
+
+    // Check if user owns this invoice (direct match, run_id pattern, or account_name)
+    const isOwner = invoice.user_id === user.id ||
+      monitorIds.some(id => invoice.run_id?.startsWith(`email-${id}-`)) ||
+      accountNames.includes(invoice.account_name) ||
+      user.role === 'admin' || user.role === 'manager';
+
+    if (!isOwner) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    // Get line items for this invoice
+    const lineItems = database.prepare(`
+      SELECT
+        id,
+        description,
+        quantity,
+        unit_price_cents,
+        total_cents,
+        category
+      FROM invoice_items
+      WHERE run_id = ?
+      ORDER BY id
+    `).all(invoice.id);
+
+    // Calculate total from line items if not stored
+    const calculatedTotal = lineItems.reduce((sum, item) => sum + (item.total_cents || 0), 0);
+    const totalCents = invoice.invoice_total_cents || calculatedTotal;
+
+    res.json({
+      success: true,
+      invoice: {
+        id: invoice.id,
+        runId: invoice.run_id,
+        userId: invoice.user_id,
+        accountName: invoice.account_name,
+        vendorName: invoice.vendor_name,
+        fileName: invoice.file_name,
+        fileSize: invoice.file_size,
+        status: invoice.status,
+        errorMessage: invoice.error_message,
+        createdAt: invoice.created_at,
+        completedAt: invoice.completed_at,
+        totalCents: totalCents,
+        lineItems: lineItems.map(item => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPriceCents: item.unit_price_cents,
+          totalCents: item.total_cents,
+          category: item.category
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error fetching invoice:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DIAGNOSTIC ENDPOINT =====
 // GET /api/debug/invoices - Debug invoice visibility issues (Admin/Manager only)
 router.get('/debug/invoices', (req, res) => {

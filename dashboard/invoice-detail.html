@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Details - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 24px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #fbbf24;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-badge.completed {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .status-badge.processing {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    .status-badge.failed {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    /* Info Cards */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .info-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .info-card.highlight {
+      border-color: rgba(34, 197, 94, 0.4);
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(15, 19, 32, 0.9) 100%);
+    }
+
+    .info-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .info-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .info-value.success {
+      color: #22c55e;
+    }
+
+    .info-value.gold {
+      color: #fbbf24;
+    }
+
+    /* Main Content Card */
+    .content-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title svg {
+      color: #fbbf24;
+    }
+
+    /* Line Items Table */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .items-table th {
+      text-align: left;
+      padding: 14px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .items-table th:last-child,
+    .items-table td:last-child {
+      text-align: right;
+    }
+
+    .items-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+    }
+
+    .items-table tr:hover {
+      background: rgba(251, 191, 36, 0.03);
+    }
+
+    .item-description {
+      color: #ffffff;
+      font-weight: 500;
+    }
+
+    .item-category {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+      margin-top: 4px;
+    }
+
+    .totals-row {
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .totals-row td {
+      font-weight: 700;
+      color: #ffffff;
+      border-bottom: none;
+    }
+
+    /* Error State */
+    .error-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .error-message {
+      color: #fca5a5;
+      padding: 16px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 40px;
+      color: #64748b;
+    }
+
+    .empty-state svg {
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      color: #ffffff;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    /* Loading State */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #64748b;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(251, 191, 36, 0.2);
+      border-top-color: #fbbf24;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+      .items-table {
+        font-size: 12px;
+      }
+      .items-table th, .items-table td {
+        padding: 10px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="my-invoices.html" class="back-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Back to My Invoices
+    </a>
+
+    <div id="loadingState" class="loading">
+      <div class="spinner"></div>
+      <p>Loading invoice details...</p>
+    </div>
+
+    <div id="invoiceContent" style="display: none;">
+      <div class="page-header">
+        <div>
+          <h1 id="invoiceTitle">Invoice Details</h1>
+          <p class="subtitle" id="invoiceSubtitle">Loading...</p>
+        </div>
+        <span id="statusBadge" class="status-badge completed">Loading</span>
+      </div>
+
+      <!-- Info Cards -->
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-label">Vendor</div>
+          <div class="info-value" id="vendorName">--</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Date Processed</div>
+          <div class="info-value" id="processedDate">--</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Line Items</div>
+          <div class="info-value gold" id="lineItemCount">--</div>
+        </div>
+        <div class="info-card highlight">
+          <div class="info-label">Invoice Total</div>
+          <div class="info-value success" id="invoiceTotal">--</div>
+        </div>
+      </div>
+
+      <!-- Error Message (if failed) -->
+      <div id="errorSection" class="content-card error-card" style="display: none;">
+        <div class="section-title">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          Processing Error
+        </div>
+        <p>This invoice could not be fully processed.</p>
+        <div class="error-message" id="errorMessage"></div>
+      </div>
+
+      <!-- Line Items -->
+      <div class="content-card" id="lineItemsSection">
+        <div class="section-title">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+          Line Items
+        </div>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="lineItemsBody">
+            <!-- Populated by JavaScript -->
+          </tbody>
+          <tfoot>
+            <tr class="totals-row">
+              <td colspan="4"><strong>Invoice Total</strong></td>
+              <td id="footerTotal">--</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div id="noItemsState" class="empty-state" style="display: none;">
+          <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          <h3>No Line Items</h3>
+          <p>This invoice was processed but no individual line items were extracted.</p>
+        </div>
+      </div>
+
+      <!-- Invoice Metadata -->
+      <div class="content-card">
+        <div class="section-title">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Invoice Information
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+          <div>
+            <div class="info-label">File Name</div>
+            <div style="color: #e2e8f0;" id="fileName">--</div>
+          </div>
+          <div>
+            <div class="info-label">Account</div>
+            <div style="color: #e2e8f0;" id="accountName">--</div>
+          </div>
+          <div>
+            <div class="info-label">Run ID</div>
+            <div style="color: #64748b; font-family: monospace; font-size: 12px;" id="runId">--</div>
+          </div>
+          <div>
+            <div class="info-label">Source</div>
+            <div style="color: #e2e8f0;" id="source">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="notFoundState" class="content-card" style="display: none;">
+      <div class="empty-state">
+        <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3>Invoice Not Found</h3>
+        <p>We couldn't find this invoice. It may have been deleted or the link is incorrect.</p>
+        <a href="my-invoices.html" style="color: #fbbf24; text-decoration: none;">Return to My Invoices</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('accessToken');
+    if (!authToken) {
+      window.location.href = '/dashboard/login.html';
+    }
+
+    // Get invoice ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const invoiceId = urlParams.get('id');
+
+    if (!invoiceId) {
+      showNotFound();
+    } else {
+      loadInvoiceDetails(invoiceId);
+    }
+
+    async function loadInvoiceDetails(runId) {
+      try {
+        // Fetch invoice details
+        const response = await fetch(`/api/invoice/${encodeURIComponent(runId)}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            showNotFound();
+            return;
+          }
+          throw new Error('Failed to load invoice');
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.invoice) {
+          showNotFound();
+          return;
+        }
+
+        renderInvoice(data.invoice);
+      } catch (error) {
+        console.error('Failed to load invoice:', error);
+        showNotFound();
+      }
+    }
+
+    function renderInvoice(invoice) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('invoiceContent').style.display = 'block';
+
+      // Header
+      document.getElementById('invoiceTitle').textContent = invoice.fileName || 'Invoice Details';
+      document.getElementById('invoiceSubtitle').textContent = `Processed on ${formatDate(invoice.createdAt)}`;
+
+      // Status badge
+      const statusBadge = document.getElementById('statusBadge');
+      const statusClass = invoice.status === 'completed' ? 'completed' :
+                          invoice.status === 'processing' ? 'processing' : 'failed';
+      const statusIcon = invoice.status === 'completed' ? '✓' :
+                         invoice.status === 'processing' ? '⟳' : '✕';
+      statusBadge.className = `status-badge ${statusClass}`;
+      statusBadge.textContent = `${statusIcon} ${invoice.status}`;
+
+      // Info cards
+      document.getElementById('vendorName').textContent = invoice.vendorName || 'Unknown';
+      document.getElementById('processedDate').textContent = formatDate(invoice.createdAt);
+      document.getElementById('lineItemCount').textContent = invoice.lineItems?.length || 0;
+      document.getElementById('invoiceTotal').textContent = formatCurrency(invoice.totalCents);
+      document.getElementById('footerTotal').textContent = formatCurrency(invoice.totalCents);
+
+      // Metadata
+      document.getElementById('fileName').textContent = invoice.fileName || '--';
+      document.getElementById('accountName').textContent = invoice.accountName || '--';
+      document.getElementById('runId').textContent = invoice.runId || '--';
+      document.getElementById('source').textContent = invoice.runId?.startsWith('email-') ? 'Email Autopilot' : 'Manual Upload';
+
+      // Error section (if failed)
+      if (invoice.status === 'failed' && invoice.errorMessage) {
+        document.getElementById('errorSection').style.display = 'block';
+        document.getElementById('errorMessage').textContent = invoice.errorMessage;
+      }
+
+      // Line items
+      const lineItems = invoice.lineItems || [];
+      const tbody = document.getElementById('lineItemsBody');
+      const noItemsState = document.getElementById('noItemsState');
+      const itemsTable = tbody.closest('table');
+
+      if (lineItems.length === 0) {
+        itemsTable.style.display = 'none';
+        noItemsState.style.display = 'block';
+      } else {
+        itemsTable.style.display = 'table';
+        noItemsState.style.display = 'none';
+
+        tbody.innerHTML = lineItems.map(item => `
+          <tr>
+            <td>
+              <div class="item-description">${escapeHtml(item.description || '--')}</div>
+            </td>
+            <td>
+              ${item.category ? `<span class="item-category">${escapeHtml(item.category)}</span>` : '<span style="color: #64748b;">--</span>'}
+            </td>
+            <td>${item.quantity || '--'}</td>
+            <td>${item.unitPriceCents ? formatCurrency(item.unitPriceCents) : '--'}</td>
+            <td><strong>${item.totalCents ? formatCurrency(item.totalCents) : '--'}</strong></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function showNotFound() {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('invoiceContent').style.display = 'none';
+      document.getElementById('notFoundState').style.display = 'block';
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '--';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    }
+
+    function formatCurrency(cents) {
+      if (!cents && cents !== 0) return '--';
+      return '$' + (cents / 100).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
