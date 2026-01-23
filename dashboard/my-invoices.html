@@ -757,7 +757,7 @@
         helpText = "Try uploading the invoice again, or use a different file format.";
       }
 
-      return \`
+      return `
         <div class="error-message-bar">
           <div class="error-icon">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -765,12 +765,12 @@
             </svg>
           </div>
           <div class="error-content">
-            <div class="error-title">\${friendlyTitle}</div>
-            <div class="error-text">\${friendlyText}</div>
-            \${helpText ? \`<div class="error-help">\${helpText}</div>\` : ''}
+            <div class="error-title">${friendlyTitle}</div>
+            <div class="error-text">${friendlyText}</div>
+            ${helpText ? `<div class="error-help">${helpText}</div>` : ''}
           </div>
         </div>
-      \`;
+      `;
     }
 
     function showToast(message, type = 'info') {
