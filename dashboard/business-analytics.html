@@ -1773,16 +1773,17 @@
         const emailMonitorsData = emailMonitorsRes?.ok ? await emailMonitorsRes.json() : null;
         const recentUploadsData = recentUploadsRes?.ok ? await recentUploadsRes.json() : null;
 
-        // Calculate invoice stats from recent uploads
+        // Calculate invoice stats from recent uploads (API returns 'runs' not 'data')
+        const uploads = recentUploadsData?.runs || recentUploadsData?.data || [];
         const invoiceStats = {
-          total: recentUploadsData?.data?.length || 0,
+          total: uploads.length || 0,
           this_month: 0
         };
-        if (recentUploadsData?.data) {
+        if (uploads.length > 0) {
           const thisMonth = new Date();
           thisMonth.setDate(1);
           thisMonth.setHours(0, 0, 0, 0);
-          invoiceStats.this_month = recentUploadsData.data.filter(u => new Date(u.created_at) >= thisMonth).length;
+          invoiceStats.this_month = uploads.filter(u => new Date(u.createdAt || u.created_at) >= thisMonth).length;
         }
 
         // Update all dashboard components
