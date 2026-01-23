@@ -1459,9 +1459,17 @@ function cleanDescription(desc) {
 
 function isValidItem(description, priceCents) {
   if (!description || description.length < 3) return false;
-  if (priceCents <= 0 || priceCents > 100000000) return false;
+  // Max $10,000 per line item (1,000,000 cents) - higher values are likely parsing errors
+  if (priceCents <= 0 || priceCents > 1000000) return false;
   if (isLikelyTotalLine(description)) return false;
   if (isLikelyHeaderLine(description)) return false;
+  // Reject numeric-only descriptions (e.g., "2 65 45.6" is not a valid item name)
+  // Must contain at least one letter to be a valid description
+  if (!/[a-zA-Z]/.test(description)) return false;
+  // Reject descriptions that are mostly numbers (less than 30% letters)
+  const letterCount = (description.match(/[a-zA-Z]/g) || []).length;
+  const nonSpaceLength = description.replace(/\s/g, '').length;
+  if (nonSpaceLength > 0 && letterCount / nonSpaceLength < 0.3) return false;
   return true;
 }
 

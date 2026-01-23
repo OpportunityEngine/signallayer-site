@@ -27,6 +27,36 @@ function asString(x) {
   return String(x);
 }
 
+/**
+ * Sanitize vendor name - reject garbage/legal text
+ * Returns cleaned vendor name or "Unknown Vendor" if invalid
+ */
+function sanitizeVendorName(name) {
+  if (!name || typeof name !== 'string') return "Unknown Vendor";
+  const trimmed = name.trim();
+  if (trimmed.length < 2 || trimmed.length > 60) return "Unknown Vendor";
+
+  // Reject if it looks like legal text
+  const legalKeywords = ['TRUST', 'CLAIM', 'COMMODITY', 'RETAINS', 'PURSUANT', 'AGREEMENT',
+                         'LIABILITY', 'DISCLAIMER', 'TERMS', 'CONDITIONS', 'MERCHANDISE',
+                         'SELLER', 'BUYER', 'INVOICE NUMBER', 'PAGE'];
+  const upperName = trimmed.toUpperCase();
+  if (legalKeywords.some(kw => upperName.includes(kw))) return "Unknown Vendor";
+
+  // Reject if all caps and more than 6 words (likely legal text)
+  if (trimmed === trimmed.toUpperCase() && trimmed.split(/\s+/).length > 6) return "Unknown Vendor";
+
+  // Reject if it doesn't contain at least one letter
+  if (!/[a-zA-Z]/.test(trimmed)) return "Unknown Vendor";
+
+  // Replace known vendor patterns with clean names
+  if (/SYSCO/i.test(trimmed)) return "Sysco";
+  if (/CINTAS/i.test(trimmed)) return "Cintas";
+  if (/US\s*FOODS/i.test(trimmed)) return "US Foods";
+
+  return trimmed;
+}
+
 function parseDateLoose(s) {
   if (!s) return null;
   const d = new Date(s);
@@ -285,7 +315,8 @@ function getCanonicalBasics(c, runId) {
 
   const canonical = c;
   // Your schema (invoice.v1):
-  const vendorName = asString(c?.parties?.vendor?.name) || "Unknown Vendor";
+  const rawVendorName = asString(c?.parties?.vendor?.name);
+  const vendorName = sanitizeVendorName(rawVendorName);
   const customerName = asString(c?.parties?.customer?.name) || "Unknown Customer";
 
   const vendorId = hashId(vendorName);
@@ -317,6 +348,19 @@ function extractLineItems(c) {
       amountCents,
       key,
     };
+  }).filter(item => {
+    // Filter out garbage line items
+    // 1. Description must contain at least one letter
+    if (!/[a-zA-Z]/.test(item.description)) return false;
+    // 2. Description must be at least 30% letters (not mostly numbers)
+    const letterCount = (item.description.match(/[a-zA-Z]/g) || []).length;
+    const nonSpaceLength = item.description.replace(/\s/g, '').length;
+    if (nonSpaceLength > 0 && letterCount / nonSpaceLength < 0.3) return false;
+    // 3. Unit price sanity check: max $10,000 per unit (likely parsing error if higher)
+    if (item.unitPrice !== null && item.unitPrice > 10000) return false;
+    // 4. Amount sanity check: max $100,000 per line item
+    if (item.amountCents > 10000000) return false;
+    return true;
   });
 }
 
