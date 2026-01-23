@@ -1,0 +1,47 @@
+name: revenue-radar
+region: nyc
+services:
+- name: revenue-radar-api
+  github:
+    repo: taylorray379/revenue-radar
+    branch: main
+    deploy_on_push: true
+  environment_slug: node-js
+  instance_size_slug: professional-xs
+  instance_count: 1
+  http_port: 5050
+  health_check:
+    http_path: /health
+    initial_delay_seconds: 30
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 3
+  build_command: npm install
+  run_command: npm start
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: "5050"
+  - key: ANTHROPIC_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: JWT_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: SESSION_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: DATABASE_PATH
+    value: /data/revenue-radar.db
+  - key: TRUST_PROXY
+    value: "true"
+  - key: BCRYPT_ROUNDS
+    value: "12"
+  - key: JWT_EXPIRES_IN
+    value: 24h
+  - key: RATE_LIMIT_WINDOW_MS
+    value: "60000"
+  - key: RATE_LIMIT_MAX_REQUESTS
+    value: "100"
