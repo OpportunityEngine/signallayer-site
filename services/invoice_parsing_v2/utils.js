@@ -258,10 +258,22 @@ function isGroupSubtotal(line) {
     /^\d{4}\s+[A-Z]+\s+[A-Z]+\s+SUBTOTAL\s*-?\s*[\d,\.]+$/i,  // 0001 JOHN DOE SUBTOTAL - 34.79
     /^[A-Z]+\s+[A-Z]+\s+SUBTOTAL\s*-?\s*[\d,\.]+$/i,  // JOHN DOE SUBTOTAL - 34.79
     /^\s*[A-Z\/\s]+\s+SUBTOTAL\s+[\d,\.]+$/i,  // MAIN/REFRIG SUBTOTAL 673.93
+    /GROUP\s+TOTAL\**\s*[\d,\.]+/i,  // GROUP TOTAL**** 64.27 (Sysco)
+    /CATEGORY\s+TOTAL/i,  // Category totals
+    /SECTION\s+TOTAL/i,  // Section totals
   ];
 
+  // Check for GROUP TOTAL (Sysco uses this for category subtotals)
+  if (lineUpper.includes('GROUP TOTAL')) return true;
+
   // Must contain SUBTOTAL but NOT be the invoice-level subtotal
-  if (!lineUpper.includes('SUBTOTAL')) return false;
+  if (!lineUpper.includes('SUBTOTAL') && !lineUpper.includes('GROUP TOTAL')) {
+    // Check other patterns
+    for (const pattern of groupSubtotalPatterns) {
+      if (pattern.test(line)) return true;
+    }
+    return false;
+  }
 
   // Check for employee name pattern before SUBTOTAL
   for (const pattern of groupSubtotalPatterns) {

@@ -58,6 +58,7 @@ function parseGenericHeader(text, lines) {
   }
 
   // Vendor name - usually at top, often in larger text or first few lines
+  // Note: vendorName from header is secondary - we prefer detected vendor from vendorDetector
   for (let i = 0; i < Math.min(10, lines.length); i++) {
     const line = lines[i].trim();
     // Skip empty and very short lines
@@ -65,6 +66,11 @@ function parseGenericHeader(text, lines) {
     // Skip lines that look like addresses or dates
     if (/^\d+\s+\w+\s+(st|ave|rd|blvd|dr|ln)/i.test(line)) continue;
     if (/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/.test(line)) continue;
+    // Skip lines that look like legal text/disclaimers
+    if (/\b(TRUST|CLAIM|COMMODITY|RETAINS|PURSUANT|AGREEMENT|SELLER|BUYER)\b/i.test(line)) continue;
+    if (/\b(LIABILITY|DISCLAIMER|TERMS|CONDITIONS|PAYMENT|MERCHANDISE)\b/i.test(line)) continue;
+    // Skip lines that are all-caps sentences (likely legal text)
+    if (line === line.toUpperCase() && line.split(' ').length > 6) continue;
 
     // Likely vendor name if it's a proper-looking company name
     if (/^[A-Z][A-Za-z0-9\s\.,&'\-]+$/.test(line)) {
@@ -94,12 +100,14 @@ function extractGenericTotals(text, lines) {
     debug: {}
   };
 
-  // Common total patterns
+  // Common total patterns - ordered by specificity (most specific first)
   const totalPatterns = [
-    /TOTAL\s*(?:DUE|AMOUNT|USD)?[:\s]*\$?([\d,]+\.?\d*)/i,
+    /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,  // Sysco uses "INVOICE TOTAL"
+    /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,
+    /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
     /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
     /BALANCE\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
-    /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i
+    /TOTAL\s*(?:AMOUNT|USD)?[:\s]*\$?([\d,]+\.?\d*)/i
   ];
 
   const subtotalPatterns = [
@@ -175,11 +183,13 @@ function extractGenericLineItems(text, lines) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Stop at totals section
-    if (/^(SUB)?TOTAL/i.test(line) || /^TAX/i.test(line)) break;
+    // Stop at invoice-level totals section
+    if (/^(SUB)?TOTAL\s*(USD|DUE)?/i.test(line) || /^TAX\s*\$/i.test(line)) break;
+    if (/^INVOICE\s+TOTAL/i.test(line)) break;
 
-    // Skip headers and group subtotals
+    // Skip headers and group subtotals (including Sysco's GROUP TOTAL****)
     if (isTableHeader(line) || isGroupSubtotal(line)) continue;
+    if (/GROUP\s+TOTAL/i.test(line)) continue;  // Explicit Sysco GROUP TOTAL filter
 
     // Try to parse as item row (right-anchored numbers)
     const numbers = extractTailNumbers(line);

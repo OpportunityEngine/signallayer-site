@@ -930,8 +930,9 @@ function extractTotals(text) {
   };
 
   // Grand total patterns (most specific to least)
-  // Cintas uses "TOTAL USD" format
+  // Cintas uses "TOTAL USD" format, Sysco uses "INVOICE TOTAL" format
   const totalPatterns = [
+    /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i,  // Sysco format
     /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,2})/i,  // Cintas format
     /(?:grand\s*total|total\s*amount|amount\s*due|balance\s*due|total\s*due)[:\s]*\$?([\d,]+\.?\d{0,2})/i,
     /(?:^|\s)total[:\s]+\$?([\d,]+\.?\d{2})(?:\s|$)/im,
@@ -1037,12 +1038,30 @@ function extractVendor(text) {
     for (const line of lines.slice(0, 10)) {
       if (line.length >= 3 && line.length <= 60 &&
           /^[A-Z]/.test(line) &&
-          !line.match(/invoice|bill|order|date|number|#|total/i)) {
+          !line.match(/invoice|bill|order|date|number|#|total/i) &&
+          // Skip legal text/disclaimers
+          !line.match(/\b(TRUST|CLAIM|COMMODITY|RETAINS|PURSUANT|AGREEMENT|SELLER|BUYER)\b/i) &&
+          !line.match(/\b(LIABILITY|DISCLAIMER|TERMS|CONDITIONS|PAYMENT|MERCHANDISE)\b/i) &&
+          // Skip all-caps long sentences (likely legal text)
+          !(line === line.toUpperCase() && line.split(' ').length > 6)) {
         vendor.name = line;
         vendor.confidence = 0.6;
         break;
       }
     }
+  }
+
+  // Special handling for known vendors - look for them explicitly
+  const textUpper = text.toUpperCase();
+  if (textUpper.includes('SYSCO') && (!vendor.name || vendor.confidence < 0.8)) {
+    vendor.name = 'Sysco';
+    vendor.confidence = 0.95;
+  } else if (textUpper.includes('CINTAS') && (!vendor.name || vendor.confidence < 0.8)) {
+    vendor.name = 'Cintas';
+    vendor.confidence = 0.95;
+  } else if (textUpper.includes('US FOODS') && (!vendor.name || vendor.confidence < 0.8)) {
+    vendor.name = 'US Foods';
+    vendor.confidence = 0.95;
   }
 
   // Phone number
@@ -1450,7 +1469,8 @@ function isLikelyTotalLine(text) {
   if (!text) return false;
   const lower = text.toLowerCase();
   const keywords = ['total', 'subtotal', 'sub-total', 'tax', 'shipping', 'freight',
-                    'balance', 'amount due', 'discount', 'payment', 'paid', 'credit'];
+                    'balance', 'amount due', 'discount', 'payment', 'paid', 'credit',
+                    'group total', 'category total', 'section total'];  // Sysco uses GROUP TOTAL for subtotals
   return keywords.some(kw => lower.includes(kw));
 }
 
