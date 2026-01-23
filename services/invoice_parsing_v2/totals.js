@@ -1,0 +1,488 @@
+/**
+ * Invoice Parsing V2 - Robust Totals Extraction
+ *
+ * Implements accounting-grade totals extraction:
+ * - Line-by-line scanning (not single regex)
+ * - Deterministic math validation
+ * - Reconciliation with tolerance
+ * - Evidence tracking for debugging
+ */
+
+/**
+ * Parse money string to cents (integer)
+ * Handles: $1,234.56, 1234.56, (123.45) for negatives, -123.45, spaces, etc.
+ * @param {string|number} str - Money value to parse
+ * @returns {number} - Value in cents (integer)
+ */
+function parseMoneyToCents(str) {
+  if (str === null || str === undefined) return 0;
+  if (typeof str === 'number') return Math.round(str * 100);
+
+  let s = String(str).trim();
+  if (!s) return 0;
+
+  // Check for negative indicators
+  const isNegative = s.startsWith('(') && s.endsWith(')') ||
+                     s.startsWith('-') ||
+                     s.startsWith('CR') ||  // Credit notation
+                     s.includes('-') && s.indexOf('-') === 0;
+
+  // Remove currency symbols, commas, parentheses, spaces, CR notation
+  let cleaned = s
+    .replace(/[$€£¥,\s()]/g, '')
+    .replace(/^-/, '')
+    .replace(/^CR/i, '')
+    .replace(/-$/, '');  // trailing negative
+
+  if (!cleaned) return 0;
+
+  // Handle European format (1.234,56 -> 1234.56)
+  if (/^\d{1,3}(\.\d{3})+,\d{2}$/.test(cleaned)) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  }
+
+  const num = parseFloat(cleaned);
+  if (!Number.isFinite(num)) return 0;
+
+  const cents = Math.round(num * 100);
+  return isNegative ? -cents : cents;
+}
+
+/**
+ * Normalize line for consistent parsing
+ * @param {string} line - Raw line
+ * @returns {string} - Normalized line
+ */
+function normalizeLine(line) {
+  if (!line) return '';
+  return line
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')  // Normalize spaces
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-')  // Normalize dashes
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+/**
+ * Check if line is a group/category subtotal (NOT the invoice total)
+ * These should be ignored when looking for the invoice total
+ * @param {string} line - Normalized line
+ * @returns {boolean}
+ */
+function isGroupSubtotalLine(line) {
+  const lineUpper = normalizeLine(line);
+
+  // Patterns that indicate GROUP subtotals (not invoice totals)
+  const groupPatterns = [
+    /GROUP\s+TOTAL/i,
+    /CATEGORY\s+TOTAL/i,
+    /SECTION\s+TOTAL/i,
+    /DEPT\.?\s+TOTAL/i,
+    /DEPARTMENT\s+TOTAL/i,
+    /^\d{4}\s+[A-Z]+\s+[A-Z]+\s+SUBTOTAL/i,  // 0001 JOHN DOE SUBTOTAL
+    /^[A-Z]+\s+[A-Z]+\s+SUBTOTAL\s*-?\s*[\d,\.]+$/i,  // JOHN DOE SUBTOTAL
+    /^\s*[A-Z\/\s]+\s+SUBTOTAL\s+[\d,\.]+$/i,  // MAIN/REFRIG SUBTOTAL
+    /IT\s+SUBTOTAL/i,  // Department subtotal
+    /LOC\s+\d+.*SUBTOTAL/i,  // Location subtotal
+  ];
+
+  // Check for employee name pattern before SUBTOTAL
+  if (lineUpper.includes('SUBTOTAL')) {
+    const subtotalIdx = lineUpper.indexOf('SUBTOTAL');
+    if (subtotalIdx > 5) {
+      const beforeSubtotal = lineUpper.slice(0, subtotalIdx).trim();
+      // Looks like a name (2-4 words, alphabetic)
+      const nameParts = beforeSubtotal.split(/\s+/).filter(p => /^[A-Z]+$/.test(p));
+      if (nameParts.length >= 2 && nameParts.length <= 4) {
+        return true;  // Employee subtotal
+      }
+    }
+  }
+
+  return groupPatterns.some(p => p.test(lineUpper));
+}
+
+/**
+ * Extract totals by scanning lines (robust, multi-pattern approach)
+ * @param {string} text - Raw invoice text
+ * @returns {Object} - Extracted totals with evidence
+ */
+function extractTotalsByLineScan(text) {
+  if (!text) {
+    return {
+      totalCents: 0,
+      subtotalCents: 0,
+      taxCents: 0,
+      feesCents: 0,
+      discountCents: 0,
+      evidence: { total: null, subtotal: null, tax: null, fees: [], discounts: [] }
+    };
+  }
+
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // Result containers
+  let totalCents = 0;
+  let subtotalCents = 0;
+  let taxCents = 0;
+  let feesCents = 0;
+  let discountCents = 0;
+
+  const evidence = {
+    total: null,
+    subtotal: null,
+    tax: null,
+    fees: [],
+    discounts: []
+  };
+
+  // Candidate totals (we'll pick the best one)
+  const totalCandidates = [];
+  const subtotalCandidates = [];
+
+  // Pattern definitions with priority (lower = higher priority)
+  const totalPatterns = [
+    { pattern: /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 1, name: 'INVOICE TOTAL' },
+    { pattern: /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 2, name: 'TOTAL USD' },
+    { pattern: /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 3, name: 'AMOUNT DUE' },
+    { pattern: /BALANCE\s+DUE[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 4, name: 'BALANCE DUE' },
+    { pattern: /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 5, name: 'GRAND TOTAL' },
+    { pattern: /TOTAL\s+AMOUNT[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 6, name: 'TOTAL AMOUNT' },
+    { pattern: /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 7, name: 'TOTAL DUE' },
+    { pattern: /(?:^|\s)TOTAL[:\s]+\$?([\d,]+\.?\d{2})(?:\s|$)/i, priority: 10, name: 'TOTAL (generic)' },
+  ];
+
+  const subtotalPatterns = [
+    { pattern: /(?:^|\s)SUBTOTAL[:\s]*\$?([\d,]+\.?\d{0,2})(?:\s|$)/i, priority: 1, name: 'SUBTOTAL' },
+    { pattern: /SUB[\s\-]?TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 2, name: 'SUB-TOTAL' },
+    { pattern: /MERCHANDISE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 3, name: 'MERCHANDISE TOTAL' },
+  ];
+
+  const taxPatterns = [
+    { pattern: /SALES\s+TAX[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'SALES TAX' },
+    { pattern: /TAX\s*\(?[\d.]*%?\)?[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'TAX' },
+    { pattern: /VAT[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'VAT' },
+    { pattern: /GST[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'GST' },
+  ];
+
+  const feePatterns = [
+    { pattern: /FUEL\s+(?:SURCHARGE|FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'FUEL SURCHARGE' },
+    { pattern: /DELIVERY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'DELIVERY FEE' },
+    { pattern: /SERVICE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'SERVICE CHARGE' },
+    { pattern: /HANDLING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'HANDLING FEE' },
+    { pattern: /ENVIRONMENT(?:AL)?\s+(?:FEE|CHARGE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'ENVIRONMENTAL FEE' },
+    { pattern: /ENERGY\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'ENERGY SURCHARGE' },
+    { pattern: /FREIGHT[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'FREIGHT' },
+    { pattern: /SHIPPING[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'SHIPPING' },
+  ];
+
+  const discountPatterns = [
+    { pattern: /DISCOUNT[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'DISCOUNT' },
+    { pattern: /CREDIT[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'CREDIT' },
+    { pattern: /REBATE[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'REBATE' },
+    { pattern: /SAVINGS[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'SAVINGS' },
+    { pattern: /PROMO(?:TION)?[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'PROMO' },
+  ];
+
+  // Scan lines from bottom to top (totals usually at bottom)
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    const lineNorm = normalizeLine(line);
+
+    // Skip group subtotals
+    if (isGroupSubtotalLine(line)) {
+      continue;
+    }
+
+    // Look for TOTAL patterns
+    for (const { pattern, priority, name } of totalPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        const cents = parseMoneyToCents(match[1]);
+        if (cents > 0) {
+          totalCandidates.push({
+            cents,
+            priority,
+            name,
+            line: line.trim(),
+            lineIndex: i
+          });
+        }
+      }
+    }
+
+    // Look for SUBTOTAL patterns
+    for (const { pattern, priority, name } of subtotalPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        const cents = parseMoneyToCents(match[1]);
+        if (cents > 0) {
+          subtotalCandidates.push({
+            cents,
+            priority,
+            name,
+            line: line.trim(),
+            lineIndex: i
+          });
+        }
+      }
+    }
+
+    // Look for TAX patterns (take first/bottom match)
+    if (!evidence.tax) {
+      for (const { pattern, name } of taxPatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          const cents = parseMoneyToCents(match[1]);
+          if (cents > 0) {
+            taxCents = cents;
+            evidence.tax = { cents, name, line: line.trim() };
+            break;
+          }
+        }
+      }
+    }
+
+    // Look for FEE patterns (accumulate all)
+    for (const { pattern, name } of feePatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        const cents = parseMoneyToCents(match[1]);
+        if (cents > 0) {
+          // Avoid duplicates by checking line similarity
+          const isDuplicate = evidence.fees.some(f =>
+            f.line === line.trim() || (f.name === name && f.cents === cents)
+          );
+          if (!isDuplicate) {
+            feesCents += cents;
+            evidence.fees.push({ cents, name, line: line.trim() });
+          }
+        }
+      }
+    }
+
+    // Look for DISCOUNT patterns (accumulate all, normalize to negative)
+    for (const { pattern, name } of discountPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        const cents = parseMoneyToCents(match[1]);
+        if (cents !== 0) {
+          const isDuplicate = evidence.discounts.some(d =>
+            d.line === line.trim() || (d.name === name && Math.abs(d.cents) === Math.abs(cents))
+          );
+          if (!isDuplicate) {
+            // Discounts are always negative
+            const discCents = cents > 0 ? -cents : cents;
+            discountCents += discCents;
+            evidence.discounts.push({ cents: discCents, name, line: line.trim() });
+          }
+        }
+      }
+    }
+  }
+
+  // Select best TOTAL candidate (lowest priority number = highest priority)
+  if (totalCandidates.length > 0) {
+    totalCandidates.sort((a, b) => a.priority - b.priority);
+    const best = totalCandidates[0];
+    totalCents = best.cents;
+    evidence.total = {
+      cents: best.cents,
+      name: best.name,
+      line: best.line,
+      alternatives: totalCandidates.length > 1 ? totalCandidates.slice(1, 3) : []
+    };
+  }
+
+  // Select best SUBTOTAL candidate (prefer largest that's <= total)
+  if (subtotalCandidates.length > 0) {
+    // Sort by value descending
+    subtotalCandidates.sort((a, b) => b.cents - a.cents);
+    // Pick largest that makes sense (less than or equal to total)
+    const best = totalCents > 0
+      ? subtotalCandidates.find(s => s.cents <= totalCents) || subtotalCandidates[0]
+      : subtotalCandidates[0];
+    subtotalCents = best.cents;
+    evidence.subtotal = { cents: best.cents, name: best.name, line: best.line };
+  }
+
+  return {
+    totalCents,
+    subtotalCents,
+    taxCents,
+    feesCents,
+    discountCents,
+    evidence
+  };
+}
+
+/**
+ * Compute expected total from components using deterministic math
+ * @param {Array} lineItems - Array of line items with totalCents
+ * @param {Object} extractedTotals - Extracted totals from line scan
+ * @returns {Object} - Computed values
+ */
+function computeInvoiceMath(lineItems, extractedTotals) {
+  // Sum line items
+  const sumLineItemsCents = (lineItems || []).reduce((sum, item) => {
+    const itemTotal = item.totalCents || item.lineTotalCents || 0;
+    return sum + itemTotal;
+  }, 0);
+
+  // Get extracted components
+  const taxCents = extractedTotals?.taxCents || 0;
+  const feesCents = extractedTotals?.feesCents || 0;
+  const discountCents = extractedTotals?.discountCents || 0;  // Should be negative
+
+  // Compute expected total: items + tax + fees + discount (discount is negative)
+  const computedTotalCents = sumLineItemsCents + taxCents + feesCents + discountCents;
+
+  return {
+    sumLineItemsCents,
+    computedTotalCents,
+    components: {
+      taxCents,
+      feesCents,
+      discountCents
+    }
+  };
+}
+
+/**
+ * Reconcile extracted total vs computed total
+ * @param {number} extractedTotalCents - Total from PDF text
+ * @param {number} computedTotalCents - Total from math
+ * @param {number} tolerance - Tolerance in cents (default 5)
+ * @returns {Object} - Reconciliation result
+ */
+function reconcileTotals(extractedTotalCents, computedTotalCents, tolerance = 5) {
+  const deltaCents = extractedTotalCents - computedTotalCents;
+  const absDelta = Math.abs(deltaCents);
+
+  const matches = absDelta === 0;
+  const toleranceOk = absDelta <= tolerance;
+
+  let reason = '';
+  if (matches) {
+    reason = 'Exact match';
+  } else if (toleranceOk) {
+    reason = `Within tolerance (${absDelta} cents difference)`;
+  } else if (computedTotalCents === 0 && extractedTotalCents > 0) {
+    reason = 'No line items to compare (using extracted total)';
+  } else if (extractedTotalCents === 0 && computedTotalCents > 0) {
+    reason = 'No extracted total (using computed total)';
+  } else {
+    reason = `Mismatch: extracted $${(extractedTotalCents/100).toFixed(2)} vs computed $${(computedTotalCents/100).toFixed(2)}`;
+  }
+
+  return {
+    matches,
+    toleranceOk,
+    deltaCents,
+    reason,
+    extractedTotalCents,
+    computedTotalCents
+  };
+}
+
+/**
+ * Select best total using priority logic
+ * Priority: extracted total > computed total > sum of items
+ * @param {Object} extracted - Extracted totals
+ * @param {Object} computed - Computed math
+ * @param {number} parsedTotalCents - Total from parser
+ * @returns {Object} - Best total with source info
+ */
+function selectBestTotal(extracted, computed, parsedTotalCents = 0) {
+  // Priority 1: Line-scan extracted total (printed on invoice)
+  if (extracted?.totalCents > 0) {
+    return {
+      totalCents: extracted.totalCents,
+      source: 'extracted',
+      reason: `Extracted from invoice: ${extracted.evidence?.total?.name || 'TOTAL'}`,
+      confidence: 0.95
+    };
+  }
+
+  // Priority 2: Parser's total (if different extraction method)
+  if (parsedTotalCents > 0) {
+    return {
+      totalCents: parsedTotalCents,
+      source: 'parser',
+      reason: 'From invoice parser',
+      confidence: 0.85
+    };
+  }
+
+  // Priority 3: Computed total (if we have components)
+  if (computed?.computedTotalCents > 0 && computed.sumLineItemsCents > 0) {
+    return {
+      totalCents: computed.computedTotalCents,
+      source: 'computed',
+      reason: 'Computed from line items + tax + fees',
+      confidence: 0.75
+    };
+  }
+
+  // Priority 4: Just sum of items
+  if (computed?.sumLineItemsCents > 0) {
+    return {
+      totalCents: computed.sumLineItemsCents,
+      source: 'sum_items',
+      reason: 'Sum of line items only',
+      confidence: 0.6
+    };
+  }
+
+  // No total found
+  return {
+    totalCents: 0,
+    source: 'none',
+    reason: 'No total could be determined',
+    confidence: 0
+  };
+}
+
+/**
+ * Extract interesting lines for debugging
+ * @param {string} text - Invoice text
+ * @returns {Array} - Lines containing key financial keywords
+ */
+function extractInterestingLines(text) {
+  if (!text) return [];
+
+  const keywords = [
+    'INVOICE', 'AMOUNT', 'TOTAL', 'SUBTOTAL', 'SUB-TOTAL',
+    'TAX', 'FUEL', 'SURCHARGE', 'DISCOUNT', 'CREDIT',
+    'DUE', 'BALANCE', 'FREIGHT', 'SHIPPING', 'FEE'
+  ];
+
+  const lines = text.split('\n');
+  const interesting = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const lineUpper = line.toUpperCase();
+    if (keywords.some(kw => lineUpper.includes(kw))) {
+      interesting.push({
+        lineNumber: i + 1,
+        text: line
+      });
+    }
+  }
+
+  return interesting;
+}
+
+module.exports = {
+  parseMoneyToCents,
+  extractTotalsByLineScan,
+  computeInvoiceMath,
+  reconcileTotals,
+  selectBestTotal,
+  extractInterestingLines,
+  isGroupSubtotalLine,
+  normalizeLine
+};

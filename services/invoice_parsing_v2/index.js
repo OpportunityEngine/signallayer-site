@@ -17,6 +17,7 @@
 const { normalizeInvoiceText, splitIntoPages, removeRepeatedHeadersFooters, parseMoney } = require('./utils');
 const { detectVendor } = require('./vendorDetector');
 const { parseCintasInvoice } = require('./parsers/cintasParser');
+const { parseSyscoInvoice } = require('./parsers/syscoParser');
 const { parseGenericInvoice } = require('./genericParser');
 const { validateInvoiceParse, chooseBestParse, calculateParseChecksum } = require('./validator');
 
@@ -51,6 +52,19 @@ function parseInvoiceText(rawText, options = {}) {
     const cintasResult = parseCintasInvoice(fullText, options);
     cintasResult.vendorDetection = vendorInfo;
     candidates.push(cintasResult);
+
+    // Also run generic as fallback comparison
+    if (!options.strict) {
+      const genericResult = parseGenericInvoice(fullText, options);
+      genericResult.vendorDetection = { ...vendorInfo, note: 'fallback' };
+      candidates.push(genericResult);
+    }
+  } else if (vendorInfo.vendorKey === 'sysco') {
+    // Run Sysco parser
+    console.log('[PARSER V2] Using Sysco-specific parser');
+    const syscoResult = parseSyscoInvoice(fullText, options);
+    syscoResult.vendorDetection = vendorInfo;
+    candidates.push(syscoResult);
 
     // Also run generic as fallback comparison
     if (!options.strict) {
@@ -207,5 +221,6 @@ module.exports = {
 
   // Individual parsers (for testing)
   parseCintasInvoice,
+  parseSyscoInvoice,
   parseGenericInvoice
 };

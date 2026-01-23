@@ -1824,6 +1824,139 @@ app.use((req, res, next) => {
 app.post("/api/osm/clear-cache", (req, res) => { try { osmCache.clear(); } catch (_) {} return res.json({ ok: true }); });
 app.post("/api/leads/clear-cache", (req, res) => { try { leadsCache.clear(); } catch (_) {} return res.json({ ok: true, message: "Leads cache cleared" }); });
 
+// ===== DEBUG ENDPOINT: PDF TEXT INSPECTION =====
+// GET /api/debug/pdf-text/:runId - Inspect raw text and totals signals for a specific run
+app.get("/api/debug/pdf-text/:runId", (req, res) => {
+  try {
+    const { runId } = req.params;
+
+    // Validate runId format (timestamp-hex pattern)
+    if (!runId || !/^[\w\-]+$/.test(runId)) {
+      return res.status(400).json({ ok: false, message: "Invalid runId format" });
+    }
+
+    // Check if run directory exists
+    const runPath = path.join(RUNS_DIR, runId);
+    if (!fs.existsSync(runPath)) {
+      return res.status(404).json({ ok: false, message: "Run not found", runId });
+    }
+
+    // Try to read raw text from multiple possible sources
+    let rawText = '';
+    let filePath = null;
+    let source = null;
+
+    // Priority 1: extracted.json (contains raw_text)
+    const extractedPath = path.join(runPath, "extracted.json");
+    if (fs.existsSync(extractedPath)) {
+      try {
+        const extracted = JSON.parse(fs.readFileSync(extractedPath, "utf8"));
+        if (extracted.raw_text) {
+          rawText = extracted.raw_text;
+          filePath = extractedPath;
+          source = 'extracted.json';
+        }
+      } catch (e) {
+        console.warn(`[DEBUG PDF-TEXT] Failed to read extracted.json: ${e.message}`);
+      }
+    }
+
+    // Priority 2: raw_capture.json (may contain payload with raw_text)
+    if (!rawText) {
+      const rawCapturePath = path.join(runPath, "raw_capture.json");
+      if (fs.existsSync(rawCapturePath)) {
+        try {
+          const rawCapture = JSON.parse(fs.readFileSync(rawCapturePath, "utf8"));
+          const payloadText = rawCapture?.payload?.raw_text || rawCapture?.raw_text;
+          if (payloadText) {
+            rawText = payloadText;
+            filePath = rawCapturePath;
+            source = 'raw_capture.json';
+          }
+        } catch (e) {
+          console.warn(`[DEBUG PDF-TEXT] Failed to read raw_capture.json: ${e.message}`);
+        }
+      }
+    }
+
+    // Priority 3: ingest_response.json
+    if (!rawText) {
+      const ingestPath = path.join(runPath, "ingest_response.json");
+      if (fs.existsSync(ingestPath)) {
+        try {
+          const ingest = JSON.parse(fs.readFileSync(ingestPath, "utf8"));
+          if (ingest?.extracted?.raw_text_preview) {
+            rawText = ingest.extracted.raw_text_preview;
+            filePath = ingestPath;
+            source = 'ingest_response.json (preview only)';
+          }
+        } catch (e) {
+          console.warn(`[DEBUG PDF-TEXT] Failed to read ingest_response.json: ${e.message}`);
+        }
+      }
+    }
+
+    if (!rawText) {
+      return res.json({
+        ok: false,
+        message: "No raw text found for this run",
+        runId,
+        searchedFiles: ['extracted.json', 'raw_capture.json', 'ingest_response.json']
+      });
+    }
+
+    // Import totals extractor for analysis
+    const { extractTotalsByLineScan, extractInterestingLines } = require('./services/invoice_parsing_v2/totals');
+
+    // Extract totals and interesting lines
+    const totalsResult = extractTotalsByLineScan(rawText);
+    const interestingLines = extractInterestingLines(rawText);
+
+    // Build signals summary
+    const signals = {
+      hasInvoice: /invoice/i.test(rawText),
+      hasTotal: /\btotal\b/i.test(rawText),
+      hasSubtotal: /\bsubtotal\b/i.test(rawText),
+      hasTax: /\btax\b/i.test(rawText),
+      hasAmountDue: /amount\s*due/i.test(rawText),
+      invoiceTotalMatches: (rawText.match(/invoice\s+total/gi) || []).length,
+      totalMatches: (rawText.match(/\btotal\b/gi) || []).length
+    };
+
+    // Return comprehensive debug info
+    return res.json({
+      ok: true,
+      runId,
+      filePath,
+      source,
+      textLength: rawText.length,
+      head: rawText.slice(0, 2000),
+      tail: rawText.slice(-2000),
+      signals,
+      extractedTotals: {
+        totalCents: totalsResult.totalCents,
+        subtotalCents: totalsResult.subtotalCents,
+        taxCents: totalsResult.taxCents,
+        feesCents: totalsResult.feesCents,
+        discountCents: totalsResult.discountCents,
+        totalFormatted: `$${(totalsResult.totalCents / 100).toFixed(2)}`,
+        subtotalFormatted: `$${(totalsResult.subtotalCents / 100).toFixed(2)}`,
+        taxFormatted: `$${(totalsResult.taxCents / 100).toFixed(2)}`
+      },
+      evidence: totalsResult.evidence,
+      interestingLines: interestingLines.slice(0, 50)  // Limit to 50 lines
+    });
+
+  } catch (err) {
+    console.error('[DEBUG PDF-TEXT] Error:', err);
+    return res.status(500).json({
+      ok: false,
+      message: "Error processing request",
+      error: err.message
+    });
+  }
+});
+
 app.post("/api/osm/debug", async (req, res) => {
   const HARD_MS = Number(process.env.OSM_DEBUG_TIMEOUT_MS || 8000);
   const hardTimeout = new Promise((resolve) => setTimeout(() => resolve({ __hardTimeout: true }), HARD_MS));
@@ -3059,13 +3192,59 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       // Store ingestion run in database
       const fileName = body.fileName || body.file_name || body.source_ref?.value || 'upload';
 
-      // Get the invoice total from parser or canonical data
-      // Priority: parser total > canonical total > sum of items
-      const invoiceTotalCents = parsedInvoice?.totals?.totalCents ||
-                                 canonical?.total_amount_cents ||
-                                 (canonical?.line_items || []).reduce((sum, item) => sum + (item.total_price?.amount || 0), 0);
+      // ===== ROBUST TOTALS EXTRACTION =====
+      // Priority chain: lineScanTotal > parserTotal > canonicalTotal > computedTotal > sumOfItems
+      // This ensures the printed invoice total takes precedence over computed values
+      let invoiceTotalCents = 0;
+      let totalSource = 'none';
+      let reconciliation = null;
 
-      console.log(`[INGEST] Invoice total: $${(invoiceTotalCents/100).toFixed(2)} (parser: $${((parsedInvoice?.totals?.totalCents || 0)/100).toFixed(2)})`);
+      try {
+        const { extractTotalsByLineScan, computeInvoiceMath, reconcileTotals, selectBestTotal } = require('./services/invoice_parsing_v2/totals');
+
+        // Extract totals directly from raw text using line scan
+        const rawText = extracted?.raw_text || '';
+        const lineScanTotals = rawText ? extractTotalsByLineScan(rawText) : null;
+
+        // Get parser and canonical totals
+        const parserTotalCents = parsedInvoice?.totals?.totalCents || 0;
+        const canonicalTotalCents = canonical?.total_amount_cents || 0;
+
+        // Compute total from line items
+        const lineItems = canonical?.line_items || [];
+        const computed = computeInvoiceMath(
+          lineItems.map(item => ({ totalCents: item.total_price?.amount || 0 })),
+          lineScanTotals
+        );
+
+        // Select best total using priority chain
+        const bestTotal = selectBestTotal(lineScanTotals, computed, parserTotalCents);
+        invoiceTotalCents = bestTotal.totalCents;
+        totalSource = bestTotal.source;
+
+        // Reconcile extracted vs computed for logging
+        if (lineScanTotals?.totalCents > 0 && computed?.computedTotalCents > 0) {
+          reconciliation = reconcileTotals(lineScanTotals.totalCents, computed.computedTotalCents);
+        }
+
+        // Log totals selection for debugging
+        console.log(`[INGEST TOTALS] Selected: $${(invoiceTotalCents/100).toFixed(2)} (source: ${totalSource})`);
+        console.log(`[INGEST TOTALS] LineScan: $${((lineScanTotals?.totalCents || 0)/100).toFixed(2)}, Parser: $${(parserTotalCents/100).toFixed(2)}, Canonical: $${(canonicalTotalCents/100).toFixed(2)}, Computed: $${((computed?.computedTotalCents || 0)/100).toFixed(2)}`);
+
+        if (reconciliation && !reconciliation.toleranceOk) {
+          console.warn(`[INGEST TOTALS] WARNING: ${reconciliation.reason}`);
+        }
+
+      } catch (totalsError) {
+        // Fallback to original logic if totals extraction fails
+        console.warn('[INGEST TOTALS] Extraction failed, using fallback:', totalsError.message);
+        invoiceTotalCents = parsedInvoice?.totals?.totalCents ||
+                           canonical?.total_amount_cents ||
+                           (canonical?.line_items || []).reduce((sum, item) => sum + (item.total_price?.amount || 0), 0);
+        totalSource = 'fallback';
+      }
+
+      console.log(`[INGEST] Invoice total: $${(invoiceTotalCents/100).toFixed(2)} (source: ${totalSource})`);
 
       console.log(`[USER_ID_TRACE] source=manual_upload action=insert_ingestion_run runId=${run_id} userId=${userId} email=${userEmail}`);
 

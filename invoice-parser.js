@@ -826,26 +826,80 @@ function extractVendorSpecificFormat(text) {
   }
 
   // ===== SYSCO / US FOODS / FOOD DISTRIBUTOR FORMAT =====
-  if (textLower.includes('sysco') || textLower.includes('us foods') || textLower.includes('food service') || textLower.includes('produce')) {
-    const foodPattern = /(\d{6,8})\s+([A-Za-z][A-Za-z0-9\s\-\/\.,]{5,50}?)\s+(\d+)\s*\/\s*([A-Z0-9]+)\s+(\d+)\s+\$?([\d,\.]+)\s+\$?([\d,\.]+)/g;
-    let match;
+  // Sysco line format: [Category] [Qty] [Unit] [Description...] [SKU] [UnitPrice] [LineTotal]
+  // Example: C 1 CS 25 LB WHLFCLS CREAM SOUR CULTRD GRADE A 1003864 21.52 21.52
+  // Example: F 2 CS 42.5LB PORTCLS SHRIMP WHT P&D TLOF 26/30 6739153 58.57 117.14
+  if (textLower.includes('sysco') || textLower.includes('us foods') || textLower.includes('food service')) {
+    const lines = text.split('\n');
 
-    while ((match = foodPattern.exec(text)) !== null) {
-      const sku = match[1];
-      const desc = cleanDescription(match[2]);
-      const qty = parseInt(match[5]) || 1;
-      const unitPrice = parsePrice(match[6]);
-      const lineTotal = parsePrice(match[7]);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.length < 15) continue;
 
-      if (desc.length >= 3 && lineTotal > 0) {
-        items.push({
-          description: desc,
-          quantity: qty,
-          unitPriceCents: unitPrice,
-          totalCents: lineTotal,
-          sku: sku,
-          category: 'food_supplies'
-        });
+      // Skip GROUP TOTAL and other total lines
+      if (/GROUP\s+TOTAL/i.test(trimmed)) continue;
+      if (/^(SUB)?TOTAL/i.test(trimmed)) continue;
+      if (/INVOICE\s+TOTAL/i.test(trimmed)) continue;
+      if (isLikelyTotalLine(trimmed)) continue;
+
+      // Pattern 1: Category + Qty + Unit + Description + SKU + two prices
+      // [C|F|D|P] [Qty] [Unit] [...description...] [SKU 5-8 digits] [price] [price]
+      let match = trimmed.match(/^([CFPD])\s+(\d+)\s*([A-Z]{1,4})?\s+(.+?)\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/i);
+
+      if (match) {
+        const category = match[1].toUpperCase();
+        const qty = parseInt(match[2], 10) || 1;
+        const unit = match[3] || '';
+        const desc = cleanDescription(match[4]);
+        const sku = match[5];
+        const unitPrice = parsePrice(match[6]);
+        const lineTotal = parsePrice(match[7]);
+
+        // Sanity check: qty should be reasonable
+        if (qty >= 1 && qty <= 999 && desc.length >= 3 && lineTotal > 0) {
+          items.push({
+            description: `${qty} ${unit} ${desc}`.trim(),
+            quantity: qty,
+            unitPriceCents: unitPrice,
+            totalCents: lineTotal,
+            sku: sku,
+            category: category === 'C' ? 'cooler' : category === 'F' ? 'frozen' : 'food_supplies'
+          });
+          continue;
+        }
+      }
+
+      // Pattern 2: Fallback - any line ending with SKU + two prices
+      match = trimmed.match(/^(.+?)\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/);
+      if (match) {
+        const fullDesc = match[1].trim();
+        const sku = match[2];
+        const unitPrice = parsePrice(match[3]);
+        const lineTotal = parsePrice(match[4]);
+
+        // Try to extract qty from beginning: [Cat]? [Qty] [Unit]? [Rest...]
+        let qty = 1;
+        let desc = fullDesc;
+        const qtyMatch = fullDesc.match(/^([CFPD])?\s*(\d+)\s*([A-Z]{1,4})?\s+(.+)$/i);
+        if (qtyMatch) {
+          const parsedQty = parseInt(qtyMatch[2], 10);
+          if (parsedQty >= 1 && parsedQty <= 999) {
+            qty = parsedQty;
+            const unit = qtyMatch[3] || '';
+            desc = `${qty} ${unit} ${qtyMatch[4]}`.trim();
+          }
+        }
+
+        if (desc.length >= 3 && lineTotal > 0) {
+          items.push({
+            description: desc,
+            quantity: qty,
+            unitPriceCents: unitPrice,
+            totalCents: lineTotal,
+            sku: sku,
+            category: 'food_supplies'
+          });
+        }
       }
     }
 
@@ -1481,13 +1535,21 @@ function isValidItem(description, priceCents) {
   if (priceCents <= 0 || priceCents > 1000000) return false;
   if (isLikelyTotalLine(description)) return false;
   if (isLikelyHeaderLine(description)) return false;
-  // Reject numeric-only descriptions (e.g., "2 65 45.6" is not a valid item name)
-  // Must contain at least one letter to be a valid description
+
+  // Accept if contains at least one letter
   if (!/[a-zA-Z]/.test(description)) return false;
-  // Reject descriptions that are mostly numbers (less than 30% letters)
+
+  // Accept if contains known unit tokens (common in food service invoices)
+  // These are valid even with high numeric content
+  const unitTokens = /\b(LB|LBS|GAL|OZ|CT|EA|PK|CS|CASE|BAG|BOX|DOZ|QT|PT|EACH|PC|PCS|UNIT|UNITS)\b/i;
+  if (unitTokens.test(description)) return true;
+
+  // For descriptions without unit tokens, require at least 20% letters (relaxed from 30%)
+  // This helps with codes/abbreviations while rejecting pure numeric garbage
   const letterCount = (description.match(/[a-zA-Z]/g) || []).length;
   const nonSpaceLength = description.replace(/\s/g, '').length;
-  if (nonSpaceLength > 0 && letterCount / nonSpaceLength < 0.3) return false;
+  if (nonSpaceLength > 0 && letterCount / nonSpaceLength < 0.2) return false;
+
   return true;
 }
 
