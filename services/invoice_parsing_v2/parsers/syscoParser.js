@@ -441,6 +441,8 @@ function extractSyscoTotals(text, lines) {
     totals.taxCents = parseMoney(taxMatch[1]);
   }
 
+  console.log(`[SYSCO TOTALS] Extracted: total=$${(totals.totalCents/100).toFixed(2)}, subtotal=$${(totals.subtotalCents/100).toFixed(2)}, tax=$${(totals.taxCents/100).toFixed(2)}`);
+
   return totals;
 }
 
@@ -478,8 +480,32 @@ function parseSyscoInvoice(normalizedText, options = {}) {
 
       const item = parseSyscoLineItem(line);
       if (item) {
+        // Look ahead for T/WT= continuation line (weight info on next line)
+        // Format: "84.000 T/WT= 84.000" - the weight is used to calculate true qty
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1].trim();
+          const twtMatch = nextLine.match(/^([\d.]+)\s*T\/WT=\s*([\d.]+)/i);
+          if (twtMatch) {
+            const weight = parseFloat(twtMatch[1]);
+            if (weight > 0 && weight < 10000) {
+              // Weight is the actual quantity (e.g., 84 lbs)
+              // Recalculate unit price: lineTotal / weight
+              item.actualWeight = weight;
+              item.originalQty = item.qty;
+              item.qty = weight;
+              // Unit price should be per lb/unit of weight
+              if (item.lineTotalCents > 0) {
+                item.unitPriceCents = Math.round(item.lineTotalCents / weight);
+              }
+              item.weightCorrected = true;
+              console.log(`[SYSCO] Applied T/WT weight: ${weight}, unit price: $${(item.unitPriceCents/100).toFixed(2)}/unit`);
+              i++; // Skip the T/WT line
+            }
+          }
+        }
+
         // Validate that qty isn't a misclassified item code
-        if (isLikelyMisclassifiedItemCode(item.qty, item.unitPriceCents, item.lineTotalCents)) {
+        if (!item.weightCorrected && isLikelyMisclassifiedItemCode(item.qty, item.unitPriceCents, item.lineTotalCents)) {
           console.log(`[SYSCO] Detected misclassified item code as qty: ${item.qty}, recalculating...`);
           // Try to infer correct qty from math
           if (item.unitPriceCents > 0) {
@@ -503,10 +529,13 @@ function parseSyscoInvoice(normalizedText, options = {}) {
 
   // Count how many items were corrected
   const correctedCount = validatedItems.filter(item => item.mathCorrected).length;
+  const weightCorrectedCount = validatedItems.filter(item => item.weightCorrected).length;
+
+  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}, weight-corrected: ${weightCorrectedCount}`);
 
   return {
     vendorKey: 'sysco',
-    parserVersion: '2.3.0',
+    parserVersion: '2.4.0',
     header: header,
     totals: totals,
     lineItems: validatedItems,
@@ -517,7 +546,8 @@ function parseSyscoInvoice(normalizedText, options = {}) {
       parseAttempts: ['sysco'],
       rawLineCount: lines.length,
       itemLinesProcessed: validatedItems.length,
-      mathCorrectedItems: correctedCount
+      mathCorrectedItems: correctedCount,
+      weightCorrectedItems: weightCorrectedCount
     }
   };
 }
