@@ -2730,12 +2730,21 @@ router.createNotification = createNotification;
 
 // ===== ADMIN CLEANUP ENDPOINTS =====
 // Cleanup duplicate invoices and fix data quality issues
+// Allow localhost access without auth for server-side operations
+
+function isLocalRequest(req) {
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+}
 
 /**
  * GET /api/admin/cleanup/preview
  * Preview what duplicates would be cleaned up (dry run)
  */
 router.get('/admin/cleanup/preview', (req, res) => {
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({ success: false, error: 'Admin endpoints only accessible from localhost' });
+  }
   try {
     const database = db.getDatabase();
 
@@ -2846,6 +2855,9 @@ router.get('/admin/cleanup/preview', (req, res) => {
  * Actually delete duplicate invoices and fix data quality
  */
 router.post('/admin/cleanup/execute', (req, res) => {
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({ success: false, error: 'Admin endpoints only accessible from localhost' });
+  }
   try {
     const database = db.getDatabase();
     const results = { duplicatesDeleted: 0, itemsDeleted: 0, vendorsFixed: 0 };
@@ -2936,6 +2948,9 @@ router.post('/admin/cleanup/execute', (req, res) => {
  * Reset suspiciously high invoice totals to $0
  */
 router.post('/admin/cleanup/reset-totals', (req, res) => {
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({ success: false, error: 'Admin endpoints only accessible from localhost' });
+  }
   try {
     const database = db.getDatabase();
     const threshold = req.body.threshold || 100000000; // Default $1M
