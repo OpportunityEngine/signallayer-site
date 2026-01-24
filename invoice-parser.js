@@ -1077,9 +1077,39 @@ function extractTotals(text) {
       const total = parsePrice(valueMatch[1]);
       if (total > 0) {
         totals.totalCents = total;
-        return totals;  // Return early with the found INVOICE TOTAL
       }
     }
+  }
+
+  // Pattern: Look for total value near "LAST PAGE" marker (Sysco specific)
+  const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{2})\s*$/im);
+  if (lastPageMatch) {
+    const lastPageTotal = parsePrice(lastPageMatch[1]);
+    if (lastPageTotal > totals.totalCents) {
+      totals.totalCents = lastPageTotal;
+    }
+  }
+
+  // Pattern: Look for standalone total at end of document lines
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
+    const line = lines[i].trim();
+    // Skip GROUP TOTAL lines
+    if (/GROUP\s+TOTAL/i.test(line)) continue;
+
+    // Match INVOICE TOTAL or just TOTAL followed by amount
+    const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{2})/i);
+    if (match) {
+      const lineTotal = parsePrice(match[1]);
+      if (lineTotal > totals.totalCents) {
+        totals.totalCents = lineTotal;
+      }
+    }
+  }
+
+  // Return early if we found a total
+  if (totals.totalCents > 0) {
+    // Continue to extract subtotal and tax
   }
 
   for (const pattern of totalPatterns) {

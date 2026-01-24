@@ -3131,12 +3131,12 @@
       <div class="quick-actions-grid" style="grid-template-columns: repeat(4, 1fr);">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-label">Inventory</span>
-          <span class="tile-value" id="tileInventoryCount">247 Items</span>
+          <span class="tile-value" id="tileInventoryCount">Loading...</span>
         </a>
         <a href="business-analytics.html" class="quick-action-tile analytics">
           <span class="tile-label">Analytics</span>
-          <span class="tile-value" id="tileSavingsFound">$8,247 Found</span>
-          <span class="tile-subtitle">+ Location Performance</span>
+          <span class="tile-value" id="tileSavingsFound">Loading...</span>
+          <span class="tile-subtitle">Invoice insights & trends</span>
         </a>
         <div class="quick-action-tile intent" id="intentSignalsTile" onclick="openIntentSignalsModal()">
           <span class="tile-label">Intent Signals</span>
@@ -3144,9 +3144,9 @@
           <span class="tile-subtitle" id="tileIntentCritical">Loading...</span>
         </div>
         <div class="quick-action-tile results" onclick="openActionsExecutedModal()">
-          <span class="tile-label">Smart Actions Executed</span>
-          <span class="tile-value" style="color: #22c55e;" id="tileActionsExecuted">$6,287 Saved</span>
-          <span class="tile-subtitle" id="tileActionsCount">12 actions - 92% success</span>
+          <span class="tile-label">Invoice Tracking</span>
+          <span class="tile-value" style="color: #22c55e;" id="tileActionsExecuted">Loading...</span>
+          <span class="tile-subtitle" id="tileActionsCount">Loading...</span>
         </div>
       </div>
 
@@ -3159,18 +3159,18 @@
         </a>
         <a href="private-events.html" class="quick-action-tile events">
           <span class="tile-label">Private Events</span>
-          <span class="tile-value" id="tileEventsCount">3 Upcoming</span>
-          <span class="tile-subtitle" id="tileEventsNext">Next: Sat, Jan 25</span>
+          <span class="tile-value" id="tileEventsCount" style="color: #94a3b8;">Coming Soon</span>
+          <span class="tile-subtitle" id="tileEventsNext">Event management</span>
         </a>
         <a href="catering.html" class="quick-action-tile catering">
           <span class="tile-label">Catering</span>
-          <span class="tile-value" id="tileCateringCount">5 Orders</span>
-          <span class="tile-subtitle" id="tileCateringRevenue">$12,450 this month</span>
+          <span class="tile-value" id="tileCateringCount" style="color: #94a3b8;">Coming Soon</span>
+          <span class="tile-subtitle" id="tileCateringRevenue">Order management</span>
         </a>
         <div class="quick-action-tile pipeline" onclick="scrollToFlaggedIssues()">
           <span class="tile-label">Overbilling</span>
-          <span class="tile-value" id="tilePipelineTotal">$8,247</span>
-          <span class="tile-subtitle" id="tilePipelineCount">18 issues flagged</span>
+          <span class="tile-value" id="tilePipelineTotal" style="color: #94a3b8;">Coming Soon</span>
+          <span class="tile-subtitle" id="tilePipelineCount">Price anomaly detection</span>
         </div>
       </div>
 
@@ -3209,31 +3209,27 @@
         <div class="divider"></div>
 
         <div style="padding: 20px;">
-          <!-- Command Center Grid - Overbilling Metrics -->
+          <!-- Command Center Grid - Invoice Metrics -->
           <div class="command-center-grid" style="margin-top: 20px;">
             <div class="command-stat highlight">
-              <div class="command-stat-label">Total Potential Overbilling</div>
-              <div class="command-stat-value gold" id="ccTotalOverbilling">$8,247</div>
-              <div class="command-stat-sub">Across all invoices</div>
-              <div class="command-stat-trend up">↑ $1,200 this week</div>
+              <div class="command-stat-label">Total Invoice Value</div>
+              <div class="command-stat-value gold" id="ccTotalOverbilling">Loading...</div>
+              <div class="command-stat-sub" id="ccTotalSub">Across all invoices</div>
             </div>
             <div class="command-stat">
-              <div class="command-stat-label">Invoices Analyzed</div>
-              <div class="command-stat-value blue" id="ccInvoicesAnalyzed">247</div>
-              <div class="command-stat-sub">Last 30 days</div>
-              <div class="command-stat-trend up">↑ 23 new</div>
+              <div class="command-stat-label">Invoices Processed</div>
+              <div class="command-stat-value blue" id="ccInvoicesAnalyzed">--</div>
+              <div class="command-stat-sub" id="ccInvoicesSub">From all sources</div>
             </div>
-            <div class="command-stat warning">
-              <div class="command-stat-label">Flagged Issues</div>
-              <div class="command-stat-value red" id="ccFlaggedIssues">18</div>
-              <div class="command-stat-sub">Requiring attention</div>
-              <div class="command-stat-trend down">↓ 4 resolved</div>
+            <div class="command-stat">
+              <div class="command-stat-label">Unique Vendors</div>
+              <div class="command-stat-value" style="color: #a78bfa;" id="ccFlaggedIssues">--</div>
+              <div class="command-stat-sub" id="ccFlaggedSub">Detected in invoices</div>
             </div>
             <div class="command-stat success">
-              <div class="command-stat-label">Avg Projected Impact</div>
-              <div class="command-stat-value green" id="ccAvgImpact">$458</div>
-              <div class="command-stat-sub">Per flagged invoice</div>
-              <div class="command-stat-trend up">↑ 12% vs last month</div>
+              <div class="command-stat-label">Avg Invoice Value</div>
+              <div class="command-stat-value green" id="ccAvgImpact">--</div>
+              <div class="command-stat-sub" id="ccAvgSub">Per invoice</div>
             </div>
           </div>
 
@@ -4004,31 +4000,49 @@
         `;
 
         // Update Quick Action Tiles with real data
-        console.log('[Dashboard] Updating tiles with metrics:', { invoicesCount, overbilling, flaggedCount, avgImpact });
+        console.log('[Dashboard] Updating tiles with metrics:', { invoicesCount, fallbackTotalCents, fallbackInvoiceCount });
 
+        // Analytics tile - show total invoice value processed
         const savingsEl = document.getElementById('tileSavingsFound');
-        if (savingsEl) savingsEl.textContent = formatMoney(overbilling) + ' Found';
+        if (savingsEl) savingsEl.textContent = formatMoney(fallbackTotalCents) + ' Processed';
 
-        const pipelineEl = document.getElementById('tilePipelineTotal');
-        if (pipelineEl) pipelineEl.textContent = formatMoney(overbilling);
+        // Overbilling tile - Coming Soon (no real overbilling detection yet)
+        // Keep default "Coming Soon" from HTML
 
-        const pipelineCountEl = document.getElementById('tilePipelineCount');
-        if (pipelineCountEl) pipelineCountEl.textContent = flaggedCount + ' issues flagged';
+        // Private Events and Catering tiles - Coming Soon
+        // Keep defaults from HTML
 
         // Update Command Center / Financial Overview stats with real invoice data
+        // Update Financial Overview tiles with REAL invoice data
         const ccOverbillingEl = document.getElementById('ccTotalOverbilling');
-        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(fallbackTotalCents || overbilling);
+        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(fallbackTotalCents);
 
         const ccInvoicesEl = document.getElementById('ccInvoicesAnalyzed');
-        if (ccInvoicesEl) ccInvoicesEl.textContent = invoicesCount.toLocaleString();
+        if (ccInvoicesEl) ccInvoicesEl.textContent = fallbackInvoiceCount.toLocaleString();
+
+        // Count unique vendors from the invoice data we fetched
+        let uniqueVendorCount = vendorsCount || 0;
+        try {
+          const vendorData = await fetch(`${API_BASE}/api/uploads/recent?limit=1000`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          });
+          if (vendorData.ok) {
+            const vendorResult = await vendorData.json();
+            const vendorInvoices = vendorResult.runs || [];
+            const vendorNames = [...new Set(vendorInvoices.map(inv => inv.vendorName).filter(Boolean))];
+            uniqueVendorCount = vendorNames.length;
+          }
+        } catch (e) {
+          console.warn('[Dashboard] Failed to count unique vendors:', e);
+        }
 
         const ccFlaggedEl = document.getElementById('ccFlaggedIssues');
-        if (ccFlaggedEl) ccFlaggedEl.textContent = flaggedCount.toLocaleString();
+        if (ccFlaggedEl) ccFlaggedEl.textContent = uniqueVendorCount.toLocaleString();
 
         const ccAvgImpactEl = document.getElementById('ccAvgImpact');
-        // Show average invoice value instead of impact if no issues detected
-        const avgInvoiceValue = invoicesCount > 0 ? Math.round(fallbackTotalCents / invoicesCount) : 0;
-        if (ccAvgImpactEl) ccAvgImpactEl.textContent = formatMoney(avgImpact || avgInvoiceValue);
+        // Show average invoice value
+        const avgInvoiceValue = fallbackInvoiceCount > 0 ? Math.round(fallbackTotalCents / fallbackInvoiceCount) : 0;
+        if (ccAvgImpactEl) ccAvgImpactEl.textContent = formatMoney(avgInvoiceValue);
 
         // Update Executive Briefing "Action Required" with flagged issues count
         const briefingActionsEl = document.getElementById('briefingActions');

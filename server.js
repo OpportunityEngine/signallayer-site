@@ -3088,9 +3088,24 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
     const { buildCanonicalInvoiceV1 } = canonicalBuildMod;
     const { validateCanonicalInvoice } = canonicalValidateMod;
 
+    // CRITICAL: Use parsed items from the parser, not original payload items
+    // The parser extracts correct quantity, SKU, etc. from the invoice text
+    // The original payload may have different/incorrect data
+    const payloadForCanonical = {
+      ...payload,
+      // Prefer parsed items over original payload items
+      items: parsedInvoice.items.length > 0 ? parsedInvoice.items : payload.items,
+      // Include parsed totals
+      totals: parsedInvoice.totals || payload.totals,
+      // Include parsed vendor
+      vendor: parsedInvoice.vendor || payload.vendor,
+      // Include parsed customer
+      customer: parsedInvoice.customer || payload.customer
+    };
+
     const canonical = buildCanonicalInvoiceV1({
       source_type,
-      payload,
+      payload: payloadForCanonical,
       parserName: `ingest.${source_type}`,
       parserVersion: "1.0.0",
       source_ref: body.source_ref || { kind: "unknown", value: null, mime_type: null }

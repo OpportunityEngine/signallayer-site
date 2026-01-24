@@ -63,11 +63,29 @@ router.get('/', async (req, res) => {
     }
 
     // Don't expose encrypted passwords in list view
-    monitors = monitors.map(m => ({
-      ...m,
-      imap_password_encrypted: undefined,
-      has_password: !!m.imap_password_encrypted
-    }));
+    // Also get ACTUAL invoice count from ingestion_runs (more accurate than stored count)
+    monitors = monitors.map(m => {
+      // Query actual invoice count for this monitor
+      let actualInvoiceCount = m.invoices_created_count || 0;
+      try {
+        const countResult = db.getDatabase().prepare(`
+          SELECT COUNT(*) as count
+          FROM ingestion_runs
+          WHERE (user_id = ? OR run_id LIKE ?)
+            AND status = 'completed'
+        `).get(m.user_id, `email-${m.id}-%`);
+        actualInvoiceCount = countResult?.count || 0;
+      } catch (e) {
+        console.warn(`[EMAIL-MONITORS] Failed to get actual invoice count for monitor ${m.id}:`, e.message);
+      }
+
+      return {
+        ...m,
+        imap_password_encrypted: undefined,
+        has_password: !!m.imap_password_encrypted,
+        invoices_created_count: actualInvoiceCount  // Override with actual count
+      };
+    });
 
     res.json({
       success: true,

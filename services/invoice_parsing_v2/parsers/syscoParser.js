@@ -362,12 +362,57 @@ function extractSyscoTotals(text, lines) {
   };
 
   // Find INVOICE TOTAL (the final total)
+  // Sysco invoices often have INVOICE and TOTAL on separate lines or with various spacing
+  // Also look for the pattern near "LAST PAGE" which indicates the final total
+
+  // Pattern 1: Standard "INVOICE TOTAL" with value
   const invoiceTotalMatches = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d*)/gi);
   if (invoiceTotalMatches && invoiceTotalMatches.length > 0) {
     const lastMatch = invoiceTotalMatches[invoiceTotalMatches.length - 1];
     const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d*)\s*$/);
     if (valueMatch) {
       totals.totalCents = parseMoney(valueMatch[1]);
+    }
+  }
+
+  // Pattern 2: Look for total value near "LAST PAGE" marker (Sysco specific)
+  const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{2})\s*$/im);
+  if (lastPageMatch) {
+    const lastPageTotal = parseMoney(lastPageMatch[1]);
+    if (lastPageTotal > totals.totalCents) {
+      totals.totalCents = lastPageTotal;
+    }
+  }
+
+  // Pattern 3: Look for standalone total at end of document
+  // Format: "TOTAL" followed by amount, appearing after line items
+  const endTotalMatch = text.match(/(?:^|\n)\s*TOTAL\s+\$?([\d,]+\.?\d{2})\s*(?:\n|$)/gim);
+  if (endTotalMatch && endTotalMatch.length > 0) {
+    const lastEndTotal = endTotalMatch[endTotalMatch.length - 1];
+    const valueMatch = lastEndTotal.match(/\$?([\d,]+\.?\d{2})/);
+    if (valueMatch) {
+      const endTotal = parseMoney(valueMatch[1]);
+      if (endTotal > totals.totalCents) {
+        totals.totalCents = endTotal;
+      }
+    }
+  }
+
+  // Pattern 4: Scan lines from end to find largest total
+  // The final INVOICE TOTAL is usually the largest monetary value near the end
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
+    const line = lines[i].trim();
+
+    // Skip GROUP TOTAL lines
+    if (/GROUP\s+TOTAL/i.test(line)) continue;
+
+    // Match INVOICE TOTAL or just TOTAL followed by amount
+    const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{2})/i);
+    if (match) {
+      const lineTotal = parseMoney(match[1]);
+      if (lineTotal > totals.totalCents) {
+        totals.totalCents = lineTotal;
+      }
     }
   }
 
