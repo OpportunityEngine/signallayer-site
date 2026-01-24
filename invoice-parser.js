@@ -826,9 +826,10 @@ function extractVendorSpecificFormat(text) {
   }
 
   // ===== SYSCO / US FOODS / FOOD DISTRIBUTOR FORMAT =====
-  // Sysco line format: [Category] [Qty] [Unit] [Description...] [SKU] [UnitPrice] [LineTotal]
-  // Example: C 1 CS 25 LB WHLFCLS CREAM SOUR CULTRD GRADE A 1003864 21.52 21.52
-  // Example: F 2 CS 42.5LB PORTCLS SHRIMP WHT P&D TLOF 26/30 6739153 58.57 117.14
+  // Sysco line format has TWO item codes before prices:
+  // [Category] [Qty] [Unit] [Description...] [SKU] [ItemCode] [UnitPrice] [LineTotal]
+  // Example: C 1 CS 25 LB WHLFCLS CREAM SOUR CULTRD GRADE A 1003864 5020193 21.52 21.52
+  // Example: C 1S ONLY5LB CASAIMP CHEESE CHDR MILD FTHR SHRD YE 169734 2822343 15.73 15.73
   if (textLower.includes('sysco') || textLower.includes('us foods') || textLower.includes('food service')) {
     const lines = text.split('\n');
 
@@ -842,9 +843,14 @@ function extractVendorSpecificFormat(text) {
       if (/INVOICE\s+TOTAL/i.test(trimmed)) continue;
       if (isLikelyTotalLine(trimmed)) continue;
 
-      // Pattern 1: Category + Qty + Unit + Description + SKU + two prices
-      // [C|F|D|P] [Qty] [Unit] [...description...] [SKU 5-8 digits] [price] [price]
-      let match = trimmed.match(/^([CFPD])\s+(\d+)\s*([A-Z]{1,4})?\s+(.+?)\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/i);
+      // Skip header and promo lines
+      if (/^(ITEM|QTY|DESCRIPTION|PACK|SIZE)/i.test(trimmed)) continue;
+      if (/SHOP\s+OUR|WWW\./i.test(trimmed)) continue;
+      if (/^\*+[A-Z]+\*+$/.test(trimmed)) continue;
+
+      // Pattern 1: Category + Qty + Unit + Description + TWO codes + two prices
+      // [C|F|D|P] [Qty] [Unit] [...description...] [SKU] [ItemCode] [price] [price]
+      let match = trimmed.match(/^([CFPD])\s+(\d+)\s+([A-Z]{1,4})\s+(.+?)\s+(\d{5,8})\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/i);
 
       if (match) {
         const category = match[1].toUpperCase();
@@ -852,13 +858,12 @@ function extractVendorSpecificFormat(text) {
         const unit = match[3] || '';
         const desc = cleanDescription(match[4]);
         const sku = match[5];
-        const unitPrice = parsePrice(match[6]);
-        const lineTotal = parsePrice(match[7]);
+        const unitPrice = parsePrice(match[7]);
+        const lineTotal = parsePrice(match[8]);
 
-        // Sanity check: qty should be reasonable
         if (qty >= 1 && qty <= 999 && desc.length >= 3 && lineTotal > 0) {
           items.push({
-            description: `${qty} ${unit} ${desc}`.trim(),
+            description: desc,
             quantity: qty,
             unitPriceCents: unitPrice,
             totalCents: lineTotal,
@@ -869,24 +874,53 @@ function extractVendorSpecificFormat(text) {
         }
       }
 
-      // Pattern 2: Fallback - any line ending with SKU + two prices
-      match = trimmed.match(/^(.+?)\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/);
+      // Pattern 2: Merged qty+unit (e.g., "1S" or "1CS") + TWO codes
+      match = trimmed.match(/^([CFPD])\s+(\d+)([A-Z]{1,4})\s+(.+?)\s+(\d{5,8})\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/i);
+
+      if (match) {
+        const category = match[1].toUpperCase();
+        const qty = parseInt(match[2], 10) || 1;
+        const unit = match[3] || '';
+        const desc = cleanDescription(match[4]);
+        const sku = match[5];
+        const unitPrice = parsePrice(match[7]);
+        const lineTotal = parsePrice(match[8]);
+
+        if (qty >= 1 && qty <= 999 && desc.length >= 3 && lineTotal > 0) {
+          items.push({
+            description: desc,
+            quantity: qty,
+            unitPriceCents: unitPrice,
+            totalCents: lineTotal,
+            sku: sku,
+            category: category === 'C' ? 'cooler' : category === 'F' ? 'frozen' : 'food_supplies'
+          });
+          continue;
+        }
+      }
+
+      // Pattern 3: Fallback with TWO codes - any line ending with [code] [code] [price] [price]
+      match = trimmed.match(/^(.+?)\s+(\d{5,8})\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/);
       if (match) {
         const fullDesc = match[1].trim();
         const sku = match[2];
-        const unitPrice = parsePrice(match[3]);
-        const lineTotal = parsePrice(match[4]);
+        const unitPrice = parsePrice(match[4]);
+        const lineTotal = parsePrice(match[5]);
 
         // Try to extract qty from beginning: [Cat]? [Qty] [Unit]? [Rest...]
         let qty = 1;
         let desc = fullDesc;
+        let category = 'food_supplies';
         const qtyMatch = fullDesc.match(/^([CFPD])?\s*(\d+)\s*([A-Z]{1,4})?\s+(.+)$/i);
         if (qtyMatch) {
+          if (qtyMatch[1]) {
+            category = qtyMatch[1].toUpperCase() === 'C' ? 'cooler' :
+                       qtyMatch[1].toUpperCase() === 'F' ? 'frozen' : 'food_supplies';
+          }
           const parsedQty = parseInt(qtyMatch[2], 10);
           if (parsedQty >= 1 && parsedQty <= 999) {
             qty = parsedQty;
-            const unit = qtyMatch[3] || '';
-            desc = `${qty} ${unit} ${qtyMatch[4]}`.trim();
+            desc = qtyMatch[4].trim();
           }
         }
 
@@ -897,7 +931,44 @@ function extractVendorSpecificFormat(text) {
             unitPriceCents: unitPrice,
             totalCents: lineTotal,
             sku: sku,
-            category: 'food_supplies'
+            category: category
+          });
+          continue;
+        }
+      }
+
+      // Pattern 4: Fallback with ONE code (older format)
+      match = trimmed.match(/^(.+?)\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/);
+      if (match) {
+        const fullDesc = match[1].trim();
+        const sku = match[2];
+        const unitPrice = parsePrice(match[3]);
+        const lineTotal = parsePrice(match[4]);
+
+        let qty = 1;
+        let desc = fullDesc;
+        let category = 'food_supplies';
+        const qtyMatch = fullDesc.match(/^([CFPD])?\s*(\d+)\s*([A-Z]{1,4})?\s+(.+)$/i);
+        if (qtyMatch) {
+          if (qtyMatch[1]) {
+            category = qtyMatch[1].toUpperCase() === 'C' ? 'cooler' :
+                       qtyMatch[1].toUpperCase() === 'F' ? 'frozen' : 'food_supplies';
+          }
+          const parsedQty = parseInt(qtyMatch[2], 10);
+          if (parsedQty >= 1 && parsedQty <= 999) {
+            qty = parsedQty;
+            desc = qtyMatch[4].trim();
+          }
+        }
+
+        if (desc.length >= 3 && lineTotal > 0) {
+          items.push({
+            description: desc,
+            quantity: qty,
+            unitPriceCents: unitPrice,
+            totalCents: lineTotal,
+            sku: sku,
+            category: category
           });
         }
       }
