@@ -519,6 +519,11 @@ function checkGarbageItems(result) {
       /^NOTES?:/i.test(desc) ||
       /ORDER\s+SUMMARY/i.test(desc) ||
       /CHGS\s+FOR.*ORDER/i.test(desc) ||
+      /CHGS\s+FOR\s+FUEL/i.test(desc) ||
+      /FUEL\s+SURCHARGE/i.test(desc) ||
+      /MISC\s+CHARGES/i.test(desc) ||
+      /ALLOWANCE\s+FOR/i.test(desc) ||
+      /DROP\s+SIZE/i.test(desc) ||
       (item.lineTotalCents === 0 && item.unitPriceCents === 0);
 
     // Check for absurdly high prices (likely order numbers misread as prices)

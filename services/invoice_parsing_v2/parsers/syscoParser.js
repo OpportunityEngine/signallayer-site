@@ -33,8 +33,19 @@ function parseSyscoLineItem(line) {
   if (isGroupSubtotal(trimmed)) return null;
 
   // Skip ORDER SUMMARY section - contains order numbers that look like prices!
+  // These 7-digit order numbers (like 2823871, 2823930) get misread as $2,823,930.00
   if (/ORDER\s+SUMMARY/i.test(trimmed)) return null;
   if (/^\d{7}\s+\d{7}\s+\d{7}/i.test(trimmed)) return null;  // Lines with just order numbers
+  if (/\d{7}\s+\d{7}\s+\d{7}/i.test(trimmed)) return null;  // Order numbers anywhere in line
+
+  // Skip MISC CHARGES section entirely - these are fees, not line items
+  if (/MISC\s+CHARGES/i.test(trimmed)) return null;
+  if (/ALLOWANCE\s+FOR/i.test(trimmed)) return null;
+  if (/DROP\s+SIZE/i.test(trimmed)) return null;
+
+  // Skip fuel surcharge lines (they belong in fees, not line items)
+  if (/FUEL\s+SURCHARGE/i.test(trimmed)) return null;
+  if (/CHGS\s+FOR\s+FUEL/i.test(trimmed)) return null;
 
   // Skip header lines
   if (/^(ITEM|SKU|DESCRIPTION|QTY|QUANTITY|PRICE|AMOUNT|UNIT|PACK|SIZE)/i.test(trimmed)) return null;
@@ -43,10 +54,6 @@ function parseSyscoLineItem(line) {
   // Skip advertisement/promo lines
   if (/SHOP\s+OUR|WWW\./i.test(trimmed)) return null;
   if (/^\*+[A-Z]+\*+$/.test(trimmed)) return null;  // Like ****DAIRY**** or ****MEAT****
-
-  // Skip fuel surcharge summary lines that contain ORDER SUMMARY data
-  if (/FUEL\s+SURCHARGE.*ORDER\s+SUMMARY/i.test(trimmed)) return null;
-  if (/CHGS\s+FOR.*ORDER\s+SUMMARY/i.test(trimmed)) return null;
 
   // =====================================================
   // PATTERN 1: Full Sysco format with TWO codes before prices

@@ -843,6 +843,20 @@ function extractVendorSpecificFormat(text) {
       if (/INVOICE\s+TOTAL/i.test(trimmed)) continue;
       if (isLikelyTotalLine(trimmed)) continue;
 
+      // Skip ORDER SUMMARY section - contains order numbers that look like prices!
+      // These 7-digit order numbers (like 2823871, 2823930) get misread as $2,823,930.00
+      if (/ORDER\s+SUMMARY/i.test(trimmed)) continue;
+      if (/\d{7}\s+\d{7}\s+\d{7}/i.test(trimmed)) continue;  // Order numbers anywhere
+
+      // Skip MISC CHARGES section entirely - these are fees, not line items
+      if (/MISC\s+CHARGES/i.test(trimmed)) continue;
+      if (/ALLOWANCE\s+FOR/i.test(trimmed)) continue;
+      if (/DROP\s+SIZE/i.test(trimmed)) continue;
+
+      // Skip fuel surcharge lines (they belong in fees, not line items)
+      if (/FUEL\s+SURCHARGE/i.test(trimmed)) continue;
+      if (/CHGS\s+FOR\s+FUEL/i.test(trimmed)) continue;
+
       // Skip header and promo lines
       if (/^(ITEM|QTY|DESCRIPTION|PACK|SIZE)/i.test(trimmed)) continue;
       if (/SHOP\s+OUR|WWW\./i.test(trimmed)) continue;
