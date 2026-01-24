@@ -24,7 +24,7 @@ const db = require('./database');
 async function requireAuth(req, res, next) {
   try {
     // Allow localhost requests to admin cleanup endpoints (for production maintenance)
-    const localAdminPaths = ['cleanup/preview', 'cleanup/execute', 'cleanup/reset-totals'];
+    const localAdminPaths = ['cleanup/preview', 'cleanup/execute', 'cleanup/reset-totals', 'reset-invoice-database'];
     const ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || '';
     const forwardedFor = req.headers['x-forwarded-for'] || '';
     const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.includes('127.0.0.1');

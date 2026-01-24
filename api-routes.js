@@ -2975,4 +2975,68 @@ router.post('/admin/cleanup/reset-totals', (req, res) => {
   }
 });
 
+// POST /api/debug/reset-invoice-database - Reset all invoice data for testing (localhost only)
+router.post('/debug/reset-invoice-database', (req, res) => {
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({ success: false, error: 'Admin endpoints only accessible from localhost' });
+  }
+
+  try {
+    const database = db.getDatabase();
+    const confirmationCode = req.body.confirmationCode;
+
+    // Require confirmation code to prevent accidental deletion
+    if (confirmationCode !== 'RESET-INVOICES') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid confirmation code. Please enter "RESET-INVOICES" to confirm.'
+      });
+    }
+
+    console.log('[ADMIN] Starting invoice database reset...');
+
+    // Get counts before deletion for reporting
+    const beforeCounts = {
+      invoices: database.prepare('SELECT COUNT(*) as count FROM ingestion_runs').get().count,
+      lineItems: database.prepare('SELECT COUNT(*) as count FROM invoice_items').get().count,
+      processingLogs: database.prepare('SELECT COUNT(*) as count FROM email_processing_log').get().count
+    };
+
+    // Delete in correct order to respect foreign keys
+    const deletedLineItems = database.prepare('DELETE FROM invoice_items').run();
+    const deletedProcessingLogs = database.prepare('DELETE FROM email_processing_log').run();
+    const deletedInvoices = database.prepare('DELETE FROM ingestion_runs').run();
+
+    // Reset email monitor counters but keep monitors configured
+    const resetMonitors = database.prepare(`
+      UPDATE email_monitors
+      SET invoices_created_count = 0,
+          emails_processed_count = 0,
+          last_error = NULL
+    `).run();
+
+    console.log('[ADMIN] Invoice database reset complete:', {
+      deletedInvoices: deletedInvoices.changes,
+      deletedLineItems: deletedLineItems.changes,
+      deletedProcessingLogs: deletedProcessingLogs.changes,
+      monitorsReset: resetMonitors.changes
+    });
+
+    res.json({
+      success: true,
+      message: 'Invoice database has been reset successfully',
+      deleted: {
+        invoices: deletedInvoices.changes,
+        lineItems: deletedLineItems.changes,
+        processingLogs: deletedProcessingLogs.changes
+      },
+      monitorsReset: resetMonitors.changes,
+      beforeCounts
+    });
+  } catch (error) {
+    console.error('[ADMIN] Reset invoice database error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
