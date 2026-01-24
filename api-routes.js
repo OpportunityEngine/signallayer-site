@@ -2728,4 +2728,236 @@ function createNotification(userId, { type, title, message, value, data }) {
 // Export for use by other modules
 router.createNotification = createNotification;
 
+// ===== ADMIN CLEANUP ENDPOINTS =====
+// Cleanup duplicate invoices and fix data quality issues
+
+/**
+ * GET /api/admin/cleanup/preview
+ * Preview what duplicates would be cleaned up (dry run)
+ */
+router.get('/admin/cleanup/preview', (req, res) => {
+  try {
+    const database = db.getDatabase();
+
+    // Find duplicate invoices (same file_name for same user)
+    const duplicates = database.prepare(`
+      SELECT
+        user_id,
+        file_name,
+        COUNT(*) as count,
+        GROUP_CONCAT(id) as ids,
+        GROUP_CONCAT(invoice_total_cents) as totals,
+        MIN(created_at) as first_created,
+        MAX(created_at) as last_created
+      FROM ingestion_runs
+      WHERE status = 'completed'
+        AND file_name IS NOT NULL
+        AND file_name != ''
+      GROUP BY user_id, file_name
+      HAVING COUNT(*) > 1
+      ORDER BY count DESC
+    `).all();
+
+    // Calculate totals
+    let totalDuplicates = 0;
+    let duplicateValueCents = 0;
+    const duplicateDetails = duplicates.map(dup => {
+      const ids = dup.ids.split(',').map(Number);
+      const totals = dup.totals.split(',').map(Number);
+      const deleteCount = ids.length - 1; // Keep first one
+      totalDuplicates += deleteCount;
+      // Sum value of duplicates to be deleted
+      for (let i = 1; i < totals.length; i++) {
+        duplicateValueCents += totals[i] || 0;
+      }
+      return {
+        fileName: dup.file_name,
+        userId: dup.user_id,
+        copies: dup.count,
+        toDelete: deleteCount,
+        keepId: ids[0],
+        deleteIds: ids.slice(1)
+      };
+    });
+
+    // Find garbage vendor names
+    const garbageVendors = database.prepare(`
+      SELECT COUNT(*) as count FROM ingestion_runs
+      WHERE status = 'completed'
+        AND (
+          vendor_name LIKE '%THIS COMMODITY%'
+          OR vendor_name LIKE '%TRUST CLAIM%'
+          OR vendor_name LIKE '%THIS DOCUMENT%'
+          OR vendor_name LIKE '%Signature%'
+          OR LENGTH(vendor_name) > 100
+        )
+    `).get();
+
+    // Find suspiciously high totals
+    const suspiciousInvoices = database.prepare(`
+      SELECT COUNT(*) as count, SUM(invoice_total_cents) as total_cents
+      FROM ingestion_runs
+      WHERE status = 'completed'
+        AND invoice_total_cents > 50000000
+    `).get();
+
+    // Current stats
+    const currentStats = database.prepare(`
+      SELECT
+        COUNT(*) as total_invoices,
+        COUNT(DISTINCT file_name) as unique_files,
+        SUM(invoice_total_cents) as total_value_cents
+      FROM ingestion_runs
+      WHERE status = 'completed'
+    `).get();
+
+    res.json({
+      success: true,
+      preview: {
+        duplicates: {
+          count: totalDuplicates,
+          valueCents: duplicateValueCents,
+          details: duplicateDetails.slice(0, 20) // First 20 for preview
+        },
+        garbageVendors: garbageVendors.count,
+        suspiciousInvoices: {
+          count: suspiciousInvoices.count,
+          totalCents: suspiciousInvoices.total_cents
+        },
+        currentStats: {
+          totalInvoices: currentStats.total_invoices,
+          uniqueFiles: currentStats.unique_files,
+          totalValueCents: currentStats.total_value_cents
+        },
+        estimatedAfterCleanup: {
+          totalInvoices: currentStats.total_invoices - totalDuplicates,
+          totalValueCents: currentStats.total_value_cents - duplicateValueCents
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[CLEANUP] Preview error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/cleanup/execute
+ * Actually delete duplicate invoices and fix data quality
+ */
+router.post('/admin/cleanup/execute', (req, res) => {
+  try {
+    const database = db.getDatabase();
+    const results = { duplicatesDeleted: 0, itemsDeleted: 0, vendorsFixed: 0 };
+
+    // Find and delete duplicate invoices
+    const duplicates = database.prepare(`
+      SELECT
+        user_id,
+        file_name,
+        GROUP_CONCAT(id) as ids
+      FROM ingestion_runs
+      WHERE status = 'completed'
+        AND file_name IS NOT NULL
+        AND file_name != ''
+      GROUP BY user_id, file_name
+      HAVING COUNT(*) > 1
+    `).all();
+
+    const idsToDelete = [];
+    duplicates.forEach(dup => {
+      const ids = dup.ids.split(',').map(Number);
+      // Keep first (oldest), delete rest
+      idsToDelete.push(...ids.slice(1));
+    });
+
+    if (idsToDelete.length > 0) {
+      // Delete associated line items first
+      const deleteItems = database.prepare(`
+        DELETE FROM invoice_items WHERE run_id IN (${idsToDelete.join(',')})
+      `);
+      const itemsResult = deleteItems.run();
+      results.itemsDeleted = itemsResult.changes;
+
+      // Delete duplicate invoices
+      const deleteRuns = database.prepare(`
+        DELETE FROM ingestion_runs WHERE id IN (${idsToDelete.join(',')})
+      `);
+      const runsResult = deleteRuns.run();
+      results.duplicatesDeleted = runsResult.changes;
+
+      console.log(`[CLEANUP] Deleted ${results.duplicatesDeleted} duplicate invoices and ${results.itemsDeleted} line items`);
+    }
+
+    // Fix garbage vendor names
+    const garbageVendorResult = database.prepare(`
+      UPDATE ingestion_runs
+      SET vendor_name = 'Unknown Vendor'
+      WHERE status = 'completed'
+        AND (
+          vendor_name LIKE '%THIS COMMODITY%'
+          OR vendor_name LIKE '%TRUST CLAIM%'
+          OR vendor_name LIKE '%THIS DOCUMENT%'
+          OR vendor_name LIKE '%Signature%'
+          OR vendor_name LIKE '%AN ADDITIONAL EXPENSE%'
+          OR LENGTH(vendor_name) > 100
+        )
+    `).run();
+    results.vendorsFixed = garbageVendorResult.changes;
+
+    // Get new stats
+    const newStats = database.prepare(`
+      SELECT
+        COUNT(*) as total_invoices,
+        COUNT(DISTINCT file_name) as unique_files,
+        SUM(invoice_total_cents) as total_value_cents
+      FROM ingestion_runs
+      WHERE status = 'completed'
+    `).get();
+
+    res.json({
+      success: true,
+      results,
+      newStats: {
+        totalInvoices: newStats.total_invoices,
+        uniqueFiles: newStats.unique_files,
+        totalValueCents: newStats.total_value_cents,
+        totalValueFormatted: '$' + ((newStats.total_value_cents || 0) / 100).toLocaleString()
+      }
+    });
+  } catch (error) {
+    console.error('[CLEANUP] Execute error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/cleanup/reset-totals
+ * Reset suspiciously high invoice totals to $0
+ */
+router.post('/admin/cleanup/reset-totals', (req, res) => {
+  try {
+    const database = db.getDatabase();
+    const threshold = req.body.threshold || 100000000; // Default $1M
+
+    // Find and reset suspiciously high totals
+    const result = database.prepare(`
+      UPDATE ingestion_runs
+      SET invoice_total_cents = 0
+      WHERE status = 'completed'
+        AND invoice_total_cents > ?
+    `).run(threshold);
+
+    res.json({
+      success: true,
+      invoicesReset: result.changes,
+      threshold: threshold,
+      thresholdFormatted: '$' + (threshold / 100).toLocaleString()
+    });
+  } catch (error) {
+    console.error('[CLEANUP] Reset totals error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

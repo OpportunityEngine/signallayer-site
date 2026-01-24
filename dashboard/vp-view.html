@@ -3951,38 +3951,60 @@
     async function loadMetrics() {
       try {
         const data = await fetchAPI(`/api/dashboard/metrics?${buildQueryString(filters)}`);
-        const metrics = data.metrics;
+        const metrics = data.metrics || {};
+
+        console.log('[Dashboard] Metrics received:', metrics);
+
+        // Use invoice data from /api/uploads/recent as fallback for accurate counts
+        let fallbackInvoiceCount = 0;
+        let fallbackTotalCents = 0;
+        try {
+          const invoiceData = await fetch(`${API_BASE}/api/uploads/recent?limit=1000`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          });
+          if (invoiceData.ok) {
+            const invoiceResult = await invoiceData.json();
+            const invoices = invoiceResult.runs || [];
+            fallbackInvoiceCount = invoices.length;
+            fallbackTotalCents = invoices.reduce((sum, inv) => sum + (inv.totalCents || 0), 0);
+          }
+        } catch (e) {
+          console.warn('[Dashboard] Failed to load fallback invoice data:', e);
+        }
+
+        // Use metrics if available, otherwise use fallback invoice data
+        const invoicesCount = metrics.invoicesAnalyzedCount || fallbackInvoiceCount || 0;
+        const overbilling = metrics.totalPotentialOverbillingCents || 0;
+        const flaggedCount = metrics.flaggedIssuesCount || 0;
+        const avgImpact = metrics.avgMonthlyImpactCents || 0;
+        const vendorsCount = metrics.vendorsImpactedCount || 0;
+        const locationsCount = metrics.locationsCount || 0;
 
         document.getElementById('metricsRow').innerHTML = `
           <div class="metricTile">
-            <div class="metricLabel">Total potential overbilling</div>
-            <div class="metricValue">${formatMoney(metrics.totalPotentialOverbillingCents)}</div>
-            <div class="metricSub">Across ${metrics.vendorsImpactedCount} vendors</div>
+            <div class="metricLabel">Total Invoice Value</div>
+            <div class="metricValue">${formatMoney(fallbackTotalCents || overbilling)}</div>
+            <div class="metricSub">Across all invoices</div>
           </div>
           <div class="metricTile clickable" onclick="showLocationBreakdown()" title="Click to see breakdown by location">
             <div class="metricLabel">Invoices analyzed</div>
-            <div class="metricValue">${metrics.invoicesAnalyzedCount.toLocaleString()}</div>
-            <div class="metricSub">Across ${metrics.locationsCount} locations</div>
+            <div class="metricValue">${invoicesCount.toLocaleString()}</div>
+            <div class="metricSub">${locationsCount > 0 ? `Across ${locationsCount} locations` : 'From all sources'}</div>
           </div>
           <div class="metricTile clickable" onclick="document.getElementById('issuesTable').scrollIntoView({behavior: 'smooth'})" title="Click to view flagged issues">
             <div class="metricLabel">Flagged issues</div>
-            <div class="metricValue">${metrics.flaggedIssuesCount.toLocaleString()}</div>
+            <div class="metricValue">${flaggedCount.toLocaleString()}</div>
             <div class="metricSub">High-confidence prioritized</div>
           </div>
           <div class="metricTile">
-            <div class="metricLabel">Avg projected impact</div>
-            <div class="metricValue">${formatMoney(metrics.avgMonthlyImpactCents)}</div>
-            <div class="metricSub">MONTHLY view</div>
+            <div class="metricLabel">Avg invoice value</div>
+            <div class="metricValue">${invoicesCount > 0 ? formatMoney(Math.round(fallbackTotalCents / invoicesCount)) : '$0'}</div>
+            <div class="metricSub">Per invoice</div>
           </div>
         `;
 
         // Update Quick Action Tiles with real data
-        console.log('[Dashboard] Updating tiles with metrics:', metrics);
-
-        const overbilling = metrics.totalPotentialOverbillingCents || 0;
-        const invoicesCount = metrics.invoicesAnalyzedCount || 0;
-        const flaggedCount = metrics.flaggedIssuesCount || 0;
-        const avgImpact = metrics.avgMonthlyImpactCents || 0;
+        console.log('[Dashboard] Updating tiles with metrics:', { invoicesCount, overbilling, flaggedCount, avgImpact });
 
         const savingsEl = document.getElementById('tileSavingsFound');
         if (savingsEl) savingsEl.textContent = formatMoney(overbilling) + ' Found';
@@ -3993,9 +4015,9 @@
         const pipelineCountEl = document.getElementById('tilePipelineCount');
         if (pipelineCountEl) pipelineCountEl.textContent = flaggedCount + ' issues flagged';
 
-        // Update Command Center / Financial Overview stats with real data
+        // Update Command Center / Financial Overview stats with real invoice data
         const ccOverbillingEl = document.getElementById('ccTotalOverbilling');
-        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(overbilling);
+        if (ccOverbillingEl) ccOverbillingEl.textContent = formatMoney(fallbackTotalCents || overbilling);
 
         const ccInvoicesEl = document.getElementById('ccInvoicesAnalyzed');
         if (ccInvoicesEl) ccInvoicesEl.textContent = invoicesCount.toLocaleString();
@@ -4004,7 +4026,9 @@
         if (ccFlaggedEl) ccFlaggedEl.textContent = flaggedCount.toLocaleString();
 
         const ccAvgImpactEl = document.getElementById('ccAvgImpact');
-        if (ccAvgImpactEl) ccAvgImpactEl.textContent = formatMoney(avgImpact);
+        // Show average invoice value instead of impact if no issues detected
+        const avgInvoiceValue = invoicesCount > 0 ? Math.round(fallbackTotalCents / invoicesCount) : 0;
+        if (ccAvgImpactEl) ccAvgImpactEl.textContent = formatMoney(avgImpact || avgInvoiceValue);
 
         // Update Executive Briefing "Action Required" with flagged issues count
         const briefingActionsEl = document.getElementById('briefingActions');

@@ -1042,6 +1042,27 @@ class EmailCheckService {
         const runIdText = `email-${monitor.id}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
         let runIdInt = null;
         let insertVerified = false;
+        const fileName = attachment.filename || 'attachment.pdf';
+
+        // ===== DUPLICATE FILE DETECTION =====
+        // Check if this file was already processed in the last 24 hours
+        const existingInvoice = database.prepare(`
+          SELECT id, run_id, file_name, created_at, invoice_total_cents
+          FROM ingestion_runs
+          WHERE user_id = ?
+            AND file_name = ?
+            AND status = 'completed'
+            AND created_at > datetime('now', '-24 hours')
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).get(user.id, fileName);
+
+        if (existingInvoice) {
+          console.log(`[EMAIL-CHECK] ⚠️ DUPLICATE DETECTED: File "${fileName}" already processed at ${existingInvoice.created_at}`);
+          console.log(`[EMAIL-CHECK] Existing invoice: id=${existingInvoice.id}, total=$${(existingInvoice.invoice_total_cents || 0) / 100}`);
+          this.logProcessingResult(monitor.id, email.uid, 'skipped', 'duplicate_file', 0, `File already processed: ${existingInvoice.run_id}`);
+          continue; // Skip to next attachment
+        }
 
         try {
           console.log(`[USER_ID_TRACE] source=email_check_service monitorId=${monitor.id} monitorUserId=${monitor.user_id} finalUserId=${user.id} email=${user.email}`);
