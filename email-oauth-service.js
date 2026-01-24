@@ -46,15 +46,34 @@ const oauthStates = new Map();
  * Generate OAuth authorization URL for Google
  */
 function getGoogleAuthUrl(userId) {
+  console.log('[EMAIL-OAUTH] getGoogleAuthUrl called for user:', userId);
+  console.log('[EMAIL-OAUTH] GOOGLE_CLIENT_ID present:', !!GOOGLE_CLIENT_ID);
+  console.log('[EMAIL-OAUTH] GOOGLE_CLIENT_SECRET present:', !!GOOGLE_CLIENT_SECRET);
+  console.log('[EMAIL-OAUTH] BASE_URL:', process.env.BASE_URL || 'NOT SET (using localhost:5050)');
+  console.log('[EMAIL-OAUTH] Computed redirect_uri:', GOOGLE_REDIRECT_URI());
+
   if (!GOOGLE_CLIENT_ID) {
-    return { error: 'Google OAuth not configured. Contact administrator.' };
+    console.error('[EMAIL-OAUTH] ❌ GOOGLE_OAUTH_CLIENT_ID environment variable not set!');
+    return { error: 'Google OAuth not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET environment variables.' };
+  }
+
+  if (!GOOGLE_CLIENT_SECRET) {
+    console.error('[EMAIL-OAUTH] ❌ GOOGLE_OAUTH_CLIENT_SECRET environment variable not set!');
+    return { error: 'Google OAuth not fully configured. Set GOOGLE_OAUTH_CLIENT_SECRET environment variable.' };
   }
 
   const state = generateState(userId, 'google');
 
+  const redirectUri = GOOGLE_REDIRECT_URI();
+  console.log('[EMAIL-OAUTH] OAuth URL params:', {
+    client_id: GOOGLE_CLIENT_ID.substring(0, 20) + '...',
+    redirect_uri: redirectUri,
+    scope: GOOGLE_SCOPES.substring(0, 50) + '...'
+  });
+
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: GOOGLE_REDIRECT_URI(),
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: GOOGLE_SCOPES,
     access_type: 'offline',  // Get refresh token
@@ -62,8 +81,11 @@ function getGoogleAuthUrl(userId) {
     state: state
   });
 
+  const authUrl = `${GOOGLE_AUTH_URL}?${params.toString()}`;
+  console.log('[EMAIL-OAUTH] ✓ Generated auth URL (length:', authUrl.length + ')');
+
   return {
-    url: `${GOOGLE_AUTH_URL}?${params.toString()}`,
+    url: authUrl,
     state: state
   };
 }

@@ -1284,6 +1284,122 @@ router.get('/debug/user-id-audit', (req, res) => {
   }
 });
 
+// GET /api/debug/parse-score/:runId - Detailed parse scoring breakdown for debugging
+router.get('/debug/parse-score/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    const database = db.getDatabase();
+
+    // Get the ingestion run
+    const run = database.prepare(`
+      SELECT * FROM ingestion_runs WHERE id = ? OR run_id = ?
+    `).get(runId, runId);
+
+    if (!run) {
+      return res.status(404).json({
+        success: false,
+        error: 'Invoice run not found'
+      });
+    }
+
+    // Get line items
+    const items = database.prepare(`
+      SELECT * FROM invoice_items WHERE run_id = ?
+    `).all(run.id);
+
+    // Import validator for score breakdown
+    let scoreBreakdown = null;
+    try {
+      const { getScoreBreakdown } = require('./services/invoice_parsing_v2/validator');
+      const { extractTotalCandidates } = require('./services/invoice_parsing_v2/totalsCandidates');
+      const { extractAdjustments } = require('./services/invoice_parsing_v2/adjustmentsExtractor');
+
+      // Build parse result from stored data
+      const parseResult = {
+        vendorKey: run.vendor_name || 'unknown',
+        vendorName: run.vendor_name,
+        invoiceNumber: run.invoice_number,
+        invoiceDate: run.invoice_date,
+        customerName: run.account_name,
+        totals: {
+          totalCents: run.invoice_total_cents || 0,
+          subtotalCents: run.invoice_subtotal_cents || 0,
+          taxCents: run.invoice_tax_cents || 0
+        },
+        lineItems: items.map(item => ({
+          description: item.description,
+          quantity: item.quantity || 1,
+          qty: item.quantity || 1,
+          unitPriceCents: item.unit_price_cents || 0,
+          lineTotalCents: item.total_cents || 0,
+          category: item.category
+        }))
+      };
+
+      // Get detailed score breakdown
+      scoreBreakdown = getScoreBreakdown(parseResult);
+
+      // If we have stored raw text, also extract totals candidates
+      let totalsCandidates = null;
+      let adjustments = null;
+
+      // Try to get the original PDF text if cached
+      const fs = require('fs');
+      const path = require('path');
+      const cacheDir = path.join(__dirname, 'data', 'text-cache');
+      const cacheFile = path.join(cacheDir, `${run.run_id || run.id}.txt`);
+
+      if (fs.existsSync(cacheFile)) {
+        const rawText = fs.readFileSync(cacheFile, 'utf8');
+        totalsCandidates = extractTotalCandidates(rawText);
+        adjustments = extractAdjustments(rawText);
+      }
+
+      res.json({
+        success: true,
+        run: {
+          id: run.id,
+          runId: run.run_id,
+          vendorName: run.vendor_name,
+          accountName: run.account_name,
+          status: run.status,
+          invoiceTotalCents: run.invoice_total_cents,
+          createdAt: run.created_at
+        },
+        itemCount: items.length,
+        itemsSum: items.reduce((sum, i) => sum + (i.total_cents || 0), 0),
+        scoreBreakdown,
+        totalsCandidates: totalsCandidates?.candidates?.slice(0, 5) || null,
+        adjustments: adjustments?.adjustments || null,
+        adjustmentsSummary: adjustments?.summary || null
+      });
+
+    } catch (parserError) {
+      // If parser modules not available, return basic info
+      res.json({
+        success: true,
+        run: {
+          id: run.id,
+          runId: run.run_id,
+          vendorName: run.vendor_name,
+          accountName: run.account_name,
+          status: run.status,
+          invoiceTotalCents: run.invoice_total_cents,
+          createdAt: run.created_at
+        },
+        itemCount: items.length,
+        itemsSum: items.reduce((sum, i) => sum + (i.total_cents || 0), 0),
+        scoreBreakdown: null,
+        error: 'Parser modules not available: ' + parserError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('[API] Parse score debug error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DEMO MODE ENDPOINT =====
 
 // GET /api/demo/status - Check if we should use demo or production data

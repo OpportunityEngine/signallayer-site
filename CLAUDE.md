@@ -261,10 +261,13 @@ Read(output_file_path)
 ## Environment Variables
 
 ```bash
-# Required for email OAuth
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REDIRECT_URI=...
+# Required for email OAuth (Gmail one-click connect)
+GOOGLE_OAUTH_CLIENT_ID=...        # From Google Cloud Console
+GOOGLE_OAUTH_CLIENT_SECRET=...    # From Google Cloud Console
+BASE_URL=https://yourdomain.com   # Used to compute redirect URI
+
+# The redirect URI sent to Google is: {BASE_URL}/api/email-oauth/google/callback
+# This MUST match exactly what's configured in Google Cloud Console
 
 # Optional
 EMAIL_ENCRYPTION_KEY=...

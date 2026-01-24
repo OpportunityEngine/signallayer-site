@@ -6,7 +6,11 @@
  * - Subtotal + tax should match total
  * - Individual line items: qty × price = extended
  * - Detects and reports discrepancies
+ * - Salvage mode: re-attempts parsing when reconciliation fails
  */
+
+const { extractTotalCandidates, findReconcilableTotal } = require('./totalsCandidates');
+const { extractAdjustments, calculateAdjustmentsSummary } = require('./adjustmentsExtractor');
 
 /**
  * Tolerance settings for reconciliation
@@ -401,6 +405,244 @@ function fullReconciliation(parseResult, options = {}) {
   };
 }
 
+/**
+ * Salvage mode - triggered when reconciliation fails
+ * Re-attempts to find correct totals and adjustments
+ * @param {Object} parseResult - Parse result that failed reconciliation
+ * @param {string} rawText - Original invoice text
+ * @param {Object} options - Options
+ * @returns {Object} Salvage result with potential fixes
+ */
+function attemptSalvage(parseResult, rawText, options = {}) {
+  const salvageResult = {
+    attempted: true,
+    success: false,
+    reason: null,
+    changes: [],
+    originalTotals: { ...parseResult.totals },
+    newTotals: null,
+    adjustments: null
+  };
+
+  const lineItems = parseResult.lineItems || [];
+  const itemsSum = lineItems.reduce((sum, item) => sum + (item.lineTotalCents || 0), 0);
+
+  if (itemsSum === 0) {
+    salvageResult.reason = 'No line items to reconcile';
+    return salvageResult;
+  }
+
+  // Step 1: Extract all total candidates
+  const totalCandidates = extractTotalCandidates(rawText, options.layoutHints);
+
+  // Step 2: Extract adjustments (tax, fees, discounts)
+  const adjustmentsResult = extractAdjustments(rawText, options.layoutHints);
+  const adjustmentsSum = adjustmentsResult.summary.netAdjustmentsCents;
+  salvageResult.adjustments = adjustmentsResult;
+
+  // Step 3: Try to find a total that reconciles with items + adjustments
+  const reconcilableTotal = findReconcilableTotal(
+    totalCandidates.candidates,
+    itemsSum,
+    adjustmentsSum,
+    TOLERANCES.sumVsSubtotalPercent
+  );
+
+  if (reconcilableTotal && reconcilableTotal.reconciliation.variancePct <= 5) {
+    salvageResult.success = true;
+    salvageResult.reason = `Found reconcilable total: ${reconcilableTotal.label}`;
+
+    // Build new totals object
+    salvageResult.newTotals = {
+      subtotalCents: itemsSum,
+      taxCents: adjustmentsResult.summary.taxCents,
+      feesCents: adjustmentsResult.summary.feesCents,
+      discountsCents: adjustmentsResult.summary.discountsCents,
+      shippingCents: adjustmentsResult.summary.shippingCents,
+      totalCents: reconcilableTotal.valueCents,
+      currency: parseResult.totals?.currency || 'USD',
+      salvaged: true,
+      originalTotalCents: parseResult.totals?.totalCents
+    };
+
+    salvageResult.changes.push({
+      field: 'totals',
+      reason: `Total updated from ${reconcilableTotal.reconciliation.actualTotal} to match ${reconcilableTotal.label}`,
+      from: parseResult.totals?.totalCents,
+      to: reconcilableTotal.valueCents
+    });
+
+    // Check if we found better adjustments
+    if (adjustmentsResult.summary.taxCents !== (parseResult.totals?.taxCents || 0)) {
+      salvageResult.changes.push({
+        field: 'taxCents',
+        reason: 'Updated tax from adjustments extraction',
+        from: parseResult.totals?.taxCents,
+        to: adjustmentsResult.summary.taxCents
+      });
+    }
+
+    return salvageResult;
+  }
+
+  // Step 4: If no exact reconciliation, try alternative strategies
+  // Strategy A: Look for subtotal that matches items sum
+  const subtotalMatch = totalCandidates.candidates.find(c =>
+    c.label.includes('SUBTOTAL') &&
+    Math.abs(c.valueCents - itemsSum) <= itemsSum * TOLERANCES.sumVsSubtotalPercent
+  );
+
+  if (subtotalMatch) {
+    // Found a matching subtotal, look for total that's subtotal + adjustments
+    const expectedTotal = subtotalMatch.valueCents + adjustmentsSum;
+    const totalMatch = totalCandidates.candidates.find(c =>
+      !c.label.includes('SUBTOTAL') &&
+      Math.abs(c.valueCents - expectedTotal) <= expectedTotal * 0.02
+    );
+
+    if (totalMatch) {
+      salvageResult.success = true;
+      salvageResult.reason = 'Found subtotal + adjustments = total pattern';
+      salvageResult.newTotals = {
+        subtotalCents: subtotalMatch.valueCents,
+        taxCents: adjustmentsResult.summary.taxCents,
+        totalCents: totalMatch.valueCents,
+        currency: parseResult.totals?.currency || 'USD',
+        salvaged: true
+      };
+      return salvageResult;
+    }
+  }
+
+  // Strategy B: If total is way off, it might be a group total - find the real one
+  if (parseResult.totals?.totalCents > 0) {
+    const currentTotalDiff = Math.abs(itemsSum - parseResult.totals.totalCents);
+    const currentTotalPct = currentTotalDiff / parseResult.totals.totalCents;
+
+    // If current total is > 50% different, it's probably wrong
+    if (currentTotalPct > 0.5) {
+      // Look for a total closer to items sum
+      const betterTotal = totalCandidates.candidates.find(c =>
+        !c.isGroupTotal &&
+        c.valueCents !== parseResult.totals.totalCents &&
+        Math.abs(c.valueCents - itemsSum) < currentTotalDiff
+      );
+
+      if (betterTotal) {
+        salvageResult.success = true;
+        salvageResult.reason = `Replaced suspected group total with ${betterTotal.label}`;
+        salvageResult.newTotals = {
+          subtotalCents: itemsSum,
+          taxCents: adjustmentsResult.summary.taxCents,
+          totalCents: betterTotal.valueCents,
+          currency: parseResult.totals?.currency || 'USD',
+          salvaged: true,
+          originalWasSuspectedGroupTotal: true
+        };
+        return salvageResult;
+      }
+    }
+  }
+
+  // Salvage failed
+  salvageResult.reason = 'Could not find reconcilable totals';
+  salvageResult.candidatesConsidered = totalCandidates.candidates.length;
+  salvageResult.itemsSum = itemsSum;
+  salvageResult.adjustmentsSum = adjustmentsSum;
+
+  return salvageResult;
+}
+
+/**
+ * Enhanced reconciliation with salvage mode
+ * @param {Object} parseResult - Parse result to reconcile
+ * @param {string} rawText - Original invoice text (for salvage mode)
+ * @param {Object} options - Options
+ * @returns {Object} Reconciled result
+ */
+function reconcileWithSalvage(parseResult, rawText, options = {}) {
+  const { autoFix = true, enableSalvage = true, salvageThreshold = 0.10 } = options;
+
+  // First, run standard reconciliation
+  const standardResult = fullReconciliation(parseResult, { autoFix });
+
+  // Check if salvage is needed
+  const needsSalvage = !standardResult.isValid ||
+    (standardResult.reconciliation.computed.sumVsSubtotalPct > salvageThreshold);
+
+  if (!needsSalvage || !enableSalvage || !rawText) {
+    return {
+      ...standardResult,
+      salvageAttempted: false
+    };
+  }
+
+  // Attempt salvage
+  const salvageResult = attemptSalvage(parseResult, rawText, options);
+
+  if (!salvageResult.success) {
+    return {
+      ...standardResult,
+      salvageAttempted: true,
+      salvageSuccess: false,
+      salvageReason: salvageResult.reason
+    };
+  }
+
+  // Apply salvage results and re-reconcile
+  const salvagedParseResult = {
+    ...parseResult,
+    totals: salvageResult.newTotals
+  };
+
+  const postSalvageResult = fullReconciliation(salvagedParseResult, { autoFix });
+
+  return {
+    ...postSalvageResult,
+    salvageAttempted: true,
+    salvageSuccess: true,
+    salvageChanges: salvageResult.changes,
+    salvageAdjustments: salvageResult.adjustments,
+    preSalvageTotals: salvageResult.originalTotals,
+    confidenceAdjustment: postSalvageResult.confidenceAdjustment - 5 // Small penalty for needing salvage
+  };
+}
+
+/**
+ * Quick check if reconciliation might fail
+ * Useful for deciding whether to try alternative parsers
+ * @param {Array} lineItems
+ * @param {Object} totals
+ * @returns {Object} Quick check result
+ */
+function quickReconcileCheck(lineItems, totals) {
+  if (!lineItems || lineItems.length === 0) {
+    return { likely: false, reason: 'No line items' };
+  }
+
+  const sum = lineItems.reduce((s, item) => s + (item.lineTotalCents || 0), 0);
+  const total = totals?.totalCents || 0;
+  const subtotal = totals?.subtotalCents || 0;
+
+  // Check against subtotal if available, otherwise total
+  const compareValue = subtotal > 0 ? subtotal : total;
+  if (compareValue === 0) {
+    return { likely: false, reason: 'No totals to compare' };
+  }
+
+  const diff = Math.abs(sum - compareValue);
+  const pct = diff / compareValue;
+
+  return {
+    likely: pct <= 0.05,
+    itemsSum: sum,
+    compareValue,
+    difference: diff,
+    percentDiff: pct * 100,
+    reason: pct <= 0.05 ? 'Items sum matches totals' : `${(pct * 100).toFixed(1)}% difference`
+  };
+}
+
 module.exports = {
   validateLineItem,
   reconcileInvoice,
@@ -408,5 +650,8 @@ module.exports = {
   applyCorrections,
   generateInvoiceSummary,
   fullReconciliation,
+  attemptSalvage,
+  reconcileWithSalvage,
+  quickReconcileCheck,
   TOLERANCES
 };

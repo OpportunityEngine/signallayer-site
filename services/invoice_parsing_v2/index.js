@@ -26,8 +26,11 @@ const { validateInvoiceParse, chooseBestParse, calculateParseChecksum } = requir
 const { validateAndFixLineItems } = require('./numberClassifier');
 const { analyzeTextQuality, cleanText, mergeMultiLineItems } = require('./textQuality');
 const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
-const { fullReconciliation, generateInvoiceSummary } = require('./invoiceReconciler');
+const { fullReconciliation, generateInvoiceSummary, reconcileWithSalvage, attemptSalvage } = require('./invoiceReconciler');
 const { storePattern, findPatterns, getRecommendation } = require('./patternStore');
+const { extractTotalCandidates, findReconcilableTotal, validateTotalsEquation } = require('./totalsCandidates');
+const { extractAdjustments, calculateAdjustmentsSummary, extractTax } = require('./adjustmentsExtractor');
+const { isLayoutExtractionAvailable, extractWithLayout, getLayoutQuality } = require('./pdfLayoutExtractor');
 
 /**
  * Main parsing function
@@ -376,10 +379,25 @@ module.exports = {
   mergeMultiLineItems,
   fullReconciliation,
   generateInvoiceSummary,
+  reconcileWithSalvage,
+  attemptSalvage,
+
+  // Totals and adjustments extraction
+  extractTotalCandidates,
+  findReconcilableTotal,
+  validateTotalsEquation,
+  extractAdjustments,
+  calculateAdjustmentsSummary,
+  extractTax,
 
   // Layout analysis
   analyzeLayout,
   generateParsingHints,
+
+  // PDF layout extraction (optional)
+  isLayoutExtractionAvailable,
+  extractWithLayout,
+  getLayoutQuality,
 
   // Pattern learning
   storePattern,

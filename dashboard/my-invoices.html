@@ -612,11 +612,13 @@
         const formattedDate = date.toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
-          year: 'numeric'
+          year: 'numeric',
+          timeZone: 'America/New_York'
         });
         const formattedTime = date.toLocaleTimeString('en-US', {
           hour: 'numeric',
-          minute: '2-digit'
+          minute: '2-digit',
+          timeZone: 'America/New_York'
         });
 
         const statusClass = invoice.status === 'completed' ? 'completed' :
@@ -667,10 +669,15 @@
       const totalValue = invoices.reduce((sum, inv) => sum + (inv.totalCents || 0), 0);
       document.getElementById('totalValue').textContent = '$' + (totalValue / 100).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 
-      // Count this month
+      // Count this month (using Eastern time)
       const now = new Date();
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const thisMonthCount = invoices.filter(inv => new Date(inv.createdAt) >= thisMonthStart).length;
+      const easternNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const thisMonthStart = new Date(easternNow.getFullYear(), easternNow.getMonth(), 1);
+      const thisMonthCount = invoices.filter(inv => {
+        const invDate = new Date(inv.createdAt);
+        const invDateEastern = new Date(invDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        return invDateEastern >= thisMonthStart;
+      }).length;
       document.getElementById('thisMonth').textContent = thisMonthCount;
 
       // Placeholder for savings (would come from analysis)
