@@ -24,12 +24,19 @@ const db = require('./database');
 async function requireAuth(req, res, next) {
   try {
     // Allow localhost requests to admin cleanup endpoints (for production maintenance)
-    const localAdminPaths = ['/admin/cleanup/preview', '/admin/cleanup/execute', '/admin/cleanup/reset-totals'];
-    const ip = req.ip || req.connection?.remoteAddress || '';
-    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    const localAdminPaths = ['cleanup/preview', 'cleanup/execute', 'cleanup/reset-totals'];
+    const ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || '';
+    const forwardedFor = req.headers['x-forwarded-for'] || '';
+    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.includes('127.0.0.1');
+    const fullPath = req.originalUrl || req.url || req.path || '';
 
-    if (isLocal && localAdminPaths.some(p => req.path.endsWith(p))) {
-      console.log(`[AUTH] Allowing localhost admin access: ${req.path} from ${ip}`);
+    // Debug logging for admin cleanup paths
+    if (fullPath.includes('cleanup')) {
+      console.log(`[AUTH DEBUG] Path: ${fullPath}, IP: ${ip}, X-Forwarded-For: ${forwardedFor}, isLocal: ${isLocal}`);
+    }
+
+    if (isLocal && localAdminPaths.some(p => fullPath.includes(p))) {
+      console.log(`[AUTH] Allowing localhost admin access: ${fullPath} from ${ip}`);
       req.user = { id: 0, email: 'localhost-admin', role: 'admin' };
       return next();
     }
