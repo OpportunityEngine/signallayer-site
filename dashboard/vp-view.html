@@ -3953,22 +3953,21 @@
 
         // Private Events tile - load from API
         try {
-          const eventsResponse = await fetch(`${API_BASE}/api/private-events?limit=10`, {
+          const eventsResponse = await fetch(`${API_BASE}/api/events/summary`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
           });
           if (eventsResponse.ok) {
             const eventsData = await eventsResponse.json();
-            const events = eventsData.events || [];
-            const upcomingEvents = events.filter(e => new Date(e.event_date) >= new Date());
+            const data = eventsData.data || {};
+            const totalCount = data.totalCount || 0;
             const eventsTileEl = document.getElementById('tileEventsCount');
             const eventsSubEl = document.getElementById('tileEventsNext');
             if (eventsTileEl) {
-              eventsTileEl.textContent = `${upcomingEvents.length} Events`;
-              eventsTileEl.style.color = upcomingEvents.length > 0 ? '#f472b6' : '#94a3b8';
+              eventsTileEl.textContent = `${totalCount} Event${totalCount !== 1 ? 's' : ''}`;
+              eventsTileEl.style.color = totalCount > 0 ? '#f472b6' : '#94a3b8';
             }
-            if (eventsSubEl && upcomingEvents.length > 0) {
-              const nextEvent = upcomingEvents[0];
-              const eventDate = new Date(nextEvent.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (eventsSubEl && data.nextEvent) {
+              const eventDate = new Date(data.nextEvent.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
               eventsSubEl.textContent = `Next: ${eventDate}`;
             } else if (eventsSubEl) {
               eventsSubEl.textContent = 'No upcoming events';
@@ -3980,22 +3979,22 @@
 
         // Catering tile - load from API
         try {
-          const cateringResponse = await fetch(`${API_BASE}/api/catering-orders?limit=10`, {
+          const cateringResponse = await fetch(`${API_BASE}/api/catering/summary`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
           });
           if (cateringResponse.ok) {
             const cateringData = await cateringResponse.json();
-            const orders = cateringData.orders || [];
-            const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirmed');
+            const data = cateringData.data || {};
+            const totalCount = data.totalCount || 0;
             const cateringTileEl = document.getElementById('tileCateringCount');
             const cateringSubEl = document.getElementById('tileCateringRevenue');
             if (cateringTileEl) {
-              cateringTileEl.textContent = `${activeOrders.length} Orders`;
-              cateringTileEl.style.color = activeOrders.length > 0 ? '#fb7185' : '#94a3b8';
+              cateringTileEl.textContent = `${totalCount} Order${totalCount !== 1 ? 's' : ''}`;
+              cateringTileEl.style.color = totalCount > 0 ? '#fb7185' : '#94a3b8';
             }
             if (cateringSubEl) {
-              const totalRevenue = orders.reduce((sum, o) => sum + (o.total_cents || 0), 0);
-              cateringSubEl.textContent = totalRevenue > 0 ? formatMoney(totalRevenue) + ' revenue' : 'No active orders';
+              const monthRevenue = data.monthRevenue || 0;
+              cateringSubEl.textContent = monthRevenue > 0 ? formatMoney(monthRevenue) + ' this month' : 'No active orders';
             }
           }
         } catch (e) {

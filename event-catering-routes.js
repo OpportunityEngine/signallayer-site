@@ -112,6 +112,12 @@ router.get('/events/summary', (req, res) => {
 
     const database = db.getDatabase();
 
+    // Get total events count (all events regardless of status/date)
+    const total = database.prepare(`
+      SELECT COUNT(*) as count FROM events
+      WHERE user_id = ? AND status != 'cancelled'
+    `).get(user.id);
+
     // Get upcoming events count
     const upcoming = database.prepare(`
       SELECT COUNT(*) as count FROM events
@@ -134,6 +140,7 @@ router.get('/events/summary', (req, res) => {
     res.json({
       success: true,
       data: {
+        totalCount: total?.count || 0,
         upcomingCount: upcoming?.count || 0,
         nextEvent: nextEvent ? {
           name: nextEvent.event_name,
@@ -646,6 +653,12 @@ router.get('/catering/summary', (req, res) => {
 
     const database = db.getDatabase();
 
+    // Get total orders count (all orders regardless of status)
+    const total = database.prepare(`
+      SELECT COUNT(*) as count FROM catering_orders
+      WHERE user_id = ? AND status != 'cancelled'
+    `).get(user.id);
+
     // Get active orders count
     const active = database.prepare(`
       SELECT COUNT(*) as count FROM catering_orders
@@ -668,6 +681,7 @@ router.get('/catering/summary', (req, res) => {
     res.json({
       success: true,
       data: {
+        totalCount: total?.count || 0,
         activeCount: active?.count || 0,
         monthRevenue: revenue?.total || 0,
         avgMargin: margin?.avg_margin || 0
