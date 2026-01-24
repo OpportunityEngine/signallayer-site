@@ -970,9 +970,9 @@
             <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
             <div style="font-size: 12px; font-weight: 600; color: #3b82f6;">Compare Vendors</div>
           </div>
-          <div onclick="showToast('Opening price alerts...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
-            <div style="font-size: 24px; margin-bottom: 8px;">🚨</div>
-            <div style="font-size: 12px; font-weight: 600; color: #ef4444;">Price Alerts</div>
+          <div onclick="showToast('Viewing smart recommendations...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 8px;">🤖</div>
+            <div style="font-size: 12px; font-weight: 600; color: #06b6d4;">Smart Recommendations</div>
           </div>
           <div onclick="showToast('Generating report...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
             <div style="font-size: 24px; margin-bottom: 8px;">📈</div>
@@ -1281,8 +1281,82 @@
       </div>
     </div>
 
-    <!-- Row 7: Financial Health Score + Spending Velocity (CHARTS AT BOTTOM) -->
+    <!-- Row 7: Spending Trend + Expense Breakdown -->
     <div class="grid-2">
+      <!-- Spending Trend Chart -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>📈</span> Spending Trend
+          </div>
+          <span class="tile-badge">Last 30 Days</span>
+        </div>
+        <div class="tile-body">
+          <div style="position: relative; height: 200px; width: 100%;">
+            <canvas id="spendingTrendChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expense Breakdown Chart -->
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">
+            <span>🥧</span> Expense Breakdown
+          </div>
+          <span class="tile-badge">By Category</span>
+        </div>
+        <div class="tile-body">
+          <div style="position: relative; height: 160px; width: 100%;">
+            <canvas id="expenseBreakdownChart"></canvas>
+          </div>
+          <div class="breakdown-list" style="margin-top: 12px;">
+            <div class="breakdown-item" style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #fbbf24;"></div>
+              <span style="flex: 1; color: var(--text); font-size: 12px;">COGS</span>
+              <span style="color: var(--text); font-size: 12px; font-weight: 600;" id="cogsCost">$0</span>
+              <span style="color: var(--muted); font-size: 11px;" id="cogsPct">0%</span>
+            </div>
+            <div class="breakdown-item" style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;"></div>
+              <span style="flex: 1; color: var(--text); font-size: 12px;">Utilities</span>
+              <span style="color: var(--text); font-size: 12px; font-weight: 600;" id="utilitiesCost">$0</span>
+              <span style="color: var(--muted); font-size: 11px;" id="utilitiesPct">0%</span>
+            </div>
+            <div class="breakdown-item" style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></div>
+              <span style="flex: 1; color: var(--text); font-size: 12px;">Rent</span>
+              <span style="color: var(--text); font-size: 12px; font-weight: 600;" id="rentCost">$0</span>
+              <span style="color: var(--muted); font-size: 11px;" id="rentPct">0%</span>
+            </div>
+            <div class="breakdown-item" style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #8b5cf6;"></div>
+              <span style="flex: 1; color: var(--text); font-size: 12px;">Other</span>
+              <span style="color: var(--text); font-size: 12px; font-weight: 600;" id="otherCost">$0</span>
+              <span style="color: var(--muted); font-size: 11px;" id="otherPct">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 8: Budget vs Actual -->
+    <div class="tile-card" style="margin-top: 16px;">
+      <div class="tile-header">
+        <div class="tile-title">
+          <span>📊</span> Budget vs Actual
+        </div>
+        <span class="tile-badge">Monthly Targets</span>
+      </div>
+      <div class="tile-body">
+        <div id="budgetComparison" style="display: grid; gap: 12px;">
+          <div style="text-align: center; padding: 20px; color: var(--muted); font-size: 13px;">No budget data available yet. Add budget targets to track spending vs goals.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 9: Financial Health Score + Spending Velocity (CHARTS AT BOTTOM) -->
+    <div class="grid-2" style="margin-top: 16px;">
       <!-- Financial Health Score -->
       <div class="tile-card">
         <div class="tile-header">
@@ -1716,6 +1790,69 @@
         }
       }
     });
+
+    // Spending Trend Chart - shows spending over time
+    let spendingTrendChart = null;
+    const spendingTrendCtx = document.getElementById('spendingTrendChart');
+    if (spendingTrendCtx) {
+      spendingTrendChart = new Chart(spendingTrendCtx.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Spending',
+            data: [],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              callbacks: { label: ctx => '$' + ctx.raw.toLocaleString() }
+            }
+          },
+          scales: {
+            y: { ticks: { callback: v => '$' + v.toLocaleString() } }
+          }
+        }
+      });
+    }
+
+    // Expense Breakdown Donut Chart
+    let expenseBreakdownChart = null;
+    const expenseBreakdownCtx = document.getElementById('expenseBreakdownChart');
+    if (expenseBreakdownCtx) {
+      expenseBreakdownChart = new Chart(expenseBreakdownCtx.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['No data'],
+          datasets: [{
+            data: [100],
+            backgroundColor: ['#1e293b'],
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { label: ctx => ctx.label + ': $' + ctx.raw.toLocaleString() }
+            }
+          }
+        }
+      });
+    }
 
     // Load Analytics Data - Comprehensive data loading
     async function loadAnalytics() {
