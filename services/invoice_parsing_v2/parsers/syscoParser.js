@@ -16,6 +16,7 @@
 
 const { parseMoney, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
 const { validateLineItemMath, validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
+const { detectUOM, detectContinuationLine, enhanceLineItemWithUOM, parseSyscoSizeNotation } = require('../unitOfMeasure');
 
 /**
  * Parse Sysco line item

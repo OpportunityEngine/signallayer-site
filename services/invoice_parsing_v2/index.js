@@ -31,6 +31,7 @@ const { storePattern, findPatterns, getRecommendation } = require('./patternStor
 const { extractTotalCandidates, findReconcilableTotal, validateTotalsEquation } = require('./totalsCandidates');
 const { extractAdjustments, calculateAdjustmentsSummary, extractTax } = require('./adjustmentsExtractor');
 const { isLayoutExtractionAvailable, extractWithLayout, getLayoutQuality } = require('./pdfLayoutExtractor');
+const { detectUOM, enhanceLineItemWithUOM, PRODUCT_CATEGORY_HINTS } = require('./unitOfMeasure');
 
 /**
  * Main parsing function
@@ -271,6 +272,40 @@ function parseInvoiceText(rawText, options = {}) {
     }
   }
 
+  // Step 5.8: Enhance line items with UOM (unit of measure) detection
+  // This improves accuracy for weight-based pricing (meat, seafood) and volume-based (beverages)
+  if (bestResult.lineItems && bestResult.lineItems.length > 0) {
+    let uomEnhancedCount = 0;
+    bestResult.lineItems = bestResult.lineItems.map((item, idx) => {
+      // Detect UOM from description
+      const uomInfo = detectUOM(item.description);
+
+      // Add product category info if detected
+      if (uomInfo.expectedCategory) {
+        item.productCategory = uomInfo.expectedCategory.category;
+        item.expectedUOM = uomInfo.expectedCategory.expectedUOM;
+      }
+
+      // Track if item has UOM info
+      if (uomInfo.detected) {
+        item.uomDetected = true;
+        if (uomInfo.units.length > 0) {
+          item.detectedUnits = uomInfo.units.map(u => `${u.value}${u.unit}`).join(', ');
+        }
+        if (uomInfo.pricingType) {
+          item.pricingType = uomInfo.pricingType.name;
+        }
+        uomEnhancedCount++;
+      }
+
+      return item;
+    });
+
+    if (uomEnhancedCount > 0) {
+      console.log(`[PARSER V2] Enhanced ${uomEnhancedCount} items with UOM detection`);
+    }
+  }
+
   // Step 6: Build final result
   const result = {
     success: true,
@@ -306,7 +341,13 @@ function parseInvoiceText(rawText, options = {}) {
       taxable: item.taxFlag === 'Y',
       category: item.type || item.category || 'item',
       mathValidated: item.mathValidated || false,
-      mathCorrected: item.mathCorrected || false
+      mathCorrected: item.mathCorrected || false,
+      // UOM (unit of measure) info
+      weightCorrected: item.weightCorrected || false,
+      productCategory: item.productCategory || null,
+      detectedUnits: item.detectedUnits || null,
+      pricingType: item.pricingType || null,
+      actualWeight: item.actualWeight || null
     })),
 
     // Confidence and validation
