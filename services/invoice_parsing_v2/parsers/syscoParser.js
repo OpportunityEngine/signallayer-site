@@ -17,6 +17,8 @@
 const { parseMoney, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
 const { validateLineItemMath, validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
 const { detectUOM, detectContinuationLine, enhanceLineItemWithUOM, parseSyscoSizeNotation } = require('../unitOfMeasure');
+const { extractTotalCandidates, findReconcilableTotal } = require('../totalsCandidates');
+const { extractAdjustments, calculateAdjustmentsSummary } = require('../adjustmentsExtractor');
 
 /**
  * Parse Sysco line item
@@ -363,6 +365,7 @@ function parseSyscoHeader(text, lines) {
  * This includes:
  * - ALLOWANCE FOR DROP SIZE (can be negative - a credit/discount)
  * - CHGS FOR FUEL SURCHARGE (typically positive)
+ * - TAX (sales tax, if present)
  *
  * These adjustments affect the final invoice total but are not line items
  */
@@ -370,12 +373,47 @@ function extractSyscoMiscCharges(text, lines) {
   const adjustments = [];
   let inMiscSection = false;
 
+  // First, use the shared adjustments extractor for TAX
+  // This has more robust patterns than simple regex
+  const sharedAdjustments = extractAdjustments(text);
+
+  // Add tax from shared extractor if found
+  if (sharedAdjustments.summary.taxCents > 0) {
+    adjustments.push({
+      type: 'tax',
+      description: 'Tax',
+      amountCents: sharedAdjustments.summary.taxCents,
+      raw: 'Extracted via shared adjustments extractor',
+      source: 'shared_extractor'
+    });
+    console.log(`[SYSCO MISC] Found Tax via shared extractor: $${(sharedAdjustments.summary.taxCents/100).toFixed(2)}`);
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
     // Detect MISC CHARGES section
     if (/MISC\s+CHARGES/i.test(line)) {
       inMiscSection = true;
+
+      // IMPORTANT: Check if ALLOWANCE is on the SAME line as MISC CHARGES
+      // Format: "MISC CHARGES ALLOWANCE FOR DROP SIZE 64.03-"
+      if (/ALLOWANCE\s+FOR\s+DROP\s+SIZE/i.test(line)) {
+        const sameLineMatch = line.match(/ALLOWANCE\s+FOR\s+DROP\s+SIZE\s+([\d,]+\.?\d*)([\-])?/i);
+        if (sameLineMatch) {
+          const value = parseMoney(sameLineMatch[1]);
+          const isNegative = sameLineMatch[2] === '-';
+          if (value > 0 && value < 100000) {
+            adjustments.push({
+              type: 'allowance',
+              description: 'Allowance for Drop Size',
+              amountCents: -value,  // Allowances are credits (negative)
+              raw: line
+            });
+            console.log(`[SYSCO MISC] Found Drop Size Allowance (same line): $${(value/100).toFixed(2)} (credit)`);
+          }
+        }
+      }
       continue;
     }
 
@@ -471,72 +509,85 @@ function extractSyscoMiscCharges(text, lines) {
 
   return {
     adjustments,
-    totalAdjustmentsCents
+    totalAdjustmentsCents,
+    sharedAdjustmentsSummary: sharedAdjustments.summary  // Include full summary for debugging
   };
 }
 
 /**
  * Extract totals from Sysco invoice
+ * Uses shared totalsCandidates module for robust candidate ranking
  */
 function extractSyscoTotals(text, lines) {
   const totals = {
     subtotalCents: 0,
     taxCents: 0,
     totalCents: 0,
-    currency: 'USD'
+    currency: 'USD',
+    candidates: []
   };
 
-  // Find INVOICE TOTAL (the final total)
-  // Sysco invoices often have INVOICE and TOTAL on separate lines or with various spacing
-  // Also look for the pattern near "LAST PAGE" which indicates the final total
+  // Use the shared totals candidates extractor for robust ranking
+  // This handles GROUP TOTAL filtering and position-based scoring
+  const candidatesResult = extractTotalCandidates(text);
 
-  // Pattern 1: Standard "INVOICE TOTAL" with value
-  const invoiceTotalMatches = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d*)/gi);
-  if (invoiceTotalMatches && invoiceTotalMatches.length > 0) {
-    const lastMatch = invoiceTotalMatches[invoiceTotalMatches.length - 1];
-    const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d*)\s*$/);
-    if (valueMatch) {
-      totals.totalCents = parseMoney(valueMatch[1]);
+  if (candidatesResult.candidates.length > 0) {
+    // Log all candidates for debugging
+    console.log(`[SYSCO TOTALS] Found ${candidatesResult.candidates.length} total candidates:`);
+    candidatesResult.candidates.slice(0, 5).forEach((c, i) => {
+      console.log(`  ${i + 1}. ${c.label}: $${(c.valueCents/100).toFixed(2)} (score: ${c.score}, isGroupTotal: ${c.isGroupTotal})`);
+    });
+
+    // Store candidates for debugging
+    totals.candidates = candidatesResult.candidates.slice(0, 5).map(c => ({
+      label: c.label,
+      valueCents: c.valueCents,
+      score: c.score,
+      isGroupTotal: c.isGroupTotal
+    }));
+
+    // Get best candidate (already filtered and ranked by score)
+    const bestCandidate = candidatesResult.bestCandidate;
+    if (bestCandidate && !bestCandidate.isGroupTotal) {
+      totals.totalCents = bestCandidate.valueCents;
+      console.log(`[SYSCO TOTALS] Selected: ${bestCandidate.label} = $${(bestCandidate.valueCents/100).toFixed(2)} (score: ${bestCandidate.score})`);
     }
   }
 
-  // Pattern 2: Look for total value near "LAST PAGE" marker (Sysco specific)
-  const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{2})\s*$/im);
-  if (lastPageMatch) {
-    const lastPageTotal = parseMoney(lastPageMatch[1]);
-    if (lastPageTotal > totals.totalCents) {
-      totals.totalCents = lastPageTotal;
-    }
-  }
+  // Fallback: If no good candidate found, use legacy extraction
+  if (totals.totalCents === 0) {
+    console.log(`[SYSCO TOTALS] No candidate found, using legacy extraction...`);
 
-  // Pattern 3: Look for standalone total at end of document
-  // Format: "TOTAL" followed by amount, appearing after line items
-  const endTotalMatch = text.match(/(?:^|\n)\s*TOTAL\s+\$?([\d,]+\.?\d{2})\s*(?:\n|$)/gim);
-  if (endTotalMatch && endTotalMatch.length > 0) {
-    const lastEndTotal = endTotalMatch[endTotalMatch.length - 1];
-    const valueMatch = lastEndTotal.match(/\$?([\d,]+\.?\d{2})/);
-    if (valueMatch) {
-      const endTotal = parseMoney(valueMatch[1]);
-      if (endTotal > totals.totalCents) {
-        totals.totalCents = endTotal;
+    // Pattern 1: Standard "INVOICE TOTAL" with value
+    const invoiceTotalMatches = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d*)/gi);
+    if (invoiceTotalMatches && invoiceTotalMatches.length > 0) {
+      const lastMatch = invoiceTotalMatches[invoiceTotalMatches.length - 1];
+      const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d*)\s*$/);
+      if (valueMatch) {
+        totals.totalCents = parseMoney(valueMatch[1]);
       }
     }
-  }
 
-  // Pattern 4: Scan lines from end to find largest total
-  // The final INVOICE TOTAL is usually the largest monetary value near the end
-  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
-    const line = lines[i].trim();
+    // Pattern 2: Look for total value near "LAST PAGE" marker (Sysco specific)
+    const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{2})\s*$/im);
+    if (lastPageMatch) {
+      const lastPageTotal = parseMoney(lastPageMatch[1]);
+      if (lastPageTotal > totals.totalCents) {
+        totals.totalCents = lastPageTotal;
+      }
+    }
 
-    // Skip GROUP TOTAL lines
-    if (/GROUP\s+TOTAL/i.test(line)) continue;
+    // Pattern 3: Scan lines from end to find largest total (excluding GROUP TOTAL)
+    for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
+      const line = lines[i].trim();
+      if (/GROUP\s+TOTAL/i.test(line)) continue;
 
-    // Match INVOICE TOTAL or just TOTAL followed by amount
-    const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{2})/i);
-    if (match) {
-      const lineTotal = parseMoney(match[1]);
-      if (lineTotal > totals.totalCents) {
-        totals.totalCents = lineTotal;
+      const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{2})/i);
+      if (match) {
+        const lineTotal = parseMoney(match[1]);
+        if (lineTotal > totals.totalCents) {
+          totals.totalCents = lineTotal;
+        }
       }
     }
   }
@@ -553,10 +604,17 @@ function extractSyscoTotals(text, lines) {
     }
   }
 
-  // Find TAX
-  const taxMatch = text.match(/(?:SALES\s+)?TAX[\s:]*\$?([\d,]+\.?\d*)/i);
-  if (taxMatch) {
-    totals.taxCents = parseMoney(taxMatch[1]);
+  // Find TAX using shared adjustments extractor (more robust)
+  const sharedAdjustments = extractAdjustments(text);
+  if (sharedAdjustments.summary.taxCents > 0) {
+    totals.taxCents = sharedAdjustments.summary.taxCents;
+    console.log(`[SYSCO TOTALS] Tax from shared extractor: $${(totals.taxCents/100).toFixed(2)}`);
+  } else {
+    // Fallback to simple pattern
+    const taxMatch = text.match(/(?:SALES\s+)?TAX[\s:]*\$?([\d,]+\.?\d*)/i);
+    if (taxMatch) {
+      totals.taxCents = parseMoney(taxMatch[1]);
+    }
   }
 
   console.log(`[SYSCO TOTALS] Extracted: total=$${(totals.totalCents/100).toFixed(2)}, subtotal=$${(totals.subtotalCents/100).toFixed(2)}, tax=$${(totals.taxCents/100).toFixed(2)}`);
@@ -644,25 +702,64 @@ function parseSyscoInvoice(normalizedText, options = {}) {
   // Post-processing: validate and fix line items math
   const validatedItems = validateAndFixLineItems(lineItems);
 
-  const confidence = calculateSyscoConfidence(validatedItems, totals);
-
   // Count how many items were corrected
   const correctedCount = validatedItems.filter(item => item.mathCorrected).length;
   const weightCorrectedCount = validatedItems.filter(item => item.weightCorrected).length;
 
-  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}, weight-corrected: ${weightCorrectedCount}, adjustments: ${miscCharges.adjustments.length}`);
+  // Calculate sum of line items for reconciliation
+  const lineItemsSum = validatedItems.reduce((sum, item) => sum + (item.lineTotalCents || 0), 0);
+
+  // Build final adjustments array (including tax from shared extractor)
+  const finalAdjustments = [...miscCharges.adjustments];
+
+  // Calculate expected total: line items + all adjustments
+  const totalAdjustmentsCents = finalAdjustments.reduce((sum, adj) => sum + adj.amountCents, 0);
+  const computedTotal = lineItemsSum + totalAdjustmentsCents;
+
+  console.log(`[SYSCO RECONCILIATION] Line items sum: $${(lineItemsSum/100).toFixed(2)}, Adjustments: $${(totalAdjustmentsCents/100).toFixed(2)}, Computed: $${(computedTotal/100).toFixed(2)}, Printed: $${(totals.totalCents/100).toFixed(2)}`);
+
+  // Check for unexplained delta - add synthetic adjustment if difference exists
+  let syntheticDelta = null;
+  if (totals.totalCents > 0) {
+    const delta = totals.totalCents - computedTotal;
+    const absDelta = Math.abs(delta);
+    const pctDelta = totals.totalCents > 0 ? absDelta / totals.totalCents : 0;
+
+    // If delta is significant (> $0.10 and < 20% of total), create synthetic adjustment
+    if (absDelta > 10 && pctDelta < 0.20) {
+      syntheticDelta = {
+        type: delta > 0 ? 'unclassified_charge' : 'unclassified_credit',
+        description: delta > 0 ? 'Unclassified Charge (Possible Tax/Fee)' : 'Unclassified Credit',
+        amountCents: delta,
+        raw: `Synthetic: $${(totals.totalCents/100).toFixed(2)} - $${(computedTotal/100).toFixed(2)} = $${(delta/100).toFixed(2)}`,
+        isSynthetic: true,
+        note: 'Auto-generated to reconcile printed total with line items + known adjustments'
+      };
+      finalAdjustments.push(syntheticDelta);
+      console.log(`[SYSCO RECONCILIATION] Added synthetic delta: $${(delta/100).toFixed(2)} (${(pctDelta * 100).toFixed(1)}% of total)`);
+    } else if (absDelta > 10) {
+      console.log(`[SYSCO RECONCILIATION] WARNING: Large unexplained delta: $${(delta/100).toFixed(2)} (${(pctDelta * 100).toFixed(1)}% of total) - not adding synthetic`);
+    }
+  }
+
+  // Recalculate total adjustments including synthetic
+  const finalTotalAdjustmentsCents = finalAdjustments.reduce((sum, adj) => sum + adj.amountCents, 0);
 
   // Add adjustments to totals for easier access
-  totals.adjustmentsCents = miscCharges.totalAdjustmentsCents;
-  totals.adjustments = miscCharges.adjustments;
+  totals.adjustmentsCents = finalTotalAdjustmentsCents;
+  totals.adjustments = finalAdjustments;
+
+  const confidence = calculateSyscoConfidence(validatedItems, totals);
+
+  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}, weight-corrected: ${weightCorrectedCount}, adjustments: ${finalAdjustments.length}`);
 
   return {
     vendorKey: 'sysco',
-    parserVersion: '2.5.0',  // Bumped version for MISC CHARGES support
+    parserVersion: '2.6.0',  // Bumped version for synthetic delta and shared extractors
     header: header,
     totals: totals,
     lineItems: validatedItems,
-    adjustments: miscCharges.adjustments,  // Include adjustments separately too
+    adjustments: finalAdjustments,  // Include all adjustments (including synthetic)
     employees: [],
     departments: [],
     confidence: confidence,
@@ -673,7 +770,16 @@ function parseSyscoInvoice(normalizedText, options = {}) {
       mathCorrectedItems: correctedCount,
       weightCorrectedItems: weightCorrectedCount,
       adjustmentsFound: miscCharges.adjustments.length,
-      netAdjustmentsCents: miscCharges.totalAdjustmentsCents
+      netAdjustmentsCents: finalTotalAdjustmentsCents,
+      reconciliation: {
+        lineItemsSum,
+        knownAdjustments: totalAdjustmentsCents,
+        computedTotal,
+        printedTotal: totals.totalCents,
+        delta: totals.totalCents - computedTotal,
+        hasSyntheticDelta: !!syntheticDelta
+      },
+      totalsCandidates: totals.candidates || []
     }
   };
 }
