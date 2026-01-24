@@ -227,6 +227,50 @@ function parseInvoiceText(rawText, options = {}) {
     }
   }
 
+  // Step 5.7: Final garbage filter - catch anything that slipped through parsers
+  // This is critical for catching ORDER SUMMARY numbers misread as prices
+  const MAX_REASONABLE_LINE_ITEM_CENTS = 2000000; // $20,000 - generous for restaurant supplies
+
+  if (bestResult.lineItems && bestResult.lineItems.length > 0) {
+    const originalCount = bestResult.lineItems.length;
+    bestResult.lineItems = bestResult.lineItems.filter(item => {
+      const desc = (item.description || '').toUpperCase();
+      const lineTotal = item.lineTotalCents || 0;
+      const unitPrice = item.unitPriceCents || 0;
+
+      // FILTER 1: Reject items with absurdly high prices (likely order numbers)
+      if (lineTotal > MAX_REASONABLE_LINE_ITEM_CENTS || unitPrice > MAX_REASONABLE_LINE_ITEM_CENTS) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - price too high: $${(lineTotal/100).toFixed(2)}`);
+        return false;
+      }
+
+      // FILTER 2: Reject ORDER SUMMARY section (contains order numbers that look like prices)
+      if (/ORDER\s*SUMMARY/i.test(desc)) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - ORDER SUMMARY`);
+        return false;
+      }
+
+      // FILTER 3: Reject MISC CHARGES / fee lines (not product items)
+      if (/MISC\s*CHARGES/i.test(desc) || /FUEL\s*SURCHARGE/i.test(desc) || /CHGS\s+FOR/i.test(desc)) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - MISC/FEE line`);
+        return false;
+      }
+
+      // FILTER 4: Reject ALLOWANCE / DROP SIZE (adjustments, not items)
+      if (/ALLOWANCE\s+FOR/i.test(desc) || /DROP\s+SIZE/i.test(desc)) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - ADJUSTMENT line`);
+        return false;
+      }
+
+      return true;
+    });
+
+    const filteredCount = originalCount - bestResult.lineItems.length;
+    if (filteredCount > 0) {
+      console.log(`[PARSER V2] Filtered ${filteredCount} garbage items from final result`);
+    }
+  }
+
   // Step 6: Build final result
   const result = {
     success: true,

@@ -200,6 +200,9 @@ function extractGenericLineItems(text, lines) {
 
   if (tableStartIdx === -1) return items;
 
+  // Max reasonable line item price: $20,000 for restaurant supplies
+  const MAX_LINE_ITEM_CENTS = 2000000;
+
   // Parse lines from table start
   for (let i = tableStartIdx + 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -212,6 +215,19 @@ function extractGenericLineItems(text, lines) {
     // Skip headers and group subtotals (including Sysco's GROUP TOTAL****)
     if (isTableHeader(line) || isGroupSubtotal(line)) continue;
     if (/GROUP\s+TOTAL/i.test(line)) continue;  // Explicit Sysco GROUP TOTAL filter
+
+    // Skip ORDER SUMMARY section - order numbers look like prices (7-digit numbers)
+    if (/ORDER\s*SUMMARY/i.test(line)) continue;
+    if (/\d{7}\s+\d{7}/i.test(line)) continue;  // Multiple 7-digit numbers = order numbers
+
+    // Skip MISC CHARGES section - these are fees, not line items
+    if (/MISC\s*CHARGES/i.test(line)) continue;
+    if (/ALLOWANCE\s+FOR/i.test(line)) continue;
+    if (/DROP\s+SIZE/i.test(line)) continue;
+
+    // Skip fuel surcharge lines
+    if (/FUEL\s*SURCHARGE/i.test(line)) continue;
+    if (/CHGS\s+FOR/i.test(line)) continue;
 
     // Try to parse as item row (right-anchored numbers)
     const numbers = extractTailNumbers(line);
@@ -238,16 +254,22 @@ function extractGenericLineItems(text, lines) {
           }
         }
 
-        items.push({
-          type: 'item',
-          sku: null,
-          description: description,
-          qty: qty,
-          unitPriceCents: Math.round(unitPrice * 100),
-          lineTotalCents: Math.round(lineTotal * 100),
-          taxFlag: null,
-          raw: line
-        });
+        const unitPriceCents = Math.round(unitPrice * 100);
+        const lineTotalCents = Math.round(lineTotal * 100);
+
+        // Sanity check: reject absurdly high prices (likely order numbers misread as prices)
+        if (unitPriceCents < MAX_LINE_ITEM_CENTS && lineTotalCents < MAX_LINE_ITEM_CENTS) {
+          items.push({
+            type: 'item',
+            sku: null,
+            description: description,
+            qty: qty,
+            unitPriceCents: unitPriceCents,
+            lineTotalCents: lineTotalCents,
+            taxFlag: null,
+            raw: line
+          });
+        }
       }
     }
   }

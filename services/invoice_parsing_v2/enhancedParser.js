@@ -30,6 +30,20 @@ function parseLineItemMultiStrategy(line, context = {}) {
   if (/SHOP\s+OUR|WWW\./i.test(trimmed)) return null;  // Promo/ad lines
   if (/^(QTY|QUANTITY|DESCRIPTION|ITEM|SKU|PRICE|AMOUNT|TOTAL)\s/i.test(trimmed)) return null;  // Header lines
 
+  // Skip ORDER SUMMARY section - contains order numbers that look like prices!
+  // These 7-digit order numbers (like 2823871, 2823930) get misread as $2,823,930.00
+  if (/ORDER\s*SUMMARY/i.test(trimmed)) return null;
+  if (/\d{7}\s+\d{7}/i.test(trimmed)) return null;  // Multiple 7-digit numbers = order numbers
+
+  // Skip MISC CHARGES section - these are fees, not line items
+  if (/MISC\s*CHARGES/i.test(trimmed)) return null;
+  if (/ALLOWANCE\s+FOR/i.test(trimmed)) return null;
+  if (/DROP\s+SIZE/i.test(trimmed)) return null;
+
+  // Skip fuel surcharge lines
+  if (/FUEL\s*SURCHARGE/i.test(trimmed)) return null;
+  if (/CHGS\s+FOR/i.test(trimmed)) return null;
+
   const candidates = [];
 
   // ===== STRATEGY 1: Right-anchored prices with left-anchored quantity =====
@@ -67,6 +81,11 @@ function parseLineItemMultiStrategy(line, context = {}) {
     ...c,
     score: scoreCandidate(c)
   })).sort((a, b) => b.score - a.score);
+
+  // Reject if best candidate has low score (likely garbage like order numbers misread as prices)
+  if (scored[0].score < 20) {
+    return null;
+  }
 
   return scored[0];
 }
@@ -359,8 +378,13 @@ function scoreCandidate(candidate) {
   }
 
   // Price reasonableness
-  if (candidate.lineTotalCents > 0 && candidate.lineTotalCents <= 10000000) {
-    score += 5;  // Under $100k is reasonable
+  // Max reasonable line item: $20,000 for restaurant supplies
+  const MAX_REASONABLE_CENTS = 2000000;
+
+  if (candidate.lineTotalCents > MAX_REASONABLE_CENTS || candidate.unitPriceCents > MAX_REASONABLE_CENTS) {
+    score -= 100;  // Reject items with absurdly high prices (likely order numbers misread)
+  } else if (candidate.lineTotalCents > 0 && candidate.lineTotalCents <= 1000000) {
+    score += 5;  // Under $10k is very reasonable
   }
 
   return Math.max(0, Math.min(100, score));
