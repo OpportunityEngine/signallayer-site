@@ -970,9 +970,9 @@
             <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
             <div style="font-size: 12px; font-weight: 600; color: #3b82f6;">Compare Vendors</div>
           </div>
-          <div onclick="showToast('Viewing smart recommendations...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
-            <div style="font-size: 24px; margin-bottom: 8px;">🤖</div>
-            <div style="font-size: 12px; font-weight: 600; color: #06b6d4;">Smart Recommendations</div>
+          <div onclick="openEmailAutopilotModal()" style="text-align: center; padding: 16px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 8px;">📧</div>
+            <div style="font-size: 12px; font-weight: 600; color: #8b5cf6;">Email Autopilot</div>
           </div>
           <div onclick="showToast('Generating report...', 'info')" style="text-align: center; padding: 16px 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; cursor: pointer; transition: all 0.2s;">
             <div style="font-size: 24px; margin-bottom: 8px;">📈</div>
@@ -992,57 +992,56 @@
       </div>
     </div>
 
-    <!-- Email Invoice Autopilot - Executive Style -->
+    <!-- Smart Recommendations Section -->
     <div class="tile-card" style="margin-bottom: 24px;">
       <div class="tile-header">
         <div class="tile-title">
-          <span>📧</span> Email Invoice Autopilot
+          <span>🤖</span> Smart Recommendations
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <span id="autopilotStatus" class="tile-badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">Active</span>
-          <button onclick="refreshEmailMonitors()" class="btn" style="font-size: 11px; padding: 6px 12px; background: var(--panel2); color: var(--muted); border: 1px solid var(--border);">
+          <span id="recommendationsStatus" class="tile-badge" style="background: rgba(6, 182, 212, 0.15); color: #06b6d4;">AI-Powered</span>
+          <button onclick="refreshRecommendations()" class="btn" style="font-size: 11px; padding: 6px 12px; background: var(--panel2); color: var(--muted); border: 1px solid var(--border);">
             ↻ Refresh
-          </button>
-          <button onclick="openAddEmailMonitor()" class="btn" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%); color: var(--gold); border: 1px solid rgba(251, 191, 36, 0.3);">
-            + Add Monitor
           </button>
         </div>
       </div>
       <div class="tile-body">
-        <!-- Executive Stats Grid -->
+        <!-- Recommendations Stats Grid -->
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
           <div style="background: var(--panel2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Total Savings</div>
-            <div id="autopilotTotalSavings" style="font-size: 28px; font-weight: 800; color: var(--gold);">$0</div>
-            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">This Month</div>
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Potential Savings</div>
+            <div id="recommendationsSavings" style="font-size: 28px; font-weight: 800; color: var(--gold);">$0</div>
+            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">If Executed</div>
           </div>
           <div style="background: var(--panel2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Critical Findings</div>
-            <div id="autopilotCriticalFindings" style="font-size: 28px; font-weight: 800; color: var(--red);">0</div>
-            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Requires Action</div>
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Active Recommendations</div>
+            <div id="recommendationsCount" style="font-size: 28px; font-weight: 800; color: #06b6d4;">0</div>
+            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Pending Review</div>
           </div>
           <div style="background: var(--panel2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Invoices Processed</div>
-            <div id="autopilotInvoicesProcessed" style="font-size: 28px; font-weight: 800; color: var(--text-bright);">0</div>
-            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Automated</div>
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Executed This Month</div>
+            <div id="recommendationsExecuted" style="font-size: 28px; font-weight: 800; color: var(--green);">0</div>
+            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Completed</div>
           </div>
           <div style="background: var(--panel2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Opportunities</div>
-            <div id="autopilotOpportunities" style="font-size: 28px; font-weight: 800; color: var(--green);">0</div>
-            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Detected</div>
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Accuracy Score</div>
+            <div id="recommendationsAccuracy" style="font-size: 28px; font-weight: 800; color: var(--text-bright);">--</div>
+            <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">AI Confidence</div>
           </div>
         </div>
 
-        <!-- Active Email Monitors Section -->
+        <!-- Recommendations List -->
         <div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
             <h3 style="font-size: 14px; font-weight: 600; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px;">
-              <span style="color: var(--gold);">⚡</span> Active Monitors
+              <span style="color: #06b6d4;">💡</span> Latest Recommendations
             </h3>
           </div>
-          <div id="autopilotMonitorsList" style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="text-align: center; padding: 20px; color: #64748b; font-size: 13px;">
-              Loading email monitors...
+          <div id="recommendationsList" style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+              <div style="font-size: 48px; margin-bottom: 16px;">🤖</div>
+              <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text);">No recommendations yet</div>
+              <div style="font-size: 13px; color: var(--muted2); max-width: 300px; margin: 0 auto;">Upload more invoices to receive AI-powered cost-saving recommendations based on your spending patterns.</div>
             </div>
           </div>
         </div>
@@ -1502,6 +1501,68 @@
         </div>
 
         <div id="newMonitorStatus" style="margin-top: 16px; display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Autopilot Folder Modal -->
+  <div class="modal-overlay" id="emailAutopilotModal" onclick="closeEmailAutopilotModal(event)">
+    <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 24px;">📧</span>
+          <span>Email Invoice Autopilot</span>
+          <span style="font-size: 11px; background: rgba(139, 92, 246, 0.15); color: #8b5cf6; padding: 4px 10px; border-radius: 20px; font-weight: 600;">Automated Processing</span>
+        </div>
+        <button class="modal-close" onclick="closeEmailAutopilotModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Stats Overview -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+          <div style="background: var(--panel2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+            <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Total Savings</div>
+            <div id="modalAutopilotSavings" style="font-size: 24px; font-weight: 800; color: var(--gold);">$0</div>
+          </div>
+          <div style="background: var(--panel2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+            <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Active Monitors</div>
+            <div id="modalActiveMonitors" style="font-size: 24px; font-weight: 800; color: var(--green);">0</div>
+          </div>
+          <div style="background: var(--panel2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+            <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Invoices Processed</div>
+            <div id="modalInvoicesProcessed" style="font-size: 24px; font-weight: 800; color: var(--text-bright);">0</div>
+          </div>
+          <div style="background: var(--panel2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+            <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Inactive Monitors</div>
+            <div id="modalInactiveMonitors" style="font-size: 24px; font-weight: 800; color: var(--muted);">0</div>
+          </div>
+        </div>
+
+        <!-- Actions Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+          <h3 style="font-size: 14px; font-weight: 600; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--gold);">⚡</span> Email Monitors
+          </h3>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="refreshEmailMonitorsModal()" class="btn" style="font-size: 11px; padding: 6px 12px; background: var(--panel2); color: var(--muted); border: 1px solid var(--border);">
+              ↻ Refresh
+            </button>
+            <button onclick="closeEmailAutopilotModal(); openAddEmailMonitor();" class="btn" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%); color: var(--gold); border: 1px solid rgba(251, 191, 36, 0.3);">
+              + Add New Monitor
+            </button>
+          </div>
+        </div>
+
+        <!-- Monitors List -->
+        <div id="emailAutopilotMonitorsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 48px; margin-bottom: 16px;">📧</div>
+            <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text);">No email monitors configured</div>
+            <div style="font-size: 13px; color: var(--muted2); max-width: 300px; margin: 0 auto 20px;">Connect your inbox to automatically process invoices and detect savings opportunities.</div>
+            <button onclick="closeEmailAutopilotModal(); openAddEmailMonitor();" class="btn" style="padding: 12px 24px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; font-size: 13px; font-weight: 600;">
+              + Add Your First Monitor
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -3064,6 +3125,112 @@
         if (resultEl) resultEl.style.display = 'none';
         if (oauthEl) oauthEl.style.display = 'none';
       }
+    }
+
+    // ===== EMAIL AUTOPILOT FOLDER MODAL =====
+    function openEmailAutopilotModal() {
+      const modal = document.getElementById('emailAutopilotModal');
+      if (modal) {
+        modal.classList.add('active');
+        loadEmailAutopilotMonitors();
+      }
+    }
+
+    function closeEmailAutopilotModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('emailAutopilotModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    async function loadEmailAutopilotMonitors() {
+      const listEl = document.getElementById('emailAutopilotMonitorsList');
+      if (!listEl) return;
+
+      try {
+        const response = await fetch('/api/email-monitors', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load monitors');
+
+        const data = await response.json();
+        const monitors = data.monitors || [];
+
+        // Update stats
+        const activeCount = monitors.filter(m => m.is_active).length;
+        const inactiveCount = monitors.filter(m => !m.is_active).length;
+        const totalProcessed = monitors.reduce((sum, m) => sum + (m.invoices_created_count || 0), 0);
+
+        const modalActiveEl = document.getElementById('modalActiveMonitors');
+        const modalInactiveEl = document.getElementById('modalInactiveMonitors');
+        const modalProcessedEl = document.getElementById('modalInvoicesProcessed');
+
+        if (modalActiveEl) modalActiveEl.textContent = activeCount;
+        if (modalInactiveEl) modalInactiveEl.textContent = inactiveCount;
+        if (modalProcessedEl) modalProcessedEl.textContent = totalProcessed;
+
+        if (monitors.length === 0) {
+          listEl.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+              <div style="font-size: 48px; margin-bottom: 16px;">📧</div>
+              <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text);">No email monitors configured</div>
+              <div style="font-size: 13px; color: var(--muted2); max-width: 300px; margin: 0 auto 20px;">Connect your inbox to automatically process invoices and detect savings opportunities.</div>
+              <button onclick="closeEmailAutopilotModal(); openAddEmailMonitor();" class="btn" style="padding: 12px 24px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border: none; font-size: 13px; font-weight: 600;">
+                + Add Your First Monitor
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = monitors.map(monitor => {
+          const statusColor = monitor.is_active ? '#22c55e' : '#64748b';
+          const statusText = monitor.is_active ? 'Active' : 'Inactive';
+          const statusBg = monitor.is_active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+          const providerIcon = monitor.oauth_provider === 'google' ? '🔵' : (monitor.oauth_provider === 'microsoft' ? '🟠' : '📧');
+
+          return `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 20px;">${providerIcon}</div>
+                <div>
+                  <div style="font-weight: 600; color: var(--text); font-size: 14px;">${monitor.email_address}</div>
+                  <div style="font-size: 12px; color: var(--muted);">${monitor.invoices_created_count || 0} invoices processed</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 11px; padding: 4px 10px; background: ${statusBg}; color: ${statusColor}; border-radius: 20px; font-weight: 600;">${statusText}</span>
+                <button onclick="toggleMonitorStatus(${monitor.id}, ${!monitor.is_active})" class="btn" style="font-size: 11px; padding: 6px 12px; background: var(--panel); border: 1px solid var(--border);">
+                  ${monitor.is_active ? 'Pause' : 'Resume'}
+                </button>
+                <button onclick="deleteEmailMonitor(${monitor.id})" class="btn" style="font-size: 11px; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+                  Delete
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Failed to load email monitors:', error);
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 30px; color: #ef4444;">
+            Failed to load monitors. Please try again.
+          </div>
+        `;
+      }
+    }
+
+    function refreshEmailMonitorsModal() {
+      loadEmailAutopilotMonitors();
+      showToast('Refreshing monitors...', 'info');
+    }
+
+    function refreshRecommendations() {
+      showToast('Refreshing recommendations...', 'info');
+      // TODO: Load actual recommendations when API is available
     }
 
     // ===== OAUTH FUNCTIONS =====
