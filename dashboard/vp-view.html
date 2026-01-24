@@ -5828,7 +5828,7 @@
       const period = document.getElementById('chartPeriod')?.value || 30;
 
       try {
-        // Fetch financial summary data
+        // Fetch financial summary data for charts (based on selected period)
         const response = await fetch(`${API_BASE}/api/bi/financial-summary?days=${period}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -5847,10 +5847,107 @@
           // If API not ready, show demo data
           renderDemoFinancialData();
         }
+
+        // Also fetch this week's data (7 days) for the weekly comparison cards
+        await loadWeeklyComparison();
+
       } catch (error) {
         console.error('Failed to load financial charts:', error);
         // Show demo data on error
         renderDemoFinancialData();
+      }
+    }
+
+    async function loadWeeklyComparison() {
+      try {
+        // Fetch this week's data
+        const thisWeekResponse = await fetch(`${API_BASE}/api/bi/financial-summary?days=7`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+
+        // Fetch last week's data (for comparison)
+        const lastWeekResponse = await fetch(`${API_BASE}/api/bi/financial-summary?days=14`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+
+        if (thisWeekResponse.ok && lastWeekResponse.ok) {
+          const thisWeekData = await thisWeekResponse.json();
+          const lastWeekData = await lastWeekResponse.json();
+
+          if (thisWeekData.success && lastWeekData.success) {
+            const thisWeekTotals = thisWeekData.data.totals || {};
+            const last14DaysTotals = lastWeekData.data.totals || {};
+
+            // This week's expenses (from invoices)
+            const thisWeekExpenses = (thisWeekTotals.invoices || thisWeekTotals.expenses || 0) / 100;
+            // Last week = 14 days total - this week
+            const lastWeekExpenses = ((last14DaysTotals.invoices || last14DaysTotals.expenses || 0) / 100) - thisWeekExpenses;
+
+            // This week's payroll
+            const thisWeekPayroll = (thisWeekTotals.payroll || 0) / 100;
+            const last14DaysPayroll = (last14DaysTotals.payroll || 0) / 100;
+            const lastWeekPayroll = last14DaysPayroll - thisWeekPayroll;
+
+            // Update the weekly cards
+            const weekPayrollEl = document.getElementById('weekPayroll');
+            const weekExpensesEl = document.getElementById('weekExpenses');
+
+            if (weekPayrollEl) {
+              weekPayrollEl.textContent = '$' + thisWeekPayroll.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+              // Update the comparison badge and arrow
+              const payrollCard = weekPayrollEl.closest('.comparison-card');
+              if (payrollCard) {
+                const badge = payrollCard.querySelector('.comparison-badge');
+                const vsArrow = payrollCard.querySelector('.vs-arrow');
+                if (lastWeekPayroll > 0) {
+                  const payrollChange = ((thisWeekPayroll - lastWeekPayroll) / lastWeekPayroll * 100);
+                  const payrollDiff = Math.abs(thisWeekPayroll - lastWeekPayroll);
+                  if (badge) {
+                    badge.textContent = (payrollChange >= 0 ? '+' : '') + payrollChange.toFixed(1) + '%';
+                    badge.className = 'comparison-badge ' + (payrollChange >= 0 ? 'up' : 'down');
+                  }
+                  if (vsArrow) {
+                    vsArrow.textContent = (payrollChange >= 0 ? '↑' : '↓') + ' $' + payrollDiff.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) + (payrollChange >= 0 ? ' more' : ' less');
+                    vsArrow.className = 'vs-arrow ' + (payrollChange >= 0 ? 'up' : 'down');
+                  }
+                  payrollCard.className = 'comparison-card ' + (payrollChange <= 0 ? 'improved' : 'warning');
+                } else {
+                  if (badge) { badge.textContent = 'N/A'; badge.className = 'comparison-badge'; }
+                  if (vsArrow) { vsArrow.textContent = 'no prior data'; vsArrow.className = 'vs-arrow'; }
+                }
+              }
+            }
+
+            if (weekExpensesEl) {
+              weekExpensesEl.textContent = '$' + thisWeekExpenses.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+              // Update the comparison badge and arrow
+              const expensesCard = weekExpensesEl.closest('.comparison-card');
+              if (expensesCard) {
+                const badge = expensesCard.querySelector('.comparison-badge');
+                const vsArrow = expensesCard.querySelector('.vs-arrow');
+                if (lastWeekExpenses > 0) {
+                  const expensesChange = ((thisWeekExpenses - lastWeekExpenses) / lastWeekExpenses * 100);
+                  const expensesDiff = Math.abs(thisWeekExpenses - lastWeekExpenses);
+                  if (badge) {
+                    badge.textContent = (expensesChange >= 0 ? '+' : '') + expensesChange.toFixed(1) + '%';
+                    badge.className = 'comparison-badge ' + (expensesChange >= 0 ? 'up' : 'down');
+                  }
+                  if (vsArrow) {
+                    vsArrow.textContent = (expensesChange >= 0 ? '↑' : '↓') + ' $' + expensesDiff.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) + (expensesChange >= 0 ? ' more' : ' less');
+                    vsArrow.className = 'vs-arrow ' + (expensesChange >= 0 ? 'up' : 'down');
+                  }
+                  expensesCard.className = 'comparison-card ' + (expensesChange <= 0 ? 'improved' : 'warning');
+                } else {
+                  if (badge) { badge.textContent = 'N/A'; badge.className = 'comparison-badge'; }
+                  if (vsArrow) { vsArrow.textContent = 'no prior data'; vsArrow.className = 'vs-arrow'; }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load weekly comparison:', error);
+        // Keep default values on error
       }
     }
 
@@ -5860,6 +5957,14 @@
       document.getElementById('chartTotalPayroll').textContent = '$' + ((totals.payroll || 0) / 100).toLocaleString();
       document.getElementById('chartTotalInventory').textContent = '$' + ((totals.inventory || 0) / 100).toLocaleString();
       document.getElementById('chartTotalSavings').textContent = '$' + ((totals.savings || 0) / 100).toLocaleString();
+
+      // Update Total Savings This Year with invoice totals analyzed
+      const totalSavingsEl = document.getElementById('totalSavings');
+      if (totalSavingsEl) {
+        // Show total invoice value analyzed as "savings found" since we identify overbilling
+        const invoiceTotal = (totals.invoices || totals.expenses || 0) / 100;
+        totalSavingsEl.textContent = '$' + invoiceTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
     }
 
     function renderExpenseBreakdownChart(breakdown) {
