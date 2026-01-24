@@ -171,6 +171,189 @@ function extractGenericTotals(text, lines) {
 }
 
 /**
+ * Extract fees, charges, and adjustments from generic invoice
+ * These are things like fuel surcharges, delivery fees, allowances/credits
+ * that affect the invoice total but aren't product line items
+ */
+function extractGenericAdjustments(text, lines) {
+  const adjustments = [];
+
+  // Comprehensive fee/charge patterns for all invoice types
+  const feePatterns = [
+    // Fuel & Delivery
+    { regex: /FUEL\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Fuel Surcharge' },
+    { regex: /CHGS\s+FOR\s+FUEL[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Fuel Surcharge' },
+    { regex: /DELIVERY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Delivery Fee' },
+    { regex: /SHIPPING[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Shipping' },
+    { regex: /FREIGHT[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Freight' },
+    { regex: /RUSH\s+(?:FEE|DELIVERY|ORDER)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Rush Fee' },
+    { regex: /EXPEDITED?\s+(?:FEE|DELIVERY|SHIPPING)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Expedited Fee' },
+
+    // Service & Handling
+    { regex: /SERVICE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Service Charge' },
+    { regex: /HANDLING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Handling Fee' },
+    { regex: /PROCESSING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Processing Fee' },
+
+    // Environmental & Compliance
+    { regex: /ENVIRONMENTAL\s+(?:FEE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Environmental Fee' },
+    { regex: /HAZMAT\s+(?:FEE|CHARGE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Hazmat Fee' },
+    { regex: /COMPLIANCE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Compliance Fee' },
+    { regex: /REGULATORY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Regulatory Fee' },
+
+    // Order-related fees
+    { regex: /SMALL\s+ORDER\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Small Order Fee' },
+    { regex: /MINIMUM\s+ORDER\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Minimum Order Fee' },
+    { regex: /BELOW\s+MINIMUM[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Below Minimum Fee' },
+    { regex: /RESTOCKING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Restocking Fee' },
+
+    // Container/Deposit fees (common in food/beverage)
+    { regex: /BOTTLE\s+(?:FEE|DEPOSIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Bottle Deposit' },
+    { regex: /CONTAINER\s+(?:FEE|CHARGE|DEPOSIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Container Fee' },
+    { regex: /PALLET\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Pallet Fee' },
+    { regex: /DRUM\s+(?:FEE|CHARGE|DEPOSIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Drum Deposit' },
+    { regex: /CRV[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'CA Redemption Value' },  // California beverage
+
+    // Cold chain (food service)
+    { regex: /REFRIGERAT(?:ION|ED)\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Refrigeration Fee' },
+    { regex: /COLD\s+(?:CHAIN|STORAGE)\s+(?:FEE|CHARGE)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Cold Chain Fee' },
+    { regex: /FREEZER\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Freezer Fee' },
+
+    // Insurance & Other
+    { regex: /INSURANCE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Insurance' },
+    { regex: /ADMIN(?:ISTRATION|ISTRATIVE)?\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Admin Fee' },
+    { regex: /(?:LATE\s+)?PAYMENT\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Payment Fee' },
+    { regex: /FINANCE\s+CHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Finance Charge' },
+
+    // Cintas/Uniform service specific
+    { regex: /ENERGY\s+(?:FEE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Energy Surcharge' },
+    { regex: /ROUTE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Route Fee' },
+    { regex: /STOP\s+CHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Stop Charge' },
+    { regex: /GARMENT\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Garment Fee' },
+    { regex: /LOST\s+(?:GARMENT|ITEM)\s+(?:FEE|CHARGE)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Lost Item Fee' },
+  ];
+
+  // Credit/allowance patterns (these are typically negative - reduce total)
+  const creditPatterns = [
+    // Drop size / volume allowances (common in food service)
+    { regex: /ALLOWANCE\s+FOR\s+DROP\s+SIZE[:\s]*([\d,]+\.?\d*)([\-])?/i, type: 'credit', desc: 'Allowance for Drop Size' },
+    { regex: /DROP\s+SIZE\s+(?:ALLOWANCE|CREDIT)[:\s]*([\d,]+\.?\d*)([\-])?/i, type: 'credit', desc: 'Drop Size Allowance' },
+    { regex: /VOLUME\s+(?:ALLOWANCE|DISCOUNT|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Volume Allowance' },
+
+    // Standard discounts
+    { regex: /(?:CASH\s+)?DISCOUNT[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Discount' },
+    { regex: /EARLY\s+(?:PAY(?:MENT)?|ORDER)\s+DISCOUNT[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Early Payment Discount' },
+    { regex: /PREPAY(?:MENT)?\s+DISCOUNT[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Prepayment Discount' },
+
+    // Credits
+    { regex: /(?:CUSTOMER\s+)?CREDIT[:\s]*\-?\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Credit' },
+    { regex: /RETURN\s+(?:CREDIT|ALLOWANCE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Return Credit' },
+    { regex: /PRICE\s+(?:ADJUSTMENT|CORRECTION)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Price Adjustment' },
+    { regex: /OVERCHARGE\s+(?:CREDIT|REFUND)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Overcharge Credit' },
+
+    // Promotional
+    { regex: /REBATE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Rebate' },
+    { regex: /PROMOTION(?:AL)?\s+(?:CREDIT|DISCOUNT)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Promotional Credit' },
+    { regex: /COUPON[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Coupon' },
+
+    // Loyalty/rewards
+    { regex: /(?:LOYALTY|REWARDS?)\s+(?:CREDIT|DISCOUNT)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Loyalty Credit' },
+    { regex: /(?:MEMBER|CUSTOMER)\s+(?:SAVINGS|DISCOUNT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Member Savings' },
+
+    // Deposit returns (negative fees become credits)
+    { regex: /BOTTLE\s+(?:RETURN|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Bottle Return' },
+    { regex: /CONTAINER\s+(?:RETURN|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Container Return' },
+    { regex: /PALLET\s+(?:RETURN|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Pallet Return' },
+  ];
+
+  // Search for fees
+  for (const pattern of feePatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const value = parseMoney(match[1]);
+      if (value > 0 && value < 50000) {  // Reasonable fee range (< $500)
+        adjustments.push({
+          type: pattern.type,
+          description: pattern.desc,
+          amountCents: value,  // Positive - added to total
+          raw: match[0]
+        });
+        console.log(`[GENERIC ADJ] Found ${pattern.desc}: $${(value/100).toFixed(2)}`);
+      }
+    }
+  }
+
+  // Search for credits/allowances
+  for (const pattern of creditPatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const value = parseMoney(match[1]);
+      const isExplicitlyNegative = match[2] === '-' || match[0].includes('-');
+      if (value > 0 && value < 100000) {  // Reasonable credit range (< $1000)
+        adjustments.push({
+          type: pattern.type,
+          description: pattern.desc,
+          amountCents: -value,  // Negative - subtracted from total (credits)
+          raw: match[0]
+        });
+        console.log(`[GENERIC ADJ] Found ${pattern.desc}: -$${(value/100).toFixed(2)} (credit)`);
+      }
+    }
+  }
+
+  // Also scan for MISC CHARGES section (common in food service invoices)
+  let inMiscSection = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (/MISC\s+CHARGES/i.test(line)) {
+      inMiscSection = true;
+      continue;
+    }
+
+    if (inMiscSection) {
+      // Exit at ORDER SUMMARY or similar markers
+      if (/ORDER\s+SUMMARY/i.test(line) || /^CASES\s+SPLIT/i.test(line) || /OPEN:/i.test(line)) {
+        break;
+      }
+
+      // Look for values in MISC section that weren't caught above
+      const valueMatch = line.match(/([\d,]+\.?\d{2})([\-])?$/);
+      if (valueMatch && !adjustments.some(a => a.raw && a.raw.includes(valueMatch[0]))) {
+        const value = parseMoney(valueMatch[1]);
+        const isNegative = valueMatch[2] === '-';
+
+        // Try to identify what this charge is
+        if (/ALLOWANCE/i.test(line) && value > 0 && value < 100000) {
+          adjustments.push({
+            type: 'credit',
+            description: 'Allowance',
+            amountCents: -value,
+            raw: line
+          });
+        } else if (/SURCHARGE|FEE|CHARGE/i.test(line) && value > 0 && value < 50000) {
+          adjustments.push({
+            type: 'fee',
+            description: 'Surcharge',
+            amountCents: value,
+            raw: line
+          });
+        }
+      }
+    }
+  }
+
+  // Calculate net adjustments
+  const totalAdjustmentsCents = adjustments.reduce((sum, adj) => sum + adj.amountCents, 0);
+
+  console.log(`[GENERIC ADJ] Total adjustments: ${adjustments.length} items, net: $${(totalAdjustmentsCents/100).toFixed(2)}`);
+
+  return {
+    adjustments,
+    totalAdjustmentsCents
+  };
+}
+
+/**
  * Extract line items from generic invoice using table detection
  */
 function extractGenericLineItems(text, lines) {
@@ -292,6 +475,9 @@ function parseGenericInvoice(normalizedText, options = {}) {
   const header = parseGenericHeader(normalizedText, lines);
   const totals = extractGenericTotals(normalizedText, lines);
 
+  // Extract fees and adjustments (fuel surcharge, allowances, credits, etc.)
+  const miscCharges = extractGenericAdjustments(normalizedText, lines);
+
   // Try traditional line item extraction first
   let lineItems = extractGenericLineItems(normalizedText, lines);
   let parsingMethod = 'traditional';
@@ -319,15 +505,20 @@ function parseGenericInvoice(normalizedText, options = {}) {
   // Validate and fix line items
   const validatedItems = validateAndFixLineItems(lineItems);
 
-  // Calculate confidence
-  const confidence = calculateGenericConfidence(validatedItems, totals, layout);
+  // Add adjustments to totals for validation
+  totals.adjustmentsCents = miscCharges.totalAdjustmentsCents;
+  totals.adjustments = miscCharges.adjustments;
+
+  // Calculate confidence (now considering adjustments for accuracy)
+  const confidence = calculateGenericConfidence(validatedItems, totals, layout, miscCharges);
 
   const result = {
     vendorKey: 'generic',
-    parserVersion: '2.1.0',
+    parserVersion: '2.2.0',  // Bumped for adjustments support
     header: header,
     totals: totals,
     lineItems: validatedItems,
+    adjustments: miscCharges.adjustments,  // Include adjustments separately
     employees: [],
     departments: [],
     confidence: confidence,
@@ -340,7 +531,9 @@ function parseGenericInvoice(normalizedText, options = {}) {
         columnPattern: layout.columnPattern?.type
       },
       parsingHints: hints.strategies,
-      mathCorrectedItems: validatedItems.filter(i => i.mathCorrected).length
+      mathCorrectedItems: validatedItems.filter(i => i.mathCorrected).length,
+      adjustmentsFound: miscCharges.adjustments.length,
+      netAdjustmentsCents: miscCharges.totalAdjustmentsCents
     }
   };
 
@@ -380,8 +573,9 @@ function countValidItems(items) {
 
 /**
  * Calculate confidence score for generic parse
+ * Now considers adjustments for more accurate validation
  */
-function calculateGenericConfidence(lineItems, totals, layout) {
+function calculateGenericConfidence(lineItems, totals, layout, miscCharges = { adjustments: [], totalAdjustmentsCents: 0 }) {
   let score = 40;  // Lower base for generic
   const issues = [];
   const warnings = [];
@@ -415,21 +609,40 @@ function calculateGenericConfidence(lineItems, totals, layout) {
     }
   }
 
-  // Sum vs total reconciliation
+  // Sum vs total reconciliation - NOW INCLUDING ADJUSTMENTS
+  // Formula: lineItemsSum + tax + adjustments ≈ total
   if (lineItems.length > 0 && totals.totalCents > 0) {
-    const sum = lineItems.reduce((s, i) => s + (i.lineTotalCents || 0), 0);
-    const diff = Math.abs(sum - totals.totalCents);
-    const pct = diff / totals.totalCents;
+    const lineItemsSum = lineItems.reduce((s, i) => s + (i.lineTotalCents || 0), 0);
+    const adjustmentsSum = miscCharges.totalAdjustmentsCents || 0;
+    const taxCents = totals.taxCents || 0;
 
-    if (pct <= 0.02) {
+    // Calculate what the total SHOULD be
+    const computedTotal = lineItemsSum + taxCents + adjustmentsSum;
+    const diff = Math.abs(computedTotal - totals.totalCents);
+    const pct = totals.totalCents > 0 ? diff / totals.totalCents : 1;
+
+    console.log(`[GENERIC CONF] Reconciliation: items=$${(lineItemsSum/100).toFixed(2)} + tax=$${(taxCents/100).toFixed(2)} + adj=$${(adjustmentsSum/100).toFixed(2)} = $${(computedTotal/100).toFixed(2)} vs invoice=$${(totals.totalCents/100).toFixed(2)} (diff=${(pct*100).toFixed(1)}%)`);
+
+    if (pct <= 0.01) {
+      score += 20;  // Excellent match - bonus for adjustments helping
+    } else if (pct <= 0.02) {
       score += 15;
+    } else if (pct <= 0.05) {
+      score += 10;
     } else if (pct <= 0.10) {
-      score += 8;
+      score += 5;
+      warnings.push(`Computed total differs from invoice by ${(pct * 100).toFixed(1)}%`);
     } else if (pct <= 0.25) {
-      warnings.push(`Items sum differs from total by ${(pct * 100).toFixed(1)}%`);
+      warnings.push(`Items+tax+adjustments differs from total by ${(pct * 100).toFixed(1)}%`);
     } else {
-      issues.push('Large mismatch between items sum and total');
+      issues.push(`Large mismatch: computed $${(computedTotal/100).toFixed(2)} vs invoice $${(totals.totalCents/100).toFixed(2)}`);
     }
+  }
+
+  // Bonus for finding adjustments (more complete parsing)
+  if (miscCharges.adjustments.length > 0) {
+    score += 5;
+    console.log(`[GENERIC CONF] Found ${miscCharges.adjustments.length} adjustments worth $${(miscCharges.totalAdjustmentsCents/100).toFixed(2)}`);
   }
 
   // Layout detection bonus
@@ -452,6 +665,7 @@ module.exports = {
   parseGenericHeader,
   extractGenericTotals,
   extractGenericLineItems,
+  extractGenericAdjustments,
   calculateGenericConfidence,
   hasValidItems,
   countValidItems

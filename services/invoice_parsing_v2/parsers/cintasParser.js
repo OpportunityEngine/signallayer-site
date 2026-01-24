@@ -486,23 +486,110 @@ function extractEmployees(text, lines) {
 }
 
 /**
+ * Extract additional fees/adjustments from Cintas invoice
+ * Note: Many Cintas fees are captured as line items already
+ * This catches any additional fees/credits not in the main table
+ */
+function extractCintasAdjustments(text, lines) {
+  const adjustments = [];
+
+  // Cintas-specific fee patterns (fees that might be outside the main table)
+  const feePatterns = [
+    { regex: /FUEL\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Fuel Surcharge' },
+    { regex: /ENERGY\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Energy Surcharge' },
+    { regex: /ROUTE\s+SERVICE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Route Service Fee' },
+    { regex: /STOP\s+CHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Stop Charge' },
+    { regex: /DELIVERY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Delivery Fee' },
+    { regex: /MINIMUM\s+BILLING?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Minimum Billing' },
+    { regex: /LOST\s+(?:GARMENT|ITEM)\s+(?:FEE|CHARGE)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Lost Item Fee' },
+    { regex: /DAMAGE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Damage Fee' },
+    { regex: /ENVIRONMENTAL\s+(?:FEE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Environmental Fee' },
+    { regex: /ADMIN(?:ISTRATION)?\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Admin Fee' },
+  ];
+
+  // Credit/discount patterns
+  const creditPatterns = [
+    { regex: /(?:VOLUME|LOYALTY)\s+DISCOUNT[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Volume Discount' },
+    { regex: /(?:CUSTOMER\s+)?CREDIT[:\s]*\-?\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Credit' },
+    { regex: /CONTRACT\s+(?:DISCOUNT|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Contract Discount' },
+    { regex: /PROMOTIONAL\s+(?:DISCOUNT|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Promotional Credit' },
+    { regex: /REBATE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Rebate' },
+  ];
+
+  // Search for fees
+  for (const pattern of feePatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const value = parseMoney(match[1]);
+      if (value > 0 && value < 50000) {
+        adjustments.push({
+          type: pattern.type,
+          description: pattern.desc,
+          amountCents: value,
+          raw: match[0]
+        });
+        console.log(`[CINTAS ADJ] Found ${pattern.desc}: $${(value/100).toFixed(2)}`);
+      }
+    }
+  }
+
+  // Search for credits
+  for (const pattern of creditPatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const value = parseMoney(match[1]);
+      if (value > 0 && value < 100000) {
+        adjustments.push({
+          type: pattern.type,
+          description: pattern.desc,
+          amountCents: -value,  // Credits are negative
+          raw: match[0]
+        });
+        console.log(`[CINTAS ADJ] Found ${pattern.desc}: -$${(value/100).toFixed(2)} (credit)`);
+      }
+    }
+  }
+
+  // Calculate net adjustments
+  const totalAdjustmentsCents = adjustments.reduce((sum, adj) => sum + adj.amountCents, 0);
+
+  console.log(`[CINTAS ADJ] Total adjustments: ${adjustments.length} items, net: $${(totalAdjustmentsCents/100).toFixed(2)}`);
+
+  return {
+    adjustments,
+    totalAdjustmentsCents
+  };
+}
+
+/**
  * Main Cintas parser function
  */
 function parseCintasInvoice(normalizedText, options = {}) {
   const lines = normalizedText.split('\n');
 
+  // Extract totals and adjustments
+  const totals = extractTotals(normalizedText, lines);
+  const miscCharges = extractCintasAdjustments(normalizedText, lines);
+
+  // Add adjustments to totals
+  totals.adjustmentsCents = miscCharges.totalAdjustmentsCents;
+  totals.adjustments = miscCharges.adjustments;
+
   const result = {
     vendorKey: 'cintas',
-    parserVersion: '2.0.0',
+    parserVersion: '2.2.0',  // Bumped for adjustments support
     header: parseHeader(normalizedText, lines),
-    totals: extractTotals(normalizedText, lines),
+    totals: totals,
     lineItems: [],
+    adjustments: miscCharges.adjustments,
     employees: extractEmployees(normalizedText, lines),
     departments: [],
     debug: {
       tableRegions: [],
       parseAttempts: [],
-      rawLineCount: lines.length
+      rawLineCount: lines.length,
+      adjustmentsFound: miscCharges.adjustments.length,
+      netAdjustmentsCents: miscCharges.totalAdjustmentsCents
     }
   };
 
@@ -683,6 +770,7 @@ module.exports = {
   findTableRegions,
   parseItemRow,
   extractTotals,
+  extractCintasAdjustments,
   extractEmployees,
   calculateCintasConfidence
 };

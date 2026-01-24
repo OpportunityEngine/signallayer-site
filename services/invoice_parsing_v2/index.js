@@ -326,9 +326,18 @@ function parseInvoiceText(rawText, options = {}) {
     totals: {
       subtotalCents: bestResult.totals?.subtotalCents || 0,
       taxCents: bestResult.totals?.taxCents || 0,
+      adjustmentsCents: bestResult.totals?.adjustmentsCents || 0,  // MISC CHARGES (fees/credits)
       totalCents: bestResult.totals?.totalCents || 0,
       currency: bestResult.totals?.currency || 'USD'
     },
+
+    // Adjustments (fees, credits, surcharges - things that affect total but aren't line items)
+    adjustments: (bestResult.adjustments || bestResult.totals?.adjustments || []).map((adj, idx) => ({
+      adjustmentNumber: idx + 1,
+      type: adj.type || 'adjustment',
+      description: adj.description || 'Adjustment',
+      amountCents: adj.amountCents || 0
+    })),
 
     // Line items (normalized format)
     lineItems: (bestResult.lineItems || []).map((item, idx) => ({

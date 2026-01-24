@@ -359,6 +359,123 @@ function parseSyscoHeader(text, lines) {
 }
 
 /**
+ * Extract MISC CHARGES section from Sysco invoice
+ * This includes:
+ * - ALLOWANCE FOR DROP SIZE (can be negative - a credit/discount)
+ * - CHGS FOR FUEL SURCHARGE (typically positive)
+ *
+ * These adjustments affect the final invoice total but are not line items
+ */
+function extractSyscoMiscCharges(text, lines) {
+  const adjustments = [];
+  let inMiscSection = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Detect MISC CHARGES section
+    if (/MISC\s+CHARGES/i.test(line)) {
+      inMiscSection = true;
+      continue;
+    }
+
+    // Exit misc section when hitting ORDER SUMMARY or end markers
+    if (inMiscSection) {
+      if (/ORDER\s+SUMMARY/i.test(line) || /^CASES\s+SPLIT/i.test(line) || /OPEN:/i.test(line)) {
+        break;
+      }
+
+      // Look for ALLOWANCE FOR DROP SIZE
+      // Format varies: "ALLOWANCE FOR DROP SIZE  64.03-" or spread across lines
+      if (/ALLOWANCE\s+FOR\s+DROP\s+SIZE/i.test(line)) {
+        // Try to find value on same line
+        const sameLineMatch = line.match(/ALLOWANCE\s+FOR\s+DROP\s+SIZE\s+([\d,]+\.?\d*)([\-])?/i);
+        if (sameLineMatch) {
+          const value = parseMoney(sameLineMatch[1]);
+          const isNegative = sameLineMatch[2] === '-';
+          adjustments.push({
+            type: 'allowance',
+            description: 'Allowance for Drop Size',
+            amountCents: isNegative ? -value : -value,  // Allowances are typically credits (negative)
+            raw: line
+          });
+          console.log(`[SYSCO MISC] Found Drop Size Allowance: $${(value/100).toFixed(2)} (credit)`);
+        } else {
+          // Value might be on a following line - scan next few lines for a value with "-" suffix
+          for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+            const nextLine = lines[j].trim();
+            // Look for standalone number, possibly with trailing "-" for negative
+            const valueMatch = nextLine.match(/^([\d,]+\.?\d*)([\-])?$/);
+            if (valueMatch) {
+              const value = parseMoney(valueMatch[1]);
+              const isNegative = valueMatch[2] === '-';
+              if (value > 0 && value < 100000) {  // Reasonable range for credits
+                adjustments.push({
+                  type: 'allowance',
+                  description: 'Allowance for Drop Size',
+                  amountCents: isNegative ? -value : -value,  // Credits are negative
+                  raw: `${line} -> ${nextLine}`
+                });
+                console.log(`[SYSCO MISC] Found Drop Size Allowance (next line): $${(value/100).toFixed(2)} (credit)`);
+                break;
+              }
+            }
+          }
+        }
+        continue;
+      }
+
+      // Look for FUEL SURCHARGE
+      // Format: "CHGS FOR FUEL SURCHARGE  5.90" or just values after header
+      if (/FUEL\s+SURCHARGE/i.test(line) || /CHGS\s+FOR\s+FUEL/i.test(line)) {
+        const fuelMatch = line.match(/(?:FUEL\s+SURCHARGE|CHGS\s+FOR\s+FUEL\s+SURCHARGE?)\s+([\d,]+\.?\d*)/i);
+        if (fuelMatch) {
+          const value = parseMoney(fuelMatch[1]);
+          if (value > 0 && value < 10000) {  // Reasonable fuel surcharge (< $100)
+            adjustments.push({
+              type: 'fee',
+              description: 'Fuel Surcharge',
+              amountCents: value,  // Surcharges are positive (added to total)
+              raw: line
+            });
+            console.log(`[SYSCO MISC] Found Fuel Surcharge: $${(value/100).toFixed(2)}`);
+          }
+        } else {
+          // Look for value on next line
+          if (i + 1 < lines.length) {
+            const nextLine = lines[i + 1].trim();
+            const valueMatch = nextLine.match(/^([\d,]+\.?\d*)$/);
+            if (valueMatch) {
+              const value = parseMoney(valueMatch[1]);
+              if (value > 0 && value < 10000) {
+                adjustments.push({
+                  type: 'fee',
+                  description: 'Fuel Surcharge',
+                  amountCents: value,
+                  raw: `${line} -> ${nextLine}`
+                });
+                console.log(`[SYSCO MISC] Found Fuel Surcharge (next line): $${(value/100).toFixed(2)}`);
+              }
+            }
+          }
+        }
+        continue;
+      }
+    }
+  }
+
+  // Calculate net adjustments
+  const totalAdjustmentsCents = adjustments.reduce((sum, adj) => sum + adj.amountCents, 0);
+
+  console.log(`[SYSCO MISC] Total adjustments: ${adjustments.length} items, net: $${(totalAdjustmentsCents/100).toFixed(2)}`);
+
+  return {
+    adjustments,
+    totalAdjustmentsCents
+  };
+}
+
+/**
  * Extract totals from Sysco invoice
  */
 function extractSyscoTotals(text, lines) {
@@ -455,6 +572,7 @@ function parseSyscoInvoice(normalizedText, options = {}) {
 
   const header = parseSyscoHeader(normalizedText, lines);
   const totals = extractSyscoTotals(normalizedText, lines);
+  const miscCharges = extractSyscoMiscCharges(normalizedText, lines);
 
   const lineItems = [];
   let inItemSection = false;
@@ -532,14 +650,19 @@ function parseSyscoInvoice(normalizedText, options = {}) {
   const correctedCount = validatedItems.filter(item => item.mathCorrected).length;
   const weightCorrectedCount = validatedItems.filter(item => item.weightCorrected).length;
 
-  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}, weight-corrected: ${weightCorrectedCount}`);
+  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}, weight-corrected: ${weightCorrectedCount}, adjustments: ${miscCharges.adjustments.length}`);
+
+  // Add adjustments to totals for easier access
+  totals.adjustmentsCents = miscCharges.totalAdjustmentsCents;
+  totals.adjustments = miscCharges.adjustments;
 
   return {
     vendorKey: 'sysco',
-    parserVersion: '2.4.0',
+    parserVersion: '2.5.0',  // Bumped version for MISC CHARGES support
     header: header,
     totals: totals,
     lineItems: validatedItems,
+    adjustments: miscCharges.adjustments,  // Include adjustments separately too
     employees: [],
     departments: [],
     confidence: confidence,
@@ -548,7 +671,9 @@ function parseSyscoInvoice(normalizedText, options = {}) {
       rawLineCount: lines.length,
       itemLinesProcessed: validatedItems.length,
       mathCorrectedItems: correctedCount,
-      weightCorrectedItems: weightCorrectedCount
+      weightCorrectedItems: weightCorrectedCount,
+      adjustmentsFound: miscCharges.adjustments.length,
+      netAdjustmentsCents: miscCharges.totalAdjustmentsCents
     }
   };
 }
@@ -628,5 +753,6 @@ module.exports = {
   parseSyscoLineItem,
   parseSyscoHeader,
   extractSyscoTotals,
+  extractSyscoMiscCharges,
   calculateSyscoConfidence
 };

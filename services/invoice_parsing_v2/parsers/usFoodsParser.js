@@ -282,6 +282,85 @@ function extractUSFoodsTotals(text, lines) {
 }
 
 /**
+ * Extract fees, charges, and adjustments from US Foods invoice
+ * Similar to Sysco, US Foods may have fuel surcharges, delivery fees, etc.
+ */
+function extractUSFoodsAdjustments(text, lines) {
+  const adjustments = [];
+
+  // US Foods fee patterns
+  const feePatterns = [
+    { regex: /FUEL\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Fuel Surcharge' },
+    { regex: /DELIVERY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Delivery Fee' },
+    { regex: /SERVICE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Service Charge' },
+    { regex: /HANDLING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Handling Fee' },
+    { regex: /SMALL\s+ORDER\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Small Order Fee' },
+    { regex: /MINIMUM\s+ORDER\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Minimum Order Fee' },
+    { regex: /BOTTLE\s+(?:FEE|DEPOSIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Bottle Deposit' },
+    { regex: /ENVIRONMENTAL\s+(?:FEE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Environmental Fee' },
+    { regex: /COLD\s+(?:CHAIN|STORAGE)\s+(?:FEE|CHARGE)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Cold Chain Fee' },
+    { regex: /PALLET\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Pallet Fee' },
+    { regex: /RUSH\s+(?:FEE|DELIVERY)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'fee', desc: 'Rush Fee' },
+  ];
+
+  // Credit/allowance patterns (reduce total)
+  const creditPatterns = [
+    { regex: /ALLOWANCE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Allowance' },
+    { regex: /(?:VOLUME|ORDER)\s+DISCOUNT[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Volume Discount' },
+    { regex: /(?:CUSTOMER\s+)?CREDIT[:\s]*\-?\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Credit' },
+    { regex: /RETURN\s+(?:CREDIT|ALLOWANCE)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Return Credit' },
+    { regex: /PRICE\s+(?:ADJUSTMENT|CORRECTION)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Price Adjustment' },
+    { regex: /PROMOTIONAL?\s+(?:CREDIT|DISCOUNT)?[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Promotional Credit' },
+    { regex: /REBATE[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Rebate' },
+    { regex: /BOTTLE\s+(?:RETURN|CREDIT)[:\s]*\$?([\d,]+\.?\d*)/i, type: 'credit', desc: 'Bottle Return' },
+  ];
+
+  // Search for fees
+  for (const pattern of feePatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const value = parseMoney(match[1]);
+      if (value > 0 && value < 50000) {
+        adjustments.push({
+          type: pattern.type,
+          description: pattern.desc,
+          amountCents: value,  // Positive - added to total
+          raw: match[0]
+        });
+        console.log(`[USFOODS ADJ] Found ${pattern.desc}: $${(value/100).toFixed(2)}`);
+      }
+    }
+  }
+
+  // Search for credits
+  for (const pattern of creditPatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const value = parseMoney(match[1]);
+      if (value > 0 && value < 100000) {
+        adjustments.push({
+          type: pattern.type,
+          description: pattern.desc,
+          amountCents: -value,  // Negative - subtracted from total
+          raw: match[0]
+        });
+        console.log(`[USFOODS ADJ] Found ${pattern.desc}: -$${(value/100).toFixed(2)} (credit)`);
+      }
+    }
+  }
+
+  // Calculate net adjustments
+  const totalAdjustmentsCents = adjustments.reduce((sum, adj) => sum + adj.amountCents, 0);
+
+  console.log(`[USFOODS ADJ] Total adjustments: ${adjustments.length} items, net: $${(totalAdjustmentsCents/100).toFixed(2)}`);
+
+  return {
+    adjustments,
+    totalAdjustmentsCents
+  };
+}
+
+/**
  * Main US Foods parser function
  */
 function parseUSFoodsInvoice(normalizedText, options = {}) {
@@ -289,6 +368,11 @@ function parseUSFoodsInvoice(normalizedText, options = {}) {
 
   const header = parseUSFoodsHeader(normalizedText, lines);
   const totals = extractUSFoodsTotals(normalizedText, lines);
+  const miscCharges = extractUSFoodsAdjustments(normalizedText, lines);
+
+  // Add adjustments to totals
+  totals.adjustmentsCents = miscCharges.totalAdjustmentsCents;
+  totals.adjustments = miscCharges.adjustments;
 
   const lineItems = [];
   let inItemSection = false;
@@ -335,14 +419,15 @@ function parseUSFoodsInvoice(normalizedText, options = {}) {
   // Post-processing: validate and fix line items
   const validatedItems = validateAndFixLineItems(lineItems);
 
-  const confidence = calculateUSFoodsConfidence(validatedItems, totals);
+  const confidence = calculateUSFoodsConfidence(validatedItems, totals, miscCharges);
 
   return {
     vendorKey: 'usfoods',
-    parserVersion: '2.0.0',
+    parserVersion: '2.1.0',  // Bumped for adjustments support
     header: header,
     totals: totals,
     lineItems: validatedItems,
+    adjustments: miscCharges.adjustments,  // Include adjustments separately
     employees: [],
     departments: [],
     confidence: confidence,
@@ -350,15 +435,18 @@ function parseUSFoodsInvoice(normalizedText, options = {}) {
       parseAttempts: ['usfoods'],
       rawLineCount: lines.length,
       itemLinesProcessed: validatedItems.length,
-      mathCorrectedItems: validatedItems.filter(i => i.mathCorrected).length
+      mathCorrectedItems: validatedItems.filter(i => i.mathCorrected).length,
+      adjustmentsFound: miscCharges.adjustments.length,
+      netAdjustmentsCents: miscCharges.totalAdjustmentsCents
     }
   };
 }
 
 /**
  * Calculate confidence score for US Foods parse
+ * Now considers adjustments for more accurate validation
  */
-function calculateUSFoodsConfidence(lineItems, totals) {
+function calculateUSFoodsConfidence(lineItems, totals, miscCharges = { adjustments: [], totalAdjustmentsCents: 0 }) {
   let score = 50;
   const issues = [];
   const warnings = [];
@@ -376,21 +464,38 @@ function calculateUSFoodsConfidence(lineItems, totals) {
     issues.push('No invoice total found');
   }
 
+  // Reconciliation: items + tax + adjustments should equal total
   if (lineItems.length > 0 && totals.totalCents > 0) {
-    const itemsSum = lineItems.reduce((sum, item) => sum + (item.lineTotalCents || 0), 0);
-    const diff = Math.abs(totals.totalCents - itemsSum);
+    const lineItemsSum = lineItems.reduce((sum, item) => sum + (item.lineTotalCents || 0), 0);
+    const adjustmentsSum = miscCharges.totalAdjustmentsCents || 0;
+    const taxCents = totals.taxCents || 0;
+
+    // Calculate computed total
+    const computedTotal = lineItemsSum + taxCents + adjustmentsSum;
+    const diff = Math.abs(computedTotal - totals.totalCents);
     const pctDiff = totals.totalCents > 0 ? diff / totals.totalCents : 1;
 
+    console.log(`[USFOODS CONF] Reconciliation: items=$${(lineItemsSum/100).toFixed(2)} + tax=$${(taxCents/100).toFixed(2)} + adj=$${(adjustmentsSum/100).toFixed(2)} = $${(computedTotal/100).toFixed(2)} vs invoice=$${(totals.totalCents/100).toFixed(2)} (diff=${(pctDiff*100).toFixed(1)}%)`);
+
     if (pctDiff <= 0.01) {
+      score += 20;  // Excellent match
+    } else if (pctDiff <= 0.02) {
       score += 15;
     } else if (pctDiff <= 0.05) {
       score += 10;
-    } else if (pctDiff <= 0.15) {
+    } else if (pctDiff <= 0.10) {
       score += 5;
-      warnings.push(`Line items sum differs from total by ${(pctDiff * 100).toFixed(1)}%`);
+      warnings.push(`Computed total differs from invoice by ${(pctDiff * 100).toFixed(1)}%`);
+    } else if (pctDiff <= 0.25) {
+      warnings.push(`Items+tax+adjustments differs from total by ${(pctDiff * 100).toFixed(1)}%`);
     } else {
-      warnings.push(`Significant difference: items sum $${(itemsSum/100).toFixed(2)} vs total $${(totals.totalCents/100).toFixed(2)}`);
+      issues.push(`Large mismatch: computed $${(computedTotal/100).toFixed(2)} vs invoice $${(totals.totalCents/100).toFixed(2)}`);
     }
+  }
+
+  // Bonus for finding adjustments
+  if (miscCharges.adjustments.length > 0) {
+    score += 5;
   }
 
   // Check math validation
@@ -423,5 +528,6 @@ module.exports = {
   parseUSFoodsLineItem,
   parseUSFoodsHeader,
   extractUSFoodsTotals,
+  extractUSFoodsAdjustments,
   calculateUSFoodsConfidence
 };
