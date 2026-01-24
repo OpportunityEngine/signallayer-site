@@ -4006,6 +4006,24 @@
         const ccAvgImpactEl = document.getElementById('ccAvgImpact');
         if (ccAvgImpactEl) ccAvgImpactEl.textContent = formatMoney(avgImpact);
 
+        // Update Executive Briefing "Action Required" with flagged issues count
+        const briefingActionsEl = document.getElementById('briefingActions');
+        if (briefingActionsEl) briefingActionsEl.textContent = flaggedCount.toString();
+
+        // Update Action Required subtitle
+        const briefingActionsSub = briefingActionsEl?.parentElement?.querySelector('div:last-child');
+        if (briefingActionsSub && flaggedCount > 0) {
+          briefingActionsSub.innerHTML = `
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            Issues need review
+          `;
+        } else if (briefingActionsSub) {
+          briefingActionsSub.innerHTML = `
+            <svg width="12" height="12" fill="none" stroke="#4ade80" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            All clear
+          `;
+        }
+
         console.log('[Dashboard] Tiles updated successfully');
 
       } catch (error) {
@@ -4696,11 +4714,147 @@
 
         // 8. Load inventory intelligence
         loadInventoryDashboard();
+
+        // 9. Load Executive Briefing with real invoice data
+        loadExecutiveBriefing();
       } catch (error) {
         // AuthManager already handled redirect
         console.error('VP dashboard auth failed:', error);
       }
     });
+
+    // =====================================================
+    // EXECUTIVE BRIEFING - REAL INVOICE DATA
+    // =====================================================
+
+    /**
+     * Load Executive Briefing with real data from processed invoices
+     * Updates: Invoices Processed, Inventory (line items), YTD total value
+     */
+    async function loadExecutiveBriefing() {
+      try {
+        // Fetch all invoices (use high limit to get all)
+        const response = await fetch(`${API_BASE}/api/uploads/recent?limit=1000`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error('[Executive Briefing] Failed to fetch invoices');
+          return;
+        }
+
+        const data = await response.json();
+        const invoices = data.runs || [];
+
+        console.log('[Executive Briefing] Loaded', invoices.length, 'invoices');
+
+        // Calculate real statistics
+        const totalInvoices = invoices.length;
+        const totalLineItems = invoices.reduce((sum, inv) => sum + (inv.lineItemCount || 0), 0);
+        const totalValueCents = invoices.reduce((sum, inv) => sum + (inv.totalCents || 0), 0);
+
+        // Calculate invoices processed today (Eastern time)
+        const today = new Date();
+        const todayEastern = new Date(today.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const todayStart = new Date(todayEastern.getFullYear(), todayEastern.getMonth(), todayEastern.getDate());
+
+        const invoicesToday = invoices.filter(inv => {
+          const invDate = new Date(inv.createdAt);
+          const invDateEastern = new Date(invDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+          return invDateEastern >= todayStart;
+        });
+
+        const todayCount = invoicesToday.length;
+        const todayValueCents = invoicesToday.reduce((sum, inv) => sum + (inv.totalCents || 0), 0);
+
+        // Update Executive Daily Briefing
+        const briefingInvoicesEl = document.getElementById('briefingInvoices');
+        if (briefingInvoicesEl) {
+          briefingInvoicesEl.textContent = totalInvoices.toString();
+        }
+
+        // Update "Money Saved Today" - show today's invoice value processed
+        const briefingSavedEl = document.getElementById('briefingSavedToday');
+        if (briefingSavedEl) {
+          briefingSavedEl.textContent = formatMoney(todayValueCents);
+        }
+
+        // Update the subtitle under Money Saved Today
+        const briefingSavedSub = briefingSavedEl?.parentElement?.querySelector('div:last-child');
+        if (briefingSavedSub) {
+          briefingSavedSub.innerHTML = `
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+            ${todayCount} invoice${todayCount !== 1 ? 's' : ''} today
+          `;
+        }
+
+        // Update subtitle under Invoices Processed
+        const briefingInvoicesSub = briefingInvoicesEl?.parentElement?.querySelector('div:last-child');
+        if (briefingInvoicesSub) {
+          briefingInvoicesSub.innerHTML = `
+            <svg width="12" height="12" fill="none" stroke="#4ade80" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            ${totalLineItems.toLocaleString()} line items
+          `;
+        }
+
+        // Update YTD Savings (show total value of all invoices processed)
+        const briefingYTDEl = document.getElementById('briefingYTD');
+        if (briefingYTDEl) {
+          // Format as compact number for large values
+          const ytdValue = totalValueCents / 100;
+          if (ytdValue >= 1000) {
+            briefingYTDEl.textContent = '$' + (ytdValue / 1000).toFixed(1) + 'k';
+          } else {
+            briefingYTDEl.textContent = formatMoney(totalValueCents);
+          }
+        }
+
+        // Update YTD subtitle
+        const briefingYTDSub = briefingYTDEl?.parentElement?.querySelector('div:last-child');
+        if (briefingYTDSub) {
+          briefingYTDSub.innerHTML = `
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 2px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Total invoices processed
+          `;
+        }
+
+        // Update Inventory tile with total line items count
+        const tileInventoryEl = document.getElementById('tileInventoryCount');
+        if (tileInventoryEl) {
+          tileInventoryEl.textContent = totalLineItems.toLocaleString() + ' Items';
+        }
+
+        // Update Smart Actions Executed tile with real total value
+        const tileActionsEl = document.getElementById('tileActionsExecuted');
+        if (tileActionsEl) {
+          tileActionsEl.textContent = formatMoney(totalValueCents) + ' Processed';
+        }
+
+        const tileActionsCountEl = document.getElementById('tileActionsCount');
+        if (tileActionsCountEl) {
+          tileActionsCountEl.textContent = `${totalInvoices} invoices tracked`;
+        }
+
+        // Update Total Savings section
+        const totalSavingsEl = document.getElementById('totalSavings');
+        if (totalSavingsEl) {
+          totalSavingsEl.textContent = formatMoney(totalValueCents);
+        }
+
+        console.log('[Executive Briefing] Updated with real data:', {
+          totalInvoices,
+          totalLineItems,
+          totalValueCents,
+          todayCount,
+          todayValueCents
+        });
+
+      } catch (error) {
+        console.error('[Executive Briefing] Error loading data:', error);
+      }
+    }
 
     // =====================================================
     // INVENTORY INTELLIGENCE FUNCTIONS
