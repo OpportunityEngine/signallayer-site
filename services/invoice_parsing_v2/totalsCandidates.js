@@ -95,7 +95,54 @@ function extractTotalCandidates(text, layoutHints = {}) {
   const candidates = [];
   const seen = new Set(); // Track seen values to avoid duplicates
 
-  // Process each pattern
+  // FIRST: Look for multi-line totals (label on one line, value on next)
+  // Critical for Sysco invoices where PDF extraction splits label and value
+  for (let i = 0; i < lines.length - 1; i++) {
+    const line = lines[i].trim();
+    const nextLine = lines[i + 1].trim();
+
+    // Skip if this looks like a group total
+    if (/GROUP|CATEGORY|DEPT|SECTION/i.test(line)) continue;
+
+    // Check for "INVOICE TOTAL" or "TOTAL" on its own line
+    const isInvoiceTotal = /^INVOICE\s+TOTAL\s*$/i.test(line);
+    const isPlainTotal = /^TOTAL\s*$/i.test(line);
+
+    if (isInvoiceTotal || isPlainTotal) {
+      // Next line should be just a money value
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{2})\s*$/);
+      if (moneyMatch) {
+        const valueCents = parseMoney(moneyMatch[1]);
+        if (valueCents > 0 && valueCents < 100000000) {
+          const positionScore = Math.round((i / totalLines) * 100);
+          const priority = isInvoiceTotal ? 100 : 70;  // INVOICE TOTAL = highest
+          let score = priority + (positionScore >= 66 ? 20 : positionScore >= 33 ? 10 : 0);
+
+          const key = `${valueCents}-MULTI_LINE_TOTAL`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            candidates.push({
+              label: isInvoiceTotal ? 'INVOICE TOTAL (multi-line)' : 'TOTAL (multi-line)',
+              valueCents,
+              rawValue: `${line} | ${nextLine}`,
+              lineNumber: i,
+              positionScore,
+              score: Math.max(0, Math.min(120, score)),  // Allow higher score for multi-line
+              isGroupTotal: false,
+              evidence: {
+                pattern: 'MULTI_LINE',
+                lineText: `${line} → ${nextLine}`,
+                positionPct: positionScore
+              }
+            });
+            console.log(`[TOTALS CANDIDATES] Found multi-line: "${line}" + "${nextLine}" = $${(valueCents/100).toFixed(2)} (score: ${score})`);
+          }
+        }
+      }
+    }
+  }
+
+  // Process each pattern (same-line patterns)
   for (const patternDef of TOTAL_PATTERNS) {
     const regex = new RegExp(patternDef.regex.source, patternDef.regex.flags);
     let match;

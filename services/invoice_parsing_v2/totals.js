@@ -184,7 +184,59 @@ function extractTotalsByLineScan(text) {
     { pattern: /PROMO(?:TION)?[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'PROMO' },
   ];
 
-  // Scan lines from bottom to top (totals usually at bottom)
+  // FIRST PASS: Look for multi-line totals (label on one line, value on next)
+  // This is critical for Sysco invoices where text extraction splits them
+  for (let i = 0; i < lines.length - 1; i++) {
+    const line = lines[i];
+    const nextLine = lines[i + 1];
+    const lineNorm = normalizeLine(line);
+    const nextLineNorm = normalizeLine(nextLine);
+
+    // Skip group subtotals
+    if (isGroupSubtotalLine(line)) continue;
+
+    // Check for "INVOICE TOTAL" or just "TOTAL" on its own line
+    // followed by a money value on the next line
+    if (/^(?:INVOICE\s+)?TOTAL\s*$/i.test(lineNorm) || /^TOTAL\s*$/i.test(lineNorm)) {
+      // Next line should be just a money value
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{2})\s*$/);
+      if (moneyMatch) {
+        const cents = parseMoneyToCents(moneyMatch[1]);
+        if (cents > 0 && cents < 100000000) {  // Reasonable range (< $1M)
+          const isInvoiceTotal = /INVOICE/i.test(lineNorm);
+          totalCandidates.push({
+            cents,
+            priority: isInvoiceTotal ? 0 : 5,  // Highest priority for INVOICE TOTAL
+            name: isInvoiceTotal ? 'INVOICE TOTAL (multi-line)' : 'TOTAL (multi-line)',
+            line: `${line} | ${nextLine}`,
+            lineIndex: i
+          });
+          console.log(`[TOTALS] Found multi-line total: "${line}" + "${nextLine}" = $${(cents/100).toFixed(2)}`);
+        }
+      }
+    }
+
+    // Also check for "TOTAL" followed immediately by a value on the same line or context
+    // Pattern: TOTAL <space> <value> where <value> might be on next line in Sysco format
+    if (/TOTAL$/i.test(lineNorm) && !/GROUP|SUBTOTAL/i.test(lineNorm)) {
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{2})\s*$/);
+      if (moneyMatch) {
+        const cents = parseMoneyToCents(moneyMatch[1]);
+        if (cents > 0 && cents < 100000000) {
+          totalCandidates.push({
+            cents,
+            priority: 6,
+            name: 'TOTAL (next-line value)',
+            line: `${line} | ${nextLine}`,
+            lineIndex: i
+          });
+          console.log(`[TOTALS] Found next-line total: "${line}" + "${nextLine}" = $${(cents/100).toFixed(2)}`);
+        }
+      }
+    }
+  }
+
+  // SECOND PASS: Scan lines from bottom to top (totals usually at bottom)
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
     const lineNorm = normalizeLine(line);
@@ -194,7 +246,7 @@ function extractTotalsByLineScan(text) {
       continue;
     }
 
-    // Look for TOTAL patterns
+    // Look for TOTAL patterns (same-line)
     for (const { pattern, priority, name } of totalPatterns) {
       const match = line.match(pattern);
       if (match) {
