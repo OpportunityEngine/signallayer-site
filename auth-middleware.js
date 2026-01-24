@@ -23,6 +23,17 @@ const db = require('./database');
  */
 async function requireAuth(req, res, next) {
   try {
+    // Allow localhost requests to admin cleanup endpoints (for production maintenance)
+    const localAdminPaths = ['/admin/cleanup/preview', '/admin/cleanup/execute', '/admin/cleanup/reset-totals'];
+    const ip = req.ip || req.connection?.remoteAddress || '';
+    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+
+    if (isLocal && localAdminPaths.some(p => req.path.endsWith(p))) {
+      console.log(`[AUTH] Allowing localhost admin access: ${req.path} from ${ip}`);
+      req.user = { id: 0, email: 'localhost-admin', role: 'admin' };
+      return next();
+    }
+
     // Get token from header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
