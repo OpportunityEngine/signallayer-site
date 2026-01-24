@@ -574,7 +574,7 @@ function extractSyscoTotals(text, lines) {
 
         // Next line should be a money value
         // Allow various decimal formats: 4207.02, 4207.0, 4207, 4,207.02
-        const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
+        const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
         if (moneyMatch) {
           const lineTotal = parseMoney(moneyMatch[1]);
           if (lineTotal > 100 && lineTotal < 100000000) {  // Reasonable range: $1 - $1M
@@ -590,7 +590,7 @@ function extractSyscoTotals(text, lines) {
 
     // Pattern 1: Direct regex for "INVOICE TOTAL" across line boundaries
     if (totals.totalCents === 0) {
-      const invoiceTotalRegex = /INVOICE[\s\r\n]*TOTAL[\s:\r\n]*\$?([\d,]+\.?\d{0,2})/gi;
+      const invoiceTotalRegex = /INVOICE[\s\r\n]*TOTAL[\s:\r\n]*\$?([\d,]+\.?\d{0,3})/gi;
       let match;
       while ((match = invoiceTotalRegex.exec(text)) !== null) {
         const value = parseMoney(match[1]);
@@ -603,7 +603,7 @@ function extractSyscoTotals(text, lines) {
 
     // Pattern 2: Look for total value near "LAST PAGE" marker (Sysco specific)
     if (totals.totalCents === 0) {
-      const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{0,2})\s*$/im);
+      const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{0,3})\s*$/im);
       if (lastPageMatch) {
         const lastPageTotal = parseMoney(lastPageMatch[1]);
         if (lastPageTotal > totals.totalCents) {
@@ -620,7 +620,7 @@ function extractSyscoTotals(text, lines) {
         if (/GROUP\s+TOTAL/i.test(line)) continue;
 
         // Same-line total pattern
-        const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/i);
+        const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i);
         if (match) {
           const lineTotal = parseMoney(match[1]);
           if (lineTotal > totals.totalCents) {

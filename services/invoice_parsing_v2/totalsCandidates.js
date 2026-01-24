@@ -116,7 +116,7 @@ function extractTotalCandidates(text, layoutHints = {}) {
     if (isInvoiceTotal || isPlainTotal) {
       // Next line should be just a money value
       // Allow 0, 1, or 2 decimal digits
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
       if (moneyMatch) {
         const valueCents = parseMoney(moneyMatch[1]);
         if (valueCents > 0 && valueCents < 100000000) {
@@ -151,7 +151,7 @@ function extractTotalCandidates(text, layoutHints = {}) {
   // SECOND: Direct regex scan for multi-line TOTAL patterns in raw text
   // This catches cases where line splitting doesn't work as expected
   // Pattern: "TOTAL" followed by newline and then a money value
-  const multiLineRegex = /(?:INVOICE\s+)?TOTAL\s*[\r\n]+\s*\$?([\d,]+\.?\d{0,2})\s*(?:[\r\n]|$)/gi;
+  const multiLineRegex = /(?:INVOICE\s+)?TOTAL\s*[\r\n]+\s*\$?([\d,]+\.?\d{0,3})\s*(?:[\r\n]|$)/gi;
   let multiMatch;
   while ((multiMatch = multiLineRegex.exec(text)) !== null) {
     const valueCents = parseMoney(multiMatch[1]);

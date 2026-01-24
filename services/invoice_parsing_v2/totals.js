@@ -142,46 +142,46 @@ function extractTotalsByLineScan(text) {
 
   // Pattern definitions with priority (lower = higher priority)
   const totalPatterns = [
-    { pattern: /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 1, name: 'INVOICE TOTAL' },
-    { pattern: /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 2, name: 'TOTAL USD' },
-    { pattern: /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 3, name: 'AMOUNT DUE' },
-    { pattern: /BALANCE\s+DUE[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 4, name: 'BALANCE DUE' },
-    { pattern: /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 5, name: 'GRAND TOTAL' },
-    { pattern: /TOTAL\s+AMOUNT[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 6, name: 'TOTAL AMOUNT' },
-    { pattern: /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 7, name: 'TOTAL DUE' },
+    { pattern: /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 1, name: 'INVOICE TOTAL' },
+    { pattern: /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 2, name: 'TOTAL USD' },
+    { pattern: /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 3, name: 'AMOUNT DUE' },
+    { pattern: /BALANCE\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 4, name: 'BALANCE DUE' },
+    { pattern: /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 5, name: 'GRAND TOTAL' },
+    { pattern: /TOTAL\s+AMOUNT[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 6, name: 'TOTAL AMOUNT' },
+    { pattern: /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 7, name: 'TOTAL DUE' },
     { pattern: /(?:^|\s)TOTAL[:\s]+\$?([\d,]+\.?\d{2})(?:\s|$)/i, priority: 10, name: 'TOTAL (generic)' },
   ];
 
   const subtotalPatterns = [
-    { pattern: /(?:^|\s)SUBTOTAL[:\s]*\$?([\d,]+\.?\d{0,2})(?:\s|$)/i, priority: 1, name: 'SUBTOTAL' },
-    { pattern: /SUB[\s\-]?TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 2, name: 'SUB-TOTAL' },
-    { pattern: /MERCHANDISE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,2})/i, priority: 3, name: 'MERCHANDISE TOTAL' },
+    { pattern: /(?:^|\s)SUBTOTAL[:\s]*\$?([\d,]+\.?\d{0,3})(?:\s|$)/i, priority: 1, name: 'SUBTOTAL' },
+    { pattern: /SUB[\s\-]?TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 2, name: 'SUB-TOTAL' },
+    { pattern: /MERCHANDISE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 3, name: 'MERCHANDISE TOTAL' },
   ];
 
   const taxPatterns = [
-    { pattern: /SALES\s+TAX[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'SALES TAX' },
-    { pattern: /TAX\s*\(?[\d.]*%?\)?[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'TAX' },
-    { pattern: /VAT[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'VAT' },
-    { pattern: /GST[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'GST' },
+    { pattern: /SALES\s+TAX[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'SALES TAX' },
+    { pattern: /TAX\s*\(?[\d.]*%?\)?[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'TAX' },
+    { pattern: /VAT[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'VAT' },
+    { pattern: /GST[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'GST' },
   ];
 
   const feePatterns = [
-    { pattern: /FUEL\s+(?:SURCHARGE|FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'FUEL SURCHARGE' },
-    { pattern: /DELIVERY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'DELIVERY FEE' },
-    { pattern: /SERVICE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'SERVICE CHARGE' },
-    { pattern: /HANDLING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'HANDLING FEE' },
-    { pattern: /ENVIRONMENT(?:AL)?\s+(?:FEE|CHARGE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'ENVIRONMENTAL FEE' },
-    { pattern: /ENERGY\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'ENERGY SURCHARGE' },
-    { pattern: /FREIGHT[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'FREIGHT' },
-    { pattern: /SHIPPING[:\s]*\$?([\d,]+\.?\d{0,2})/i, name: 'SHIPPING' },
+    { pattern: /FUEL\s+(?:SURCHARGE|FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'FUEL SURCHARGE' },
+    { pattern: /DELIVERY\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'DELIVERY FEE' },
+    { pattern: /SERVICE\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'SERVICE CHARGE' },
+    { pattern: /HANDLING\s+(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'HANDLING FEE' },
+    { pattern: /ENVIRONMENT(?:AL)?\s+(?:FEE|CHARGE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'ENVIRONMENTAL FEE' },
+    { pattern: /ENERGY\s+SURCHARGE[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'ENERGY SURCHARGE' },
+    { pattern: /FREIGHT[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'FREIGHT' },
+    { pattern: /SHIPPING[:\s]*\$?([\d,]+\.?\d{0,3})/i, name: 'SHIPPING' },
   ];
 
   const discountPatterns = [
-    { pattern: /DISCOUNT[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'DISCOUNT' },
-    { pattern: /CREDIT[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'CREDIT' },
-    { pattern: /REBATE[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'REBATE' },
-    { pattern: /SAVINGS[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'SAVINGS' },
-    { pattern: /PROMO(?:TION)?[:\s]*-?\$?([\d,]+\.?\d{0,2})/i, name: 'PROMO' },
+    { pattern: /DISCOUNT[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'DISCOUNT' },
+    { pattern: /CREDIT[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'CREDIT' },
+    { pattern: /REBATE[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'REBATE' },
+    { pattern: /SAVINGS[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'SAVINGS' },
+    { pattern: /PROMO(?:TION)?[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'PROMO' },
   ];
 
   // FIRST PASS: Look for multi-line totals (label on one line, value on next)
@@ -207,7 +207,7 @@ function extractTotalsByLineScan(text) {
     if (isInvoiceTotal || isPlainTotal) {
       // Next line should be just a money value
       // Allow 0, 1, or 2 decimal digits (PDF extraction may vary)
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
       if (moneyMatch) {
         const cents = parseMoneyToCents(moneyMatch[1]);
         if (cents > 0 && cents < 100000000) {  // Reasonable range (< $1M)
@@ -227,7 +227,7 @@ function extractTotalsByLineScan(text) {
     // Pattern: TOTAL <space> <value> where <value> might be on next line in Sysco format
     if (/TOTAL\s*$/i.test(lineNorm) && !/GROUP|SUBTOTAL/i.test(lineNorm)) {
       // Allow 0, 1, or 2 decimal digits
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
       if (moneyMatch) {
         const cents = parseMoneyToCents(moneyMatch[1]);
         if (cents > 0 && cents < 100000000) {
@@ -246,7 +246,7 @@ function extractTotalsByLineScan(text) {
 
   // ADDITIONAL: Direct regex scan for multi-line TOTAL in raw text
   // This catches cases where line splitting doesn't match expected behavior
-  const rawMultiLineRegex = /(?:INVOICE\s+)?TOTAL\s*[\r\n]+\s*\$?([\d,]+\.?\d{0,2})\s*(?:[\r\n]|$)/gi;
+  const rawMultiLineRegex = /(?:INVOICE\s+)?TOTAL\s*[\r\n]+\s*\$?([\d,]+\.?\d{0,3})\s*(?:[\r\n]|$)/gi;
   let rawMatch;
   while ((rawMatch = rawMultiLineRegex.exec(text)) !== null) {
     const cents = parseMoneyToCents(rawMatch[1]);
