@@ -4,8 +4,47 @@
  */
 
 /**
+ * Parse money string to dollars (float with 3 decimal precision)
+ * This preserves precision for calculations before final rounding
+ * Handles: $1,234.567, 1234.56, (123.45) for negatives, etc.
+ * @param {string|number} str - Money string or number
+ * @param {number} decimals - Decimal precision to preserve (default 3)
+ * @returns {number} - Dollar amount as float with specified precision
+ */
+function parseMoneyToDollars(str, decimals = 3) {
+  if (str === null || str === undefined) return 0;
+  if (typeof str === 'number') {
+    // Round to specified precision
+    const multiplier = Math.pow(10, decimals);
+    return Math.round(str * multiplier) / multiplier;
+  }
+
+  const s = String(str).trim();
+  if (!s) return 0;
+
+  // Check for negative (parentheses)
+  const isNegative = s.startsWith('(') && s.endsWith(')') || s.startsWith('-');
+
+  // Remove currency symbols, commas, parentheses, spaces
+  const cleaned = s.replace(/[$€£¥,\s()]/g, '').replace(/^-/, '');
+
+  if (!cleaned) return 0;
+
+  const num = parseFloat(cleaned);
+  if (!Number.isFinite(num)) return 0;
+
+  // Round to specified decimal precision
+  const multiplier = Math.pow(10, decimals);
+  const rounded = Math.round(num * multiplier) / multiplier;
+
+  return isNegative ? -rounded : rounded;
+}
+
+/**
  * Parse money string to cents (integer)
  * Handles: $1,234.56, 1234.56, (123.45) for negatives, etc.
+ * NOTE: For better precision in calculations, use parseMoneyToDollars first,
+ * then convert to cents only at the final step
  */
 function parseMoney(str) {
   if (str === null || str === undefined) return 0;
@@ -27,6 +66,33 @@ function parseMoney(str) {
 
   const cents = Math.round(num * 100);
   return isNegative ? -cents : cents;
+}
+
+/**
+ * Calculate line total with 3 decimal precision, then round to cents
+ * This prevents cumulative rounding errors:
+ * - qty=10, unitPrice=$1.587 => $15.87 (not $15.90 from 10 * $1.59)
+ * @param {number} qty - Quantity
+ * @param {number} unitPriceDollars - Unit price as float (with 3 decimal precision)
+ * @returns {number} - Line total in cents
+ */
+function calculateLineTotalCents(qty, unitPriceDollars) {
+  // Calculate with full precision, then round to cents at the end
+  const totalDollars = qty * unitPriceDollars;
+  return Math.round(totalDollars * 100);
+}
+
+/**
+ * Calculate line total with precision, returning dollars
+ * @param {number} qty - Quantity
+ * @param {number} unitPriceDollars - Unit price as float
+ * @param {number} decimals - Decimal precision (default 2 for display)
+ * @returns {number} - Line total in dollars
+ */
+function calculateLineTotalDollars(qty, unitPriceDollars, decimals = 2) {
+  const totalDollars = qty * unitPriceDollars;
+  const multiplier = Math.pow(10, decimals);
+  return Math.round(totalDollars * multiplier) / multiplier;
 }
 
 /**
@@ -335,6 +401,9 @@ function isProgramFeeLine(line) {
 
 module.exports = {
   parseMoney,
+  parseMoneyToDollars,
+  calculateLineTotalCents,
+  calculateLineTotalDollars,
   parseQty,
   nearlyEqual,
   normalizeInvoiceText,

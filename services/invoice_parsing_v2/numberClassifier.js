@@ -4,12 +4,18 @@
  * Intelligently classifies numbers found in invoice text as:
  * - quantity (small integers: 1-999)
  * - sku/itemCode (5-12 digit codes, sometimes alphanumeric)
- * - price (decimal numbers, typically $X.XX format)
+ * - price (decimal numbers, typically $X.XX or $X.XXX format)
+ * - weight (decimal with LB/OZ context, for catch-weight items)
  * - packSize (like "25", "12" when followed by units)
  * - unknown
  *
  * This helps prevent misclassification like using an item code as quantity.
+ *
+ * PRECISION: Supports 3 decimal places for prices (e.g., $1.587/LB)
+ * to ensure accurate line item calculations before final rounding.
  */
+
+const { parseMoneyToDollars, calculateLineTotalCents } = require('./utils');
 
 /**
  * Classify a number based on its value and context
@@ -34,8 +40,11 @@ function classifyNumber(value, context = '', position = 0.5) {
     reasons: []
   };
 
-  // Check if it looks like a price (has decimal with 2 places)
-  const isPriceFormat = /^\$?[\d,]+\.\d{2}$/.test(numStr);
+  // Check if it looks like a price (has decimal with 2 OR 3 places)
+  // 3 decimal places are common for per-pound/per-unit pricing like $1.587/LB
+  const isPriceFormat2Decimals = /^\$?[\d,]+\.\d{2}$/.test(numStr);
+  const isPriceFormat3Decimals = /^\$?[\d,]+\.\d{3}$/.test(numStr);
+  const isPriceFormat = isPriceFormat2Decimals || isPriceFormat3Decimals;
 
   // Check if it's a whole number
   const isWholeNumber = Number.isInteger(num);
@@ -43,11 +52,41 @@ function classifyNumber(value, context = '', position = 0.5) {
   // Check digit count
   const digitCount = numStr.replace(/[^\d]/g, '').length;
 
+  // Check for weight context (catch-weight items)
+  const hasWeightContext = /\b(LB|LBS|OZ|KG|POUND|OUNCE)\b/i.test(context);
+  const hasPerUnitContext = /\/(LB|OZ|EA|EACH|UNIT)\b/i.test(context);
+
+  // ===== WEIGHT DETECTION (for catch-weight items) =====
+  if (!isWholeNumber && hasWeightContext && num > 0 && num < 1000) {
+    // This might be a weight value, not a price
+    // Check if it's in a position that suggests weight (before prices)
+    if (position < 0.5) {
+      result.type = 'weight';
+      result.confidence = 80;
+      result.reasons.push('Decimal number with weight unit context');
+      result.reasons.push('Located before prices (typical weight position)');
+      return result;
+    }
+  }
+
   // ===== PRICE DETECTION =====
   if (isPriceFormat) {
     result.type = 'price';
     result.confidence = 90;
-    result.reasons.push('Has decimal with 2 places');
+    result.decimals = isPriceFormat3Decimals ? 3 : 2;
+
+    if (isPriceFormat3Decimals) {
+      result.reasons.push('Has decimal with 3 places (per-unit pricing)');
+      result.confidence += 5;  // 3 decimal prices are more precise
+    } else {
+      result.reasons.push('Has decimal with 2 places');
+    }
+
+    // Per-unit pricing context increases confidence
+    if (hasPerUnitContext) {
+      result.confidence += 5;
+      result.reasons.push('Has per-unit pricing context (/LB, /EA, etc.)');
+    }
 
     // Prices at end of line are more confident
     if (position > 0.7) {
@@ -55,8 +94,8 @@ function classifyNumber(value, context = '', position = 0.5) {
       result.reasons.push('Located at end of line');
     }
 
-    // Reasonable price range ($0.01 - $99,999.99)
-    if (num >= 0.01 && num <= 99999.99) {
+    // Reasonable price range ($0.001 - $99,999.999)
+    if (num >= 0.001 && num <= 99999.999) {
       result.confidence += 5;
       result.reasons.push('In reasonable price range');
     }
@@ -224,15 +263,30 @@ function analyzeLineWithClassification(line) {
 
   if (description.length < 3) return null;
 
+  // Store prices with full precision (3 decimals) for accurate calculations
+  const unitPriceDollars = parseMoneyToDollars(unitPrice.value, 3);
+  const lineTotalDollars = parseMoneyToDollars(lineTotal.value, 3);
+
+  // Calculate cents using precision math
+  const unitPriceCents = Math.round(unitPriceDollars * 100);
+  const lineTotalCents = Math.round(lineTotalDollars * 100);
+
+  // Calculate what the line total SHOULD be with full precision
+  const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
+
   return {
     description,
     qty,
     sku,
-    unitPriceCents: Math.round(unitPrice.value * 100),
-    lineTotalCents: Math.round(lineTotal.value * 100),
+    // Store both cents (for storage) and dollars (for precision)
+    unitPriceDollars,      // Full precision: 1.587
+    unitPriceCents,        // Rounded: 159
+    lineTotalDollars,      // Full precision: 15.87
+    lineTotalCents,        // Rounded: 1587
+    computedTotalCents,    // qty × unitPriceDollars × 100, rounded
     confidence: Math.min(lineTotal.confidence, quantities.length > 0 ? quantities[0].confidence : 50),
     classification: {
-      prices: prices.map(p => ({ value: p.value, confidence: p.confidence })),
+      prices: prices.map(p => ({ value: p.value, confidence: p.confidence, decimals: p.decimals || 2 })),
       quantities: quantities.map(q => ({ value: q.value, confidence: q.confidence })),
       skus: skus.map(s => ({ value: s.value, confidence: s.confidence }))
     }
@@ -240,87 +294,274 @@ function analyzeLineWithClassification(line) {
 }
 
 /**
- * Validate line item math: qty × unitPrice ≈ lineTotal
- * @param {Object} item - Line item to validate
- * @param {number} tolerance - Allowed difference in cents (default 5)
- * @returns {Object} Validation result
+ * Rounding modes for price calculations
+ * Different vendors use different rounding strategies
  */
-function validateLineItemMath(item, tolerance = 5) {
-  if (!item || !item.qty || !item.unitPriceCents || !item.lineTotalCents) {
+const ROUNDING_MODES = {
+  STANDARD: 'standard',     // Math.round (0.5 rounds up)
+  BANKERS: 'bankers',       // Round half to even (reduces cumulative bias)
+  FLOOR: 'floor',           // Always round down
+  CEIL: 'ceil'              // Always round up
+};
+
+/**
+ * Apply rounding with specified mode
+ * @param {number} value - Value to round
+ * @param {string} mode - Rounding mode
+ * @returns {number} - Rounded value
+ */
+function applyRounding(value, mode = ROUNDING_MODES.STANDARD) {
+  switch (mode) {
+    case ROUNDING_MODES.BANKERS:
+      // Banker's rounding: round half to even
+      const floor = Math.floor(value);
+      const decimal = value - floor;
+      if (decimal === 0.5) {
+        return floor % 2 === 0 ? floor : floor + 1;
+      }
+      return Math.round(value);
+    case ROUNDING_MODES.FLOOR:
+      return Math.floor(value);
+    case ROUNDING_MODES.CEIL:
+      return Math.ceil(value);
+    default:
+      return Math.round(value);
+  }
+}
+
+/**
+ * Validate line item math: qty × unitPrice ≈ lineTotal
+ * Uses 3 decimal precision for calculations to handle per-pound pricing
+ * Tries multiple rounding modes to find a match
+ *
+ * @param {Object} item - Line item to validate
+ * @param {number} tolerance - Allowed difference in cents (default 2)
+ * @returns {Object} Validation result with precision details
+ */
+function validateLineItemMath(item, tolerance = 2) {
+  if (!item || !item.qty) {
     return { valid: false, reason: 'Missing required fields' };
   }
 
-  const computed = item.qty * item.unitPriceCents;
-  const diff = Math.abs(computed - item.lineTotalCents);
+  // Get the best available price (prefer high-precision dollars)
+  const unitPriceDollars = item.unitPriceDollars ||
+    (item.unitPriceCents ? item.unitPriceCents / 100 : 0);
 
-  if (diff <= tolerance) {
-    return { valid: true, diff, computed, actual: item.lineTotalCents };
+  const lineTotalCents = item.lineTotalCents || 0;
+
+  if (!unitPriceDollars || !lineTotalCents) {
+    return { valid: false, reason: 'Missing price or total' };
   }
 
-  // Check if qty might be wrong (common issue)
-  // Try to find a qty that makes the math work
-  if (item.unitPriceCents > 0) {
-    const impliedQty = Math.round(item.lineTotalCents / item.unitPriceCents);
-    if (impliedQty >= 1 && impliedQty <= 999) {
-      const impliedDiff = Math.abs(impliedQty * item.unitPriceCents - item.lineTotalCents);
+  // Calculate with full precision, then round
+  const preciseTotal = item.qty * unitPriceDollars * 100;  // In cents, unrounded
+
+  // Try different rounding modes to match the vendor's calculation
+  const roundingResults = {};
+  for (const mode of Object.values(ROUNDING_MODES)) {
+    const rounded = applyRounding(preciseTotal, mode);
+    const diff = Math.abs(rounded - lineTotalCents);
+    roundingResults[mode] = { rounded, diff };
+  }
+
+  // Find the best match
+  const bestMatch = Object.entries(roundingResults)
+    .sort(([, a], [, b]) => a.diff - b.diff)[0];
+
+  const [bestMode, { rounded: bestRounded, diff: bestDiff }] = bestMatch;
+
+  if (bestDiff <= tolerance) {
+    return {
+      valid: true,
+      diff: bestDiff,
+      computed: bestRounded,
+      actual: lineTotalCents,
+      roundingMode: bestMode,
+      precisionDetails: {
+        unitPriceDollars,
+        qty: item.qty,
+        preciseTotal,
+        roundedTotal: bestRounded
+      }
+    };
+  }
+
+  // Not a direct match - try to diagnose the issue
+
+  // 1. Check if qty might be wrong (common issue)
+  if (unitPriceDollars > 0) {
+    const impliedQty = lineTotalCents / (unitPriceDollars * 100);
+    const roundedImpliedQty = Math.round(impliedQty);
+
+    if (roundedImpliedQty >= 1 && roundedImpliedQty <= 9999 &&
+        Math.abs(impliedQty - roundedImpliedQty) < 0.01) {
+      const impliedTotal = roundedImpliedQty * unitPriceDollars * 100;
+      const impliedDiff = Math.abs(Math.round(impliedTotal) - lineTotalCents);
+
       if (impliedDiff <= tolerance) {
         return {
           valid: false,
           reason: 'Qty appears incorrect',
-          suggestedQty: impliedQty,
-          diff,
-          computed,
-          actual: item.lineTotalCents
+          suggestedQty: roundedImpliedQty,
+          diff: bestDiff,
+          computed: bestRounded,
+          actual: lineTotalCents,
+          precisionDetails: {
+            impliedQty,
+            unitPriceDollars
+          }
         };
       }
     }
   }
 
+  // 2. Check for catch-weight item (qty might be weight)
+  // For catch-weight, lineTotal = weight × pricePerLB
+  if (item.weight && item.weight > 0) {
+    const catchWeightTotal = item.weight * unitPriceDollars * 100;
+    const catchWeightDiff = Math.abs(Math.round(catchWeightTotal) - lineTotalCents);
+    if (catchWeightDiff <= tolerance) {
+      return {
+        valid: true,
+        diff: catchWeightDiff,
+        computed: Math.round(catchWeightTotal),
+        actual: lineTotalCents,
+        isCatchWeight: true,
+        weight: item.weight,
+        precisionDetails: {
+          weightLbs: item.weight,
+          pricePerLb: unitPriceDollars
+        }
+      };
+    }
+  }
+
+  // 3. Return the best we could do
   return {
     valid: false,
-    reason: `Math mismatch: ${item.qty} × $${(item.unitPriceCents/100).toFixed(2)} = $${(computed/100).toFixed(2)} ≠ $${(item.lineTotalCents/100).toFixed(2)}`,
-    diff,
-    computed,
-    actual: item.lineTotalCents
+    reason: `Math mismatch: ${item.qty} × $${unitPriceDollars.toFixed(3)} = $${(preciseTotal/100).toFixed(2)} ≠ $${(lineTotalCents/100).toFixed(2)}`,
+    diff: bestDiff,
+    computed: bestRounded,
+    actual: lineTotalCents,
+    roundingMode: bestMode,
+    allRoundingResults: roundingResults,
+    precisionDetails: {
+      unitPriceDollars,
+      qty: item.qty,
+      preciseTotal
+    }
   };
 }
 
 /**
  * Post-process and validate extracted line items
- * Attempts to fix common issues
+ * Attempts to fix common issues using precision math
  * @param {Array} items - Array of line items
  * @returns {Array} Validated and potentially corrected items
  */
 function validateAndFixLineItems(items) {
   if (!items || !Array.isArray(items)) return [];
 
-  return items.map(item => {
+  let fixedCount = 0;
+  let weightCorrectedCount = 0;
+
+  const validatedItems = items.map(item => {
     const validation = validateLineItemMath(item);
 
     if (validation.valid) {
-      return { ...item, mathValidated: true };
+      const result = {
+        ...item,
+        mathValidated: true,
+        roundingMode: validation.roundingMode
+      };
+
+      // Preserve precision details
+      if (validation.precisionDetails) {
+        result.unitPriceDollars = validation.precisionDetails.unitPriceDollars;
+      }
+
+      // Mark catch-weight items
+      if (validation.isCatchWeight) {
+        result.isCatchWeight = true;
+        result.weight = validation.weight;
+        weightCorrectedCount++;
+      }
+
+      // Update lineTotalCents to use precision-calculated value if different
+      if (validation.computed !== item.lineTotalCents) {
+        result.lineTotalCents = validation.computed;
+        result.originalLineTotalCents = item.lineTotalCents;
+        result.lineTotalAdjusted = true;
+      }
+
+      return result;
     }
 
     // Try to fix the item
     if (validation.suggestedQty) {
+      fixedCount++;
       console.log(`[NUMBER CLASSIFIER] Fixing qty: ${item.qty} -> ${validation.suggestedQty} for "${item.description?.slice(0, 30)}..."`);
+
+      // Recalculate line total with corrected qty and precision
+      const unitPriceDollars = validation.precisionDetails?.unitPriceDollars ||
+        (item.unitPriceCents / 100);
+      const correctedTotalCents = calculateLineTotalCents(validation.suggestedQty, unitPriceDollars);
+
       return {
         ...item,
         qty: validation.suggestedQty,
         quantity: validation.suggestedQty,
+        unitPriceDollars,
+        lineTotalCents: correctedTotalCents,
         mathValidated: true,
         mathCorrected: true,
-        originalQty: item.qty
+        originalQty: item.qty,
+        originalLineTotalCents: item.lineTotalCents
       };
+    }
+
+    // Check for weight-based pricing (T/WT = total weight)
+    // Sysco format: qty might actually be total weight in pounds
+    if (item.qty > 10 && item.unitPriceCents > 0) {
+      // Try interpreting qty as weight
+      const asWeight = item.qty;
+      const pricePerLb = item.unitPriceCents / 100;
+      const weightBasedTotal = Math.round(asWeight * pricePerLb * 100);
+      const weightDiff = Math.abs(weightBasedTotal - item.lineTotalCents);
+
+      if (weightDiff <= 5) {  // Within 5 cents tolerance
+        weightCorrectedCount++;
+        console.log(`[NUMBER CLASSIFIER] Weight-based pricing detected: ${asWeight} LB × $${pricePerLb.toFixed(3)}/LB = $${(weightBasedTotal/100).toFixed(2)}`);
+
+        return {
+          ...item,
+          qty: 1,
+          quantity: 1,
+          weight: asWeight,
+          unitPriceDollars: pricePerLb,
+          lineTotalCents: item.lineTotalCents,  // Keep original (it's correct)
+          mathValidated: true,
+          weightCorrected: true,
+          isCatchWeight: true,
+          originalQty: item.qty
+        };
+      }
     }
 
     // Return as-is but flagged
     return {
       ...item,
       mathValidated: false,
-      mathError: validation.reason
+      mathError: validation.reason,
+      allRoundingResults: validation.allRoundingResults
     };
   });
+
+  if (fixedCount > 0 || weightCorrectedCount > 0) {
+    console.log(`[NUMBER CLASSIFIER] Validation complete: ${fixedCount} qty fixes, ${weightCorrectedCount} weight-based items detected`);
+  }
+
+  return validatedItems;
 }
 
 /**
@@ -354,5 +595,7 @@ module.exports = {
   analyzeLineWithClassification,
   validateLineItemMath,
   validateAndFixLineItems,
-  isLikelyMisclassifiedItemCode
+  isLikelyMisclassifiedItemCode,
+  applyRounding,
+  ROUNDING_MODES
 };

@@ -14,11 +14,24 @@
  * The quantity is at the beginning (1S, 1 CS, 2 CS, etc.)
  */
 
-const { parseMoney, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
+const { parseMoney, parseMoneyToDollars, calculateLineTotalCents, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
 const { validateLineItemMath, validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
 const { detectUOM, detectContinuationLine, enhanceLineItemWithUOM, parseSyscoSizeNotation } = require('../unitOfMeasure');
 const { extractTotalCandidates, findReconcilableTotal } = require('../totalsCandidates');
 const { extractAdjustments, calculateAdjustmentsSummary } = require('../adjustmentsExtractor');
+
+/**
+ * Process price string with 3 decimal precision
+ * Returns both cents (rounded) and dollars (precise) for accurate calculations
+ * @param {string} priceStr - Price string like "15.73" or "1.587"
+ * @returns {Object} - { cents, dollars, computed }
+ */
+function processPrice(priceStr, qty = 1) {
+  const dollars = parseMoneyToDollars(priceStr, 3);  // Full precision
+  const cents = parseMoney(priceStr);                 // Rounded to cents
+  const computedCents = calculateLineTotalCents(qty, dollars);  // Qty × dollars × 100, rounded
+  return { dollars, cents, computedCents };
+}
 
 /**
  * Parse Sysco line item
@@ -72,13 +85,18 @@ function parseSyscoLineItem(line) {
     const descPart = match[4].trim();
     const sku1 = match[5];
     const itemCode = match[6];
-    const unitPrice = parseMoney(match[7]);
-    const lineTotal = parseMoney(match[8]);
+    // Parse prices with 3 decimal precision for accuracy
+    const unitPriceDollars = parseMoneyToDollars(match[7], 3);
+    const unitPriceCents = parseMoney(match[7]);
+    const lineTotalCents = parseMoney(match[8]);
+
+    // Calculate what the line total SHOULD be with precision
+    const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
 
     // Sanity check: reject absurdly high prices (likely order numbers misread as prices)
     // Max $10,000 per line item is generous for restaurant supplies
     const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
-    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceCents < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku1,
@@ -87,8 +105,10 @@ function parseSyscoLineItem(line) {
         qty: qty,
         unit: unit,
         category: categoryCodeToName(category),
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceDollars,  // Full precision
+        unitPriceCents: unitPriceCents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: computedTotalCents,  // For validation
         taxFlag: null,
         raw: line
       };
@@ -109,12 +129,12 @@ function parseSyscoLineItem(line) {
     const descPart = match[4].trim();
     const sku1 = match[5];
     const itemCode = match[6];
-    const unitPrice = parseMoney(match[7]);
-    const lineTotal = parseMoney(match[8]);
+    const unitPriceProc = processPrice(match[7], qty);
+    const lineTotalCents = parseMoney(match[8]);
 
     // Sanity check: reject absurdly high prices
     const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
-    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceProc.cents < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku1,
@@ -123,8 +143,10 @@ function parseSyscoLineItem(line) {
         qty: qty,
         unit: unit,
         category: categoryCodeToName(category),
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         taxFlag: null,
         raw: line
       };
@@ -143,12 +165,12 @@ function parseSyscoLineItem(line) {
     const unit = match[3].toUpperCase();
     const descPart = match[4].trim();
     const sku = match[5];
-    const unitPrice = parseMoney(match[6]);
-    const lineTotal = parseMoney(match[7]);
+    const unitPriceProc = processPrice(match[6], qty);
+    const lineTotalCents = parseMoney(match[7]);
 
     // Sanity check: reject absurdly high prices
     const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
-    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceProc.cents < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku,
@@ -156,8 +178,10 @@ function parseSyscoLineItem(line) {
         qty: qty,
         unit: unit,
         category: categoryCodeToName(category),
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         taxFlag: null,
         raw: line
       };
@@ -175,12 +199,12 @@ function parseSyscoLineItem(line) {
     const unit = match[3].toUpperCase();
     const descPart = match[4].trim();
     const sku = match[5];
-    const unitPrice = parseMoney(match[6]);
-    const lineTotal = parseMoney(match[7]);
+    const unitPriceProc = processPrice(match[6], qty);
+    const lineTotalCents = parseMoney(match[7]);
 
     // Sanity check: reject absurdly high prices
     const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
-    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceProc.cents < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku,
@@ -188,8 +212,10 @@ function parseSyscoLineItem(line) {
         qty: qty,
         unit: unit,
         category: categoryCodeToName(category),
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         taxFlag: null,
         raw: line
       };
@@ -208,8 +234,7 @@ function parseSyscoLineItem(line) {
     const fullDesc = match[1].trim();
     const sku1 = match[2];
     const itemCode = match[3];
-    const unitPrice = parseMoney(match[4]);
-    const lineTotal = parseMoney(match[5]);
+    const lineTotalCents = parseMoney(match[5]);
 
     // Try to extract qty from beginning: [Cat]? [Qty] [Unit]? [Rest...]
     let qty = 1;
@@ -229,9 +254,11 @@ function parseSyscoLineItem(line) {
       }
     }
 
+    const unitPriceProc = processPrice(match[4], qty);
+
     // Sanity check: reject absurdly high prices (likely order numbers)
     const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
-    if (description.length >= 3 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
+    if (description.length >= 3 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceProc.cents < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku1,
@@ -240,8 +267,10 @@ function parseSyscoLineItem(line) {
         qty: qty,
         unit: unit,
         category: category,
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         taxFlag: null,
         raw: line
       };
@@ -253,8 +282,7 @@ function parseSyscoLineItem(line) {
   if (match) {
     const fullDesc = match[1].trim();
     const sku = match[2];
-    const unitPrice = parseMoney(match[3]);
-    const lineTotal = parseMoney(match[4]);
+    const lineTotalCents = parseMoney(match[4]);
 
     let qty = 1;
     let description = fullDesc;
@@ -272,9 +300,11 @@ function parseSyscoLineItem(line) {
       }
     }
 
+    const unitPriceProc = processPrice(match[3], qty);
+
     // Sanity check: reject absurdly high prices (likely order numbers)
     const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
-    if (description.length >= 3 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
+    if (description.length >= 3 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceProc.cents < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku,
@@ -282,8 +312,10 @@ function parseSyscoLineItem(line) {
         qty: qty,
         unit: unit,
         category: category,
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         taxFlag: null,
         raw: line
       };

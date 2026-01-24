@@ -10,8 +10,19 @@
  * Example: 1234567 CHEF'S LINE CHICKEN BREAST BNLS 4/10LB 2 45.99 91.98
  */
 
-const { parseMoney, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
+const { parseMoney, parseMoneyToDollars, calculateLineTotalCents, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
 const { validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
+
+/**
+ * Process price string with 3 decimal precision
+ * Returns both cents (rounded) and dollars (precise) for accurate calculations
+ */
+function processPrice(priceStr, qty = 1) {
+  const dollars = parseMoneyToDollars(priceStr, 3);
+  const cents = parseMoney(priceStr);
+  const computedCents = calculateLineTotalCents(qty, dollars);
+  return { dollars, cents, computedCents };
+}
 
 /**
  * Parse US Foods line item
@@ -49,8 +60,8 @@ function parseUSFoodsLineItem(line) {
     const itemCode = match[1];
     const descPart = match[2].trim();
     const qty = parseInt(match[3], 10);
-    const unitPrice = parseMoney(match[4]);
-    const lineTotal = parseMoney(match[5]);
+    const unitPriceProc = processPrice(match[4], qty);
+    const lineTotalCents = parseMoney(match[5]);
 
     // Extract pack size from description if present
     let description = descPart;
@@ -62,15 +73,17 @@ function parseUSFoodsLineItem(line) {
       description = descPart.slice(0, packMatch.index).trim();
     }
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0) {
       return {
         type: 'item',
         sku: itemCode,
         description: description,
         packSize: packSize,
         qty: qty,
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         category: 'food_supplies',
         raw: line
       };
@@ -89,18 +102,20 @@ function parseUSFoodsLineItem(line) {
     const packNum = match[3];
     const packUnit = match[4];
     const qty = parseInt(match[5], 10);
-    const unitPrice = parseMoney(match[6]);
-    const lineTotal = parseMoney(match[7]);
+    const unitPriceProc = processPrice(match[6], qty);
+    const lineTotalCents = parseMoney(match[7]);
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0) {
       return {
         type: 'item',
         sku: itemCode,
         description: description,
         packSize: `${packNum}/${packUnit}`,
         qty: qty,
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         category: 'food_supplies',
         raw: line
       };
@@ -114,8 +129,8 @@ function parseUSFoodsLineItem(line) {
   if (match) {
     const fullDesc = match[1].trim();
     const qty = parseInt(match[2], 10);
-    const unitPrice = parseMoney(match[3]);
-    const lineTotal = parseMoney(match[4]);
+    const unitPriceProc = processPrice(match[3], qty);
+    const lineTotalCents = parseMoney(match[4]);
 
     // Try to extract item code from description
     let itemCode = null;
@@ -127,14 +142,16 @@ function parseUSFoodsLineItem(line) {
       description = codeMatch[2].trim();
     }
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0 && description.length >= 3) {
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && description.length >= 3) {
       return {
         type: 'item',
         sku: itemCode,
         description: description,
         qty: qty,
-        unitPriceCents: unitPrice,
-        lineTotalCents: lineTotal,
+        unitPriceDollars: unitPriceProc.dollars,
+        unitPriceCents: unitPriceProc.cents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: unitPriceProc.computedCents,
         category: 'food_supplies',
         raw: line
       };
@@ -148,7 +165,7 @@ function parseUSFoodsLineItem(line) {
   if (match) {
     const fullDesc = match[1].trim();
     const qty = parseInt(match[2], 10);
-    const price = parseMoney(match[3]);
+    const lineTotalCents = parseMoney(match[3]);
 
     let itemCode = null;
     let description = fullDesc;
@@ -159,14 +176,21 @@ function parseUSFoodsLineItem(line) {
       description = codeMatch[2].trim();
     }
 
-    if (qty >= 1 && qty <= 99 && price > 0 && description.length >= 3) {
+    if (qty >= 1 && qty <= 99 && lineTotalCents > 0 && description.length >= 3) {
+      // Calculate unit price with precision
+      const unitPriceDollars = parseMoneyToDollars(lineTotalCents / 100 / qty, 3);
+      const unitPriceCents = Math.round(unitPriceDollars * 100);
+      const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
+
       return {
         type: 'item',
         sku: itemCode,
         description: description,
         qty: qty,
-        unitPriceCents: Math.round(price / qty),
-        lineTotalCents: price,
+        unitPriceDollars: unitPriceDollars,
+        unitPriceCents: unitPriceCents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: computedTotalCents,
         category: 'food_supplies',
         raw: line
       };
@@ -423,7 +447,7 @@ function parseUSFoodsInvoice(normalizedText, options = {}) {
 
   return {
     vendorKey: 'usfoods',
-    parserVersion: '2.1.0',  // Bumped for adjustments support
+    parserVersion: '2.2.0',  // Bumped for 3 decimal precision support
     header: header,
     totals: totals,
     lineItems: validatedItems,

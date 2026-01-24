@@ -6,6 +6,8 @@
 
 const {
   parseMoney,
+  parseMoneyToDollars,
+  calculateLineTotalCents,
   parseQty,
   scanFromBottom,
   normalizeInvoiceText,
@@ -16,6 +18,17 @@ const {
 const { parseAdaptive } = require('./adaptiveParser');
 const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
 const { validateAndFixLineItems } = require('./numberClassifier');
+
+/**
+ * Process price string with 3 decimal precision
+ * Returns both cents (rounded) and dollars (precise) for accurate calculations
+ */
+function processPrice(priceStr, qty = 1) {
+  const dollars = parseMoneyToDollars(priceStr, 3);
+  const cents = parseMoney(priceStr);
+  const computedCents = calculateLineTotalCents(qty, dollars);
+  return { dollars, cents, computedCents };
+}
 
 /**
  * Extract header information from generic invoice
@@ -437,8 +450,11 @@ function extractGenericLineItems(text, lines) {
           }
         }
 
-        const unitPriceCents = Math.round(unitPrice * 100);
+        // Use precision processing for accurate calculations
+        const unitPriceDollars = parseMoneyToDollars(unitPrice, 3);
+        const unitPriceCents = Math.round(unitPriceDollars * 100);
         const lineTotalCents = Math.round(lineTotal * 100);
+        const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
 
         // Sanity check: reject absurdly high prices (likely order numbers misread as prices)
         if (unitPriceCents < MAX_LINE_ITEM_CENTS && lineTotalCents < MAX_LINE_ITEM_CENTS) {
@@ -447,8 +463,10 @@ function extractGenericLineItems(text, lines) {
             sku: null,
             description: description,
             qty: qty,
+            unitPriceDollars: unitPriceDollars,
             unitPriceCents: unitPriceCents,
             lineTotalCents: lineTotalCents,
+            computedTotalCents: computedTotalCents,
             taxFlag: null,
             raw: line
           });
@@ -514,7 +532,7 @@ function parseGenericInvoice(normalizedText, options = {}) {
 
   const result = {
     vendorKey: 'generic',
-    parserVersion: '2.2.0',  // Bumped for adjustments support
+    parserVersion: '2.3.0',  // Bumped for 3 decimal precision support
     header: header,
     totals: totals,
     lineItems: validatedItems,

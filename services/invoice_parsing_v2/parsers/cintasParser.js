@@ -13,6 +13,8 @@
 
 const {
   parseMoney,
+  parseMoneyToDollars,
+  calculateLineTotalCents,
   parseQty,
   scanFromBottom,
   isGroupSubtotal,
@@ -20,6 +22,17 @@ const {
   isProgramFeeLine
 } = require('../utils');
 const { validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
+
+/**
+ * Process price string with 3 decimal precision
+ * Returns both cents (rounded) and dollars (precise) for accurate calculations
+ */
+function processPrice(priceStr, qty = 1) {
+  const dollars = parseMoneyToDollars(priceStr, 3);
+  const cents = parseMoney(priceStr);
+  const computedCents = calculateLineTotalCents(qty, dollars);
+  return { dollars, cents, computedCents };
+}
 
 /**
  * Parse Cintas invoice header (vendor, customer, invoice number, etc.)
@@ -244,17 +257,22 @@ function parseItemRow(line) {
 
   // For fee lines, format is simpler: "DESCRIPTION AMOUNT TAX"
   if (isFee) {
-    const lineTotal = numbers[numbers.length - 1].value;
+    const lineTotalValue = numbers[numbers.length - 1].value;
     const descMatch = line.match(/^(.+?)\s+[\d,]+\.?\d*\s*[YN]?\s*$/i);
     const description = descMatch ? descMatch[1].trim() : line.trim();
+
+    // Use precision processing
+    const priceProc = processPrice(lineTotalValue, 1);
 
     return {
       type: 'fee',
       sku: null,
       description: description,
       qty: 1,
-      unitPriceCents: Math.round(lineTotal * 100),
-      lineTotalCents: Math.round(lineTotal * 100),
+      unitPriceDollars: priceProc.dollars,
+      unitPriceCents: priceProc.cents,
+      lineTotalCents: priceProc.cents,
+      computedTotalCents: priceProc.computedCents,
       taxFlag: taxFlag,
       employeeId: null,
       raw: line
@@ -292,22 +310,30 @@ function parseItemRow(line) {
   let descStart = skuMatch ? skuMatch.index + skuMatch[0].length : (empMatch ? empMatch[0].length : 0);
   const description = workLine.slice(descStart, lastUsedNumIdx).trim();
 
+  // Use precision processing for accurate calculations
+  const unitPriceDollars = parseMoneyToDollars(unitPrice, 3);
+  const lineTotalCents = Math.round(lineTotal * 100);
+
   // Validate: lineTotal should roughly equal qty * unitPrice
-  const expectedTotal = qty * unitPrice;
-  const tolerance = Math.max(1, expectedTotal * 0.05);  // 5% tolerance
+  const expectedTotal = qty * unitPriceDollars;
+  const tolerance = Math.max(0.01, expectedTotal * 0.05);  // 5% tolerance
   if (Math.abs(lineTotal - expectedTotal) > tolerance && qty !== 1) {
     // Qty might be wrong, recalculate
-    qty = Math.round(lineTotal / unitPrice);
+    qty = Math.round(lineTotal / unitPriceDollars);
     if (qty < 1) qty = 1;
   }
+
+  const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
 
   return {
     type: 'item',
     sku: sku,
     description: description || 'Unknown Item',
     qty: qty,
-    unitPriceCents: Math.round(unitPrice * 100),
-    lineTotalCents: Math.round(lineTotal * 100),
+    unitPriceDollars: unitPriceDollars,
+    unitPriceCents: Math.round(unitPriceDollars * 100),
+    lineTotalCents: lineTotalCents,
+    computedTotalCents: computedTotalCents,
     taxFlag: taxFlag,
     employeeId: employeeId,
     raw: line
