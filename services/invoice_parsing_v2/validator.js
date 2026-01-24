@@ -500,8 +500,8 @@ function checkGarbageItems(result) {
   const lineItems = result.lineItems || [];
   const garbage = [];
 
-  // Maximum reasonable line item price for restaurant supplies: $10,000
-  const MAX_REASONABLE_LINE_ITEM_CENTS = 1000000;
+  // Maximum reasonable line item price for restaurant supplies: $20,000
+  const MAX_REASONABLE_LINE_ITEM_CENTS = 2000000;
 
   for (let i = 0; i < lineItems.length; i++) {
     const item = lineItems[i];

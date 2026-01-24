@@ -67,7 +67,7 @@ function parseSyscoLineItem(line) {
 
     // Sanity check: reject absurdly high prices (likely order numbers misread as prices)
     // Max $10,000 per line item is generous for restaurant supplies
-    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
     if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
@@ -103,7 +103,7 @@ function parseSyscoLineItem(line) {
     const lineTotal = parseMoney(match[8]);
 
     // Sanity check: reject absurdly high prices
-    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
     if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
@@ -137,7 +137,7 @@ function parseSyscoLineItem(line) {
     const lineTotal = parseMoney(match[7]);
 
     // Sanity check: reject absurdly high prices
-    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
     if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
@@ -169,7 +169,7 @@ function parseSyscoLineItem(line) {
     const lineTotal = parseMoney(match[7]);
 
     // Sanity check: reject absurdly high prices
-    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
     if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
@@ -220,7 +220,7 @@ function parseSyscoLineItem(line) {
     }
 
     // Sanity check: reject absurdly high prices (likely order numbers)
-    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
     if (description.length >= 3 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
@@ -263,7 +263,7 @@ function parseSyscoLineItem(line) {
     }
 
     // Sanity check: reject absurdly high prices (likely order numbers)
-    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    const MAX_LINE_ITEM_CENTS = 2000000; // $20,000
     if (description.length >= 3 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
