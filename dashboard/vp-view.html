@@ -3159,18 +3159,18 @@
         </a>
         <a href="private-events.html" class="quick-action-tile events">
           <span class="tile-label">Private Events</span>
-          <span class="tile-value" id="tileEventsCount" style="color: #94a3b8;">Coming Soon</span>
-          <span class="tile-subtitle" id="tileEventsNext">Event management</span>
+          <span class="tile-value" id="tileEventsCount" style="color: #f472b6;">0 Events</span>
+          <span class="tile-subtitle" id="tileEventsNext">No upcoming events</span>
         </a>
         <a href="catering.html" class="quick-action-tile catering">
           <span class="tile-label">Catering</span>
-          <span class="tile-value" id="tileCateringCount" style="color: #94a3b8;">Coming Soon</span>
-          <span class="tile-subtitle" id="tileCateringRevenue">Order management</span>
+          <span class="tile-value" id="tileCateringCount" style="color: #fb7185;">0 Orders</span>
+          <span class="tile-subtitle" id="tileCateringRevenue">No active orders</span>
         </a>
         <div class="quick-action-tile pipeline" onclick="scrollToFlaggedIssues()">
           <span class="tile-label">Overbilling</span>
-          <span class="tile-value" id="tilePipelineTotal" style="color: #94a3b8;">Coming Soon</span>
-          <span class="tile-subtitle" id="tilePipelineCount">Price anomaly detection</span>
+          <span class="tile-value" id="tilePipelineTotal" style="color: #fbbf24;">$0</span>
+          <span class="tile-subtitle" id="tilePipelineCount">0 anomalies detected</span>
         </div>
       </div>
 
@@ -3938,11 +3938,69 @@
         const savingsEl = document.getElementById('tileSavingsFound');
         if (savingsEl) savingsEl.textContent = formatMoney(fallbackTotalCents) + ' Processed';
 
-        // Overbilling tile - Coming Soon (no real overbilling detection yet)
-        // Keep default "Coming Soon" from HTML
+        // Overbilling tile - show flagged issues/price anomalies
+        const overbillingTileEl = document.getElementById('tilePipelineTotal');
+        const overbillingCountEl = document.getElementById('tilePipelineCount');
+        if (overbillingTileEl) {
+          // Use flagged issues as overbilling indicator
+          const overbillingAmount = metrics.totalPotentialOverbillingCents || 0;
+          overbillingTileEl.textContent = formatMoney(overbillingAmount);
+          overbillingTileEl.style.color = overbillingAmount > 0 ? '#ef4444' : '#fbbf24';
+        }
+        if (overbillingCountEl) {
+          overbillingCountEl.textContent = flaggedCount > 0 ? `${flaggedCount} anomalies detected` : '0 anomalies detected';
+        }
 
-        // Private Events and Catering tiles - Coming Soon
-        // Keep defaults from HTML
+        // Private Events tile - load from API
+        try {
+          const eventsResponse = await fetch(`${API_BASE}/api/private-events?limit=10`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          });
+          if (eventsResponse.ok) {
+            const eventsData = await eventsResponse.json();
+            const events = eventsData.events || [];
+            const upcomingEvents = events.filter(e => new Date(e.event_date) >= new Date());
+            const eventsTileEl = document.getElementById('tileEventsCount');
+            const eventsSubEl = document.getElementById('tileEventsNext');
+            if (eventsTileEl) {
+              eventsTileEl.textContent = `${upcomingEvents.length} Events`;
+              eventsTileEl.style.color = upcomingEvents.length > 0 ? '#f472b6' : '#94a3b8';
+            }
+            if (eventsSubEl && upcomingEvents.length > 0) {
+              const nextEvent = upcomingEvents[0];
+              const eventDate = new Date(nextEvent.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              eventsSubEl.textContent = `Next: ${eventDate}`;
+            } else if (eventsSubEl) {
+              eventsSubEl.textContent = 'No upcoming events';
+            }
+          }
+        } catch (e) {
+          console.warn('[Dashboard] Failed to load private events:', e);
+        }
+
+        // Catering tile - load from API
+        try {
+          const cateringResponse = await fetch(`${API_BASE}/api/catering-orders?limit=10`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          });
+          if (cateringResponse.ok) {
+            const cateringData = await cateringResponse.json();
+            const orders = cateringData.orders || [];
+            const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirmed');
+            const cateringTileEl = document.getElementById('tileCateringCount');
+            const cateringSubEl = document.getElementById('tileCateringRevenue');
+            if (cateringTileEl) {
+              cateringTileEl.textContent = `${activeOrders.length} Orders`;
+              cateringTileEl.style.color = activeOrders.length > 0 ? '#fb7185' : '#94a3b8';
+            }
+            if (cateringSubEl) {
+              const totalRevenue = orders.reduce((sum, o) => sum + (o.total_cents || 0), 0);
+              cateringSubEl.textContent = totalRevenue > 0 ? formatMoney(totalRevenue) + ' revenue' : 'No active orders';
+            }
+          }
+        } catch (e) {
+          console.warn('[Dashboard] Failed to load catering orders:', e);
+        }
 
         // Update Command Center / Financial Overview stats with real invoice data
         // Update Financial Overview tiles with REAL invoice data
