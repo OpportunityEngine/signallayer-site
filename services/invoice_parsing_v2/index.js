@@ -18,10 +18,13 @@ const { normalizeInvoiceText, splitIntoPages, removeRepeatedHeadersFooters, pars
 const { detectVendor } = require('./vendorDetector');
 const { parseCintasInvoice } = require('./parsers/cintasParser');
 const { parseSyscoInvoice } = require('./parsers/syscoParser');
+const { parseUSFoodsInvoice } = require('./parsers/usFoodsParser');
 const { parseGenericInvoice } = require('./genericParser');
 const { parseInvoiceEnhanced } = require('./enhancedParser');
 const { validateInvoiceParse, chooseBestParse, calculateParseChecksum } = require('./validator');
 const { validateAndFixLineItems } = require('./numberClassifier');
+const { analyzeTextQuality, cleanText, mergeMultiLineItems } = require('./textQuality');
+const { fullReconciliation, generateInvoiceSummary } = require('./invoiceReconciler');
 
 /**
  * Main parsing function
@@ -39,7 +42,19 @@ function parseInvoiceText(rawText, options = {}) {
   const normalizedText = normalizeInvoiceText(rawText);
   const pages = splitIntoPages(normalizedText);
   const cleanedPages = removeRepeatedHeadersFooters(pages);
-  const fullText = cleanedPages.join('\n\n');
+  let fullText = cleanedPages.join('\n\n');
+
+  // Step 1.5: Analyze text quality and clean if needed
+  const textQuality = analyzeTextQuality(fullText);
+  if (textQuality.quality === 'poor' && options.aggressiveClean !== false) {
+    const cleaned = cleanText(fullText, { aggressive: true });
+    fullText = cleaned.text;
+  }
+
+  // Step 1.6: Merge multi-line items if OCR split them
+  const lines = fullText.split('\n');
+  const mergedLines = mergeMultiLineItems(lines);
+  fullText = mergedLines.join('\n');
 
   // Step 2: Detect vendor
   const vendorInfo = options.vendorHint
@@ -94,6 +109,28 @@ function parseInvoiceText(rawText, options = {}) {
         console.error('[PARSER V2] Enhanced parser error:', err.message);
       }
     }
+  } else if (vendorInfo.vendorKey === 'usfoods') {
+    // Run US Foods parser
+    console.log('[PARSER V2] Using US Foods-specific parser');
+    const usFoodsResult = parseUSFoodsInvoice(fullText, options);
+    usFoodsResult.vendorDetection = vendorInfo;
+    candidates.push(usFoodsResult);
+
+    // Also run generic and enhanced as fallback comparison
+    if (!options.strict) {
+      const genericResult = parseGenericInvoice(fullText, options);
+      genericResult.vendorDetection = { ...vendorInfo, note: 'fallback' };
+      candidates.push(genericResult);
+
+      try {
+        const enhancedResult = parseInvoiceEnhanced(fullText, { vendor: 'usfoods' });
+        enhancedResult.vendorDetection = { ...vendorInfo, note: 'enhanced' };
+        enhancedResult.vendorKey = vendorInfo.vendorKey;
+        candidates.push(enhancedResult);
+      } catch (err) {
+        console.error('[PARSER V2] Enhanced parser error:', err.message);
+      }
+    }
   } else {
     // Use generic parser
     const genericResult = parseGenericInvoice(fullText, options);
@@ -133,6 +170,28 @@ function parseInvoiceText(rawText, options = {}) {
     const validatedItems = validateAndFixLineItems(bestResult.lineItems);
     bestResult.lineItems = validatedItems;
     bestResult.mathCorrectedCount = validatedItems.filter(i => i.mathCorrected).length;
+  }
+
+  // Step 5.5: Run full reconciliation
+  let reconciliation = null;
+  if (bestResult.lineItems && bestResult.lineItems.length > 0) {
+    reconciliation = fullReconciliation({
+      lineItems: bestResult.lineItems,
+      totals: bestResult.totals || {}
+    }, { autoFix: true });
+
+    // Apply reconciliation fixes
+    if (reconciliation.changelog.length > 0) {
+      bestResult.lineItems = reconciliation.finalItems;
+      bestResult.mathCorrectedCount = (bestResult.mathCorrectedCount || 0) + reconciliation.changelog.length;
+    }
+
+    // Adjust confidence based on reconciliation
+    if (bestResult.confidence && reconciliation.confidenceAdjustment) {
+      bestResult.confidence.score = Math.max(0, Math.min(100,
+        (bestResult.confidence.score || 50) + reconciliation.confidenceAdjustment
+      ));
+    }
   }
 
   // Step 6: Build final result
@@ -189,7 +248,14 @@ function parseInvoiceText(rawText, options = {}) {
       tableRegions: bestResult.debug?.tableRegions,
       alternatives: bestResult.alternatives,
       checksum: calculateParseChecksum(bestResult),
-      mathCorrectedCount: bestResult.mathCorrectedCount || 0
+      mathCorrectedCount: bestResult.mathCorrectedCount || 0,
+      textQuality: textQuality,
+      reconciliation: reconciliation ? {
+        isValid: reconciliation.isValid,
+        issues: reconciliation.reconciliation?.issues || [],
+        warnings: reconciliation.reconciliation?.warnings || [],
+        corrections: reconciliation.changelog
+      } : null
     } : undefined
   };
 
@@ -264,9 +330,17 @@ module.exports = {
   validateInvoiceParse,
   validateAndFixLineItems,
 
+  // Text quality and reconciliation
+  analyzeTextQuality,
+  cleanText,
+  mergeMultiLineItems,
+  fullReconciliation,
+  generateInvoiceSummary,
+
   // Individual parsers (for testing)
   parseCintasInvoice,
   parseSyscoInvoice,
+  parseUSFoodsInvoice,
   parseGenericInvoice,
   parseInvoiceEnhanced
 };
