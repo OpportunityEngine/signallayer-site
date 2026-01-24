@@ -196,14 +196,21 @@ function extractTotalsByLineScan(text) {
     if (isGroupSubtotalLine(line)) continue;
 
     // Check for "INVOICE TOTAL" or just "TOTAL" on its own line
-    // followed by a money value on the next line
-    if (/^(?:INVOICE\s+)?TOTAL\s*$/i.test(lineNorm) || /^TOTAL\s*$/i.test(lineNorm)) {
+    // More flexible patterns to handle PDF extraction variations:
+    // - "TOTAL" alone or with trailing punctuation (TOTAL:, TOTAL.)
+    // - Line ending with "TOTAL" (short lines only to avoid false positives)
+    const isInvoiceTotal = /^(?:INVOICE\s+)?TOTAL\s*[:.]?\s*$/i.test(lineNorm) ||
+                           /INVOICE\s+TOTAL\s*$/i.test(lineNorm);
+    const isPlainTotal = /^TOTAL\s*[:.]?\s*$/i.test(lineNorm) ||
+                         (/TOTAL\s*$/i.test(lineNorm) && lineNorm.length < 20);
+
+    if (isInvoiceTotal || isPlainTotal) {
       // Next line should be just a money value
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{2})\s*$/);
+      // Allow 0, 1, or 2 decimal digits (PDF extraction may vary)
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
       if (moneyMatch) {
         const cents = parseMoneyToCents(moneyMatch[1]);
         if (cents > 0 && cents < 100000000) {  // Reasonable range (< $1M)
-          const isInvoiceTotal = /INVOICE/i.test(lineNorm);
           totalCandidates.push({
             cents,
             priority: isInvoiceTotal ? 0 : 5,  // Highest priority for INVOICE TOTAL
@@ -218,8 +225,9 @@ function extractTotalsByLineScan(text) {
 
     // Also check for "TOTAL" followed immediately by a value on the same line or context
     // Pattern: TOTAL <space> <value> where <value> might be on next line in Sysco format
-    if (/TOTAL$/i.test(lineNorm) && !/GROUP|SUBTOTAL/i.test(lineNorm)) {
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{2})\s*$/);
+    if (/TOTAL\s*$/i.test(lineNorm) && !/GROUP|SUBTOTAL/i.test(lineNorm)) {
+      // Allow 0, 1, or 2 decimal digits
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
       if (moneyMatch) {
         const cents = parseMoneyToCents(moneyMatch[1]);
         if (cents > 0 && cents < 100000000) {
@@ -233,6 +241,30 @@ function extractTotalsByLineScan(text) {
           console.log(`[TOTALS] Found next-line total: "${line}" + "${nextLine}" = $${(cents/100).toFixed(2)}`);
         }
       }
+    }
+  }
+
+  // ADDITIONAL: Direct regex scan for multi-line TOTAL in raw text
+  // This catches cases where line splitting doesn't match expected behavior
+  const rawMultiLineRegex = /(?:INVOICE\s+)?TOTAL\s*[\r\n]+\s*\$?([\d,]+\.?\d{0,2})\s*(?:[\r\n]|$)/gi;
+  let rawMatch;
+  while ((rawMatch = rawMultiLineRegex.exec(text)) !== null) {
+    const cents = parseMoneyToCents(rawMatch[1]);
+    if (cents > 0 && cents < 100000000) {
+      // Skip if in GROUP TOTAL context
+      const contextStart = Math.max(0, rawMatch.index - 50);
+      const context = text.substring(contextStart, rawMatch.index + rawMatch[0].length);
+      if (/GROUP|CATEGORY|DEPT|SECTION/i.test(context)) continue;
+
+      const isInvoiceTotal = /INVOICE/i.test(rawMatch[0]);
+      totalCandidates.push({
+        cents,
+        priority: isInvoiceTotal ? 1 : 6,
+        name: isInvoiceTotal ? 'INVOICE TOTAL (raw-multiline)' : 'TOTAL (raw-multiline)',
+        line: rawMatch[0].trim().replace(/[\r\n]+/g, ' | '),
+        lineIndex: -1
+      });
+      console.log(`[TOTALS] Found raw multi-line total: $${(cents/100).toFixed(2)}`);
     }
   }
 

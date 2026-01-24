@@ -104,13 +104,19 @@ function extractTotalCandidates(text, layoutHints = {}) {
     // Skip if this looks like a group total
     if (/GROUP|CATEGORY|DEPT|SECTION/i.test(line)) continue;
 
-    // Check for "INVOICE TOTAL" or "TOTAL" on its own line
-    const isInvoiceTotal = /^INVOICE\s+TOTAL\s*$/i.test(line);
-    const isPlainTotal = /^TOTAL\s*$/i.test(line);
+    // Check for "INVOICE TOTAL" or "TOTAL" on its own line (flexible patterns)
+    // Pattern 1: Exact "INVOICE TOTAL" or "TOTAL"
+    // Pattern 2: Line ENDS with "TOTAL" (handles "INVOICE TOTAL", "NET TOTAL", etc.)
+    // Pattern 3: Line is just "TOTAL" with possible punctuation (TOTAL:, TOTAL., etc.)
+    const isInvoiceTotal = /^INVOICE\s+TOTAL\s*[:.]?\s*$/i.test(line) ||
+                           /INVOICE\s+TOTAL\s*$/i.test(line);
+    const isPlainTotal = /^TOTAL\s*[:.]?\s*$/i.test(line) ||
+                         (/TOTAL\s*$/i.test(line) && line.length < 20);  // "TOTAL" at end, short line
 
     if (isInvoiceTotal || isPlainTotal) {
       // Next line should be just a money value
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{2})\s*$/);
+      // Allow 0, 1, or 2 decimal digits
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,2})\s*$/);
       if (moneyMatch) {
         const valueCents = parseMoney(moneyMatch[1]);
         if (valueCents > 0 && valueCents < 100000000) {
@@ -138,6 +144,49 @@ function extractTotalCandidates(text, layoutHints = {}) {
             console.log(`[TOTALS CANDIDATES] Found multi-line: "${line}" + "${nextLine}" = $${(valueCents/100).toFixed(2)} (score: ${score})`);
           }
         }
+      }
+    }
+  }
+
+  // SECOND: Direct regex scan for multi-line TOTAL patterns in raw text
+  // This catches cases where line splitting doesn't work as expected
+  // Pattern: "TOTAL" followed by newline and then a money value
+  const multiLineRegex = /(?:INVOICE\s+)?TOTAL\s*[\r\n]+\s*\$?([\d,]+\.?\d{0,2})\s*(?:[\r\n]|$)/gi;
+  let multiMatch;
+  while ((multiMatch = multiLineRegex.exec(text)) !== null) {
+    const valueCents = parseMoney(multiMatch[1]);
+    if (valueCents > 0 && valueCents < 100000000) {
+      // Check this isn't in a GROUP TOTAL context
+      const contextStart = Math.max(0, multiMatch.index - 50);
+      const context = text.substring(contextStart, multiMatch.index + multiMatch[0].length);
+      if (/GROUP|CATEGORY|DEPT|SECTION/i.test(context)) continue;
+
+      // Find position score
+      const textBefore = text.substring(0, multiMatch.index);
+      const positionScore = Math.round((textBefore.length / text.length) * 100);
+
+      const isInvoiceTotal = /INVOICE/i.test(multiMatch[0]);
+      const priority = isInvoiceTotal ? 100 : 70;
+      let score = priority + (positionScore >= 66 ? 20 : positionScore >= 33 ? 10 : 0);
+
+      const key = `${valueCents}-MULTI_LINE_REGEX`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        candidates.push({
+          label: isInvoiceTotal ? 'INVOICE TOTAL (regex-multiline)' : 'TOTAL (regex-multiline)',
+          valueCents,
+          rawValue: multiMatch[0].trim().replace(/[\r\n]+/g, ' | '),
+          lineNumber: -1,  // Not line-based
+          positionScore,
+          score: Math.max(0, Math.min(120, score)),
+          isGroupTotal: false,
+          evidence: {
+            pattern: 'REGEX_MULTI_LINE',
+            matchText: multiMatch[0].trim().substring(0, 50),
+            positionPct: positionScore
+          }
+        });
+        console.log(`[TOTALS CANDIDATES] Found regex multi-line: $${(valueCents/100).toFixed(2)} (score: ${score})`);
       }
     }
   }
