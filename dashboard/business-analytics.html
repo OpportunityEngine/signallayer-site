@@ -3156,12 +3156,14 @@
         if (!response.ok) throw new Error('Failed to load monitors');
 
         const data = await response.json();
-        const monitors = data.monitors || [];
+        const monitors = data.monitors || data.data || [];
+
+        console.log('[Email Autopilot Modal] Loaded monitors:', monitors);
 
         // Update stats
         const activeCount = monitors.filter(m => m.is_active).length;
         const inactiveCount = monitors.filter(m => !m.is_active).length;
-        const totalProcessed = monitors.reduce((sum, m) => sum + (m.invoices_created_count || 0), 0);
+        const totalProcessed = monitors.reduce((sum, m) => sum + (m.invoices_created || m.invoices_created_count || 0), 0);
 
         const modalActiveEl = document.getElementById('modalActiveMonitors');
         const modalInactiveEl = document.getElementById('modalInactiveMonitors');
@@ -3186,28 +3188,49 @@
         }
 
         listEl.innerHTML = monitors.map(monitor => {
-          const statusColor = monitor.is_active ? '#22c55e' : '#64748b';
-          const statusText = monitor.is_active ? 'Active' : 'Inactive';
-          const statusBg = monitor.is_active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+          const needsReconnect = monitor.oauth_provider && !monitor.is_active && !monitor.oauth_access_token;
+          const statusColor = monitor.is_active ? '#22c55e' : needsReconnect ? '#f97316' : '#64748b';
+          const statusText = monitor.is_active ? 'Active' : needsReconnect ? 'Reconnect' : 'Paused';
+          const statusBg = monitor.is_active ? 'rgba(34, 197, 94, 0.1)' : needsReconnect ? 'rgba(249, 115, 22, 0.1)' : 'rgba(100, 116, 139, 0.1)';
           const providerIcon = monitor.oauth_provider === 'google' ? '🔵' : (monitor.oauth_provider === 'microsoft' ? '🟠' : '📧');
+          const invoiceCount = monitor.invoices_created || monitor.invoices_created_count || 0;
+          const monitorName = monitor.name || monitor.email_address || 'Email Monitor';
+          const lastChecked = monitor.last_checked_at ? formatRelativeTime(monitor.last_checked_at) : 'Never';
 
           return `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--panel2); border-radius: 10px; border: 1px solid var(--border);">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="font-size: 20px;">${providerIcon}</div>
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: ${statusBg}; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                  ${providerIcon}
+                </div>
                 <div>
-                  <div style="font-weight: 600; color: var(--text); font-size: 14px;">${monitor.email_address}</div>
-                  <div style="font-size: 12px; color: var(--muted);">${monitor.invoices_created_count || 0} invoices processed</div>
+                  <div style="font-weight: 600; color: var(--text); font-size: 14px;">${escapeHtml(monitorName)}</div>
+                  <div style="font-size: 12px; color: var(--muted);">${escapeHtml(monitor.email_address || '')}</div>
                 </div>
               </div>
-              <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="text-align: center;">
+                  <div style="font-size: 16px; font-weight: 700; color: var(--gold);">${invoiceCount}</div>
+                  <div style="font-size: 10px; color: var(--muted2);">Invoices</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 12px; color: var(--text);">${lastChecked}</div>
+                  <div style="font-size: 10px; color: var(--muted2);">Last Check</div>
+                </div>
                 <span style="font-size: 11px; padding: 4px 10px; background: ${statusBg}; color: ${statusColor}; border-radius: 20px; font-weight: 600;">${statusText}</span>
-                <button onclick="toggleMonitorStatus(${monitor.id}, ${!monitor.is_active})" class="btn" style="font-size: 11px; padding: 6px 12px; background: var(--panel); border: 1px solid var(--border);">
-                  ${monitor.is_active ? 'Pause' : 'Resume'}
-                </button>
-                <button onclick="deleteEmailMonitor(${monitor.id})" class="btn" style="font-size: 11px; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
-                  Delete
-                </button>
+                <div style="display: flex; gap: 6px;">
+                  ${needsReconnect ? `
+                    <button onclick="reconnectOAuth('${monitor.oauth_provider}')" class="btn" style="font-size: 10px; padding: 6px 12px; background: rgba(249, 115, 22, 0.1); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3);">
+                      Reconnect
+                    </button>
+                  ` : `
+                    <button onclick="checkEmailNow(${monitor.id})" class="btn" style="font-size: 10px; padding: 6px 10px; background: var(--panel); border: 1px solid var(--border);" title="Check Now">⚡</button>
+                    <button onclick="toggleEmailMonitor(${monitor.id}, ${!monitor.is_active})" class="btn" style="font-size: 10px; padding: 6px 10px; background: ${monitor.is_active ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${monitor.is_active ? '#f59e0b' : '#22c55e'}; border: 1px solid ${monitor.is_active ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)'};" title="${monitor.is_active ? 'Pause' : 'Resume'}">
+                      ${monitor.is_active ? '⏸' : '▶'}
+                    </button>
+                  `}
+                  <button onclick="deleteEmailMonitor(${monitor.id}, '${escapeHtml(monitorName)}')" class="btn" style="font-size: 10px; padding: 6px 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);" title="Delete">✕</button>
+                </div>
               </div>
             </div>
           `;
