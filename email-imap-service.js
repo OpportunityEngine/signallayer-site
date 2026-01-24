@@ -610,9 +610,16 @@ class EmailIMAPService {
           const accountName = monitor.account_name;
 
           // Build invoice payload for ingestInvoice
+          // Sanitize vendor name to filter out garbage text from parser
+          const rawVendorName = processorResult.vendor?.name || vendorName;
+          const sanitizedVendorName = this.sanitizeVendorName(rawVendorName);
+          if (sanitizedVendorName !== rawVendorName) {
+            console.log(`[EMAIL IMAP] Vendor name sanitized: "${rawVendorName?.substring(0, 40)}" → "${sanitizedVendorName}"`);
+          }
+
           const invoicePayload = {
             rawText: processorResult.rawText,
-            vendorName: processorResult.vendor?.name || vendorName,
+            vendorName: sanitizedVendorName,
             accountName: processorResult.customer?.name || accountName,
             fileName: attachment.filename,
             source: 'email_autopilot',
@@ -726,6 +733,63 @@ class EmailIMAPService {
   }
 
   /**
+   * Validate and sanitize vendor name to filter out garbage text
+   * @param {string} vendorName - Raw vendor name
+   * @returns {string} Cleaned vendor name or "Unknown Vendor"
+   */
+  sanitizeVendorName(vendorName) {
+    if (!vendorName || typeof vendorName !== 'string') {
+      return 'Unknown Vendor';
+    }
+
+    const cleaned = vendorName.trim();
+
+    // Patterns that indicate garbage/legal text (not a real vendor name)
+    const garbagePatterns = [
+      /THIS\s+COMMODITY/i,
+      /TRUST\s+CLAIM/i,
+      /OVER\s+THESE/i,
+      /THIS\s+DOCUMENT/i,
+      /SIGNATURE/i,
+      /PAGE\s+\d+/i,
+      /HEREBY/i,
+      /AGREEMENT/i,
+      /TERMS\s+AND\s+CONDITIONS/i,
+      /ALL\s+RIGHTS\s+RESERVED/i,
+      /CONFIDENTIAL/i,
+      /INVOICE\s+NUMBER/i,
+      /PURCHASE\s+ORDER/i,
+      /ADDITIONAL\s+EXPENSE/i,
+      /AN\s+ADDITIONAL/i,
+      /SUBTOTAL/i,
+      /^\d+$/,  // Just numbers
+      /^[A-Z\s]{50,}$/,  // All caps over 50 chars is likely garbage
+    ];
+
+    for (const pattern of garbagePatterns) {
+      if (pattern.test(cleaned)) {
+        console.log(`[EMAIL IMAP] Filtered garbage vendor name: "${cleaned.substring(0, 50)}..."`);
+        return 'Unknown Vendor';
+      }
+    }
+
+    // If the name is too long (over 60 chars), it's likely garbage
+    if (cleaned.length > 60) {
+      console.log(`[EMAIL IMAP] Vendor name too long (${cleaned.length} chars): "${cleaned.substring(0, 50)}..."`);
+      return 'Unknown Vendor';
+    }
+
+    // If the name contains too many spaces (more than 5 words), it's likely a sentence
+    const words = cleaned.split(/\s+/);
+    if (words.length > 6) {
+      console.log(`[EMAIL IMAP] Vendor name has too many words (${words.length}): "${cleaned.substring(0, 50)}..."`);
+      return 'Unknown Vendor';
+    }
+
+    return cleaned;
+  }
+
+  /**
    * Internal invoice ingestion - calls the same logic as /ingest endpoint
    * Uses the UNIFIED INVOICE PARSER for consistent extraction across all entry points
    * @param {Object} payload - Invoice data
@@ -751,6 +815,31 @@ class EmailIMAPService {
 
       console.log(`[EMAIL IMAP] Using user: id=${user.id}, email=${user.email}`);
       console.log(`[USER_ID_TRACE] source=email_autopilot monitorId=${monitor.id} finalUserId=${user.id} email=${user.email}`);
+
+      // ===== DUPLICATE FILE DETECTION =====
+      // Check if an invoice with the same file name was already processed in the last 24 hours
+      // This prevents duplicate processing from forwarded emails or re-processed attachments
+      const existingInvoice = db.getDatabase().prepare(`
+        SELECT id, run_id, file_name, created_at, invoice_total_cents
+        FROM ingestion_runs
+        WHERE user_id = ?
+          AND file_name = ?
+          AND status = 'completed'
+          AND created_at > datetime('now', '-24 hours')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).get(user.id, payload.fileName);
+
+      if (existingInvoice) {
+        console.log(`[EMAIL IMAP] ⚠️ DUPLICATE DETECTED: File "${payload.fileName}" already processed at ${existingInvoice.created_at}`);
+        console.log(`[EMAIL IMAP] Existing invoice: id=${existingInvoice.id}, total=$${(existingInvoice.invoice_total_cents || 0) / 100}`);
+        return {
+          success: false,
+          error: 'Duplicate file - already processed within 24 hours',
+          duplicate: true,
+          existingRunId: existingInvoice.run_id
+        };
+      }
 
       // Store ingestion run and get the auto-increment ID for foreign key references
       console.log(`[USER_ID_TRACE] source=email_autopilot action=insert_ingestion_run runId=${runId} userId=${user.id} email=${user.email} monitorId=${monitor.id}`);
@@ -895,11 +984,30 @@ class EmailIMAPService {
 
       // Use parser's extracted total if available (more accurate for vendors like Cintas)
       // Fall back to summed items total if parser didn't find a total
-      const totalCents = parsedInvoice.totals?.totalCents > 0
+      let totalCents = parsedInvoice.totals?.totalCents > 0
         ? parsedInvoice.totals.totalCents
         : itemsTotalCents;
 
       console.log(`[EMAIL IMAP] Invoice total: $${(totalCents/100).toFixed(2)} (parser: $${(parsedInvoice.totals?.totalCents/100 || 0).toFixed(2)}, items sum: $${(itemsTotalCents/100).toFixed(2)})`);
+
+      // ===== SANITY CHECK: Detect suspiciously high totals =====
+      // Most business invoices are under $100,000. Flag anything over $500,000 as suspicious
+      const MAX_REASONABLE_TOTAL_CENTS = 50000000; // $500,000
+      const avgPerItem = items.length > 0 ? totalCents / items.length : totalCents;
+
+      if (totalCents > MAX_REASONABLE_TOTAL_CENTS) {
+        console.warn(`[EMAIL IMAP] ⚠️ SUSPICIOUS TOTAL: $${(totalCents/100).toLocaleString()} - this seems too high`);
+        console.warn(`[EMAIL IMAP] File: ${payload.fileName}, ${items.length} items, avg $${(avgPerItem/100).toFixed(2)}/item`);
+
+        // If the sum of line items is much smaller and reasonable, use that instead
+        if (itemsTotalCents > 0 && itemsTotalCents < MAX_REASONABLE_TOTAL_CENTS && itemsTotalCents < totalCents * 0.1) {
+          console.log(`[EMAIL IMAP] 📊 Using line items sum ($${(itemsTotalCents/100).toFixed(2)}) instead of suspicious parser total`);
+          totalCents = itemsTotalCents;
+        } else if (totalCents > 100000000) { // Over $1M is almost certainly wrong
+          console.log(`[EMAIL IMAP] 🚫 Total over $1M is likely a parsing error, capping at items sum or $0`);
+          totalCents = itemsTotalCents > 0 && itemsTotalCents < MAX_REASONABLE_TOTAL_CENTS ? itemsTotalCents : 0;
+        }
+      }
 
       // Store opportunities detected by unified parser
       const parserOpportunities = parsedInvoice.opportunities || [];
