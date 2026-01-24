@@ -4738,7 +4738,7 @@
         const user = await window.AuthManager.initialize();
 
         // 2. Check role access - VP dashboard requires admin, customer_admin, or demo_business role
-        window.AuthManager.requireRole(['admin', 'customer_admin', 'demo_business']);
+        window.AuthManager.requireRole(['admin', 'customer_admin', 'business', 'demo_business']);
 
         // 3. Initialize navigation (depends on auth being ready)
         await window.initializeNavigation();

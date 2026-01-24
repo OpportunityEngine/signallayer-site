@@ -771,7 +771,7 @@ function migrateUsersTableForDemoRoles(database) {
           email TEXT UNIQUE NOT NULL,
           name TEXT NOT NULL,
           password_hash TEXT NOT NULL DEFAULT '',
-          role TEXT NOT NULL CHECK(role IN ('rep', 'manager', 'admin', 'viewer', 'customer_admin', 'demo_business', 'demo_viewer')) DEFAULT 'rep',
+          role TEXT NOT NULL CHECK(role IN ('rep', 'manager', 'admin', 'viewer', 'customer_admin', 'business', 'demo_business', 'demo_viewer')) DEFAULT 'rep',
           account_name TEXT,
           team_id INTEGER,
           is_active INTEGER DEFAULT 1,

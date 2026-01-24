@@ -195,6 +195,7 @@
         'manager': '/dashboard/manager-view.html',
         'rep': '/dashboard/rep-view.html',
         'viewer': '/dashboard/rep-view.html',
+        'business': '/dashboard/vp-view.html',
         'demo_business': '/dashboard/vp-view.html',
         'demo_viewer': '/dashboard/vp-view.html'
       };

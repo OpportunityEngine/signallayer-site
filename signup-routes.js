@@ -560,7 +560,7 @@ router.post('/request-access', async (req, res) => {
     }
 
     // Validate requested role
-    const validRoles = ['rep', 'manager', 'viewer'];
+    const validRoles = ['rep', 'manager', 'viewer', 'business'];
     const role = validRoles.includes(requestedRole) ? requestedRole : 'rep';
 
     // Hash the password for secure storage
@@ -694,7 +694,7 @@ router.get('/approve/:token', async (req, res) => {
     }
 
     // Determine final role (query param overrides request, default to requested)
-    const validRoles = ['rep', 'manager', 'viewer', 'admin'];
+    const validRoles = ['rep', 'manager', 'viewer', 'admin', 'business'];
     const finalRole = validRoles.includes(role) ? role : request.requested_role;
 
     // Create the user
@@ -990,7 +990,7 @@ router.post('/api/requests/:id/approve', requireAuth, requireRole('admin'), asyn
     }
 
     // Determine role
-    const validRoles = ['rep', 'manager', 'viewer', 'admin'];
+    const validRoles = ['rep', 'manager', 'viewer', 'admin', 'business'];
     const finalRole = validRoles.includes(role) ? role : request.requested_role;
 
     // Create the user

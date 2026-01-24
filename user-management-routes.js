@@ -166,7 +166,7 @@ router.post('/users', requireAuth, requireRole('admin'), async (req, res) => {
     }
 
     // Validate role
-    const validRoles = ['admin', 'manager', 'rep', 'viewer', 'customer_admin'];
+    const validRoles = ['admin', 'manager', 'rep', 'viewer', 'customer_admin', 'business'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
@@ -263,7 +263,7 @@ router.put('/users/:id', requireAuth, requireRole('admin'), async (req, res) => 
     }
 
     if (role !== undefined) {
-      const validRoles = ['admin', 'manager', 'rep', 'viewer', 'customer_admin'];
+      const validRoles = ['admin', 'manager', 'rep', 'viewer', 'customer_admin', 'business'];
       if (!validRoles.includes(role)) {
         return res.status(400).json({
           success: false,
