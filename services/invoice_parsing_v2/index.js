@@ -21,10 +21,13 @@ const { parseSyscoInvoice } = require('./parsers/syscoParser');
 const { parseUSFoodsInvoice } = require('./parsers/usFoodsParser');
 const { parseGenericInvoice } = require('./genericParser');
 const { parseInvoiceEnhanced } = require('./enhancedParser');
+const { parseAdaptive } = require('./adaptiveParser');
 const { validateInvoiceParse, chooseBestParse, calculateParseChecksum } = require('./validator');
 const { validateAndFixLineItems } = require('./numberClassifier');
 const { analyzeTextQuality, cleanText, mergeMultiLineItems } = require('./textQuality');
+const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
 const { fullReconciliation, generateInvoiceSummary } = require('./invoiceReconciler');
+const { storePattern, findPatterns, getRecommendation } = require('./patternStore');
 
 /**
  * Main parsing function
@@ -60,6 +63,19 @@ function parseInvoiceText(rawText, options = {}) {
   const vendorInfo = options.vendorHint
     ? { vendorKey: options.vendorHint, vendorName: options.vendorHint, confidence: 100 }
     : detectVendor(fullText);
+
+  // Step 2.5: Check pattern store for recommendations
+  let patternRecommendation = null;
+  if (vendorInfo.vendorKey === 'generic' || vendorInfo.confidence < 70) {
+    try {
+      patternRecommendation = getRecommendation(fullText);
+      if (patternRecommendation.hasRecommendation && patternRecommendation.confidence > vendorInfo.confidence) {
+        console.log(`[PARSER V2] Pattern store suggests: ${patternRecommendation.vendor} (confidence: ${patternRecommendation.confidence})`);
+      }
+    } catch (err) {
+      // Pattern store is optional, don't fail if it errors
+    }
+  }
 
   // Step 3: Run vendor-specific parser
   const candidates = [];
@@ -146,6 +162,20 @@ function parseInvoiceText(rawText, options = {}) {
         candidates.push(enhancedResult);
       } catch (err) {
         console.error('[PARSER V2] Enhanced parser error:', err.message);
+      }
+
+      // Also run adaptive parser for unknown formats
+      try {
+        const adaptiveResult = parseAdaptive(fullText, { totals: genericResult.totals });
+        if (adaptiveResult.success && adaptiveResult.lineItems.length > 0) {
+          adaptiveResult.vendorDetection = { ...vendorInfo, note: 'adaptive' };
+          adaptiveResult.vendorKey = vendorInfo.vendorKey || 'generic';
+          adaptiveResult.header = genericResult.header;
+          adaptiveResult.totals = genericResult.totals;
+          candidates.push(adaptiveResult);
+        }
+      } catch (err) {
+        console.error('[PARSER V2] Adaptive parser error:', err.message);
       }
     }
   }
@@ -250,6 +280,7 @@ function parseInvoiceText(rawText, options = {}) {
       checksum: calculateParseChecksum(bestResult),
       mathCorrectedCount: bestResult.mathCorrectedCount || 0,
       textQuality: textQuality,
+      patternRecommendation: patternRecommendation,
       reconciliation: reconciliation ? {
         isValid: reconciliation.isValid,
         issues: reconciliation.reconciliation?.issues || [],
@@ -258,6 +289,15 @@ function parseInvoiceText(rawText, options = {}) {
       } : null
     } : undefined
   };
+
+  // Step 7: Store successful pattern for future use
+  if (result.success && result.confidence?.score >= 60) {
+    try {
+      storePattern(result, fullText);
+    } catch (err) {
+      // Pattern storage is optional, don't fail if it errors
+    }
+  }
 
   return result;
 }
@@ -337,10 +377,20 @@ module.exports = {
   fullReconciliation,
   generateInvoiceSummary,
 
+  // Layout analysis
+  analyzeLayout,
+  generateParsingHints,
+
+  // Pattern learning
+  storePattern,
+  findPatterns,
+  getRecommendation,
+
   // Individual parsers (for testing)
   parseCintasInvoice,
   parseSyscoInvoice,
   parseUSFoodsInvoice,
   parseGenericInvoice,
-  parseInvoiceEnhanced
+  parseInvoiceEnhanced,
+  parseAdaptive
 };

@@ -1,6 +1,7 @@
 /**
  * Invoice Parsing V2 - Generic Parser
  * Fallback parser for unknown vendors using heuristic approaches
+ * Now enhanced with adaptive parsing and layout analysis
  */
 
 const {
@@ -12,6 +13,9 @@ const {
   isTableHeader,
   isGroupSubtotal
 } = require('./utils');
+const { parseAdaptive } = require('./adaptiveParser');
+const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
+const { validateAndFixLineItems } = require('./numberClassifier');
 
 /**
  * Extract header information from generic invoice
@@ -253,30 +257,180 @@ function extractGenericLineItems(text, lines) {
 
 /**
  * Main generic parser function
+ * Now uses adaptive parsing when traditional approach yields poor results
  */
 function parseGenericInvoice(normalizedText, options = {}) {
   const lines = normalizedText.split('\n');
 
+  // First, analyze the layout to understand the invoice structure
+  const layout = analyzeLayout(normalizedText);
+  const hints = generateParsingHints(layout);
+
+  // Extract header and totals first (these are relatively reliable)
+  const header = parseGenericHeader(normalizedText, lines);
+  const totals = extractGenericTotals(normalizedText, lines);
+
+  // Try traditional line item extraction first
+  let lineItems = extractGenericLineItems(normalizedText, lines);
+  let parsingMethod = 'traditional';
+
+  // If traditional parsing yields poor results, try adaptive parsing
+  if (lineItems.length < 2 || !hasValidItems(lineItems)) {
+    try {
+      const adaptiveResult = parseAdaptive(normalizedText, { totals });
+
+      if (adaptiveResult.success && adaptiveResult.lineItems.length > 0) {
+        // Check if adaptive result is better
+        const adaptiveValid = countValidItems(adaptiveResult.lineItems);
+        const traditionalValid = countValidItems(lineItems);
+
+        if (adaptiveValid > traditionalValid) {
+          lineItems = adaptiveResult.lineItems;
+          parsingMethod = adaptiveResult.strategy || 'adaptive';
+        }
+      }
+    } catch (err) {
+      console.error('[GENERIC PARSER] Adaptive parsing error:', err.message);
+    }
+  }
+
+  // Validate and fix line items
+  const validatedItems = validateAndFixLineItems(lineItems);
+
+  // Calculate confidence
+  const confidence = calculateGenericConfidence(validatedItems, totals, layout);
+
   const result = {
     vendorKey: 'generic',
-    parserVersion: '2.0.0',
-    header: parseGenericHeader(normalizedText, lines),
-    totals: extractGenericTotals(normalizedText, lines),
-    lineItems: extractGenericLineItems(normalizedText, lines),
+    parserVersion: '2.1.0',
+    header: header,
+    totals: totals,
+    lineItems: validatedItems,
     employees: [],
     departments: [],
+    confidence: confidence,
     debug: {
-      parseAttempts: ['generic'],
-      rawLineCount: lines.length
+      parseAttempts: ['generic', parsingMethod],
+      rawLineCount: lines.length,
+      layout: {
+        itemSection: layout.itemSection,
+        pricePattern: layout.pricePattern?.type,
+        columnPattern: layout.columnPattern?.type
+      },
+      parsingHints: hints.strategies,
+      mathCorrectedItems: validatedItems.filter(i => i.mathCorrected).length
     }
   };
 
   return result;
 }
 
+/**
+ * Check if items have valid structure
+ */
+function hasValidItems(items) {
+  if (!items || items.length === 0) return false;
+
+  const validCount = countValidItems(items);
+  return validCount >= Math.max(1, items.length * 0.5);
+}
+
+/**
+ * Count items with valid math (qty × price ≈ total)
+ */
+function countValidItems(items) {
+  let valid = 0;
+  for (const item of items) {
+    const qty = item.qty || item.quantity || 1;
+    const unitPrice = item.unitPriceCents || 0;
+    const lineTotal = item.lineTotalCents || 0;
+
+    if (lineTotal > 0) {
+      const computed = qty * unitPrice;
+      const diff = Math.abs(computed - lineTotal);
+      if (diff <= 10 || diff / lineTotal <= 0.01) {
+        valid++;
+      }
+    }
+  }
+  return valid;
+}
+
+/**
+ * Calculate confidence score for generic parse
+ */
+function calculateGenericConfidence(lineItems, totals, layout) {
+  let score = 40;  // Lower base for generic
+  const issues = [];
+  const warnings = [];
+
+  // Item count
+  if (lineItems.length === 0) {
+    score -= 25;
+    issues.push('No line items extracted');
+  } else {
+    score += Math.min(15, lineItems.length * 1.5);
+  }
+
+  // Totals found
+  if (totals.totalCents > 0) {
+    score += 15;
+  } else {
+    issues.push('No invoice total found');
+  }
+
+  // Math validation
+  const validItems = countValidItems(lineItems);
+  if (lineItems.length > 0) {
+    const validRate = validItems / lineItems.length;
+    if (validRate >= 0.8) {
+      score += 15;
+    } else if (validRate >= 0.5) {
+      score += 8;
+    } else {
+      score -= 10;
+      warnings.push(`Only ${Math.round(validRate * 100)}% of items have valid math`);
+    }
+  }
+
+  // Sum vs total reconciliation
+  if (lineItems.length > 0 && totals.totalCents > 0) {
+    const sum = lineItems.reduce((s, i) => s + (i.lineTotalCents || 0), 0);
+    const diff = Math.abs(sum - totals.totalCents);
+    const pct = diff / totals.totalCents;
+
+    if (pct <= 0.02) {
+      score += 15;
+    } else if (pct <= 0.10) {
+      score += 8;
+    } else if (pct <= 0.25) {
+      warnings.push(`Items sum differs from total by ${(pct * 100).toFixed(1)}%`);
+    } else {
+      issues.push('Large mismatch between items sum and total');
+    }
+  }
+
+  // Layout detection bonus
+  if (layout.itemSection.startLine !== null) {
+    score += 5;
+  }
+
+  // Penalty for unknown vendor
+  warnings.push('Using generic parser - manual review recommended');
+
+  return {
+    score: Math.max(0, Math.min(100, score)),
+    issues,
+    warnings
+  };
+}
+
 module.exports = {
   parseGenericInvoice,
   parseGenericHeader,
   extractGenericTotals,
-  extractGenericLineItems
+  extractGenericLineItems,
+  calculateGenericConfidence,
+  hasValidItems,
+  countValidItems
 };
