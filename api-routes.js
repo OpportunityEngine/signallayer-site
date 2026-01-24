@@ -1342,6 +1342,7 @@ router.get('/debug/parse-score/:runId', async (req, res) => {
       // If we have stored raw text, also extract totals candidates
       let totalsCandidates = null;
       let adjustments = null;
+      let printedTotalReconciliation = null;
 
       // Try to get the original PDF text if cached
       const fs = require('fs');
@@ -1353,7 +1354,36 @@ router.get('/debug/parse-score/:runId', async (req, res) => {
         const rawText = fs.readFileSync(cacheFile, 'utf8');
         totalsCandidates = extractTotalCandidates(rawText);
         adjustments = extractAdjustments(rawText);
+
+        // Import and run printed total reconciliation
+        try {
+          const { reconcileWithPrintedTotalPriority } = require('./services/invoice_parsing_v2/invoiceReconciler');
+          const { extractTotalsByLineScan } = require('./services/invoice_parsing_v2/totals');
+
+          // Extract printed total from raw text
+          const lineScanTotals = extractTotalsByLineScan(rawText);
+
+          // Run printed total priority reconciliation
+          printedTotalReconciliation = reconcileWithPrintedTotalPriority({
+            lineItems: items.map(item => ({
+              lineTotalCents: item.total_cents || 0
+            })),
+            totals: {
+              totalCents: lineScanTotals?.totalCents || run.invoice_total_cents || 0,
+              subtotalCents: lineScanTotals?.subtotalCents || 0,
+              taxCents: lineScanTotals?.taxCents || 0
+            },
+            adjustments: adjustments?.adjustments || []
+          }, rawText);
+        } catch (reconcileErr) {
+          console.warn('[API] Printed total reconciliation error:', reconcileErr.message);
+        }
       }
+
+      // Calculate computed total for comparison
+      const lineItemsSum = items.reduce((sum, i) => sum + (i.total_cents || 0), 0);
+      const storedTotal = run.invoice_total_cents || 0;
+      const delta = storedTotal - lineItemsSum;
 
       res.json({
         success: true,
@@ -1367,11 +1397,26 @@ router.get('/debug/parse-score/:runId', async (req, res) => {
           createdAt: run.created_at
         },
         itemCount: items.length,
-        itemsSum: items.reduce((sum, i) => sum + (i.total_cents || 0), 0),
+        itemsSum: lineItemsSum,
+        storedTotal: storedTotal,
+        delta: delta,
+        deltaFormatted: `$${(delta/100).toFixed(2)}`,
         scoreBreakdown,
         totalsCandidates: totalsCandidates?.candidates?.slice(0, 5) || null,
         adjustments: adjustments?.adjustments || null,
-        adjustmentsSummary: adjustments?.summary || null
+        adjustmentsSummary: adjustments?.summary || null,
+        // NEW: Printed total reconciliation details
+        printedTotalReconciliation: printedTotalReconciliation ? {
+          printedTotalCents: printedTotalReconciliation.printed_total_cents,
+          computedTotalCents: printedTotalReconciliation.computed_total_cents,
+          lineItemsSumCents: printedTotalReconciliation.line_items_sum_cents,
+          adjustmentsSumCents: printedTotalReconciliation.adjustments_sum_cents,
+          deltaCents: printedTotalReconciliation.reconciliation?.delta_cents,
+          toleranceOk: printedTotalReconciliation.reconciliation?.tolerance_ok,
+          reason: printedTotalReconciliation.reconciliation?.reason,
+          warnings: printedTotalReconciliation.reconciliation?.warnings,
+          syntheticAdjustment: printedTotalReconciliation.synthetic_adjustment
+        } : null
       });
 
     } catch (parserError) {

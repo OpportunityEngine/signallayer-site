@@ -26,7 +26,7 @@ const { validateInvoiceParse, chooseBestParse, calculateParseChecksum } = requir
 const { validateAndFixLineItems } = require('./numberClassifier');
 const { analyzeTextQuality, cleanText, mergeMultiLineItems } = require('./textQuality');
 const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
-const { fullReconciliation, generateInvoiceSummary, reconcileWithSalvage, attemptSalvage } = require('./invoiceReconciler');
+const { fullReconciliation, generateInvoiceSummary, reconcileWithSalvage, attemptSalvage, reconcileWithPrintedTotalPriority, getAuthoritativeTotalCents } = require('./invoiceReconciler');
 const { storePattern, findPatterns, getRecommendation } = require('./patternStore');
 const { extractTotalCandidates, findReconcilableTotal, validateTotalsEquation } = require('./totalsCandidates');
 const { extractAdjustments, calculateAdjustmentsSummary, extractTax } = require('./adjustmentsExtractor');
@@ -306,7 +306,23 @@ function parseInvoiceText(rawText, options = {}) {
     }
   }
 
-  // Step 6: Build final result
+  // Step 6: Run printed total priority reconciliation
+  // CRITICAL: This ensures printed invoice total ALWAYS wins over computed totals
+  const printedTotalReconcile = reconcileWithPrintedTotalPriority({
+    lineItems: bestResult.lineItems || [],
+    totals: bestResult.totals || {},
+    adjustments: bestResult.adjustments || bestResult.totals?.adjustments || []
+  }, fullText);
+
+  // Get the authoritative total (printed total wins)
+  const authoritativeTotalCents = getAuthoritativeTotalCents(printedTotalReconcile);
+
+  // Merge adjustments (include any synthetic adjustments created by reconciliation)
+  const finalAdjustments = printedTotalReconcile.adjustments || [];
+
+  console.log(`[PARSER V2] Authoritative total: $${(authoritativeTotalCents/100).toFixed(2)} (printed: $${(printedTotalReconcile.printed_total_cents/100).toFixed(2)}, computed: $${(printedTotalReconcile.computed_total_cents/100).toFixed(2)})`);
+
+  // Step 7: Build final result
   const result = {
     success: true,
     vendorKey: bestResult.vendorKey,
@@ -322,21 +338,25 @@ function parseInvoiceText(rawText, options = {}) {
     billTo: bestResult.header?.billTo || null,
     shipTo: bestResult.header?.shipTo || null,
 
-    // Totals
+    // Totals - CRITICAL: Use authoritative (printed) total
     totals: {
       subtotalCents: bestResult.totals?.subtotalCents || 0,
       taxCents: bestResult.totals?.taxCents || 0,
-      adjustmentsCents: bestResult.totals?.adjustmentsCents || 0,  // MISC CHARGES (fees/credits)
-      totalCents: bestResult.totals?.totalCents || 0,
+      adjustmentsCents: finalAdjustments.reduce((sum, adj) => sum + (adj.amountCents || 0), 0),
+      totalCents: authoritativeTotalCents,  // PRINTED TOTAL WINS
+      printedTotalCents: printedTotalReconcile.printed_total_cents,  // For reference
+      computedTotalCents: printedTotalReconcile.computed_total_cents,  // For reference
       currency: bestResult.totals?.currency || 'USD'
     },
 
     // Adjustments (fees, credits, surcharges - things that affect total but aren't line items)
-    adjustments: (bestResult.adjustments || bestResult.totals?.adjustments || []).map((adj, idx) => ({
+    // Includes any synthetic adjustments created to reconcile printed vs computed
+    adjustments: finalAdjustments.map((adj, idx) => ({
       adjustmentNumber: idx + 1,
       type: adj.type || 'adjustment',
       description: adj.description || 'Adjustment',
-      amountCents: adj.amountCents || 0
+      amountCents: adj.amountCents || 0,
+      isSynthetic: adj.isSynthetic || false
     })),
 
     // Line items (normalized format)
@@ -383,11 +403,23 @@ function parseInvoiceText(rawText, options = {}) {
         issues: reconciliation.reconciliation?.issues || [],
         warnings: reconciliation.reconciliation?.warnings || [],
         corrections: reconciliation.changelog
-      } : null
+      } : null,
+      // CRITICAL: Printed total reconciliation details
+      printedTotalReconciliation: {
+        printedTotalCents: printedTotalReconcile.printed_total_cents,
+        computedTotalCents: printedTotalReconcile.computed_total_cents,
+        lineItemsSumCents: printedTotalReconcile.line_items_sum_cents,
+        adjustmentsSumCents: printedTotalReconcile.adjustments_sum_cents,
+        deltaCents: printedTotalReconcile.reconciliation.delta_cents,
+        toleranceOk: printedTotalReconcile.reconciliation.tolerance_ok,
+        reason: printedTotalReconcile.reconciliation.reason,
+        warnings: printedTotalReconcile.reconciliation.warnings,
+        syntheticAdjustment: printedTotalReconcile.synthetic_adjustment
+      }
     } : undefined
   };
 
-  // Step 7: Store successful pattern for future use
+  // Step 8: Store successful pattern for future use
   if (result.success && result.confidence?.score >= 60) {
     try {
       storePattern(result, fullText);
@@ -475,6 +507,8 @@ module.exports = {
   generateInvoiceSummary,
   reconcileWithSalvage,
   attemptSalvage,
+  reconcileWithPrintedTotalPriority,
+  getAuthoritativeTotalCents,
 
   // Totals and adjustments extraction
   extractTotalCandidates,

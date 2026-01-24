@@ -406,6 +406,118 @@ function fullReconciliation(parseResult, options = {}) {
 }
 
 /**
+ * CRITICAL: Reconcile with printed total priority
+ * This ensures the PRINTED invoice total always wins over computed totals.
+ * If there's a mismatch, we create a synthetic adjustment to explain the delta.
+ *
+ * @param {Object} parseResult - Parse result from parser
+ * @param {string} rawText - Original invoice text (for additional extraction if needed)
+ * @param {Object} options - Options
+ * @returns {Object} - Reconciled result with printed_total_cents, computed_total_cents, and any synthetic adjustments
+ */
+function reconcileWithPrintedTotalPriority(parseResult, rawText, options = {}) {
+  const lineItems = parseResult.lineItems || [];
+  const totals = parseResult.totals || {};
+  const adjustments = parseResult.adjustments || [];
+
+  // Step 1: Calculate computed total (sum of line items + adjustments)
+  const lineItemsSum = lineItems.reduce((sum, item) => sum + (item.lineTotalCents || 0), 0);
+  const adjustmentsSum = adjustments.reduce((sum, adj) => sum + (adj.amountCents || 0), 0);
+  const computedTotalCents = lineItemsSum + adjustmentsSum;
+
+  // Step 2: Get printed total from parser's extracted totals
+  // The parser should have found INVOICE TOTAL from the document
+  const printedTotalCents = totals.totalCents || 0;
+
+  // Step 3: Calculate delta
+  const deltaCents = printedTotalCents - computedTotalCents;
+  const absDelta = Math.abs(deltaCents);
+
+  // Step 4: Create result object with canonical fields
+  const result = {
+    printed_total_cents: printedTotalCents,
+    computed_total_cents: computedTotalCents,
+    line_items_sum_cents: lineItemsSum,
+    adjustments_sum_cents: adjustmentsSum,
+    reconciliation: {
+      delta_cents: deltaCents,
+      tolerance_ok: absDelta <= TOLERANCES.totalsCents,
+      reason: null,
+      warnings: []
+    },
+    adjustments: [...adjustments],  // Copy existing adjustments
+    synthetic_adjustment: null
+  };
+
+  // Step 5: Determine reconciliation status
+  if (printedTotalCents === 0) {
+    result.reconciliation.reason = 'No printed total found - using computed total';
+    result.reconciliation.warnings.push('PRINTED_TOTAL_MISSING');
+    // Use computed as fallback
+    result.printed_total_cents = computedTotalCents;
+  } else if (absDelta === 0) {
+    result.reconciliation.reason = 'Exact match between printed and computed totals';
+    result.reconciliation.tolerance_ok = true;
+  } else if (absDelta <= TOLERANCES.totalsCents) {
+    result.reconciliation.reason = `Within tolerance (${absDelta} cents difference)`;
+    result.reconciliation.tolerance_ok = true;
+  } else {
+    // Step 6: MISMATCH - Create synthetic adjustment
+    const pctDelta = printedTotalCents > 0 ? absDelta / printedTotalCents : 0;
+
+    // Only create synthetic if delta is reasonable (< 20% of total)
+    if (pctDelta < 0.20) {
+      // Determine type based on whether delta is positive (missing charge) or negative (missing credit)
+      const syntheticType = deltaCents > 0 ? 'inferred_tax_or_fee' : 'inferred_credit';
+      const syntheticLabel = deltaCents > 0
+        ? 'Inferred Tax/Fee (from printed total)'
+        : 'Inferred Credit (from printed total)';
+
+      result.synthetic_adjustment = {
+        type: syntheticType,
+        description: syntheticLabel,
+        amountCents: deltaCents,
+        isSynthetic: true,
+        evidence: `AUTO: printed_total ($${(printedTotalCents/100).toFixed(2)}) - computed_total ($${(computedTotalCents/100).toFixed(2)}) = $${(deltaCents/100).toFixed(2)}`,
+        note: 'Auto-generated to reconcile printed invoice total with computed total'
+      };
+
+      // Add synthetic to adjustments list
+      result.adjustments.push(result.synthetic_adjustment);
+
+      // Update computed total to match printed (after synthetic)
+      result.computed_total_cents = printedTotalCents;
+      result.reconciliation.reason = `Created synthetic adjustment of $${(deltaCents/100).toFixed(2)} to match printed total`;
+      result.reconciliation.tolerance_ok = true;
+
+      console.log(`[RECONCILE] Created synthetic adjustment: $${(deltaCents/100).toFixed(2)} (${(pctDelta * 100).toFixed(1)}% of printed total)`);
+    } else {
+      // Delta too large - don't create synthetic, just warn
+      result.reconciliation.reason = `Large mismatch: printed $${(printedTotalCents/100).toFixed(2)} vs computed $${(computedTotalCents/100).toFixed(2)} (${(pctDelta * 100).toFixed(1)}%)`;
+      result.reconciliation.tolerance_ok = false;
+      result.reconciliation.warnings.push('LARGE_DELTA_NOT_RECONCILED');
+
+      console.warn(`[RECONCILE] WARNING: Large delta of ${(pctDelta * 100).toFixed(1)}% - not creating synthetic adjustment`);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Get the authoritative invoice total (printed total wins)
+ * This is the value that should be stored in invoice_total_cents
+ *
+ * @param {Object} reconcileResult - Result from reconcileWithPrintedTotalPriority
+ * @returns {number} - The authoritative total in cents
+ */
+function getAuthoritativeTotalCents(reconcileResult) {
+  // RULE: Printed total ALWAYS wins (if available)
+  // The reconcileWithPrintedTotalPriority function already handles fallback to computed
+  return reconcileResult.printed_total_cents;
+}
+
+/**
  * Salvage mode - triggered when reconciliation fails
  * Re-attempts to find correct totals and adjustments
  * @param {Object} parseResult - Parse result that failed reconciliation
@@ -653,5 +765,7 @@ module.exports = {
   attemptSalvage,
   reconcileWithSalvage,
   quickReconcileCheck,
+  reconcileWithPrintedTotalPriority,
+  getAuthoritativeTotalCents,
   TOLERANCES
 };
