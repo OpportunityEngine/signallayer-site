@@ -32,6 +32,10 @@ function parseSyscoLineItem(line) {
   if (/INVOICE\s+TOTAL/i.test(trimmed)) return null;
   if (isGroupSubtotal(trimmed)) return null;
 
+  // Skip ORDER SUMMARY section - contains order numbers that look like prices!
+  if (/ORDER\s+SUMMARY/i.test(trimmed)) return null;
+  if (/^\d{7}\s+\d{7}\s+\d{7}/i.test(trimmed)) return null;  // Lines with just order numbers
+
   // Skip header lines
   if (/^(ITEM|SKU|DESCRIPTION|QTY|QUANTITY|PRICE|AMOUNT|UNIT|PACK|SIZE)/i.test(trimmed)) return null;
   if (/ITEM\s+CODE/i.test(trimmed)) return null;
@@ -39,6 +43,10 @@ function parseSyscoLineItem(line) {
   // Skip advertisement/promo lines
   if (/SHOP\s+OUR|WWW\./i.test(trimmed)) return null;
   if (/^\*+[A-Z]+\*+$/.test(trimmed)) return null;  // Like ****DAIRY**** or ****MEAT****
+
+  // Skip fuel surcharge summary lines that contain ORDER SUMMARY data
+  if (/FUEL\s+SURCHARGE.*ORDER\s+SUMMARY/i.test(trimmed)) return null;
+  if (/CHGS\s+FOR.*ORDER\s+SUMMARY/i.test(trimmed)) return null;
 
   // =====================================================
   // PATTERN 1: Full Sysco format with TWO codes before prices
@@ -57,7 +65,10 @@ function parseSyscoLineItem(line) {
     const unitPrice = parseMoney(match[7]);
     const lineTotal = parseMoney(match[8]);
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0) {
+    // Sanity check: reject absurdly high prices (likely order numbers misread as prices)
+    // Max $10,000 per line item is generous for restaurant supplies
+    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku1,
@@ -91,7 +102,9 @@ function parseSyscoLineItem(line) {
     const unitPrice = parseMoney(match[7]);
     const lineTotal = parseMoney(match[8]);
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0) {
+    // Sanity check: reject absurdly high prices
+    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku1,
@@ -123,7 +136,9 @@ function parseSyscoLineItem(line) {
     const unitPrice = parseMoney(match[6]);
     const lineTotal = parseMoney(match[7]);
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0) {
+    // Sanity check: reject absurdly high prices
+    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku,
@@ -153,7 +168,9 @@ function parseSyscoLineItem(line) {
     const unitPrice = parseMoney(match[6]);
     const lineTotal = parseMoney(match[7]);
 
-    if (qty >= 1 && qty <= 999 && lineTotal > 0) {
+    // Sanity check: reject absurdly high prices
+    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    if (qty >= 1 && qty <= 999 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku,
@@ -202,7 +219,9 @@ function parseSyscoLineItem(line) {
       }
     }
 
-    if (description.length >= 3 && lineTotal > 0) {
+    // Sanity check: reject absurdly high prices (likely order numbers)
+    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    if (description.length >= 3 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku1,
@@ -243,7 +262,9 @@ function parseSyscoLineItem(line) {
       }
     }
 
-    if (description.length >= 3 && lineTotal > 0) {
+    // Sanity check: reject absurdly high prices (likely order numbers)
+    const MAX_LINE_ITEM_CENTS = 1000000; // $10,000
+    if (description.length >= 3 && lineTotal > 0 && lineTotal < MAX_LINE_ITEM_CENTS && unitPrice < MAX_LINE_ITEM_CENTS) {
       return {
         type: 'item',
         sku: sku,

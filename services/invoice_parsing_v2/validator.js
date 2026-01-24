@@ -500,9 +500,14 @@ function checkGarbageItems(result) {
   const lineItems = result.lineItems || [];
   const garbage = [];
 
+  // Maximum reasonable line item price for restaurant supplies: $10,000
+  const MAX_REASONABLE_LINE_ITEM_CENTS = 1000000;
+
   for (let i = 0; i < lineItems.length; i++) {
     const item = lineItems[i];
     const desc = (item.description || '').trim();
+    const lineTotal = item.lineTotalCents || 0;
+    const unitPrice = item.unitPriceCents || 0;
 
     // Patterns that indicate garbage
     const isGarbage =
@@ -512,13 +517,28 @@ function checkGarbageItems(result) {
       /^CONTINUED/i.test(desc) ||
       /^SEE\s+ATTACHED/i.test(desc) ||
       /^NOTES?:/i.test(desc) ||
+      /ORDER\s+SUMMARY/i.test(desc) ||
+      /CHGS\s+FOR.*ORDER/i.test(desc) ||
       (item.lineTotalCents === 0 && item.unitPriceCents === 0);
+
+    // Check for absurdly high prices (likely order numbers misread as prices)
+    const hasSuspiciouslyHighPrice =
+      lineTotal > MAX_REASONABLE_LINE_ITEM_CENTS ||
+      unitPrice > MAX_REASONABLE_LINE_ITEM_CENTS;
 
     if (isGarbage) {
       garbage.push({
         index: i,
         description: desc.slice(0, 50),
         reason: 'likely_garbage'
+      });
+    } else if (hasSuspiciouslyHighPrice) {
+      garbage.push({
+        index: i,
+        description: desc.slice(0, 50),
+        lineTotal: lineTotal,
+        unitPrice: unitPrice,
+        reason: 'absurdly_high_price'
       });
     }
   }
