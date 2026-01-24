@@ -15,6 +15,7 @@
  */
 
 const { parseMoney, parseQty, normalizeInvoiceText, isGroupSubtotal } = require('../utils');
+const { validateLineItemMath, validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
 
 /**
  * Parse Sysco line item
@@ -404,26 +405,46 @@ function parseSyscoInvoice(normalizedText, options = {}) {
 
       const item = parseSyscoLineItem(line);
       if (item) {
+        // Validate that qty isn't a misclassified item code
+        if (isLikelyMisclassifiedItemCode(item.qty, item.unitPriceCents, item.lineTotalCents)) {
+          console.log(`[SYSCO] Detected misclassified item code as qty: ${item.qty}, recalculating...`);
+          // Try to infer correct qty from math
+          if (item.unitPriceCents > 0) {
+            const inferredQty = Math.round(item.lineTotalCents / item.unitPriceCents);
+            if (inferredQty >= 1 && inferredQty <= 999) {
+              item.originalQty = item.qty;
+              item.qty = inferredQty;
+              item.mathCorrected = true;
+            }
+          }
+        }
         lineItems.push(item);
       }
     }
   }
 
-  const confidence = calculateSyscoConfidence(lineItems, totals);
+  // Post-processing: validate and fix line items math
+  const validatedItems = validateAndFixLineItems(lineItems);
+
+  const confidence = calculateSyscoConfidence(validatedItems, totals);
+
+  // Count how many items were corrected
+  const correctedCount = validatedItems.filter(item => item.mathCorrected).length;
 
   return {
     vendorKey: 'sysco',
-    parserVersion: '2.2.0',
+    parserVersion: '2.3.0',
     header: header,
     totals: totals,
-    lineItems: lineItems,
+    lineItems: validatedItems,
     employees: [],
     departments: [],
     confidence: confidence,
     debug: {
       parseAttempts: ['sysco'],
       rawLineCount: lines.length,
-      itemLinesProcessed: lineItems.length
+      itemLinesProcessed: validatedItems.length,
+      mathCorrectedItems: correctedCount
     }
   };
 }
@@ -467,10 +488,28 @@ function calculateSyscoConfidence(lineItems, totals) {
   }
 
   // Validate quantities are reasonable (not item codes)
-  const badQtyItems = lineItems.filter(item => item.qty > 100);
+  const badQtyItems = lineItems.filter(item => item.qty > 100 && !item.mathCorrected);
   if (badQtyItems.length > 0) {
     score -= 20;
     issues.push(`${badQtyItems.length} items have suspicious quantities > 100`);
+  }
+
+  // Check math validation status
+  const mathValidatedCount = lineItems.filter(item => item.mathValidated).length;
+  const mathCorrectedCount = lineItems.filter(item => item.mathCorrected).length;
+
+  if (lineItems.length > 0) {
+    const validationRate = mathValidatedCount / lineItems.length;
+    if (validationRate >= 0.9) {
+      score += 10;
+    } else if (validationRate < 0.5) {
+      score -= 5;
+      warnings.push(`Only ${Math.round(validationRate * 100)}% of items passed math validation`);
+    }
+
+    if (mathCorrectedCount > 0) {
+      warnings.push(`${mathCorrectedCount} items had quantities auto-corrected`);
+    }
   }
 
   return {

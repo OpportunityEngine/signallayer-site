@@ -19,7 +19,9 @@ const { detectVendor } = require('./vendorDetector');
 const { parseCintasInvoice } = require('./parsers/cintasParser');
 const { parseSyscoInvoice } = require('./parsers/syscoParser');
 const { parseGenericInvoice } = require('./genericParser');
+const { parseInvoiceEnhanced } = require('./enhancedParser');
 const { validateInvoiceParse, chooseBestParse, calculateParseChecksum } = require('./validator');
+const { validateAndFixLineItems } = require('./numberClassifier');
 
 /**
  * Main parsing function
@@ -58,6 +60,16 @@ function parseInvoiceText(rawText, options = {}) {
       const genericResult = parseGenericInvoice(fullText, options);
       genericResult.vendorDetection = { ...vendorInfo, note: 'fallback' };
       candidates.push(genericResult);
+
+      // Run enhanced parser too
+      try {
+        const enhancedResult = parseInvoiceEnhanced(fullText, { vendor: 'cintas' });
+        enhancedResult.vendorDetection = { ...vendorInfo, note: 'enhanced' };
+        enhancedResult.vendorKey = vendorInfo.vendorKey;
+        candidates.push(enhancedResult);
+      } catch (err) {
+        console.error('[PARSER V2] Enhanced parser error:', err.message);
+      }
     }
   } else if (vendorInfo.vendorKey === 'sysco') {
     // Run Sysco parser
@@ -71,12 +83,34 @@ function parseInvoiceText(rawText, options = {}) {
       const genericResult = parseGenericInvoice(fullText, options);
       genericResult.vendorDetection = { ...vendorInfo, note: 'fallback' };
       candidates.push(genericResult);
+
+      // Run enhanced parser too
+      try {
+        const enhancedResult = parseInvoiceEnhanced(fullText, { vendor: 'sysco' });
+        enhancedResult.vendorDetection = { ...vendorInfo, note: 'enhanced' };
+        enhancedResult.vendorKey = vendorInfo.vendorKey;
+        candidates.push(enhancedResult);
+      } catch (err) {
+        console.error('[PARSER V2] Enhanced parser error:', err.message);
+      }
     }
   } else {
     // Use generic parser
     const genericResult = parseGenericInvoice(fullText, options);
     genericResult.vendorDetection = vendorInfo;
     candidates.push(genericResult);
+
+    // Also run enhanced multi-strategy parser for comparison
+    if (!options.strict) {
+      try {
+        const enhancedResult = parseInvoiceEnhanced(fullText, { vendor: vendorInfo.vendorKey });
+        enhancedResult.vendorDetection = { ...vendorInfo, note: 'enhanced' };
+        enhancedResult.vendorKey = vendorInfo.vendorKey;
+        candidates.push(enhancedResult);
+      } catch (err) {
+        console.error('[PARSER V2] Enhanced parser error:', err.message);
+      }
+    }
   }
 
   // Step 4: Choose best result
@@ -94,7 +128,14 @@ function parseInvoiceText(rawText, options = {}) {
     };
   }
 
-  // Step 5: Build final result
+  // Step 5: Post-process line items (validate and fix math errors)
+  if (bestResult.lineItems && bestResult.lineItems.length > 0) {
+    const validatedItems = validateAndFixLineItems(bestResult.lineItems);
+    bestResult.lineItems = validatedItems;
+    bestResult.mathCorrectedCount = validatedItems.filter(i => i.mathCorrected).length;
+  }
+
+  // Step 6: Build final result
   const result = {
     success: true,
     vendorKey: bestResult.vendorKey,
@@ -123,11 +164,13 @@ function parseInvoiceText(rawText, options = {}) {
       lineNumber: idx + 1,
       sku: item.sku || null,
       description: item.description || '',
-      quantity: item.qty || 1,
+      quantity: item.qty || item.quantity || 1,
       unitPriceCents: item.unitPriceCents || 0,
       lineTotalCents: item.lineTotalCents || 0,
       taxable: item.taxFlag === 'Y',
-      category: item.type || 'item'
+      category: item.type || item.category || 'item',
+      mathValidated: item.mathValidated || false,
+      mathCorrected: item.mathCorrected || false
     })),
 
     // Confidence and validation
@@ -145,7 +188,8 @@ function parseInvoiceText(rawText, options = {}) {
       pageCount: pages.length,
       tableRegions: bestResult.debug?.tableRegions,
       alternatives: bestResult.alternatives,
-      checksum: calculateParseChecksum(bestResult)
+      checksum: calculateParseChecksum(bestResult),
+      mathCorrectedCount: bestResult.mathCorrectedCount || 0
     } : undefined
   };
 
@@ -218,9 +262,11 @@ module.exports = {
   normalizeInvoiceText,
   detectVendor,
   validateInvoiceParse,
+  validateAndFixLineItems,
 
   // Individual parsers (for testing)
   parseCintasInvoice,
   parseSyscoInvoice,
-  parseGenericInvoice
+  parseGenericInvoice,
+  parseInvoiceEnhanced
 };

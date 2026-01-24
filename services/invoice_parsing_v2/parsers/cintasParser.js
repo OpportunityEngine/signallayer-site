@@ -19,6 +19,7 @@ const {
   isDeptSubtotal,
   isProgramFeeLine
 } = require('../utils');
+const { validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
 
 /**
  * Parse Cintas invoice header (vendor, customer, invoice number, etc.)
@@ -600,7 +601,80 @@ function parseCintasInvoice(normalizedText, options = {}) {
     }
   }
 
+  // Post-processing: validate and fix line items
+  result.lineItems = validateAndFixLineItems(result.lineItems);
+
+  // Update parser version and add debug info
+  result.parserVersion = '2.1.0';
+  result.debug.mathCorrectedItems = result.lineItems.filter(i => i.mathCorrected).length;
+
+  // Calculate confidence score
+  result.confidence = calculateCintasConfidence(result.lineItems, result.totals);
+
   return result;
+}
+
+/**
+ * Calculate confidence score for Cintas parse
+ */
+function calculateCintasConfidence(lineItems, totals) {
+  let score = 50;
+  const issues = [];
+  const warnings = [];
+
+  if (lineItems.length === 0) {
+    score -= 30;
+    issues.push('No line items extracted');
+  } else {
+    score += Math.min(20, lineItems.length * 2);
+  }
+
+  if (totals.totalCents > 0) {
+    score += 15;
+  } else {
+    issues.push('No invoice total found');
+  }
+
+  if (lineItems.length > 0 && totals.totalCents > 0) {
+    const itemsSum = lineItems.reduce((sum, item) => sum + (item.lineTotalCents || 0), 0);
+    const diff = Math.abs(totals.totalCents - itemsSum);
+    const pctDiff = totals.totalCents > 0 ? diff / totals.totalCents : 1;
+
+    if (pctDiff <= 0.01) {
+      score += 15;
+    } else if (pctDiff <= 0.05) {
+      score += 10;
+    } else if (pctDiff <= 0.15) {
+      score += 5;
+      warnings.push(`Line items sum differs from total by ${(pctDiff * 100).toFixed(1)}%`);
+    } else {
+      warnings.push(`Significant difference: items sum $${(itemsSum/100).toFixed(2)} vs total $${(totals.totalCents/100).toFixed(2)}`);
+    }
+  }
+
+  // Check math validation status
+  const mathValidatedCount = lineItems.filter(item => item.mathValidated).length;
+  const mathCorrectedCount = lineItems.filter(item => item.mathCorrected).length;
+
+  if (lineItems.length > 0) {
+    const validationRate = mathValidatedCount / lineItems.length;
+    if (validationRate >= 0.9) {
+      score += 10;
+    } else if (validationRate < 0.5) {
+      score -= 5;
+      warnings.push(`Only ${Math.round(validationRate * 100)}% of items passed math validation`);
+    }
+
+    if (mathCorrectedCount > 0) {
+      warnings.push(`${mathCorrectedCount} items had quantities auto-corrected`);
+    }
+  }
+
+  return {
+    score: Math.min(100, Math.max(0, score)),
+    issues: issues,
+    warnings: warnings
+  };
 }
 
 module.exports = {
@@ -609,5 +683,6 @@ module.exports = {
   findTableRegions,
   parseItemRow,
   extractTotals,
-  extractEmployees
+  extractEmployees,
+  calculateCintasConfidence
 };
