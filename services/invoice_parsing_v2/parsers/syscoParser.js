@@ -421,29 +421,69 @@ function extractSyscoMiscCharges(text, lines) {
     console.log(`[SYSCO MISC] Found Tax via shared extractor: $${(sharedAdjustments.summary.taxCents/100).toFixed(2)}`);
   }
 
+  // Helper: Extract value at end of line (handles whitespace and trailing hyphen)
+  function extractTrailingValue(line) {
+    // Match value at end of line: "4.35-" or "5.90" with any amount of whitespace before
+    // Pattern: whitespace, then digits with optional decimal and optional trailing hyphen
+    const match = line.match(/\s([\d,]+\.?\d*)([\-])?\s*$/);
+    if (match) {
+      const value = parseMoney(match[1]);
+      const isNegative = match[2] === '-';
+      return { value, isNegative };
+    }
+    return null;
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
     // Detect MISC CHARGES section
     if (/MISC\s+CHARGES/i.test(line)) {
       inMiscSection = true;
+      console.log(`[SYSCO MISC] Entered MISC CHARGES section at line ${i}: "${line.slice(0, 80)}..."`);
 
       // IMPORTANT: Check if ALLOWANCE is on the SAME line as MISC CHARGES
-      // Format: "MISC CHARGES ALLOWANCE FOR DROP SIZE 64.03-"
+      // Format: "MISC CHARGES ALLOWANCE FOR DROP SIZE                    4.35-"
       if (/ALLOWANCE\s+FOR\s+DROP\s+SIZE/i.test(line)) {
-        const sameLineMatch = line.match(/ALLOWANCE\s+FOR\s+DROP\s+SIZE\s+([\d,]+\.?\d*)([\-])?/i);
-        if (sameLineMatch) {
-          const value = parseMoney(sameLineMatch[1]);
-          const isNegative = sameLineMatch[2] === '-';
-          if (value > 0 && value < 100000) {
-            adjustments.push({
-              type: 'allowance',
-              description: 'Allowance for Drop Size',
-              amountCents: -value,  // Allowances are credits (negative)
-              raw: line
-            });
-            console.log(`[SYSCO MISC] Found Drop Size Allowance (same line): $${(value/100).toFixed(2)} (credit)`);
+        // Try extracting value from end of line
+        const trailingValue = extractTrailingValue(line);
+        if (trailingValue && trailingValue.value > 0 && trailingValue.value < 100000) {
+          adjustments.push({
+            type: 'allowance',
+            description: 'Allowance for Drop Size',
+            amountCents: -trailingValue.value,  // Allowances are credits (negative)
+            raw: line
+          });
+          console.log(`[SYSCO MISC] Found Drop Size Allowance (same line as MISC CHARGES): $${(trailingValue.value/100).toFixed(2)} (credit)`);
+        } else {
+          // Fallback: try original pattern
+          const sameLineMatch = line.match(/ALLOWANCE\s+FOR\s+DROP\s+SIZE\s+([\d,]+\.?\d*)([\-])?/i);
+          if (sameLineMatch) {
+            const value = parseMoney(sameLineMatch[1]);
+            if (value > 0 && value < 100000) {
+              adjustments.push({
+                type: 'allowance',
+                description: 'Allowance for Drop Size',
+                amountCents: -value,  // Allowances are credits (negative)
+                raw: line
+              });
+              console.log(`[SYSCO MISC] Found Drop Size Allowance (same line): $${(value/100).toFixed(2)} (credit)`);
+            }
           }
+        }
+      }
+
+      // Also check for FUEL SURCHARGE on the same MISC CHARGES line (rare but possible)
+      if (/FUEL\s+SURCHARGE/i.test(line) || /CHGS\s+FOR\s+FUEL/i.test(line)) {
+        const trailingValue = extractTrailingValue(line);
+        if (trailingValue && trailingValue.value > 0 && trailingValue.value < 10000) {
+          adjustments.push({
+            type: 'fee',
+            description: 'Fuel Surcharge',
+            amountCents: trailingValue.value,  // Surcharges are positive
+            raw: line
+          });
+          console.log(`[SYSCO MISC] Found Fuel Surcharge (on MISC CHARGES line): $${(trailingValue.value/100).toFixed(2)}`);
         }
       }
       continue;
@@ -452,38 +492,36 @@ function extractSyscoMiscCharges(text, lines) {
     // Exit misc section when hitting ORDER SUMMARY or end markers
     if (inMiscSection) {
       if (/ORDER\s+SUMMARY/i.test(line) || /^CASES\s+SPLIT/i.test(line) || /OPEN:/i.test(line)) {
+        console.log(`[SYSCO MISC] Exited MISC CHARGES section at line ${i}`);
         break;
       }
 
       // Look for ALLOWANCE FOR DROP SIZE
-      // Format varies: "ALLOWANCE FOR DROP SIZE  64.03-" or spread across lines
+      // Format varies: "ALLOWANCE FOR DROP SIZE                    4.35-"
       if (/ALLOWANCE\s+FOR\s+DROP\s+SIZE/i.test(line)) {
-        // Try to find value on same line
-        const sameLineMatch = line.match(/ALLOWANCE\s+FOR\s+DROP\s+SIZE\s+([\d,]+\.?\d*)([\-])?/i);
-        if (sameLineMatch) {
-          const value = parseMoney(sameLineMatch[1]);
-          const isNegative = sameLineMatch[2] === '-';
+        // First try extracting value from end of line
+        const trailingValue = extractTrailingValue(line);
+        if (trailingValue && trailingValue.value > 0 && trailingValue.value < 100000) {
           adjustments.push({
             type: 'allowance',
             description: 'Allowance for Drop Size',
-            amountCents: isNegative ? -value : -value,  // Allowances are typically credits (negative)
+            amountCents: -trailingValue.value,  // Credits are negative
             raw: line
           });
-          console.log(`[SYSCO MISC] Found Drop Size Allowance: $${(value/100).toFixed(2)} (credit)`);
+          console.log(`[SYSCO MISC] Found Drop Size Allowance: $${(trailingValue.value/100).toFixed(2)} (credit)`);
         } else {
-          // Value might be on a following line - scan next few lines for a value with "-" suffix
+          // Value might be on a following line - scan next few lines for a value with optional "-" suffix
           for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
             const nextLine = lines[j].trim();
             // Look for standalone number, possibly with trailing "-" for negative
             const valueMatch = nextLine.match(/^([\d,]+\.?\d*)([\-])?$/);
             if (valueMatch) {
               const value = parseMoney(valueMatch[1]);
-              const isNegative = valueMatch[2] === '-';
-              if (value > 0 && value < 100000) {  // Reasonable range for credits
+              if (value > 0 && value < 100000) {
                 adjustments.push({
                   type: 'allowance',
                   description: 'Allowance for Drop Size',
-                  amountCents: isNegative ? -value : -value,  // Credits are negative
+                  amountCents: -value,  // Credits are negative
                   raw: `${line} -> ${nextLine}`
                 });
                 console.log(`[SYSCO MISC] Found Drop Size Allowance (next line): $${(value/100).toFixed(2)} (credit)`);
@@ -496,20 +534,18 @@ function extractSyscoMiscCharges(text, lines) {
       }
 
       // Look for FUEL SURCHARGE
-      // Format: "CHGS FOR FUEL SURCHARGE  5.90" or just values after header
+      // Format: "CHGS FOR FUEL SURCHARGE                    5.90"
       if (/FUEL\s+SURCHARGE/i.test(line) || /CHGS\s+FOR\s+FUEL/i.test(line)) {
-        const fuelMatch = line.match(/(?:FUEL\s+SURCHARGE|CHGS\s+FOR\s+FUEL\s+SURCHARGE?)\s+([\d,]+\.?\d*)/i);
-        if (fuelMatch) {
-          const value = parseMoney(fuelMatch[1]);
-          if (value > 0 && value < 10000) {  // Reasonable fuel surcharge (< $100)
-            adjustments.push({
-              type: 'fee',
-              description: 'Fuel Surcharge',
-              amountCents: value,  // Surcharges are positive (added to total)
-              raw: line
-            });
-            console.log(`[SYSCO MISC] Found Fuel Surcharge: $${(value/100).toFixed(2)}`);
-          }
+        // First try extracting value from end of line
+        const trailingValue = extractTrailingValue(line);
+        if (trailingValue && trailingValue.value > 0 && trailingValue.value < 10000) {
+          adjustments.push({
+            type: 'fee',
+            description: 'Fuel Surcharge',
+            amountCents: trailingValue.value,  // Surcharges are positive
+            raw: line
+          });
+          console.log(`[SYSCO MISC] Found Fuel Surcharge: $${(trailingValue.value/100).toFixed(2)}`);
         } else {
           // Look for value on next line
           if (i + 1 < lines.length) {
@@ -530,6 +566,44 @@ function extractSyscoMiscCharges(text, lines) {
           }
         }
         continue;
+      }
+    }
+  }
+
+  // FALLBACK: If we didn't find adjustments in the section-based approach,
+  // do a raw text search for these specific Sysco patterns
+  if (adjustments.filter(a => a.type === 'allowance').length === 0) {
+    // Look for "ALLOWANCE FOR DROP SIZE" anywhere with trailing value
+    const dropSizeMatch = text.match(/ALLOWANCE\s+FOR\s+DROP\s+SIZE\s+[\s\S]*?([\d,]+\.?\d*)([\-])?(?:\s|$)/i);
+    if (dropSizeMatch) {
+      const value = parseMoney(dropSizeMatch[1]);
+      if (value > 0 && value < 100000) {
+        adjustments.push({
+          type: 'allowance',
+          description: 'Allowance for Drop Size',
+          amountCents: -value,
+          raw: dropSizeMatch[0].trim(),
+          source: 'fallback_raw_text'
+        });
+        console.log(`[SYSCO MISC] Found Drop Size Allowance (fallback): $${(value/100).toFixed(2)} (credit)`);
+      }
+    }
+  }
+
+  if (adjustments.filter(a => a.description === 'Fuel Surcharge').length === 0) {
+    // Look for "CHGS FOR FUEL SURCHARGE" or "FUEL SURCHARGE" with trailing value
+    const fuelMatch = text.match(/(?:CHGS\s+FOR\s+)?FUEL\s+SURCHARGE\s+[\s\S]*?([\d,]+\.?\d*)(?:\s|$)/i);
+    if (fuelMatch) {
+      const value = parseMoney(fuelMatch[1]);
+      if (value > 0 && value < 10000) {
+        adjustments.push({
+          type: 'fee',
+          description: 'Fuel Surcharge',
+          amountCents: value,
+          raw: fuelMatch[0].trim(),
+          source: 'fallback_raw_text'
+        });
+        console.log(`[SYSCO MISC] Found Fuel Surcharge (fallback): $${(value/100).toFixed(2)}`);
       }
     }
   }
