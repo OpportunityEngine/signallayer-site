@@ -1388,8 +1388,12 @@
           }
 
           listEl.innerHTML = runs.map(run => {
-            // Format the date nicely
-            const date = run.createdAt ? new Date(run.createdAt) : new Date();
+            // Format the date nicely (parse as UTC since server stores in UTC)
+            let dateStr = run.createdAt;
+            if (dateStr && !dateStr.endsWith('Z') && !dateStr.includes('+')) {
+              dateStr = dateStr.replace(' ', 'T') + 'Z';
+            }
+            const date = dateStr ? new Date(dateStr) : new Date();
             const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
             // Determine status class

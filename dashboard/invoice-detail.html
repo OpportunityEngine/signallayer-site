@@ -540,6 +540,11 @@
 
     function formatDate(dateStr) {
       if (!dateStr) return '--';
+      // Parse timestamp as UTC (server stores in UTC)
+      // SQLite timestamps like "2026-01-24 19:40:00" need "Z" suffix to be treated as UTC
+      if (!dateStr.endsWith('Z') && !dateStr.includes('+')) {
+        dateStr = dateStr.replace(' ', 'T') + 'Z';
+      }
       const date = new Date(dateStr);
       return date.toLocaleDateString('en-US', {
         month: 'short',

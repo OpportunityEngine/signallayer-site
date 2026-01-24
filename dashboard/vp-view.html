@@ -3844,9 +3844,13 @@
       return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Helper: Format date
+    // Helper: Format date (parses as UTC since server stores in UTC)
     function formatDate(dateStr) {
       if (!dateStr) return '—';
+      // Parse timestamp as UTC
+      if (!dateStr.endsWith('Z') && !dateStr.includes('+')) {
+        dateStr = dateStr.replace(' ', 'T') + 'Z';
+      }
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
