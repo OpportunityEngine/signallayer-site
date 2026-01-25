@@ -3199,35 +3199,61 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         console.log(`[USER_ID_TRACE] source=manual_upload userId=${userId} email=${userEmail} authMethod=header`);
       }
 
-      // Extract vendor name - PRIORITY ORDER:
-      // 1. parsedInvoice.vendorName (V2 parser returns this directly)
-      // 2. canonical.parties.vendor.name (V1/canonical format)
-      // 3. canonical.parties.supplier.name (fallback)
-      // 4. 'Unknown Vendor' (last resort)
+      // ===== BULLETPROOF VENDOR NAME EXTRACTION =====
+      // PRIORITY ORDER (highest to lowest):
+      // 1. parsedInvoice.vendorName (V2 parser top-level field - FIXED in Patch 1)
+      // 2. parsedInvoice.vendor.name (V2 vendor object)
+      // 3. parsedInvoice.vendorDetection.vendorName (raw detection result, confidence >= 50)
+      // 4. canonical.parties.vendor.name (V1/canonical format)
+      // 5. canonical.parties.supplier.name (fallback)
+      // 6. 'Unknown Vendor' (last resort - AVOID THIS)
       let vendorName = 'Unknown Vendor';
+      let vendorSource = 'none';
 
-      // Check V2 parser result first (most reliable)
-      if (parsedInvoice && parsedInvoice.vendorName && parsedInvoice.vendorName !== 'Unknown Vendor') {
+      // 1) Top-level vendorName (FIXED by Patch 1 - should always work now)
+      if (parsedInvoice?.vendorName && parsedInvoice.vendorName !== 'Unknown Vendor') {
         vendorName = parsedInvoice.vendorName;
-        console.log(`[INGEST] Vendor from V2 parser: ${vendorName}`);
+        vendorSource = 'parsedInvoice.vendorName';
       }
-      // Then check V2 result's vendor object (if present)
-      else if (parsedInvoice && parsedInvoice.vendor && parsedInvoice.vendor.name && parsedInvoice.vendor.name !== 'Unknown Vendor') {
+      // 2) Vendor object from parser
+      else if (parsedInvoice?.vendor?.name && parsedInvoice.vendor.name !== 'Unknown Vendor') {
         vendorName = parsedInvoice.vendor.name;
-        console.log(`[INGEST] Vendor from parser vendor object: ${vendorName}`);
+        vendorSource = 'parsedInvoice.vendor.name';
       }
-      // Then canonical parties
-      else if (canonical.parties && canonical.parties.vendor && canonical.parties.vendor.name) {
+      // 3) Vendor detection result (raw from vendorDetector.js)
+      else if (parsedInvoice?.vendorDetection?.vendorName &&
+               parsedInvoice.vendorDetection.vendorName !== 'Unknown Vendor' &&
+               (parsedInvoice.vendorDetection.confidence || 0) >= 50) {
+        vendorName = parsedInvoice.vendorDetection.vendorName;
+        vendorSource = 'parsedInvoice.vendorDetection';
+      }
+      // 4) Canonical vendor parties
+      else if (canonical?.parties?.vendor?.name && canonical.parties.vendor.name !== 'Unknown Vendor') {
         vendorName = canonical.parties.vendor.name;
-        console.log(`[INGEST] Vendor from canonical parties: ${vendorName}`);
+        vendorSource = 'canonical.parties.vendor';
       }
-      else if (canonical.parties && canonical.parties.supplier && canonical.parties.supplier.name) {
+      // 5) Canonical supplier fallback
+      else if (canonical?.parties?.supplier?.name && canonical.parties.supplier.name !== 'Unknown Vendor') {
         vendorName = canonical.parties.supplier.name;
-        console.log(`[INGEST] Vendor from canonical supplier: ${vendorName}`);
+        vendorSource = 'canonical.parties.supplier';
       }
+      // 6) Last resort - log warning
       else {
-        console.log(`[INGEST] No vendor found, using 'Unknown Vendor'`);
+        vendorSource = 'FALLBACK_UNKNOWN';
+        console.warn(`[INGEST] WARNING: No vendor found! All sources returned Unknown Vendor.`);
       }
+
+      // PROOF LOG - shows exactly where vendor came from
+      console.log(`[INGEST] vendorName chosen="${vendorName}" source=${vendorSource}`);
+      console.log(`[INGEST] vendorName debug:`, {
+        'parsedInvoice.vendorName': parsedInvoice?.vendorName,
+        'parsedInvoice.vendor.name': parsedInvoice?.vendor?.name,
+        'parsedInvoice.vendorDetection': parsedInvoice?.vendorDetection ? {
+          vendorName: parsedInvoice.vendorDetection.vendorName,
+          confidence: parsedInvoice.vendorDetection.confidence
+        } : null,
+        'canonical.parties.vendor.name': canonical?.parties?.vendor?.name
+      });
 
       // Store ingestion run in database
       const fileName = body.fileName || body.file_name || body.source_ref?.value || 'upload';

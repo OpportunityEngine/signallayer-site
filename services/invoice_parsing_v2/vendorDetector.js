@@ -22,6 +22,12 @@ const VENDOR_PATTERNS = {
 
   sysco: {
     patterns: [
+      // ===== PATCH 5: SPACED/SPLIT TOKEN PATTERNS =====
+      // Handle OCR artifacts where "SYSCO" becomes "S Y S C O" or "S  Y  S  C  O"
+      { regex: /S\s*Y\s*S\s*C\s*O/i, score: 85 },  // Spaced letters: "S Y S C O"
+      { regex: /S\s*Y\s*S\s*C\s*O[\s\S]{0,40}EASTERN/i, score: 92 },  // Spaced + regional within 40 chars
+      { regex: /SYSCO[\s\S]{0,40}(EASTERN|WESTERN|CORPORATION|FOOD|LLC|INC)/i, score: 92 },  // Proximity pattern
+
       // ===== HIGH CONFIDENCE PATTERNS (90+) =====
       { regex: /SYSCO\s+EASTERN\s+MARYLAND/i, score: 99 },  // Very specific regional
       { regex: /SYSCO\s+CORPORATION/i, score: 95 },

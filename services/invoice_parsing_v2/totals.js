@@ -84,17 +84,44 @@ function normalizeMoneyLine(s) {
  * Check if line is a group/category subtotal (NOT the invoice total)
  * These should be ignored when looking for the invoice total
  * CRITICAL: This function prevents GROUP TOTAL from being mistaken for INVOICE TOTAL
+ *
+ * PATCH 4: BULLETPROOF GROUP TOTAL REJECTION
+ * - Must NEVER return true for "INVOICE TOTAL" lines (they're valid)
+ * - Must ALWAYS return true for GROUP/CATEGORY/SECTION/DEPT totals
+ *
  * @param {string} line - Normalized line
  * @returns {boolean}
  */
 function isGroupSubtotalLine(line) {
   const lineUpper = normalizeLine(line);
 
-  // Patterns that indicate GROUP subtotals (not invoice totals)
+  // ===== WHITELIST: Lines that should NEVER be rejected =====
+  // CRITICAL: "INVOICE TOTAL" is the ONE TRUE TOTAL we want
+  if (/INVOICE\s+TOTAL/i.test(lineUpper)) {
+    return false;  // This is the invoice total - DO NOT REJECT
+  }
+  if (/TOTAL\s+USD/i.test(lineUpper)) {
+    return false;  // TOTAL USD is Cintas invoice total - DO NOT REJECT
+  }
+  if (/AMOUNT\s+DUE/i.test(lineUpper)) {
+    return false;  // AMOUNT DUE is invoice total - DO NOT REJECT
+  }
+  if (/BALANCE\s+DUE/i.test(lineUpper)) {
+    return false;  // BALANCE DUE is invoice total - DO NOT REJECT
+  }
+  if (/GRAND\s+TOTAL/i.test(lineUpper)) {
+    return false;  // GRAND TOTAL is invoice total - DO NOT REJECT
+  }
+
+  // ===== BLACKLIST: Patterns that indicate GROUP/SECTION subtotals (not invoice totals) =====
   // CRITICAL: These patterns must NEVER be selected as invoice totals
   const groupPatterns = [
-    /GROUP\s+TOTAL/i,                        // Sysco uses "GROUP TOTAL****"
-    /GROUP\s+TOTAL\*+/i,                     // Sysco with asterisks
+    // PATCH 4: BULLETPROOF asterisk patterns for Sysco
+    /\*{2,}.*GROUP/i,                        // ** followed by GROUP anywhere
+    /GROUP.*\*{2,}/i,                        // GROUP followed by **
+    /\*{2,}.*TOTAL/i,                        // ** before TOTAL (but not INVOICE TOTAL - handled above)
+    /GROUP\s*TOTAL/i,                        // GROUP TOTAL (with or without space)
+    /GROUP\s+TOTAL\*+/i,                     // Sysco with asterisks after
     /\*{3,}\s*GROUP\s+TOTAL/i,               // Asterisks before GROUP TOTAL
     /CATEGORY\s+TOTAL/i,                     // Category subtotal
     /SECTION\s+TOTAL/i,                      // Section subtotal
@@ -111,6 +138,8 @@ function isGroupSubtotalLine(line) {
     /AREA\s+TOTAL/i,                         // Area total
     /ZONE\s+TOTAL/i,                         // Zone total
     /ROUTE\s+TOTAL/i,                        // Route total
+    /CLASS\s+TOTAL/i,                        // Class total (sometimes used in Sysco)
+    /PRODUCT\s+CLASS.*TOTAL/i,               // Product class total
   ];
 
   // Check for employee name pattern before SUBTOTAL

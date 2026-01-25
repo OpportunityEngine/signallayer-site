@@ -111,12 +111,20 @@ function parseInvoice(text, options = {}) {
             console.log(`[PARSER V2] Issues: ${v2Result.confidence.issues.join(', ')}`);
           }
 
+          // CRITICAL: Log vendorName propagation for debugging
+          const finalVendorName = v2Result.vendorName || v1Compat.vendor?.name || 'Unknown Vendor';
+          console.log(`[PARSER][V2->V1] vendorName="${finalVendorName}" (v2Result.vendorName="${v2Result.vendorName}", v1Compat.vendor.name="${v1Compat.vendor?.name}")`);
+
           return {
             ok: true,
             parserVersion: 'v2',
             items: v1Compat.items,
             totals: v1Compat.totals,
             vendor: v1Compat.vendor,
+            // CRITICAL: Include vendorName at TOP LEVEL so server.js can find it
+            vendorName: finalVendorName,
+            vendorKey: v2Result.vendorKey || null,
+            vendorDetection: v2Result.vendorDetection || v2Result.debug?.vendorDetection || null,
             customer: { name: v1Compat.accountName },
             metadata: {
               invoiceNumber: v1Compat.invoiceNumber,
