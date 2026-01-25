@@ -988,9 +988,10 @@ async function processInvoice(input, options = {}) {
     result.rawTextLength = extractionResult.text.length;
 
     // 4. Parse the extracted text with unified invoice parser
-    console.log(`[UniversalProcessor] Parsing ${result.rawTextLength} chars of text...`);
+    // CRITICAL: Always use V2 parser for better vendor detection and totals extraction
+    console.log(`[UniversalProcessor] Parsing ${result.rawTextLength} chars of text with V2 parser...`);
 
-    const parsed = invoiceParser.parseInvoice(extractionResult.text);
+    const parsed = invoiceParser.parseInvoice(extractionResult.text, { useV2: true, debug: true });
 
     result.parsed = parsed;
     result.ok = parsed.ok;
