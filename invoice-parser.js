@@ -177,11 +177,38 @@ function parseInvoice(text, options = {}) {
   // Cross-validate totals vs line items
   const validation = validateExtraction(items, totals);
 
+  // CRITICAL: Also try V2 vendor detection for V1 fallback
+  // This ensures vendorName is set even when V2 parsing fails but vendor detection worked
+  let v1VendorName = vendor?.name || null;
+  let v1VendorKey = null;
+  let v1VendorDetection = null;
+
+  try {
+    const v2 = getParserV2();
+    if (v2.parseInvoiceText) {
+      const { detectVendor } = require('./services/invoice_parsing_v2/vendorDetector');
+      const vendorInfo = detectVendor(text);
+      if (vendorInfo.vendorName && vendorInfo.vendorName !== 'Unknown Vendor' && vendorInfo.confidence >= 50) {
+        v1VendorName = vendorInfo.vendorName;
+        v1VendorKey = vendorInfo.vendorKey;
+        v1VendorDetection = vendorInfo;
+        console.log(`[PARSER V1] Enhanced with V2 vendor detection: ${v1VendorName} (${vendorInfo.confidence}%)`);
+      }
+    }
+  } catch (e) {
+    // V2 vendor detection optional
+  }
+
   return {
     ok: items.length > 0 || totals.totalCents > 0,
+    parserVersion: 'v1',
     items,
     totals,
     vendor,
+    // CRITICAL: Include vendorName at top level for server.js extraction
+    vendorName: v1VendorName,
+    vendorKey: v1VendorKey,
+    vendorDetection: v1VendorDetection,
     customer,
     metadata,
     confidence,
