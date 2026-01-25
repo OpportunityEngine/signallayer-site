@@ -6,6 +6,42 @@ const demoData = require('./dashboard/demoData');
 
 const router = express.Router();
 
+// ===== V2 PARSER STATUS (PUBLIC - NO AUTH) =====
+// Verify V2 parser is active - critical for debugging
+router.get('/public-v2-status', (req, res) => {
+  try {
+    const v2Enabled = process.env.INVOICE_PARSER_V2 === 'true';
+
+    let v2Available = false;
+    let testResults = null;
+
+    try {
+      const { detectVendor } = require('./services/invoice_parsing_v2/vendorDetector');
+      v2Available = true;
+
+      // Test vendor detection
+      const syscoTest = detectVendor('SYSCO EASTERN MARYLAND LLC Invoice');
+      const cintasTest = detectVendor('CINTAS CORPORATION Profile Products');
+
+      testResults = { syscoTest, cintasTest };
+    } catch (loadErr) {
+      testResults = { error: loadErr.message };
+    }
+
+    res.json({
+      success: true,
+      v2_enabled: v2Enabled,
+      env_value: process.env.INVOICE_PARSER_V2,
+      v2_available: v2Available,
+      message: v2Enabled ? '✅ V2 PARSER IS ACTIVE' : '❌ V2 Parser DISABLED',
+      vendor_detection_tests: testResults,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== TEMPORARY PUBLIC DEBUG ENDPOINT =====
 // TODO: Remove after debugging production issue
 router.get('/public-debug-invoice-status', (req, res) => {

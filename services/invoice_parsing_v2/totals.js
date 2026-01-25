@@ -195,6 +195,45 @@ function extractTotalsByLineScan(text) {
     // Skip group subtotals
     if (isGroupSubtotalLine(line)) continue;
 
+    // ===== CRITICAL FIX: SPLIT-LINE PATTERNS (HIGHEST PRIORITY) =====
+    // These handle PDFs where labels and values are split across lines
+
+    // PATTERN A: "INVOICE" alone on line N, "TOTAL value" on line N+1 (Sysco format)
+    if (/^INVOICE\s*$/i.test(lineNorm)) {
+      const totalValueMatch = nextLine ? nextLine.match(/^TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i) : null;
+      if (totalValueMatch && !/GROUP|SUBTOTAL/i.test(nextLine)) {
+        const cents = parseMoneyToCents(totalValueMatch[1]);
+        if (cents > 0 && cents < 100000000) {
+          totalCandidates.push({
+            cents,
+            priority: -2,  // HIGHEST priority
+            name: 'INVOICE + TOTAL (split-line)',
+            line: `${line} | ${nextLine}`,
+            lineIndex: i
+          });
+          console.log(`[TOTALS] Found INVOICE/TOTAL split: "${line}" + "${nextLine}" = $${(cents/100).toFixed(2)}`);
+        }
+      }
+    }
+
+    // PATTERN B: "TOTAL USD" alone on line N, value on line N+1 (Cintas format)
+    if (/^TOTAL\s+USD\s*$/i.test(lineNorm)) {
+      const valueMatch = nextLine ? nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/) : null;
+      if (valueMatch) {
+        const cents = parseMoneyToCents(valueMatch[1]);
+        if (cents > 0 && cents < 100000000) {
+          totalCandidates.push({
+            cents,
+            priority: -2,  // HIGHEST priority
+            name: 'TOTAL USD (split-line)',
+            line: `${line} | ${nextLine}`,
+            lineIndex: i
+          });
+          console.log(`[TOTALS] Found TOTAL USD split: "${line}" + "${nextLine}" = $${(cents/100).toFixed(2)}`);
+        }
+      }
+    }
+
     // Check for "INVOICE TOTAL" or just "TOTAL" on its own line
     // More flexible patterns to handle PDF extraction variations:
     // - "TOTAL" alone or with trailing punctuation (TOTAL:, TOTAL.)
