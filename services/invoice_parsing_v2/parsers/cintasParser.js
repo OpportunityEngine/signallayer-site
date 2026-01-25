@@ -438,7 +438,10 @@ function extractTotals(text, lines) {
     }
 
     // PATTERN 2: "TOTAL USD" on this line, VALUE on NEXT line (split by PDF extraction)
-    if (/TOTAL\s+USD\s*$/i.test(line.trim())) {
+    // CRITICAL: Skip if this is a HEADER row with multiple labels (e.g., "SUBTOTAL SALES TAX TOTAL USD")
+    // Those need columnar parsing, not split-line parsing
+    const isHeaderRow = /SUBTOTAL\s+.*TOTAL\s+USD/i.test(line) || /SUBTOTAL\s+(?:SALES\s+)?TAX/i.test(line);
+    if (!isHeaderRow && /TOTAL\s+USD\s*$/i.test(line.trim())) {
       // Value should be on next line
       const nextLineValue = nextLine.match(/^\s*\$?([\d,]+\.?\d*)\s*$/);
       if (nextLineValue && parseMoney(nextLineValue[1]) > 0) {
@@ -579,7 +582,7 @@ function extractTotals(text, lines) {
 
     // Match variations: "SUBTOTAL TAX TOTAL", "SUBTOTAL TAX TOTAL USD", "SUBTOTAL SALES TAX TOTAL USD"
     if (/SUBTOTAL\s+(?:SALES\s+)?TAX\s+TOTAL(?:\s+USD)?/i.test(prevLine)) {
-      // Next line should have the numbers
+      // Next line should have the numbers (all on same line)
       const numbers = line.match(/([\d,]+\.?\d*)/g);
       if (numbers && numbers.length >= 3) {
         totals.subtotalCents = parseMoney(numbers[0]);
@@ -590,6 +593,33 @@ function extractTotals(text, lines) {
         totals.debug.totalLine = baseIdx + i;
         console.log(`[CINTAS TOTALS] Found stacked format - Subtotal: $${(totals.subtotalCents/100).toFixed(2)}, Tax: $${(totals.taxCents/100).toFixed(2)}, Total: $${(totals.totalCents/100).toFixed(2)}`);
         return totals;
+      }
+
+      // ALTERNATIVE: Values might be on separate lines (PDF extraction splits them)
+      // Header: "SUBTOTAL SALES TAX TOTAL USD"
+      // Line 1: "1867.42" (subtotal)
+      // Line 2: "130.72" (tax)
+      // Line 3: "1998.14" (total)
+      if (i + 3 < scanLines.length) {
+        const line1 = scanLines[i].trim();
+        const line2 = scanLines[i + 1]?.trim() || '';
+        const line3 = scanLines[i + 2]?.trim() || '';
+
+        // Each line should be just a number
+        const num1Match = line1.match(/^([\d,]+\.?\d*)$/);
+        const num2Match = line2.match(/^([\d,]+\.?\d*)$/);
+        const num3Match = line3.match(/^([\d,]+\.?\d*)$/);
+
+        if (num1Match && num2Match && num3Match) {
+          totals.subtotalCents = parseMoney(num1Match[1]);
+          totals.taxCents = parseMoney(num2Match[1]);
+          totals.totalCents = parseMoney(num3Match[1]);
+          totals.debug.subtotalLine = baseIdx + i;
+          totals.debug.taxLine = baseIdx + i + 1;
+          totals.debug.totalLine = baseIdx + i + 2;
+          console.log(`[CINTAS TOTALS] Found stacked multi-line format - Subtotal: $${(totals.subtotalCents/100).toFixed(2)}, Tax: $${(totals.taxCents/100).toFixed(2)}, Total: $${(totals.totalCents/100).toFixed(2)}`);
+          return totals;
+        }
       }
     }
   }
