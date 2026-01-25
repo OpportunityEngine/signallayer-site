@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-01-25T22:55:49.743Z",
+  "lastUpdated": "2026-01-25T23:11:12.456Z",
   "vendorPatterns": {
     "sysco": [
       {
@@ -70,8 +70,8 @@
           "vendor:sysco"
         ],
         "createdAt": "2026-01-25T21:52:03.124Z",
-        "successCount": 4,
-        "lastUsed": "2026-01-25T22:55:49.743Z"
+        "successCount": 5,
+        "lastUsed": "2026-01-25T23:04:47.266Z"
       },
       {
         "fingerprint": "705f8138b7d3",
@@ -89,8 +89,8 @@
           "vendor:sysco"
         ],
         "createdAt": "2026-01-25T21:52:21.563Z",
-        "successCount": 3,
-        "lastUsed": "2026-01-25T22:55:49.733Z"
+        "successCount": 4,
+        "lastUsed": "2026-01-25T23:04:47.257Z"
       }
     ],
     "cintas": [
@@ -109,6 +109,25 @@
         "createdAt": "2026-01-25T01:39:19.111Z",
         "successCount": 2,
         "lastUsed": "2026-01-25T01:39:22.818Z"
+      },
+      {
+        "fingerprint": "4e118cc0163b",
+        "vendor": "cintas",
+        "strategy": "unknown",
+        "confidence": 100,
+        "itemCount": 4,
+        "totalCents": 10368,
+        "features": [
+          "hdr:desc",
+          "hdr:price",
+          "hdr:qty",
+          "lines:20",
+          "prices:15",
+          "vendor:cintas"
+        ],
+        "createdAt": "2026-01-25T23:10:58.658Z",
+        "successCount": 2,
+        "lastUsed": "2026-01-25T23:11:12.456Z"
       }
     ],
     "generic": [
@@ -128,8 +147,8 @@
           "vendor:sysco"
         ],
         "createdAt": "2026-01-25T21:49:43.415Z",
-        "successCount": 6,
-        "lastUsed": "2026-01-25T22:55:49.585Z"
+        "successCount": 7,
+        "lastUsed": "2026-01-25T23:04:47.093Z"
       },
       {
         "fingerprint": "20e2125418ee",
@@ -185,11 +204,16 @@
       "vendor": "generic",
       "strategy": "unknown",
       "confidence": 97
+    },
+    "4e118cc0163b": {
+      "vendor": "cintas",
+      "strategy": "unknown",
+      "confidence": 100
     }
   },
   "stats": {
-    "totalParses": 25,
-    "successfulParses": 23,
-    "patternsLearned": 8
+    "totalParses": 30,
+    "successfulParses": 28,
+    "patternsLearned": 9
   }
 }

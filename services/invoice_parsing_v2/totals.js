@@ -285,68 +285,123 @@ function extractTotalsByLineScan(text) {
     { pattern: /PROMO(?:TION)?[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'PROMO' },
   ];
 
-  // ===== PRIORITY PASS -1: HORIZONTAL HEADER FORMAT (CINTAS) =====
-  // Format: "SUBTOTAL SALES TAX TOTAL USD" on one line, values on next lines
-  for (let i = 0; i < lines.length - 3; i++) {
-    const line = lines[i]?.trim() || '';
+  // ============================================================
+  // COMPREHENSIVE STACKED/SPLIT-LINE FORMAT DETECTION
+  // These patterns MUST run FIRST to prevent grabbing wrong values
+  // ============================================================
 
-    // Match: "SUBTOTAL SALES TAX TOTAL USD" or "SUBTOTAL TAX TOTAL USD"
-    if (/SUBTOTAL\s+(?:SALES\s+)?TAX\s+TOTAL(?:\s+USD)?/i.test(line)) {
-      const line1 = lines[i + 1]?.trim() || '';
-      const line2 = lines[i + 2]?.trim() || '';
-      const line3 = lines[i + 3]?.trim() || '';
+  // Helper: Check if a line is a subtotal-like label
+  const isSubtotalLabelLine = (l) => /^(?:SUB[\s-]?TOTAL|MERCHANDISE\s+TOTAL)\s*$/i.test(l?.trim() || '');
 
-      // Check if next 3 lines are all just numbers
-      const val1Match = line1.match(/^([\d,]+\.?\d*)$/);
-      const val2Match = line2.match(/^([\d,]+\.?\d*)$/);
-      const val3Match = line3.match(/^([\d,]+\.?\d*)$/);
+  // Helper: Check if a line is a tax-like label
+  const isTaxLabelLine = (l) => /^(?:(?:SALES\s+)?TAX|VAT|GST)\s*$/i.test(l?.trim() || '');
 
-      if (val1Match && val2Match && val3Match) {
-        const subtotalVal = parseMoneyToCents(val1Match[1]);
-        const taxVal = parseMoneyToCents(val2Match[1]);
-        const totalVal = parseMoneyToCents(val3Match[1]);
+  // Helper: Check if a line is a total-like label (final total, not subtotal)
+  const isTotalLabelLine = (l) => /^(?:TOTAL(?:\s+USD)?|GRAND\s+TOTAL|AMOUNT\s+DUE|BALANCE\s+DUE|INVOICE\s+TOTAL|TOTAL\s+DUE|NET\s+TOTAL)\s*$/i.test(l?.trim() || '');
 
-        if (totalVal > 0) {
-          console.log(`[TOTALS] HORIZONTAL HEADER FORMAT: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
-          return {
-            totalCents: totalVal,
-            subtotalCents: subtotalVal,
-            taxCents: taxVal,
-            feesCents: 0,
-            discountCents: 0,
-            evidence: {
-              total: { cents: totalVal, name: 'HORIZONTAL HEADER (TOTAL USD)', line: `${line} -> ${line3}`, source: 'horizontal_header' },
-              subtotal: { cents: subtotalVal, name: 'HORIZONTAL HEADER (SUBTOTAL)', line: line1 },
-              tax: { cents: taxVal, name: 'HORIZONTAL HEADER (TAX)', line: line2 },
-              fees: [],
-              discounts: []
-            }
-          };
-        }
+  // Helper: Check if a line is just a number (money value)
+  const isMoneyOnlyLine = (l) => /^\s*\$?([\d,]+\.?\d*)\s*$/.test(l?.trim() || '');
+  const extractMoney = (l) => {
+    const match = (l?.trim() || '').match(/^\s*\$?([\d,]+\.?\d*)\s*$/);
+    return match ? parseMoneyToCents(match[1]) : 0;
+  };
+
+  // ===== FORMAT 1: STACKED LABELS THEN STACKED VALUES =====
+  // SUBTOTAL       <- Label
+  // TAX            <- Label
+  // TOTAL          <- Label
+  // 100.00         <- Value 1 (subtotal)
+  // 7.00           <- Value 2 (tax)
+  // 107.00         <- Value 3 (TOTAL - this is what we want!)
+  for (let i = 2; i < lines.length - 3; i++) {
+    const l0 = lines[i - 2]?.trim() || '';
+    const l1 = lines[i - 1]?.trim() || '';
+    const l2 = lines[i]?.trim() || '';
+    const l3 = lines[i + 1]?.trim() || '';
+    const l4 = lines[i + 2]?.trim() || '';
+    const l5 = lines[i + 3]?.trim() || '';
+
+    if (isSubtotalLabelLine(l0) && isTaxLabelLine(l1) && isTotalLabelLine(l2) &&
+        isMoneyOnlyLine(l3) && isMoneyOnlyLine(l4) && isMoneyOnlyLine(l5)) {
+      const subtotalVal = extractMoney(l3);
+      const taxVal = extractMoney(l4);
+      const totalVal = extractMoney(l5);
+
+      if (totalVal > 0 && totalVal >= subtotalVal) {
+        console.log(`[TOTALS] FORMAT 1 (3 labels, 3 values): Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+        return {
+          totalCents: totalVal, subtotalCents: subtotalVal, taxCents: taxVal,
+          feesCents: 0, discountCents: 0,
+          evidence: {
+            total: { cents: totalVal, name: 'STACKED 3x3', line: `${l2} -> ${l5}`, source: 'stacked_3x3' },
+            subtotal: { cents: subtotalVal, name: 'STACKED 3x3', line: l3 },
+            tax: { cents: taxVal, name: 'STACKED 3x3', line: l4 },
+            fees: [], discounts: []
+          }
+        };
       }
+    }
+  }
 
-      // Also check if values are on the SAME line as headers (space-separated)
-      const nextLine = lines[i + 1]?.trim() || '';
-      const numbers = nextLine.match(/([\d,]+\.?\d*)/g);
-      if (numbers && numbers.length >= 3) {
-        const subtotalVal = parseMoneyToCents(numbers[0]);
-        const taxVal = parseMoneyToCents(numbers[1]);
-        const totalVal = parseMoneyToCents(numbers[2]);
+  // ===== FORMAT 2: STACKED LABELS (2) THEN VALUES =====
+  // TAX            <- Label
+  // TOTAL          <- Label
+  // 7.00           <- Value 1 (tax)
+  // 107.00         <- Value 2 (TOTAL)
+  for (let i = 1; i < lines.length - 2; i++) {
+    const l0 = lines[i - 1]?.trim() || '';
+    const l1 = lines[i]?.trim() || '';
+    const l2 = lines[i + 1]?.trim() || '';
+    const l3 = lines[i + 2]?.trim() || '';
 
-        if (totalVal > 0) {
-          console.log(`[TOTALS] HORIZONTAL SAME-LINE FORMAT: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+    if (isTaxLabelLine(l0) && isTotalLabelLine(l1) &&
+        isMoneyOnlyLine(l2) && isMoneyOnlyLine(l3)) {
+      const taxVal = extractMoney(l2);
+      const totalVal = extractMoney(l3);
+
+      if (totalVal > 0 && totalVal > taxVal) {
+        console.log(`[TOTALS] FORMAT 2 (2 labels, 2 values): Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+        return {
+          totalCents: totalVal, subtotalCents: 0, taxCents: taxVal,
+          feesCents: 0, discountCents: 0,
+          evidence: {
+            total: { cents: totalVal, name: 'STACKED 2x2', line: `${l1} -> ${l3}`, source: 'stacked_2x2' },
+            subtotal: null, tax: { cents: taxVal, name: 'STACKED 2x2', line: l2 },
+            fees: [], discounts: []
+          }
+        };
+      }
+    }
+  }
+
+  // ===== FORMAT 3: HORIZONTAL HEADER WITH VALUES BELOW (3 separate lines) =====
+  // SUBTOTAL TAX TOTAL   <- Header line
+  // 100.00               <- Value 1
+  // 7.00                 <- Value 2
+  // 107.00               <- Value 3
+  for (let i = 0; i < lines.length - 3; i++) {
+    const header = lines[i]?.trim() || '';
+    const l1 = lines[i + 1]?.trim() || '';
+    const l2 = lines[i + 2]?.trim() || '';
+    const l3 = lines[i + 3]?.trim() || '';
+
+    // Match various header patterns
+    if (/(?:SUB[\s-]?TOTAL)\s+(?:(?:SALES\s+)?TAX)\s+(?:TOTAL|GRAND\s+TOTAL|AMOUNT\s+DUE)/i.test(header)) {
+      if (isMoneyOnlyLine(l1) && isMoneyOnlyLine(l2) && isMoneyOnlyLine(l3)) {
+        const subtotalVal = extractMoney(l1);
+        const taxVal = extractMoney(l2);
+        const totalVal = extractMoney(l3);
+
+        if (totalVal > 0 && totalVal >= subtotalVal) {
+          console.log(`[TOTALS] FORMAT 3 (horizontal header, 3 value lines): Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
           return {
-            totalCents: totalVal,
-            subtotalCents: subtotalVal,
-            taxCents: taxVal,
-            feesCents: 0,
-            discountCents: 0,
+            totalCents: totalVal, subtotalCents: subtotalVal, taxCents: taxVal,
+            feesCents: 0, discountCents: 0,
             evidence: {
-              total: { cents: totalVal, name: 'HORIZONTAL SAME-LINE (TOTAL USD)', line: nextLine, source: 'horizontal_same_line' },
-              subtotal: { cents: subtotalVal, name: 'HORIZONTAL SAME-LINE (SUBTOTAL)', line: nextLine },
-              tax: { cents: taxVal, name: 'HORIZONTAL SAME-LINE (TAX)', line: nextLine },
-              fees: [],
-              discounts: []
+              total: { cents: totalVal, name: 'HORIZ HEADER 3 LINES', line: `${header} -> ${l3}`, source: 'horiz_3lines' },
+              subtotal: { cents: subtotalVal, name: 'HORIZ HEADER', line: l1 },
+              tax: { cents: taxVal, name: 'HORIZ HEADER', line: l2 },
+              fees: [], discounts: []
             }
           };
         }
@@ -354,56 +409,131 @@ function extractTotalsByLineScan(text) {
     }
   }
 
-  // ===== PRIORITY PASS 0: STACKED LABEL COLUMN FORMAT (CINTAS) =====
-  // This MUST run FIRST to correctly handle:
-  // SUBTOTAL       <- Label line (i-2)
-  // SALES TAX      <- Label line (i-1)
-  // TOTAL USD      <- Label line (i)
-  // 1867.42        <- Value for SUBTOTAL (NOT the total!)
-  // 130.72         <- Value for TAX
-  // 1998.14        <- Value for TOTAL USD (THIS is the real total)
-  for (let i = 2; i < lines.length - 3; i++) {
-    const line0 = lines[i - 2]?.trim() || '';
-    const line1 = lines[i - 1]?.trim() || '';
-    const line2 = lines[i]?.trim() || '';
-    const line3 = lines[i + 1]?.trim() || '';
-    const line4 = lines[i + 2]?.trim() || '';
-    const line5 = lines[i + 3]?.trim() || '';
+  // ===== FORMAT 4: HORIZONTAL HEADER WITH VALUES ON SAME LINE =====
+  // SUBTOTAL TAX TOTAL   <- Header
+  // 100.00 7.00 107.00   <- All values on one line
+  for (let i = 0; i < lines.length - 1; i++) {
+    const header = lines[i]?.trim() || '';
+    const valueLine = lines[i + 1]?.trim() || '';
 
-    // Check if we have the stacked label pattern
-    const isSubtotalLabel = /^SUBTOTAL\s*$/i.test(line0);
-    const isTaxLabel = /^(?:SALES\s+)?TAX\s*$/i.test(line1);
-    const isTotalLabel = /^TOTAL\s+USD\s*$/i.test(line2);
+    if (/(?:SUB[\s-]?TOTAL)\s+(?:(?:SALES\s+)?TAX)\s+(?:TOTAL|GRAND\s+TOTAL|AMOUNT\s+DUE)/i.test(header)) {
+      const numbers = valueLine.match(/([\d,]+\.?\d*)/g);
+      if (numbers && numbers.length >= 3) {
+        const subtotalVal = parseMoneyToCents(numbers[0]);
+        const taxVal = parseMoneyToCents(numbers[1]);
+        const totalVal = parseMoneyToCents(numbers[2]);
 
-    if (isSubtotalLabel && isTaxLabel && isTotalLabel) {
-      // Check if next 3 lines are all just numbers (the values)
-      const val1Match = line3.match(/^([\d,]+\.?\d*)$/);
-      const val2Match = line4.match(/^([\d,]+\.?\d*)$/);
-      const val3Match = line5.match(/^([\d,]+\.?\d*)$/);
-
-      if (val1Match && val2Match && val3Match) {
-        const subtotalVal = parseMoneyToCents(val1Match[1]);
-        const taxVal = parseMoneyToCents(val2Match[1]);
-        const totalVal = parseMoneyToCents(val3Match[1]);
-
-        if (totalVal > 0) {
-          console.log(`[TOTALS] STACKED COLUMN FORMAT: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
-          // Return immediately - this is the most reliable format
+        if (totalVal > 0 && totalVal >= subtotalVal) {
+          console.log(`[TOTALS] FORMAT 4 (horizontal header, same-line values): Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
           return {
-            totalCents: totalVal,
-            subtotalCents: subtotalVal,
-            taxCents: taxVal,
-            feesCents: 0,
-            discountCents: 0,
+            totalCents: totalVal, subtotalCents: subtotalVal, taxCents: taxVal,
+            feesCents: 0, discountCents: 0,
             evidence: {
-              total: { cents: totalVal, name: 'STACKED COLUMN (TOTAL USD)', line: `${line2} -> ${line5}`, source: 'stacked_column' },
-              subtotal: { cents: subtotalVal, name: 'STACKED COLUMN (SUBTOTAL)', line: `${line0} -> ${line3}` },
-              tax: { cents: taxVal, name: 'STACKED COLUMN (TAX)', line: `${line1} -> ${line4}` },
-              fees: [],
-              discounts: []
+              total: { cents: totalVal, name: 'HORIZ SAME LINE', line: valueLine, source: 'horiz_sameline' },
+              subtotal: { cents: subtotalVal, name: 'HORIZ SAME LINE', line: valueLine },
+              tax: { cents: taxVal, name: 'HORIZ SAME LINE', line: valueLine },
+              fees: [], discounts: []
             }
           };
         }
+      }
+    }
+  }
+
+  // ===== FORMAT 5: ALTERNATING LABEL-VALUE PAIRS =====
+  // SUBTOTAL
+  // 100.00
+  // TAX
+  // 7.00
+  // TOTAL
+  // 107.00
+  for (let i = 0; i < lines.length - 5; i++) {
+    const l0 = lines[i]?.trim() || '';
+    const l1 = lines[i + 1]?.trim() || '';
+    const l2 = lines[i + 2]?.trim() || '';
+    const l3 = lines[i + 3]?.trim() || '';
+    const l4 = lines[i + 4]?.trim() || '';
+    const l5 = lines[i + 5]?.trim() || '';
+
+    if (isSubtotalLabelLine(l0) && isMoneyOnlyLine(l1) &&
+        isTaxLabelLine(l2) && isMoneyOnlyLine(l3) &&
+        isTotalLabelLine(l4) && isMoneyOnlyLine(l5)) {
+      const subtotalVal = extractMoney(l1);
+      const taxVal = extractMoney(l3);
+      const totalVal = extractMoney(l5);
+
+      if (totalVal > 0 && totalVal >= subtotalVal) {
+        console.log(`[TOTALS] FORMAT 5 (alternating label-value): Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+        return {
+          totalCents: totalVal, subtotalCents: subtotalVal, taxCents: taxVal,
+          feesCents: 0, discountCents: 0,
+          evidence: {
+            total: { cents: totalVal, name: 'ALTERNATING', line: `${l4} -> ${l5}`, source: 'alternating' },
+            subtotal: { cents: subtotalVal, name: 'ALTERNATING', line: l1 },
+            tax: { cents: taxVal, name: 'ALTERNATING', line: l3 },
+            fees: [], discounts: []
+          }
+        };
+      }
+    }
+  }
+
+  // ===== FORMAT 6: ALTERNATING WITHOUT SUBTOTAL (just TAX then TOTAL) =====
+  // TAX
+  // 7.00
+  // TOTAL
+  // 107.00
+  for (let i = 0; i < lines.length - 3; i++) {
+    const l0 = lines[i]?.trim() || '';
+    const l1 = lines[i + 1]?.trim() || '';
+    const l2 = lines[i + 2]?.trim() || '';
+    const l3 = lines[i + 3]?.trim() || '';
+
+    if (isTaxLabelLine(l0) && isMoneyOnlyLine(l1) &&
+        isTotalLabelLine(l2) && isMoneyOnlyLine(l3)) {
+      const taxVal = extractMoney(l1);
+      const totalVal = extractMoney(l3);
+
+      if (totalVal > 0 && totalVal > taxVal) {
+        console.log(`[TOTALS] FORMAT 6 (tax-total alternating): Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+        return {
+          totalCents: totalVal, subtotalCents: 0, taxCents: taxVal,
+          feesCents: 0, discountCents: 0,
+          evidence: {
+            total: { cents: totalVal, name: 'TAX-TOTAL ALT', line: `${l2} -> ${l3}`, source: 'tax_total_alt' },
+            subtotal: null, tax: { cents: taxVal, name: 'TAX-TOTAL ALT', line: l1 },
+            fees: [], discounts: []
+          }
+        };
+      }
+    }
+  }
+
+  // ===== FORMAT 7: SINGLE TOTAL LABEL THEN VALUE =====
+  // TOTAL USD (or INVOICE TOTAL, GRAND TOTAL, etc.)
+  // 107.00
+  // BUT only if NOT preceded by SUBTOTAL/TAX labels (those are handled above)
+  for (let i = 0; i < lines.length - 1; i++) {
+    const label = lines[i]?.trim() || '';
+    const value = lines[i + 1]?.trim() || '';
+    const prevLine = i > 0 ? lines[i - 1]?.trim() || '' : '';
+
+    // Skip if this is part of a stacked format (prev line is tax/subtotal label)
+    if (isTaxLabelLine(prevLine) || isSubtotalLabelLine(prevLine)) continue;
+
+    if (isTotalLabelLine(label) && isMoneyOnlyLine(value)) {
+      const totalVal = extractMoney(value);
+
+      if (totalVal > 1000) {  // At least $10 to avoid false positives
+        console.log(`[TOTALS] FORMAT 7 (single total label-value): Total=$${(totalVal/100).toFixed(2)}`);
+        return {
+          totalCents: totalVal, subtotalCents: 0, taxCents: 0,
+          feesCents: 0, discountCents: 0,
+          evidence: {
+            total: { cents: totalVal, name: 'SINGLE LABEL-VALUE', line: `${label} -> ${value}`, source: 'single_label_value' },
+            subtotal: null, tax: null, fees: [], discounts: []
+          }
+        };
       }
     }
   }
