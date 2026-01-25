@@ -3286,6 +3286,25 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
 
       console.log(`[INGEST] Invoice total: $${(invoiceTotalCents/100).toFixed(2)} (source: ${totalSource})`);
 
+      // ===== DB WRITE LOGGING =====
+      // Log exactly what we're about to write to help debug issues
+      console.log(`[INGEST DB WRITE] ===== WRITING TO DATABASE =====`);
+      console.log(`[INGEST DB WRITE] run_id: ${run_id}`);
+      console.log(`[INGEST DB WRITE] user_id: ${userId}`);
+      console.log(`[INGEST DB WRITE] account_name: "${accountName || 'Unknown'}"`);
+      console.log(`[INGEST DB WRITE] vendor_name: "${vendorName}"`);
+      console.log(`[INGEST DB WRITE] invoice_total_cents: ${invoiceTotalCents} ($${(invoiceTotalCents/100).toFixed(2)})`);
+      console.log(`[INGEST DB WRITE] fileName: "${fileName}"`);
+
+      // Log parser result for debugging vendor detection
+      if (parsedInvoice) {
+        console.log(`[INGEST DB WRITE] Parser result: vendorName="${parsedInvoice.vendorName}", vendorKey="${parsedInvoice.vendorKey || 'N/A'}"`);
+        if (parsedInvoice.totals) {
+          console.log(`[INGEST DB WRITE] Parser totals: totalCents=${parsedInvoice.totals.totalCents || 0}, printedTotalCents=${parsedInvoice.totals.printedTotalCents || 'N/A'}`);
+        }
+      }
+      console.log(`[INGEST DB WRITE] =================================`);
+
       console.log(`[USER_ID_TRACE] source=manual_upload action=insert_ingestion_run runId=${run_id} userId=${userId} email=${userEmail}`);
 
       const runRecord = db.getDatabase().prepare(`
@@ -3302,6 +3321,8 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         JSON.stringify(body).length,
         invoiceTotalCents
       );
+
+      console.log(`[INGEST DB WRITE] SUCCESS: Inserted row ${runRecord.lastInsertRowid}`);
 
       const internalRunId = runRecord.lastInsertRowid;
       revenueRadarData.ingestion_run_id = internalRunId;

@@ -1545,6 +1545,117 @@ router.get('/debug/v2-status', (req, res) => {
   }
 });
 
+// POST /api/debug/test-parse - Test full parse pipeline with raw text (no DB write)
+router.post('/debug/test-parse', (req, res) => {
+  try {
+    const { rawText, vendorHint, debug = true } = req.body;
+
+    if (!rawText || rawText.length < 50) {
+      return res.status(400).json({
+        success: false,
+        error: 'rawText must be at least 50 characters'
+      });
+    }
+
+    // Load V2 parser
+    const v2Enabled = process.env.INVOICE_PARSER_V2 === 'true';
+    let result;
+
+    if (v2Enabled) {
+      const { parseInvoiceText } = require('./services/invoice_parsing_v2');
+      result = parseInvoiceText(rawText, { debug, vendorHint });
+      result._parser = 'v2';
+    } else {
+      const invoiceParser = require('./invoice-parser');
+      result = invoiceParser.parseInvoice(rawText);
+      result._parser = 'v1';
+    }
+
+    // Also run vendor detection separately for comparison
+    const { detectVendor } = require('./services/invoice_parsing_v2/vendorDetector');
+    const vendorDetection = detectVendor(rawText);
+
+    // Run totals extraction for comparison
+    const { extractTotalsByLineScan, selectBestTotal, computeInvoiceMath } = require('./services/invoice_parsing_v2/totals');
+    const lineScanTotals = extractTotalsByLineScan(rawText);
+    const computed = computeInvoiceMath(result.lineItems || [], lineScanTotals);
+    const bestTotal = selectBestTotal(lineScanTotals, computed, result.totals?.totalCents || 0);
+
+    res.json({
+      success: true,
+      parser_used: result._parser,
+      v2_enabled: v2Enabled,
+      result: {
+        vendorKey: result.vendorKey,
+        vendorName: result.vendorName,
+        invoiceNumber: result.invoiceNumber,
+        invoiceDate: result.invoiceDate,
+        lineItemCount: (result.lineItems || []).length,
+        totals: result.totals,
+        confidence: result.confidence
+      },
+      vendor_detection: vendorDetection,
+      totals_analysis: {
+        lineScan: lineScanTotals,
+        computed,
+        bestTotal,
+        parserTotal: result.totals?.totalCents || 0
+      },
+      debug: result.debug || null,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[API] Test parse error:', error);
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+
+// GET /api/debug/recent-parses - Show recent invoice parses with totals for debugging
+router.get('/debug/recent-parses', (req, res) => {
+  try {
+    const database = db.getDatabase();
+    const limit = parseInt(req.query.limit) || 20;
+
+    const recentInvoices = database.prepare(`
+      SELECT
+        ir.id,
+        ir.run_id,
+        ir.vendor_name,
+        ir.account_name,
+        ir.invoice_total_cents,
+        ir.status,
+        ir.created_at,
+        ir.file_name,
+        (SELECT COUNT(*) FROM invoice_items WHERE run_id = ir.id) as item_count,
+        (SELECT SUM(total_cents) FROM invoice_items WHERE run_id = ir.id) as items_sum_cents
+      FROM ingestion_runs ir
+      ORDER BY ir.created_at DESC
+      LIMIT ?
+    `).all(limit);
+
+    // Add analysis for each
+    const analyzed = recentInvoices.map(inv => ({
+      ...inv,
+      invoice_total: (inv.invoice_total_cents / 100).toFixed(2),
+      items_sum: ((inv.items_sum_cents || 0) / 100).toFixed(2),
+      delta: ((inv.invoice_total_cents - (inv.items_sum_cents || 0)) / 100).toFixed(2),
+      delta_pct: inv.invoice_total_cents > 0
+        ? (((inv.invoice_total_cents - (inv.items_sum_cents || 0)) / inv.invoice_total_cents) * 100).toFixed(1) + '%'
+        : 'N/A'
+    }));
+
+    res.json({
+      success: true,
+      count: analyzed.length,
+      invoices: analyzed,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[API] Recent parses error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DEMO MODE ENDPOINT =====
 
 // GET /api/demo/status - Check if we should use demo or production data

@@ -64,8 +64,26 @@ function normalizeLine(line) {
 }
 
 /**
+ * Normalize money values that may have spaces inserted by PDF extraction
+ * Examples: "1 748.85" -> "1748.85", "1748 . 85" -> "1748.85"
+ * @param {string} s - Raw money string
+ * @returns {string} - Normalized money string
+ */
+function normalizeMoneyLine(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/\r/g, '')
+    .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "1748 .85" -> "1748.85"
+    .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+    .replace(/,\s+(?=\d)/g, ',')          // "1,748 .85" -> "1,748.85"
+    .trim();
+}
+
+/**
  * Check if line is a group/category subtotal (NOT the invoice total)
  * These should be ignored when looking for the invoice total
+ * CRITICAL: This function prevents GROUP TOTAL from being mistaken for INVOICE TOTAL
  * @param {string} line - Normalized line
  * @returns {boolean}
  */
@@ -73,17 +91,26 @@ function isGroupSubtotalLine(line) {
   const lineUpper = normalizeLine(line);
 
   // Patterns that indicate GROUP subtotals (not invoice totals)
+  // CRITICAL: These patterns must NEVER be selected as invoice totals
   const groupPatterns = [
-    /GROUP\s+TOTAL/i,
-    /CATEGORY\s+TOTAL/i,
-    /SECTION\s+TOTAL/i,
-    /DEPT\.?\s+TOTAL/i,
-    /DEPARTMENT\s+TOTAL/i,
+    /GROUP\s+TOTAL/i,                        // Sysco uses "GROUP TOTAL****"
+    /GROUP\s+TOTAL\*+/i,                     // Sysco with asterisks
+    /\*{3,}\s*GROUP\s+TOTAL/i,               // Asterisks before GROUP TOTAL
+    /CATEGORY\s+TOTAL/i,                     // Category subtotal
+    /SECTION\s+TOTAL/i,                      // Section subtotal
+    /DEPT\.?\s+TOTAL/i,                      // Department total (abbreviated)
+    /DEPARTMENT\s+TOTAL/i,                   // Department total (full)
     /^\d{4}\s+[A-Z]+\s+[A-Z]+\s+SUBTOTAL/i,  // 0001 JOHN DOE SUBTOTAL
     /^[A-Z]+\s+[A-Z]+\s+SUBTOTAL\s*-?\s*[\d,\.]+$/i,  // JOHN DOE SUBTOTAL
     /^\s*[A-Z\/\s]+\s+SUBTOTAL\s+[\d,\.]+$/i,  // MAIN/REFRIG SUBTOTAL
-    /IT\s+SUBTOTAL/i,  // Department subtotal
-    /LOC\s+\d+.*SUBTOTAL/i,  // Location subtotal
+    /IT\s+SUBTOTAL/i,                        // IT Department subtotal
+    /LOC\s+\d+.*SUBTOTAL/i,                  // Location subtotal
+    /EMPLOYEE.*SUBTOTAL/i,                   // Employee subtotal
+    /EMP\s*#.*SUBTOTAL/i,                    // EMP# subtotal (Cintas)
+    /LOCATION\s+SUBTOTAL/i,                  // Location subtotal
+    /AREA\s+TOTAL/i,                         // Area total
+    /ZONE\s+TOTAL/i,                         // Zone total
+    /ROUTE\s+TOTAL/i,                        // Route total
   ];
 
   // Check for employee name pattern before SUBTOTAL
@@ -97,6 +124,12 @@ function isGroupSubtotalLine(line) {
         return true;  // Employee subtotal
       }
     }
+  }
+
+  // Also check if line contains ONLY "SUBTOTAL" without "TOTAL USD" or "INVOICE TOTAL"
+  // These are almost always category/employee subtotals, not invoice totals
+  if (/^SUBTOTAL\s*[\d,\.]+$/i.test(lineUpper) && !/INVOICE|USD|AMOUNT|DUE|BALANCE/i.test(lineUpper)) {
+    return true;
   }
 
   return groupPatterns.some(p => p.test(lineUpper));
@@ -405,16 +438,30 @@ function extractTotalsByLineScan(text) {
   }
 
   // Select best TOTAL candidate (lowest priority number = highest priority)
+  // CRITICAL: Filter out any candidates whose evidence line contains GROUP TOTAL patterns
   if (totalCandidates.length > 0) {
-    totalCandidates.sort((a, b) => a.priority - b.priority);
-    const best = totalCandidates[0];
+    // Final GROUP TOTAL filter - reject any candidate with GROUP/CATEGORY/SECTION/DEPT in evidence
+    const filteredCandidates = totalCandidates.filter(c => {
+      const evidenceLine = String(c.line || '').toUpperCase();
+      if (/GROUP\s*TOTAL|CATEGORY\s*TOTAL|SECTION\s*TOTAL|DEPT\.*\s*TOTAL/i.test(evidenceLine)) {
+        console.log(`[TOTALS] REJECTING GROUP TOTAL candidate: $${(c.cents/100).toFixed(2)} from "${c.line}"`);
+        return false;
+      }
+      return true;
+    });
+
+    const candidatesToUse = filteredCandidates.length > 0 ? filteredCandidates : totalCandidates;
+    candidatesToUse.sort((a, b) => a.priority - b.priority);
+    const best = candidatesToUse[0];
     totalCents = best.cents;
     evidence.total = {
       cents: best.cents,
       name: best.name,
       line: best.line,
-      alternatives: totalCandidates.length > 1 ? totalCandidates.slice(1, 3) : []
+      source: 'printed_line_scan',
+      alternatives: candidatesToUse.length > 1 ? candidatesToUse.slice(1, 3) : []
     };
+    console.log(`[TOTALS] Selected best total: $${(totalCents/100).toFixed(2)} (${best.name}) from: "${best.line}"`);
   }
 
   // Select best SUBTOTAL candidate (prefer largest that's <= total)
@@ -607,5 +654,6 @@ module.exports = {
   selectBestTotal,
   extractInterestingLines,
   isGroupSubtotalLine,
-  normalizeLine
+  normalizeLine,
+  normalizeMoneyLine
 };

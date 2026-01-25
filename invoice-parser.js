@@ -20,8 +20,20 @@
  * - Better handling of multi-page invoices
  */
 
-// Feature flag for V2 parser
-const USE_PARSER_V2 = process.env.INVOICE_PARSER_V2 === 'true';
+// CRITICAL: Load dotenv BEFORE any process.env access
+// This ensures INVOICE_PARSER_V2 is available even when this module is required early
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+
+/**
+ * Check if V2 parser is enabled - computed dynamically each call
+ * This avoids the static capture issue where env var isn't set at module load time
+ */
+function isV2Enabled(options = {}) {
+  const envValue = process.env.INVOICE_PARSER_V2;
+  const envOn = String(envValue || '').toLowerCase() === 'true';
+  const optionOn = Boolean(options.useV2);
+  return envOn || optionOn;
+}
 
 // V2 Parser import (lazy loaded)
 let parserV2 = null;
@@ -64,13 +76,25 @@ function parseInvoice(text, options = {}) {
   }
 
   // ========== V2 PARSER (if enabled) ==========
-  if (USE_PARSER_V2 || options.useV2) {
+  const v2Enabled = isV2Enabled(options);
+
+  // Debug logging for V2 status (helps diagnose production issues)
+  if (options.debug) {
+    console.log('[PARSER] V2 check:', {
+      envValue: process.env.INVOICE_PARSER_V2,
+      useV2Option: options.useV2,
+      v2Enabled
+    });
+  }
+
+  if (v2Enabled) {
     try {
       const v2 = getParserV2();
       if (v2.parseInvoiceText) {
         // CRITICAL: V2 proof logging - confirms V2 is running
         console.log('==============================================================');
         console.log('[PARSER V2 ACTIVATED] Environment: INVOICE_PARSER_V2=' + process.env.INVOICE_PARSER_V2);
+        console.log('[PARSER V2 ACTIVATED] isV2Enabled() returned: true');
         console.log('==============================================================');
         const v2Result = v2.parseInvoiceText(text, { debug: true });
 

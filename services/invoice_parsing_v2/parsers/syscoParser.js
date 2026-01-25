@@ -624,6 +624,7 @@ function extractSyscoMiscCharges(text, lines) {
 /**
  * Extract totals from Sysco invoice
  * Uses UNIVERSAL TOTAL FINDER for robust extraction across ANY layout
+ * CRITICAL: Must correctly identify INVOICE TOTAL and REJECT GROUP TOTAL
  */
 function extractSyscoTotals(text, lines) {
   const totals = {
@@ -631,12 +632,22 @@ function extractSyscoTotals(text, lines) {
     taxCents: 0,
     totalCents: 0,
     currency: 'USD',
-    candidates: []
+    candidates: [],
+    totalEvidence: null
   };
 
   // ========== SYSCO-SPECIFIC PATTERN (HIGHEST PRIORITY) ==========
   // Sysco always uses "INVOICE TOTAL" near the bottom - check this FIRST
-  console.log(`[SYSCO TOTALS] Scanning for INVOICE TOTAL pattern...`);
+  console.log(`[SYSCO TOTALS] Scanning for INVOICE TOTAL pattern (${lines.length} total lines)...`);
+
+  // Normalize lines for better matching (handle split numbers like "1 748.85")
+  const normalizedLines = lines.map(l => {
+    return String(l || '')
+      .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
+      .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "1748 .85" -> "1748.85"
+      .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+      .trim();
+  });
 
   // PATTERN 1: "INVOICE" on one line, "TOTAL value" on next line (common PDF split)
   // Example: line N = "INVOICE", line N+1 = "TOTAL 1748.85"
@@ -714,9 +725,60 @@ function extractSyscoTotals(text, lines) {
         const value = parseMoney(justTotalMatch[1]);
         if (value > 100 && value < 100000000 && totals.totalCents === 0) {
           totals.totalCents = value;
+          totals.totalEvidence = `Pattern 3: standalone TOTAL at line ${i}: "${line}"`;
           console.log(`[SYSCO TOTALS] Found standalone TOTAL: $${(value/100).toFixed(2)}`);
           totals.debug = { syscoSpecific: true, foundAt: 'standalone-total' };
           // Don't break - keep looking for better match
+        }
+      }
+    }
+  }
+
+  // ========== PATTERN 4: LAST PAGE indicator with nearby total ==========
+  // Sysco invoices often have "LAST PAGE" at the very end with INVOICE TOTAL just above
+  if (totals.totalCents === 0) {
+    console.log(`[SYSCO TOTALS] Checking for LAST PAGE pattern...`);
+    const lastPageIdx = lines.findIndex(l => /LAST\s+PAGE/i.test(l));
+    if (lastPageIdx > 10) {
+      // Scan up to 10 lines before LAST PAGE for INVOICE TOTAL pattern
+      for (let i = lastPageIdx - 1; i >= Math.max(0, lastPageIdx - 10); i--) {
+        const line = normalizedLines[i] || lines[i].trim();
+
+        // Look for money value on a line by itself (often how PDF extracts totals)
+        const moneyOnlyMatch = line.match(/^\s*\$?([\d,]+\.\d{2})\s*$/);
+        if (moneyOnlyMatch) {
+          // Check if preceding lines contain INVOICE TOTAL
+          const context = lines.slice(Math.max(0, i - 3), i + 1).join(' ');
+          if (/INVOICE\s*TOTAL/i.test(context) && !/GROUP/i.test(context)) {
+            const value = parseMoney(moneyOnlyMatch[1]);
+            if (value > 100 && value < 100000000) {
+              totals.totalCents = value;
+              totals.totalEvidence = `Pattern 4: LAST PAGE - INVOICE TOTAL found at line ${i}`;
+              console.log(`[SYSCO TOTALS] Found INVOICE TOTAL near LAST PAGE: $${(value/100).toFixed(2)}`);
+              totals.debug = { syscoSpecific: true, foundAt: 'last-page-invoice-total' };
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ========== PATTERN 5: Raw text regex for INVOICE TOTAL with value ==========
+  // Sometimes the text extraction joins lines differently
+  if (totals.totalCents === 0) {
+    console.log(`[SYSCO TOTALS] Trying raw text INVOICE TOTAL pattern...`);
+    const rawMatches = text.match(/INVOICE\s*(?:TOTAL)?\s*[\r\n\s]*TOTAL\s*[\r\n\s]*\$?([\d,]+\.?\d{0,3})/gi);
+    if (rawMatches && rawMatches.length > 0) {
+      const lastMatch = rawMatches[rawMatches.length - 1];
+      const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d{0,3})\s*$/);
+      if (valueMatch) {
+        const value = parseMoney(valueMatch[1]);
+        if (value > 100 && value < 100000000) {
+          totals.totalCents = value;
+          totals.totalEvidence = `Pattern 5: Raw text INVOICE TOTAL: "${lastMatch.replace(/[\r\n]+/g, ' ')}"`;
+          console.log(`[SYSCO TOTALS] Found raw INVOICE TOTAL: $${(value/100).toFixed(2)}`);
+          totals.debug = { syscoSpecific: true, foundAt: 'raw-text-invoice-total' };
         }
       }
     }
