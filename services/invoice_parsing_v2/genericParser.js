@@ -18,6 +18,7 @@ const {
 const { parseAdaptive } = require('./adaptiveParser');
 const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
 const { validateAndFixLineItems } = require('./numberClassifier');
+const { findInvoiceTotal, extractTotalWithUniversalFinder } = require('./universalTotalFinder');
 
 /**
  * Process price string with 3 decimal precision
@@ -106,7 +107,8 @@ function parseGenericHeader(text, lines) {
 }
 
 /**
- * Extract totals from generic invoice using bottom-up scanning
+ * Extract totals from generic invoice using UNIVERSAL TOTAL FINDER
+ * This combines 7 different strategies to find the invoice total NO MATTER WHERE it is
  */
 function extractGenericTotals(text, lines) {
   const totals = {
@@ -117,38 +119,54 @@ function extractGenericTotals(text, lines) {
     debug: {}
   };
 
-  // First, try to find "INVOICE TOTAL" specifically (handles line breaks)
-  // This is most reliable for Sysco invoices
-  const invoiceTotalMatch = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d*)/gi);
-  if (invoiceTotalMatch && invoiceTotalMatch.length > 0) {
-    // Get the last match (final INVOICE TOTAL on the document)
-    const lastMatch = invoiceTotalMatch[invoiceTotalMatch.length - 1];
-    const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d*)\s*$/);
-    if (valueMatch) {
-      const total = parseMoney(valueMatch[1]);
-      if (total > 0) {
-        totals.totalCents = total;
-        console.log(`[GENERIC TOTALS] Found INVOICE TOTAL (inline): $${(total/100).toFixed(2)}`);
+  // ========== UNIVERSAL TOTAL FINDER ==========
+  // Run ALL 7 strategies to exhaustively find the invoice total
+  console.log(`[GENERIC TOTALS] Running Universal Total Finder...`);
+  const universalResult = findInvoiceTotal(text);
+
+  if (universalResult.found && universalResult.confidence >= 30) {
+    totals.totalCents = universalResult.totalCents;
+    totals.debug.universalFinder = {
+      confidence: universalResult.confidence,
+      strategy: universalResult.strategy,
+      candidates: universalResult.debug.candidateCount
+    };
+    console.log(`[GENERIC TOTALS] Universal Finder SUCCESS: $${universalResult.totalDollars.toFixed(2)} (${universalResult.confidence}% confidence via ${universalResult.strategy})`);
+  } else {
+    console.log(`[GENERIC TOTALS] Universal Finder: No confident result, trying legacy patterns...`);
+  }
+
+  // ========== LEGACY PATTERNS (Fallback) ==========
+  // If universal finder didn't find anything with good confidence, try legacy patterns
+  if (totals.totalCents === 0) {
+    // First, try to find "INVOICE TOTAL" specifically (handles line breaks)
+    const invoiceTotalMatch = text.match(/INVOICE[\s\n]*TOTAL[\s:\n]*\$?([\d,]+\.?\d*)/gi);
+    if (invoiceTotalMatch && invoiceTotalMatch.length > 0) {
+      const lastMatch = invoiceTotalMatch[invoiceTotalMatch.length - 1];
+      const valueMatch = lastMatch.match(/\$?([\d,]+\.?\d*)\s*$/);
+      if (valueMatch) {
+        const total = parseMoney(valueMatch[1]);
+        if (total > 0) {
+          totals.totalCents = total;
+          console.log(`[GENERIC TOTALS] Found INVOICE TOTAL (legacy inline): $${(total/100).toFixed(2)}`);
+        }
       }
     }
   }
 
   // Pattern 2: Multi-line INVOICE TOTAL (PDF columns split across lines)
-  // Look for "INVOICE" then "TOTAL" then a value within next few lines
   if (totals.totalCents === 0) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim().toUpperCase();
       if (line.includes('INVOICE') && (line.includes('TOTAL') || (i + 1 < lines.length && lines[i + 1].trim().toUpperCase().includes('TOTAL')))) {
-        // Found INVOICE TOTAL marker - look for value in next 5 lines
         for (let j = i; j < Math.min(i + 5, lines.length); j++) {
           const searchLine = lines[j].trim();
-          // Look for standalone monetary value (4+ digits with decimal)
           const valueMatch = searchLine.match(/^\$?([\d,]+\.\d{2})$/);
           if (valueMatch) {
             const value = parseMoney(valueMatch[1]);
-            if (value > 100 && value < 100000000) {  // Reasonable invoice total range
+            if (value > 100 && value < 100000000) {
               totals.totalCents = value;
-              console.log(`[GENERIC TOTALS] Found INVOICE TOTAL (multi-line): $${(value/100).toFixed(2)}`);
+              console.log(`[GENERIC TOTALS] Found INVOICE TOTAL (legacy multi-line): $${(value/100).toFixed(2)}`);
               break;
             }
           }
@@ -158,34 +176,7 @@ function extractGenericTotals(text, lines) {
     }
   }
 
-  // Pattern 3: Look for largest value near bottom that matches "TOTAL" context
-  if (totals.totalCents === 0) {
-    const lastLines = lines.slice(-30);  // Last 30 lines
-    for (let i = lastLines.length - 1; i >= 0; i--) {
-      const line = lastLines[i].trim();
-      // Match values like "1748.85" or "$1,748.85" at end of line or standalone
-      const totalMatch = line.match(/(?:TOTAL|AMOUNT|DUE).*?\$?([\d,]+\.\d{2})\s*$/i) ||
-                        line.match(/^\$?([\d,]+\.\d{2})$/);
-      if (totalMatch) {
-        const value = parseMoney(totalMatch[1]);
-        if (value > totals.totalCents && value > 100 && value < 100000000) {
-          totals.totalCents = value;
-          console.log(`[GENERIC TOTALS] Found TOTAL (bottom scan): $${(value/100).toFixed(2)} from: "${line.slice(0, 50)}"`);
-        }
-      }
-    }
-  }
-
-  // Common total patterns - ordered by specificity (most specific first)
-  const totalPatterns = [
-    /INVOICE[\s\n]+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,  // Sysco uses "INVOICE TOTAL"
-    /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,
-    /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
-    /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
-    /BALANCE\s+DUE[:\s]*\$?([\d,]+\.?\d*)/i,
-    /TOTAL\s*(?:AMOUNT|USD)?[:\s]*\$?([\d,]+\.?\d*)/i
-  ];
-
+  // ========== SUBTOTAL AND TAX EXTRACTION ==========
   const subtotalPatterns = [
     /SUB[\s\-]?TOTAL[:\s]*\$?([\d,]+\.?\d*)/i,
     /SUBTOTAL[:\s]*\$?([\d,]+\.?\d*)/i
@@ -196,20 +187,14 @@ function extractGenericTotals(text, lines) {
     /VAT[:\s]*\$?([\d,]+\.?\d*)/i
   ];
 
-  // Scan from bottom
-  const matches = scanFromBottom(lines, [...totalPatterns, ...subtotalPatterns, ...taxPatterns], 80);
+  // Scan from bottom for subtotals and tax
+  const matches = scanFromBottom(lines, [...subtotalPatterns, ...taxPatterns], 80);
 
   for (const { line, match, pattern } of matches) {
-    // Skip group subtotals
     if (isGroupSubtotal(line)) continue;
-
     const value = parseMoney(match[1]);
     if (value <= 0) continue;
 
-    // Categorize the match (don't overwrite if already found via INVOICE TOTAL)
-    if (totalPatterns.some(p => p.source === pattern.source) && totals.totalCents === 0) {
-      totals.totalCents = value;
-    }
     if (subtotalPatterns.some(p => p.source === pattern.source) && totals.subtotalCents === 0) {
       totals.subtotalCents = value;
     }

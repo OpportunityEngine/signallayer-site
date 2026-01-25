@@ -19,6 +19,7 @@ const { validateLineItemMath, validateAndFixLineItems, isLikelyMisclassifiedItem
 const { detectUOM, detectContinuationLine, enhanceLineItemWithUOM, parseSyscoSizeNotation } = require('../unitOfMeasure');
 const { extractTotalCandidates, findReconcilableTotal } = require('../totalsCandidates');
 const { extractAdjustments, calculateAdjustmentsSummary } = require('../adjustmentsExtractor');
+const { findInvoiceTotal } = require('../universalTotalFinder');
 
 /**
  * Process price string with 3 decimal precision
@@ -622,7 +623,7 @@ function extractSyscoMiscCharges(text, lines) {
 
 /**
  * Extract totals from Sysco invoice
- * Uses shared totalsCandidates module for robust candidate ranking
+ * Uses UNIVERSAL TOTAL FINDER for robust extraction across ANY layout
  */
 function extractSyscoTotals(text, lines) {
   const totals = {
@@ -633,110 +634,125 @@ function extractSyscoTotals(text, lines) {
     candidates: []
   };
 
-  // Use the shared totals candidates extractor for robust ranking
-  // This handles GROUP TOTAL filtering and position-based scoring
-  const candidatesResult = extractTotalCandidates(text);
+  // ========== UNIVERSAL TOTAL FINDER (PRIMARY) ==========
+  // This uses 7 different strategies to find the total NO MATTER WHERE it is
+  console.log(`[SYSCO TOTALS] Running Universal Total Finder...`);
+  const universalResult = findInvoiceTotal(text);
 
-  if (candidatesResult.candidates.length > 0) {
-    // Log all candidates for debugging
-    console.log(`[SYSCO TOTALS] Found ${candidatesResult.candidates.length} total candidates:`);
-    candidatesResult.candidates.slice(0, 5).forEach((c, i) => {
-      console.log(`  ${i + 1}. ${c.label}: $${(c.valueCents/100).toFixed(2)} (score: ${c.score}, isGroupTotal: ${c.isGroupTotal})`);
-    });
-
-    // Store candidates for debugging
-    totals.candidates = candidatesResult.candidates.slice(0, 5).map(c => ({
-      label: c.label,
-      valueCents: c.valueCents,
-      score: c.score,
-      isGroupTotal: c.isGroupTotal
-    }));
-
-    // Get best candidate (already filtered and ranked by score)
-    const bestCandidate = candidatesResult.bestCandidate;
-    if (bestCandidate && !bestCandidate.isGroupTotal) {
-      totals.totalCents = bestCandidate.valueCents;
-      console.log(`[SYSCO TOTALS] Selected: ${bestCandidate.label} = $${(bestCandidate.valueCents/100).toFixed(2)} (score: ${bestCandidate.score})`);
-    }
+  if (universalResult.found && universalResult.confidence >= 40) {
+    totals.totalCents = universalResult.totalCents;
+    totals.debug = {
+      universalFinder: {
+        confidence: universalResult.confidence,
+        strategy: universalResult.strategy,
+        candidates: universalResult.debug.candidateCount
+      }
+    };
+    console.log(`[SYSCO TOTALS] Universal Finder SUCCESS: $${universalResult.totalDollars.toFixed(2)} (${universalResult.confidence}% confidence via ${universalResult.strategy})`);
   }
 
-  // Fallback: If no good candidate found, use legacy extraction
+  // ========== LEGACY EXTRACTION (FALLBACK) ==========
+  // Only use if universal finder didn't find with good confidence
   if (totals.totalCents === 0) {
-    console.log(`[SYSCO TOTALS] No candidate found, using legacy extraction...`);
+    console.log(`[SYSCO TOTALS] Universal finder no result, using shared candidates extractor...`);
 
-    // SYSCO-SPECIFIC: Multi-line scan (TOTAL on one line, value on next)
-    // This is the most common Sysco format after PDF text extraction
-    for (let i = 0; i < lines.length - 1; i++) {
-      const line = lines[i].trim();
-      const nextLine = lines[i + 1].trim();
+    // Use the shared totals candidates extractor for robust ranking
+    // This handles GROUP TOTAL filtering and position-based scoring
+    const candidatesResult = extractTotalCandidates(text);
 
-      // Skip GROUP TOTAL, CATEGORY TOTAL, etc.
-      if (/GROUP|CATEGORY|DEPT|SECTION/i.test(line)) continue;
+    if (candidatesResult.candidates.length > 0) {
+      // Log all candidates for debugging
+      console.log(`[SYSCO TOTALS] Found ${candidatesResult.candidates.length} total candidates:`);
+      candidatesResult.candidates.slice(0, 5).forEach((c, i) => {
+        console.log(`  ${i + 1}. ${c.label}: $${(c.valueCents/100).toFixed(2)} (score: ${c.score}, isGroupTotal: ${c.isGroupTotal})`);
+      });
 
-      // Check for TOTAL alone on a line (or with INVOICE prefix)
-      // Be flexible: allow "TOTAL", "TOTAL:", "INVOICE TOTAL", etc.
-      if (/^(?:INVOICE\s+)?TOTAL\s*[:.]?\s*$/i.test(line) ||
-          (/TOTAL\s*$/i.test(line) && !/GROUP|SUBTOTAL/i.test(line) && line.length < 30)) {
+      // Store candidates for debugging
+      totals.candidates = candidatesResult.candidates.slice(0, 5).map(c => ({
+        label: c.label,
+        valueCents: c.valueCents,
+        score: c.score,
+        isGroupTotal: c.isGroupTotal
+      }));
 
-        // Next line should be a money value
-        // Allow various decimal formats: 4207.02, 4207.0, 4207, 4,207.02
-        const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
-        if (moneyMatch) {
-          const lineTotal = parseMoney(moneyMatch[1]);
-          if (lineTotal > 100 && lineTotal < 100000000) {  // Reasonable range: $1 - $1M
-            console.log(`[SYSCO TOTALS] Legacy multi-line found: "${line}" + "${nextLine}" = $${(lineTotal/100).toFixed(2)}`);
-            // Use this if it's larger than current (invoice total > subtotals)
+      // Get best candidate (already filtered and ranked by score)
+      const bestCandidate = candidatesResult.bestCandidate;
+      if (bestCandidate && !bestCandidate.isGroupTotal) {
+        totals.totalCents = bestCandidate.valueCents;
+        console.log(`[SYSCO TOTALS] Selected: ${bestCandidate.label} = $${(bestCandidate.valueCents/100).toFixed(2)} (score: ${bestCandidate.score})`);
+      }
+    }
+
+    // Fallback: If no good candidate found, use legacy extraction
+    if (totals.totalCents === 0) {
+      console.log(`[SYSCO TOTALS] No candidate found, using legacy extraction...`);
+
+      // SYSCO-SPECIFIC: Multi-line scan (TOTAL on one line, value on next)
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim();
+        const nextLine = lines[i + 1].trim();
+
+        if (/GROUP|CATEGORY|DEPT|SECTION/i.test(line)) continue;
+
+        if (/^(?:INVOICE\s+)?TOTAL\s*[:.]?\s*$/i.test(line) ||
+            (/TOTAL\s*$/i.test(line) && !/GROUP|SUBTOTAL/i.test(line) && line.length < 30)) {
+
+          const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
+          if (moneyMatch) {
+            const lineTotal = parseMoney(moneyMatch[1]);
+            if (lineTotal > 100 && lineTotal < 100000000) {
+              console.log(`[SYSCO TOTALS] Legacy multi-line found: "${line}" + "${nextLine}" = $${(lineTotal/100).toFixed(2)}`);
+              if (lineTotal > totals.totalCents) {
+                totals.totalCents = lineTotal;
+              }
+            }
+          }
+        }
+      }
+
+      // Pattern 1: Direct regex for "INVOICE TOTAL" across line boundaries
+      if (totals.totalCents === 0) {
+        const invoiceTotalRegex = /INVOICE[\s\r\n]*TOTAL[\s:\r\n]*\$?([\d,]+\.?\d{0,3})/gi;
+        let match;
+        while ((match = invoiceTotalRegex.exec(text)) !== null) {
+          const value = parseMoney(match[1]);
+          if (value > totals.totalCents && value < 100000000) {
+            totals.totalCents = value;
+            console.log(`[SYSCO TOTALS] Legacy regex found INVOICE TOTAL: $${(value/100).toFixed(2)}`);
+          }
+        }
+      }
+
+      // Pattern 2: Look for total value near "LAST PAGE" marker (Sysco specific)
+      if (totals.totalCents === 0) {
+        const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{0,3})\s*$/im);
+        if (lastPageMatch) {
+          const lastPageTotal = parseMoney(lastPageMatch[1]);
+          if (lastPageTotal > totals.totalCents) {
+            totals.totalCents = lastPageTotal;
+            console.log(`[SYSCO TOTALS] Legacy LAST PAGE found: $${(lastPageTotal/100).toFixed(2)}`);
+          }
+        }
+      }
+
+      // Pattern 3: Scan bottom 30 lines for standalone large number after "TOTAL"
+      if (totals.totalCents === 0) {
+        for (let i = lines.length - 1; i >= Math.max(0, lines.length - 30); i--) {
+          const line = lines[i].trim();
+          if (/GROUP\s+TOTAL/i.test(line)) continue;
+
+          const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i);
+          if (match) {
+            const lineTotal = parseMoney(match[1]);
             if (lineTotal > totals.totalCents) {
               totals.totalCents = lineTotal;
+              console.log(`[SYSCO TOTALS] Legacy line scan found: $${(lineTotal/100).toFixed(2)}`);
             }
           }
         }
       }
     }
-
-    // Pattern 1: Direct regex for "INVOICE TOTAL" across line boundaries
-    if (totals.totalCents === 0) {
-      const invoiceTotalRegex = /INVOICE[\s\r\n]*TOTAL[\s:\r\n]*\$?([\d,]+\.?\d{0,3})/gi;
-      let match;
-      while ((match = invoiceTotalRegex.exec(text)) !== null) {
-        const value = parseMoney(match[1]);
-        if (value > totals.totalCents && value < 100000000) {
-          totals.totalCents = value;
-          console.log(`[SYSCO TOTALS] Legacy regex found INVOICE TOTAL: $${(value/100).toFixed(2)}`);
-        }
-      }
-    }
-
-    // Pattern 2: Look for total value near "LAST PAGE" marker (Sysco specific)
-    if (totals.totalCents === 0) {
-      const lastPageMatch = text.match(/LAST\s+PAGE[\s\S]{0,50}?([\d,]+\.?\d{0,3})\s*$/im);
-      if (lastPageMatch) {
-        const lastPageTotal = parseMoney(lastPageMatch[1]);
-        if (lastPageTotal > totals.totalCents) {
-          totals.totalCents = lastPageTotal;
-          console.log(`[SYSCO TOTALS] Legacy LAST PAGE found: $${(lastPageTotal/100).toFixed(2)}`);
-        }
-      }
-    }
-
-    // Pattern 3: Scan bottom 30 lines for any standalone large number after "TOTAL"
-    if (totals.totalCents === 0) {
-      for (let i = lines.length - 1; i >= Math.max(0, lines.length - 30); i--) {
-        const line = lines[i].trim();
-        if (/GROUP\s+TOTAL/i.test(line)) continue;
-
-        // Same-line total pattern
-        const match = line.match(/(?:INVOICE\s+)?TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i);
-        if (match) {
-          const lineTotal = parseMoney(match[1]);
-          if (lineTotal > totals.totalCents) {
-            totals.totalCents = lineTotal;
-            console.log(`[SYSCO TOTALS] Legacy line scan found: $${(lineTotal/100).toFixed(2)}`);
-          }
-        }
-      }
-    }
-  }
+  }  // End of fallback block for universal finder
 
   // Find SUBTOTAL (excluding GROUP TOTAL lines)
   for (let i = lines.length - 1; i >= 0; i--) {
