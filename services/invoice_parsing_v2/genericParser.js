@@ -128,7 +128,50 @@ function extractGenericTotals(text, lines) {
       const total = parseMoney(valueMatch[1]);
       if (total > 0) {
         totals.totalCents = total;
-        // Continue to find subtotal and tax but don't overwrite total
+        console.log(`[GENERIC TOTALS] Found INVOICE TOTAL (inline): $${(total/100).toFixed(2)}`);
+      }
+    }
+  }
+
+  // Pattern 2: Multi-line INVOICE TOTAL (PDF columns split across lines)
+  // Look for "INVOICE" then "TOTAL" then a value within next few lines
+  if (totals.totalCents === 0) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim().toUpperCase();
+      if (line.includes('INVOICE') && (line.includes('TOTAL') || (i + 1 < lines.length && lines[i + 1].trim().toUpperCase().includes('TOTAL')))) {
+        // Found INVOICE TOTAL marker - look for value in next 5 lines
+        for (let j = i; j < Math.min(i + 5, lines.length); j++) {
+          const searchLine = lines[j].trim();
+          // Look for standalone monetary value (4+ digits with decimal)
+          const valueMatch = searchLine.match(/^\$?([\d,]+\.\d{2})$/);
+          if (valueMatch) {
+            const value = parseMoney(valueMatch[1]);
+            if (value > 100 && value < 100000000) {  // Reasonable invoice total range
+              totals.totalCents = value;
+              console.log(`[GENERIC TOTALS] Found INVOICE TOTAL (multi-line): $${(value/100).toFixed(2)}`);
+              break;
+            }
+          }
+        }
+        if (totals.totalCents > 0) break;
+      }
+    }
+  }
+
+  // Pattern 3: Look for largest value near bottom that matches "TOTAL" context
+  if (totals.totalCents === 0) {
+    const lastLines = lines.slice(-30);  // Last 30 lines
+    for (let i = lastLines.length - 1; i >= 0; i--) {
+      const line = lastLines[i].trim();
+      // Match values like "1748.85" or "$1,748.85" at end of line or standalone
+      const totalMatch = line.match(/(?:TOTAL|AMOUNT|DUE).*?\$?([\d,]+\.\d{2})\s*$/i) ||
+                        line.match(/^\$?([\d,]+\.\d{2})$/);
+      if (totalMatch) {
+        const value = parseMoney(totalMatch[1]);
+        if (value > totals.totalCents && value > 100 && value < 100000000) {
+          totals.totalCents = value;
+          console.log(`[GENERIC TOTALS] Found TOTAL (bottom scan): $${(value/100).toFixed(2)} from: "${line.slice(0, 50)}"`);
+        }
       }
     }
   }
@@ -320,12 +363,31 @@ function extractGenericAdjustments(text, lines) {
 
     if (/MISC\s+CHARGES/i.test(line)) {
       inMiscSection = true;
+      console.log(`[GENERIC ADJ] Entered MISC CHARGES section at line ${i}: "${line.slice(0, 60)}"`);
+
+      // Check if ALLOWANCE is on the SAME line as MISC CHARGES (Sysco format)
+      if (/ALLOWANCE/i.test(line)) {
+        const valueMatch = line.match(/([\d,]+\.?\d{2})([\-])?$/);
+        if (valueMatch) {
+          const value = parseMoney(valueMatch[1]);
+          if (value > 0 && value < 100000) {
+            adjustments.push({
+              type: 'credit',
+              description: 'Allowance for Drop Size',
+              amountCents: -value,
+              raw: line
+            });
+            console.log(`[GENERIC ADJ] Found Allowance (same line as MISC CHARGES): -$${(value/100).toFixed(2)}`);
+          }
+        }
+      }
       continue;
     }
 
     if (inMiscSection) {
       // Exit at ORDER SUMMARY or similar markers
-      if (/ORDER\s+SUMMARY/i.test(line) || /^CASES\s+SPLIT/i.test(line) || /OPEN:/i.test(line)) {
+      if (/ORDER\s+SUMMARY/i.test(line) || /^CASES\s+SPLIT/i.test(line) || /OPEN:/i.test(line) || /^DRIVER/i.test(line)) {
+        console.log(`[GENERIC ADJ] Exited MISC CHARGES section at line ${i}`);
         break;
       }
 
@@ -336,21 +398,57 @@ function extractGenericAdjustments(text, lines) {
         const isNegative = valueMatch[2] === '-';
 
         // Try to identify what this charge is
-        if (/ALLOWANCE/i.test(line) && value > 0 && value < 100000) {
+        if ((/ALLOWANCE|DROP\s+SIZE/i.test(line)) && value > 0 && value < 100000) {
           adjustments.push({
             type: 'credit',
             description: 'Allowance',
             amountCents: -value,
             raw: line
           });
-        } else if (/SURCHARGE|FEE|CHARGE/i.test(line) && value > 0 && value < 50000) {
+          console.log(`[GENERIC ADJ] Found Allowance in MISC section: -$${(value/100).toFixed(2)} from "${line.slice(0, 50)}"`);
+        } else if ((/SURCHARGE|FEE|CHARGE|FUEL/i.test(line)) && value > 0 && value < 50000) {
           adjustments.push({
             type: 'fee',
-            description: 'Surcharge',
+            description: line.includes('FUEL') ? 'Fuel Surcharge' : 'Surcharge',
             amountCents: value,
             raw: line
           });
+          console.log(`[GENERIC ADJ] Found Fee in MISC section: $${(value/100).toFixed(2)} from "${line.slice(0, 50)}"`);
         }
+      }
+    }
+  }
+
+  // Final fallback: Scan entire text for specific Sysco-style adjustments
+  // These patterns handle multi-column PDF extraction where values may be far from labels
+  if (adjustments.length === 0) {
+    // Look for FUEL SURCHARGE anywhere with value nearby
+    const fuelMatch = text.match(/(?:CHGS\s+FOR\s+)?FUEL\s+SURCHARGE[\s\S]{0,30}?([\d,]+\.\d{2})/i);
+    if (fuelMatch) {
+      const value = parseMoney(fuelMatch[1]);
+      if (value > 0 && value < 10000) {
+        adjustments.push({
+          type: 'fee',
+          description: 'Fuel Surcharge',
+          amountCents: value,
+          raw: fuelMatch[0]
+        });
+        console.log(`[GENERIC ADJ] Fallback found Fuel Surcharge: $${(value/100).toFixed(2)}`);
+      }
+    }
+
+    // Look for DROP SIZE ALLOWANCE anywhere with value nearby
+    const dropMatch = text.match(/(?:ALLOWANCE\s+FOR\s+)?DROP\s+SIZE[\s\S]{0,30}?([\d,]+\.\d{2})([\-])?/i);
+    if (dropMatch) {
+      const value = parseMoney(dropMatch[1]);
+      if (value > 0 && value < 100000) {
+        adjustments.push({
+          type: 'credit',
+          description: 'Drop Size Allowance',
+          amountCents: -value,
+          raw: dropMatch[0]
+        });
+        console.log(`[GENERIC ADJ] Fallback found Drop Size Allowance: -$${(value/100).toFixed(2)}`);
       }
     }
   }
