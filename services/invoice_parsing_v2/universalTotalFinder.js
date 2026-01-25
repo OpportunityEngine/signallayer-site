@@ -501,12 +501,21 @@ function findByLastPageFocus(text, lines) {
 /**
  * Strategy 7: Regex Army
  * Throw every possible regex pattern at the text
+ * ENHANCED with vendor-specific patterns
  */
 function findByRegexArmy(text) {
   const candidates = [];
 
   const patterns = [
-    // Inline patterns (label and value on same construct)
+    // ===== SYSCO SPECIFIC PATTERNS =====
+    // Sysco uses "INVOICE TOTAL" followed by value, sometimes on same line, sometimes split
+    { regex: /INVOICE\s+TOTAL\s+([\d,]+\.\d{2})/gi, score: 100 },
+    { regex: /INVOICE\s*\n\s*TOTAL\s*\n\s*([\d,]+\.\d{2})/gi, score: 100 },
+    { regex: /TOTAL\s*\n\s*([\d,]+\.\d{2})\s*\n.*LAST\s+PAGE/gi, score: 100 },
+    { regex: /([\d,]+\.\d{2})\s*\n.*LAST\s+PAGE/gi, score: 85 },
+    { regex: /SYSCO.*TOTAL[:\s]*([\d,]+\.\d{2})/gi, score: 95 },
+
+    // ===== HIGH CONFIDENCE PATTERNS =====
     { regex: /INVOICE\s*TOTAL[:\s]*\$?([\d,]+\.?\d*)/gi, score: 100 },
     { regex: /INV\.?\s*TOTAL[:\s]*\$?([\d,]+\.?\d*)/gi, score: 95 },
     { regex: /GRAND\s*TOTAL[:\s]*\$?([\d,]+\.?\d*)/gi, score: 95 },
@@ -516,24 +525,40 @@ function findByRegexArmy(text) {
     { regex: /PAY\s*(?:THIS\s*)?AMOUNT[:\s]*\$?([\d,]+\.?\d*)/gi, score: 85 },
     { regex: /PLEASE\s*PAY[:\s]*\$?([\d,]+\.?\d*)/gi, score: 80 },
     { regex: /NET\s*(?:TOTAL|DUE|AMOUNT)[:\s]*\$?([\d,]+\.?\d*)/gi, score: 80 },
+
+    // ===== MEDIUM CONFIDENCE PATTERNS =====
     { regex: /TOTAL\s*(?:AMOUNT|AMT)?[:\s]*\$?([\d,]+\.?\d*)/gi, score: 50 },
 
     // Multi-line patterns (label then value on next line)
     { regex: /INVOICE\s*\n\s*TOTAL\s*\n\s*\$?([\d,]+\.?\d*)/gi, score: 95 },
     { regex: /TOTAL\s*\n\s*\$?([\d,]+\.?\d*)/gi, score: 45 },
 
-    // Value before label
+    // Value before label (less common)
     { regex: /\$?([\d,]+\.\d{2})\s*(?:TOTAL|DUE|AMOUNT)/gi, score: 60 },
 
-    // Footer patterns
+    // Footer/end-of-document patterns
     { regex: /TOTAL\s*[:=]\s*\$?([\d,]+\.?\d*)\s*$/gim, score: 70 },
     { regex: /^\s*\$?([\d,]+\.\d{2})\s*$/gm, score: 20 }, // Standalone values
 
-    // Sysco specific
-    { regex: /INVOICE\s+TOTAL\s+[\d,]+\.?\d*/gi, score: 100 },
+    // ===== FOOD SERVICE VENDOR PATTERNS =====
+    // US Foods
+    { regex: /US\s*FOODS.*TOTAL[:\s]*([\d,]+\.\d{2})/gi, score: 95 },
+    // Generic food service
+    { regex: /DELIVERY\s*TOTAL[:\s]*([\d,]+\.\d{2})/gi, score: 80 },
+    { regex: /ORDER\s*TOTAL[:\s]*([\d,]+\.\d{2})/gi, score: 75 },
 
-    // With USD currency indicator
+    // ===== UNIFORM/SERVICE VENDOR PATTERNS =====
+    // Cintas
+    { regex: /CINTAS.*TOTAL[:\s]*([\d,]+\.\d{2})/gi, score: 95 },
+    { regex: /TOTAL\s*USD[:\s]*([\d,]+\.\d{2})/gi, score: 85 },
+
+    // With currency indicator
     { regex: /(?:TOTAL|DUE|AMOUNT)\s*(?:USD)?\s*\$?([\d,]+\.?\d*)/gi, score: 70 },
+
+    // ===== UTILITY/SERVICE PATTERNS =====
+    { regex: /AMOUNT\s*ENCLOSED[:\s]*([\d,]+\.\d{2})/gi, score: 80 },
+    { regex: /CURRENT\s*CHARGES[:\s]*([\d,]+\.\d{2})/gi, score: 70 },
+    { regex: /NEW\s*BALANCE[:\s]*([\d,]+\.\d{2})/gi, score: 75 },
   ];
 
   for (const { regex, score } of patterns) {
@@ -572,11 +597,179 @@ function findByRegexArmy(text) {
 }
 
 /**
+ * Strategy 8: Tax + Subtotal Validation
+ * If we find subtotal and tax, the total should be subtotal + tax
+ * This helps validate our total candidate
+ */
+function findByTaxSubtotalValidation(text, lines) {
+  const candidates = [];
+
+  // Find subtotal
+  let subtotalCents = 0;
+  const subtotalMatch = text.match(/SUB[\s-]?TOTAL[:\s]*\$?([\d,]+\.?\d*)/i);
+  if (subtotalMatch) {
+    subtotalCents = parseMoney(subtotalMatch[1]);
+  }
+
+  // Find tax
+  let taxCents = 0;
+  const taxMatch = text.match(/(?:SALES\s+)?TAX[:\s]*\$?([\d,]+\.?\d*)/i);
+  if (taxMatch) {
+    taxCents = parseMoney(taxMatch[1]);
+  }
+
+  // If we have both, the total should be their sum
+  if (subtotalCents > 0 && taxCents >= 0) {
+    const computedTotal = subtotalCents + taxCents;
+
+    // Look for this value in the document
+    const computedDollars = (computedTotal / 100).toFixed(2);
+    const patterns = [
+      new RegExp(`\\$?${computedDollars.replace('.', '\\.')}`, 'g'),
+      new RegExp(computedDollars.replace(/,/g, '').replace('.', '\\.'), 'g')
+    ];
+
+    for (const pattern of patterns) {
+      if (pattern.test(text)) {
+        candidates.push({
+          strategy: 'tax_subtotal_validation',
+          value: computedTotal,
+          dollars: computedTotal / 100,
+          score: 90,  // High confidence if math checks out
+          context: `Computed from subtotal($${(subtotalCents/100).toFixed(2)}) + tax($${(taxCents/100).toFixed(2)})`
+        });
+        console.log(`[TOTAL FINDER] Tax+Subtotal validation: $${(subtotalCents/100).toFixed(2)} + $${(taxCents/100).toFixed(2)} = $${(computedTotal/100).toFixed(2)}`);
+        break;
+      }
+    }
+  }
+
+  return candidates;
+}
+
+/**
+ * Strategy 9: Document Position Scoring
+ * Values in the last 10% of the document score much higher
+ * because invoice totals are almost always at the very end
+ */
+function findByDocumentPosition(text, lines) {
+  const candidates = [];
+
+  // Get all monetary values with their positions
+  const allValues = extractAllMonetaryValues(text);
+
+  for (const val of allValues) {
+    // Calculate position as percentage of document
+    const positionPct = val.index / text.length;
+
+    // Only consider values in bottom 20% of document
+    if (positionPct >= 0.80) {
+      // Get context
+      const contextStart = Math.max(0, val.index - 50);
+      const contextEnd = Math.min(text.length, val.index + 50);
+      const context = text.substring(contextStart, contextEnd);
+
+      // Skip excluded patterns
+      const upperContext = context.toUpperCase();
+      if (EXCLUDE_LABELS.some(ex => upperContext.includes(ex))) continue;
+      if (SUBTOTAL_LABELS.some(sub => upperContext.includes(sub) && !upperContext.includes('INVOICE'))) continue;
+
+      // Score based on position (closer to end = higher score)
+      let score = Math.round(20 + (positionPct - 0.80) * 200);  // 20-60 range
+
+      // Bonus for "TOTAL" nearby
+      if (/TOTAL/i.test(context)) score += 30;
+      if (/INVOICE/i.test(context)) score += 25;
+
+      if (val.value >= 100 && val.value <= 10000000) {
+        candidates.push({
+          strategy: 'document_position',
+          value: val.value,
+          dollars: val.dollars,
+          score: Math.min(95, score),
+          positionPct: Math.round(positionPct * 100),
+          context: context.replace(/\n/g, ' ').trim().substring(0, 60)
+        });
+      }
+    }
+  }
+
+  // Sort by position (closest to end first)
+  candidates.sort((a, b) => b.positionPct - a.positionPct);
+
+  return candidates.slice(0, 5);  // Return top 5 by position
+}
+
+/**
+ * Strategy 10: Line Item Sum Cross-Check
+ * Extract all line item prices and see if any total equals their sum
+ * This validates that we found the correct total
+ */
+function findByLineItemSumValidation(text, lines) {
+  const candidates = [];
+
+  // Quick extraction of line item totals (prices at end of lines)
+  const lineItemPrices = [];
+  for (const line of lines) {
+    // Skip total/subtotal lines
+    if (/TOTAL|SUBTOTAL|TAX|DUE|AMOUNT/i.test(line)) continue;
+
+    // Look for price pattern at end of line: "description... 45.99"
+    const priceMatch = line.trim().match(/([\d,]+\.\d{2})\s*$/);
+    if (priceMatch) {
+      const price = parseMoney(priceMatch[1]);
+      // Reasonable line item range: $0.50 - $5,000
+      if (price >= 50 && price <= 500000) {
+        lineItemPrices.push(price);
+      }
+    }
+  }
+
+  if (lineItemPrices.length >= 2) {
+    const lineItemSum = lineItemPrices.reduce((a, b) => a + b, 0);
+
+    // Look for this sum (or close to it) in the document
+    const sumDollars = lineItemSum / 100;
+
+    // Search for values within 10% of line items sum
+    const allValues = extractAllMonetaryValues(text);
+    for (const val of allValues) {
+      const diff = Math.abs(val.value - lineItemSum);
+      const pct = lineItemSum > 0 ? diff / lineItemSum : 1;
+
+      // If value is within 10% of line items sum, it might be the total
+      if (pct <= 0.10 && val.value >= lineItemSum * 0.9) {
+        candidates.push({
+          strategy: 'line_item_sum_validation',
+          value: val.value,
+          dollars: val.dollars,
+          score: pct <= 0.01 ? 85 : pct <= 0.05 ? 70 : 55,
+          lineItemCount: lineItemPrices.length,
+          lineItemSum: lineItemSum,
+          context: `Sum of ${lineItemPrices.length} line items: $${sumDollars.toFixed(2)}, found: $${val.dollars.toFixed(2)}`
+        });
+      }
+    }
+  }
+
+  return candidates;
+}
+
+/**
  * MAIN FUNCTION: Find the invoice total using ALL strategies
  * Returns the best candidate with confidence score
  */
 function findInvoiceTotal(text, options = {}) {
-  const lines = text.split('\n');
+  // Pre-process text: normalize whitespace and fix common OCR issues
+  const cleanedText = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\t/g, ' ')
+    .replace(/  +/g, ' ')
+    .replace(/(\d),(\d{3})/g, '$1$2');  // Remove thousands separators for easier parsing
+
+  const lines = text.split('\n');  // Use original for line-based operations
+  const cleanedLines = cleanedText.split('\n');
 
   console.log(`[UNIVERSAL TOTAL FINDER] Searching ${lines.length} lines, ${text.length} characters`);
 
@@ -617,6 +810,21 @@ function findInvoiceTotal(text, options = {}) {
   const regexCandidates = findByRegexArmy(text);
   allCandidates.push(...regexCandidates);
   console.log(`[TOTAL FINDER] Strategy 7 (Regex Army): ${regexCandidates.length} candidates`);
+
+  // Strategy 8: Tax + Subtotal Validation
+  const taxSubtotalCandidates = findByTaxSubtotalValidation(text, lines);
+  allCandidates.push(...taxSubtotalCandidates);
+  console.log(`[TOTAL FINDER] Strategy 8 (Tax+Subtotal Validation): ${taxSubtotalCandidates.length} candidates`);
+
+  // Strategy 9: Document Position Scoring
+  const positionCandidates = findByDocumentPosition(text, lines);
+  allCandidates.push(...positionCandidates);
+  console.log(`[TOTAL FINDER] Strategy 9 (Document Position): ${positionCandidates.length} candidates`);
+
+  // Strategy 10: Line Item Sum Validation
+  const lineItemSumCandidates = findByLineItemSumValidation(text, lines);
+  allCandidates.push(...lineItemSumCandidates);
+  console.log(`[TOTAL FINDER] Strategy 10 (Line Item Sum): ${lineItemSumCandidates.length} candidates`);
 
   console.log(`[TOTAL FINDER] Total candidates: ${allCandidates.length}`);
 
@@ -777,5 +985,8 @@ module.exports = {
   findByKeywordProximity,
   findByLargestValue,
   findByLastPageFocus,
-  findByRegexArmy
+  findByRegexArmy,
+  findByTaxSubtotalValidation,
+  findByDocumentPosition,
+  findByLineItemSumValidation
 };
