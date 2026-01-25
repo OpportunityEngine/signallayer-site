@@ -998,6 +998,10 @@ async function processInvoice(input, options = {}) {
     result.items = parsed.items || [];
     result.totals = parsed.totals || null;
     result.vendor = parsed.vendor || null;
+    // CRITICAL: Copy vendorName from V2 parser (was being dropped before!)
+    result.vendorName = parsed.vendorName || null;
+    result.vendorKey = parsed.vendorKey || null;
+    result.vendorDetection = parsed.vendorDetection || null;
     result.customer = parsed.customer || null;
     result.metadata = parsed.metadata || null;
     result.opportunities = parsed.opportunities || [];

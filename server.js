@@ -2730,6 +2730,10 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         items: processorResult.items || [],
         totals: processorResult.totals,
         vendor: processorResult.vendor,
+        // CRITICAL: Include vendorName in fallback (from universal processor)
+        vendorName: processorResult.vendorName || null,
+        vendorKey: processorResult.vendorKey || null,
+        vendorDetection: processorResult.vendorDetection || null,
         customer: processorResult.customer,
         metadata: processorResult.metadata,
         confidence: processorResult.confidence,
