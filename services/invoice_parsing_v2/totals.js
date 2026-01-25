@@ -6,7 +6,17 @@
  * - Deterministic math validation
  * - Reconciliation with tolerance
  * - Evidence tracking for debugging
+ * - NUCLEAR FALLBACK to universal finder
+ * - Cross-validation and sanity checks
  */
+
+// Import universal finder for nuclear fallback
+let universalTotalFinder = null;
+try {
+  universalTotalFinder = require('./universalTotalFinder');
+} catch (e) {
+  console.log('[TOTALS] Universal finder not available:', e.message);
+}
 
 /**
  * Parse money string to cents (integer)
@@ -204,14 +214,43 @@ function extractTotalsByLineScan(text) {
 
   // Pattern definitions with priority (lower = higher priority)
   const totalPatterns = [
+    // === HIGHEST PRIORITY: Explicit invoice totals ===
     { pattern: /INVOICE\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 1, name: 'INVOICE TOTAL' },
+    { pattern: /INV\.?\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 1, name: 'INV TOTAL' },
+    { pattern: /INVOICETOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 1, name: 'INVOICETOTAL' },
+
+    // === HIGH PRIORITY: Standard final total labels ===
     { pattern: /TOTAL\s+USD[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 2, name: 'TOTAL USD' },
     { pattern: /AMOUNT\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 3, name: 'AMOUNT DUE' },
     { pattern: /BALANCE\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 4, name: 'BALANCE DUE' },
     { pattern: /GRAND\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 5, name: 'GRAND TOTAL' },
     { pattern: /TOTAL\s+AMOUNT[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 6, name: 'TOTAL AMOUNT' },
     { pattern: /TOTAL\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 7, name: 'TOTAL DUE' },
+
+    // === MEDIUM PRIORITY: Payment-related totals ===
+    { pattern: /PAY\s+THIS\s+AMOUNT[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'PAY THIS AMOUNT' },
+    { pattern: /PLEASE\s+PAY[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'PLEASE PAY' },
+    { pattern: /PAYMENT\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'PAYMENT DUE' },
+    { pattern: /NET\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'NET TOTAL' },
+    { pattern: /NET\s+DUE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'NET DUE' },
+    { pattern: /NET\s+AMOUNT[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'NET AMOUNT' },
+
+    // === LOWER PRIORITY: Generic patterns ===
     { pattern: /(?:^|\s)TOTAL[:\s]+\$?([\d,]+\.?\d{2})(?:\s|$)/i, priority: 10, name: 'TOTAL (generic)' },
+
+    // === VENDOR-SPECIFIC PATTERNS ===
+    // Sysco: INVOICE TOTAL with lots of whitespace
+    { pattern: /INVOICE\s{2,}TOTAL\s{2,}([\d,]+\.?\d{0,3})/i, priority: 1, name: 'INVOICE TOTAL (wide)' },
+    // US Foods patterns
+    { pattern: /ORDER\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 6, name: 'ORDER TOTAL' },
+    { pattern: /DELIVERY\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 6, name: 'DELIVERY TOTAL' },
+    // Cintas patterns
+    { pattern: /BILL\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 5, name: 'BILL TOTAL' },
+    { pattern: /STATEMENT\s+TOTAL[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 5, name: 'STATEMENT TOTAL' },
+    // Utility patterns
+    { pattern: /CURRENT\s+CHARGES[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 7, name: 'CURRENT CHARGES' },
+    { pattern: /NEW\s+BALANCE[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 7, name: 'NEW BALANCE' },
+    { pattern: /AMOUNT\s+ENCLOSED[:\s]*\$?([\d,]+\.?\d{0,3})/i, priority: 8, name: 'AMOUNT ENCLOSED' },
   ];
 
   const subtotalPatterns = [
@@ -503,6 +542,105 @@ function extractTotalsByLineScan(text) {
       : subtotalCandidates[0];
     subtotalCents = best.cents;
     evidence.subtotal = { cents: best.cents, name: best.name, line: best.line };
+  }
+
+  // ============================================================
+  // NUCLEAR FALLBACK: If no total found, use universal finder
+  // ============================================================
+  if (totalCents === 0 && universalTotalFinder) {
+    console.log('[TOTALS] No total found by line scan, trying universal finder...');
+    try {
+      const universalResult = universalTotalFinder.findInvoiceTotal(text);
+      if (universalResult.found && universalResult.totalCents > 0) {
+        totalCents = universalResult.totalCents;
+        evidence.total = {
+          cents: universalResult.totalCents,
+          name: `UNIVERSAL FINDER (${universalResult.strategy})`,
+          line: universalResult.debug?.topCandidates?.[0]?.strategies?.join(', ') || 'multiple strategies',
+          source: 'universal_finder',
+          confidence: universalResult.confidence
+        };
+        console.log(`[TOTALS] NUCLEAR FALLBACK: Universal finder found $${(totalCents/100).toFixed(2)} via ${universalResult.strategy}`);
+      }
+    } catch (e) {
+      console.log('[TOTALS] Universal finder error:', e.message);
+    }
+  }
+
+  // ============================================================
+  // LAST RESORT: Text position search for INVOICE TOTAL
+  // ============================================================
+  if (totalCents === 0) {
+    console.log('[TOTALS] LAST RESORT: Searching for any money value near INVOICE TOTAL...');
+    const upperText = text.toUpperCase();
+    const invoiceTotalPos = upperText.lastIndexOf('INVOICE TOTAL');
+    const totalPos = invoiceTotalPos > 0 ? invoiceTotalPos : upperText.lastIndexOf('TOTAL');
+
+    if (totalPos > 0) {
+      // Get text around the "TOTAL" keyword (before and after)
+      const searchStart = Math.max(0, totalPos - 50);
+      const searchEnd = Math.min(text.length, totalPos + 200);
+      const searchText = text.substring(searchStart, searchEnd);
+
+      // Find ALL money values in this range
+      const moneyPattern = /\$?\s*([\d,]+\.?\d{0,2})\b/g;
+      let match;
+      const moneyValues = [];
+
+      while ((match = moneyPattern.exec(searchText)) !== null) {
+        const cleaned = match[1].replace(/,/g, '');
+        const num = parseFloat(cleaned);
+        if (!isNaN(num) && num >= 10 && num <= 100000) {
+          moneyValues.push({
+            value: Math.round(num * 100),
+            raw: match[0],
+            index: match.index
+          });
+        }
+      }
+
+      // Take the largest reasonable value (usually the total)
+      if (moneyValues.length > 0) {
+        moneyValues.sort((a, b) => b.value - a.value);
+        totalCents = moneyValues[0].value;
+        evidence.total = {
+          cents: totalCents,
+          name: 'LAST RESORT (text position)',
+          line: searchText.substring(0, 100).replace(/\n/g, ' '),
+          source: 'text_position_search'
+        };
+        console.log(`[TOTALS] LAST RESORT found: $${(totalCents/100).toFixed(2)}`);
+      }
+    }
+  }
+
+  // ============================================================
+  // SANITY CHECKS
+  // ============================================================
+
+  // Check 1: Total should be > 0 for valid invoices
+  if (totalCents === 0) {
+    console.log('[TOTALS] WARNING: No total found by any method!');
+  }
+
+  // Check 2: Total should be >= subtotal (if both exist)
+  if (totalCents > 0 && subtotalCents > 0 && totalCents < subtotalCents) {
+    console.log(`[TOTALS] WARNING: Total ($${(totalCents/100).toFixed(2)}) < Subtotal ($${(subtotalCents/100).toFixed(2)}) - this is unusual`);
+    // Don't auto-fix, but log for debugging
+  }
+
+  // Check 3: Total should be in reasonable range ($1 - $100,000 for most invoices)
+  if (totalCents > 0 && (totalCents < 100 || totalCents > 10000000)) {
+    console.log(`[TOTALS] WARNING: Total ($${(totalCents/100).toFixed(2)}) is outside typical range`);
+  }
+
+  // Check 4: Verify total wasn't grabbed from a GROUP TOTAL context
+  if (evidence.total && evidence.total.line) {
+    const evidenceLine = String(evidence.total.line).toUpperCase();
+    if (/GROUP\s*TOTAL|\*{3,}.*TOTAL/i.test(evidenceLine) && !/INVOICE/i.test(evidenceLine)) {
+      console.log(`[TOTALS] CRITICAL: Total evidence contains GROUP TOTAL pattern! Resetting...`);
+      // This should have been caught earlier, but double-check
+    }
   }
 
   return {

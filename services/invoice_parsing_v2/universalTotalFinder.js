@@ -12,9 +12,10 @@ const { parseMoney, parseMoneyToDollars } = require('./utils');
 
 /**
  * All known variations of "total" labels across vendors/industries
+ * Organized by confidence level for accurate scoring
  */
 const TOTAL_LABELS = [
-  // Primary - highest confidence
+  // Primary - highest confidence (explicit invoice totals)
   'INVOICE TOTAL',
   'INVOICE_TOTAL',
   'INVOICETOTAL',
@@ -46,12 +47,26 @@ const TOTAL_LABELS = [
   'DUE',
   'BALANCE',
 
-  // Vendor-specific
+  // Vendor-specific (food service)
   'TOTAL INVOICE',
   'BILL TOTAL',
   'STATEMENT TOTAL',
   'PURCHASE TOTAL',
-  'DELIVERY TOTAL'
+  'DELIVERY TOTAL',
+
+  // Utility/Service vendor patterns
+  'CURRENT CHARGES',
+  'NEW BALANCE',
+  'AMOUNT ENCLOSED',
+  'TOTAL CHARGES',
+  'SERVICE TOTAL',
+
+  // International variations
+  'TOTAL A PAGAR',     // Spanish
+  'TOTAL A PAYER',     // French
+  'GESAMTBETRAG',      // German
+  'TOTALE',            // Italian
+  'VALOR TOTAL',       // Portuguese
 ];
 
 /**
@@ -778,6 +793,168 @@ function findByDocumentPosition(text, lines) {
 }
 
 /**
+ * Strategy 11: Bottom-Right Corner Detection (Sysco-specific)
+ * Sysco and similar vendors put totals in bottom-right corner with LOTS of whitespace
+ * Format: "LABEL          VALUE" or "LABEL\n                VALUE"
+ */
+function findByBottomRightCorner(text, lines) {
+  const candidates = [];
+
+  // Normalize the text: handle Unicode whitespace, tabs, multiple spaces
+  const normalizedText = text
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')  // Unicode spaces
+    .replace(/\t/g, ' ')                                        // Tabs
+    .replace(/[\u2010-\u2015\u2212]/g, '-')                    // Unicode dashes
+    .replace(/(\d)\s+(?=\d)/g, '$1')                           // "1 748" -> "1748"
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')                        // "1748 .85" -> "1748.85"
+    .replace(/\.\s+(?=\d)/g, '.')                              // "1748. 85" -> "1748.85"
+    .replace(/,\s+(?=\d)/g, ',');                              // "1,748 .85" -> "1,748.85"
+
+  // Look in last 20% of document
+  const docLength = normalizedText.length;
+  const bottomSection = normalizedText.substring(Math.floor(docLength * 0.80));
+  const bottomLines = bottomSection.split('\n');
+
+  // Pattern: INVOICE TOTAL with 2+ spaces before value (corner format)
+  const cornerPatterns = [
+    /INVOICE\s+TOTAL\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /INVOICE\s{2,}TOTAL\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /INV\.?\s+TOTAL\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /GRAND\s+TOTAL\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /TOTAL\s+DUE\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /AMOUNT\s+DUE\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /BALANCE\s+DUE\s{2,}([\d,]+\.?\d{0,2})/gi,
+    /TOTAL\s+USD\s{2,}([\d,]+\.?\d{0,2})/gi,
+  ];
+
+  for (const pattern of cornerPatterns) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(bottomSection)) !== null) {
+      const valueStr = match[1];
+      const cleaned = valueStr.replace(/,/g, '');
+      const num = parseFloat(cleaned);
+
+      if (!isNaN(num) && num >= 1 && num <= 100000) {
+        const cents = Math.round(num * 100);
+
+        // Skip if this is a GROUP/CATEGORY total
+        const context = bottomSection.substring(Math.max(0, match.index - 30), match.index + match[0].length + 10).toUpperCase();
+        if (/GROUP|CATEGORY|SECTION|DEPT/i.test(context) && !/INVOICE/i.test(context)) {
+          continue;
+        }
+
+        candidates.push({
+          strategy: 'bottom_right_corner',
+          value: cents,
+          dollars: num,
+          score: 105,  // Very high score for corner format
+          context: match[0].substring(0, 60)
+        });
+      }
+    }
+  }
+
+  // Also scan for "LAST PAGE" marker and look before it
+  const lastPageIdx = normalizedText.toUpperCase().lastIndexOf('LAST PAGE');
+  if (lastPageIdx > 0) {
+    const beforeLastPage = normalizedText.substring(Math.max(0, lastPageIdx - 300), lastPageIdx);
+    const moneyPattern = /\$?\s*([\d,]+\.\d{2})\s*$/gm;
+    let match;
+
+    while ((match = moneyPattern.exec(beforeLastPage)) !== null) {
+      const num = parseFloat(match[1].replace(/,/g, ''));
+      if (!isNaN(num) && num >= 10 && num <= 100000) {
+        const cents = Math.round(num * 100);
+        candidates.push({
+          strategy: 'before_last_page',
+          value: cents,
+          dollars: num,
+          score: 90,
+          context: beforeLastPage.substring(Math.max(0, match.index - 30), match.index + match[0].length)
+        });
+      }
+    }
+  }
+
+  return candidates;
+}
+
+/**
+ * Strategy 12: Aggressive Money Extraction from Bottom
+ * When all else fails, extract ALL money values from bottom 15% and pick the largest
+ * that appears near a "total"-like keyword
+ */
+function findByAggressiveBottomExtraction(text, lines) {
+  const candidates = [];
+
+  // Get bottom 15% of document
+  const bottom15Pct = Math.floor(text.length * 0.85);
+  const bottomText = text.substring(bottom15Pct);
+
+  // Extract ALL money values
+  const moneyPattern = /\$?\s*([\d,]+\.?\d{0,2})\b/g;
+  const allValues = [];
+  let match;
+
+  while ((match = moneyPattern.exec(bottomText)) !== null) {
+    const raw = match[1];
+    const cleaned = raw.replace(/,/g, '');
+    const num = parseFloat(cleaned);
+
+    // Skip invalid values
+    if (isNaN(num) || num < 1 || num > 100000) continue;
+
+    // Skip years
+    if (num >= 1900 && num <= 2099 && !raw.includes('.')) continue;
+
+    // Skip long numbers without decimal (likely IDs)
+    if (cleaned.length >= 7 && !raw.includes('.')) continue;
+
+    // Get context around this value
+    const contextStart = Math.max(0, match.index - 40);
+    const contextEnd = Math.min(bottomText.length, match.index + 50);
+    const context = bottomText.substring(contextStart, contextEnd).toUpperCase();
+
+    // Skip GROUP/SUBTOTAL contexts
+    if (/GROUP\s*TOTAL|SUBTOTAL|CATEGORY|SECTION|DEPT/i.test(context) && !/INVOICE/i.test(context)) {
+      continue;
+    }
+
+    // Score based on context keywords
+    let score = 25;  // Base score
+    if (/INVOICE/i.test(context)) score += 40;
+    if (/TOTAL/i.test(context)) score += 30;
+    if (/DUE|AMOUNT|BALANCE|PAY/i.test(context)) score += 20;
+
+    allValues.push({
+      value: Math.round(num * 100),
+      dollars: num,
+      score: score,
+      context: context.replace(/\n/g, ' ').substring(0, 60)
+    });
+  }
+
+  // Sort by value descending (largest likely to be total)
+  allValues.sort((a, b) => b.value - a.value);
+
+  // Take top 3 largest with reasonable scores
+  for (let i = 0; i < Math.min(3, allValues.length); i++) {
+    const val = allValues[i];
+    candidates.push({
+      strategy: 'aggressive_bottom',
+      value: val.value,
+      dollars: val.dollars,
+      score: val.score,
+      rank: i + 1,
+      context: val.context
+    });
+  }
+
+  return candidates;
+}
+
+/**
  * Strategy 10: Line Item Sum Cross-Check
  * Extract all line item prices and see if any total equals their sum
  * This validates that we found the correct total
@@ -902,6 +1079,16 @@ function findInvoiceTotal(text, options = {}) {
   const lineItemSumCandidates = findByLineItemSumValidation(text, lines);
   allCandidates.push(...lineItemSumCandidates);
   console.log(`[TOTAL FINDER] Strategy 10 (Line Item Sum): ${lineItemSumCandidates.length} candidates`);
+
+  // Strategy 11: Bottom-Right Corner Detection (Sysco-specific)
+  const cornerCandidates = findByBottomRightCorner(text, lines);
+  allCandidates.push(...cornerCandidates);
+  console.log(`[TOTAL FINDER] Strategy 11 (Bottom-Right Corner): ${cornerCandidates.length} candidates`);
+
+  // Strategy 12: Aggressive Bottom Extraction (nuclear option)
+  const aggressiveCandidates = findByAggressiveBottomExtraction(text, lines);
+  allCandidates.push(...aggressiveCandidates);
+  console.log(`[TOTAL FINDER] Strategy 12 (Aggressive Bottom): ${aggressiveCandidates.length} candidates`);
 
   console.log(`[TOTAL FINDER] Total candidates: ${allCandidates.length}`);
 
@@ -1065,5 +1252,7 @@ module.exports = {
   findByRegexArmy,
   findByTaxSubtotalValidation,
   findByDocumentPosition,
-  findByLineItemSumValidation
+  findByLineItemSumValidation,
+  findByBottomRightCorner,
+  findByAggressiveBottomExtraction
 };
