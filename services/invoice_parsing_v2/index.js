@@ -68,6 +68,9 @@ function parseInvoiceText(rawText, options = {}) {
     ? { vendorKey: options.vendorHint, vendorName: options.vendorHint, confidence: 100 }
     : detectVendor(fullText);
 
+  // Log vendor detection for debugging
+  console.log(`[PARSER V2] Vendor detection: ${vendorInfo.vendorName} (${vendorInfo.confidence}% confidence, key: ${vendorInfo.vendorKey})`);
+
   // Step 2.5: Check pattern store for recommendations
   let patternRecommendation = null;
   if (vendorInfo.vendorKey === 'generic' || vendorInfo.confidence < 70) {
@@ -323,10 +326,14 @@ function parseInvoiceText(rawText, options = {}) {
   console.log(`[PARSER V2] Authoritative total: $${(authoritativeTotalCents/100).toFixed(2)} (printed: $${(printedTotalReconcile.printed_total_cents/100).toFixed(2)}, computed: $${(printedTotalReconcile.computed_total_cents/100).toFixed(2)})`);
 
   // Step 7: Build final result
+  // CRITICAL: Use vendor info from detection, not from bestResult (which may be generic)
+  const finalVendorKey = bestResult.vendorKey || vendorInfo.vendorKey;
+  const finalVendorName = vendorInfo.vendorName || bestResult.vendorDetection?.vendorName || 'Unknown Vendor';
+
   const result = {
     success: true,
-    vendorKey: bestResult.vendorKey,
-    vendorName: bestResult.vendorDetection?.vendorName || 'Unknown',
+    vendorKey: finalVendorKey,
+    vendorName: finalVendorName,
     parserVersion: bestResult.parserVersion || '2.0.0',
 
     // Header/metadata

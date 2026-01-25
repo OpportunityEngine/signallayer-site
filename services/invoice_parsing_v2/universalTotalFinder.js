@@ -174,12 +174,28 @@ function findByLabelPatterns(text, lines) {
       const contextBefore = upperText.substring(Math.max(0, idx - 20), idx);
       const contextAround = upperText.substring(Math.max(0, idx - 10), idx + label.length + 10);
 
-      // Skip if this "TOTAL" is actually part of "SUBTOTAL", "GROUP TOTAL", etc.
-      const isSubtotal = SUBTOTAL_LABELS.some(sub => contextBefore.includes(sub)) ||
-                         /SUB[\s-]?TOTAL/.test(contextAround) ||
-                         /GROUP[\s\*]*TOTAL/.test(contextAround) ||
-                         /CATEGORY[\s]*TOTAL/.test(contextAround) ||
-                         /DEPT[\s]*TOTAL/.test(contextAround);
+      // CRITICAL FIX: If label is "TOTAL" (generic), check if it's actually "SUBTOTAL"
+      // by looking at the character IMMEDIATELY before the match position
+      let isSubtotal = false;
+      if (label === 'TOTAL') {
+        // Check if there's "SUB" immediately before "TOTAL"
+        const charBeforeIdx = idx - 1;
+        if (charBeforeIdx >= 0) {
+          const twoCharsBefore = upperText.substring(Math.max(0, idx - 3), idx);
+          if (twoCharsBefore === 'SUB' || twoCharsBefore.endsWith('SUB')) {
+            isSubtotal = true;
+          }
+        }
+      }
+
+      // Also check other subtotal patterns
+      if (!isSubtotal) {
+        isSubtotal = SUBTOTAL_LABELS.some(sub => contextBefore.includes(sub)) ||
+                     /SUB[\s-]?TOTAL/.test(contextAround) ||
+                     /GROUP[\s\*]*TOTAL/.test(contextAround) ||
+                     /CATEGORY[\s]*TOTAL/.test(contextAround) ||
+                     /DEPT[\s]*TOTAL/.test(contextAround);
+      }
 
       const isExcluded = EXCLUDE_LABELS.some(ex => contextBefore.includes(ex) || upperText.substring(idx, idx + 30).includes(ex));
 

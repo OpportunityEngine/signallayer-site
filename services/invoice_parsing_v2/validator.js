@@ -571,8 +571,29 @@ function chooseBestParse(candidates) {
     validation: validateInvoiceParse(candidate)
   }));
 
+  // CRITICAL: Give bonus to vendor-specific parsers
+  // Generic parser is a fallback - vendor-specific should win if they have reasonable totals
+  validated.forEach(v => {
+    const vendorKey = v.result.vendorKey;
+    const hasTotal = (v.result.totals?.totalCents || 0) > 0;
+
+    // Vendor-specific parser bonus (if they found a total)
+    if (hasTotal && vendorKey && vendorKey !== 'generic') {
+      // Add 10-point bonus for vendor-specific parsers with valid totals
+      // This ensures Cintas parser beats generic when both find the total
+      v.validation.score = Math.min(100, v.validation.score + 10);
+      console.log(`[CHOOSE BEST] Bonus +10 for vendor-specific parser: ${vendorKey} (new score: ${v.validation.score})`);
+    }
+  });
+
   // Sort by score descending
   validated.sort((a, b) => b.validation.score - a.validation.score);
+
+  // Log decision
+  console.log(`[CHOOSE BEST] Selected: ${validated[0].result.vendorKey} (score: ${validated[0].validation.score})`);
+  if (validated.length > 1) {
+    console.log(`[CHOOSE BEST] Alternatives: ${validated.slice(1).map(v => `${v.result.vendorKey}(${v.validation.score})`).join(', ')}`);
+  }
 
   // Return best
   return {

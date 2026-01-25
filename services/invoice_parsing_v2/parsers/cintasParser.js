@@ -362,11 +362,12 @@ function extractTotals(text, lines) {
   // 1) Labels and amounts on same line: "SUBTOTAL 1867.42"
   // 2) Stacked: "SUBTOTAL TAX TOTAL USD" then "1227.60 0.00 1227.60"
 
+  // CRITICAL: Prioritize TOTAL USD over generic TOTAL (to avoid picking up SUBTOTAL)
   const totalPatterns = [
-    /TOTAL\s+USD\s*([\d,]+\.?\d*)/i,
-    /TOTAL\s*:?\s*\$?([\d,]+\.?\d*)/i,
-    /INVOICE\s+TOTAL\s*([\d,]+\.?\d*)/i,
-    /AMOUNT\s+DUE\s*([\d,]+\.?\d*)/i
+    /TOTAL\s+USD\s*([\d,]+\.?\d*)/i,          // Highest priority - Cintas specific
+    /INVOICE\s+TOTAL\s*([\d,]+\.?\d*)/i,       // High priority
+    /AMOUNT\s+DUE\s*([\d,]+\.?\d*)/i,          // Medium priority
+    /(?:^|\s)TOTAL\s*:?\s*\$?([\d,]+\.?\d*)/i  // Lowest priority - must not be SUBTOTAL
   ];
 
   const subtotalPatterns = [
@@ -383,18 +384,71 @@ function extractTotals(text, lines) {
   const scanLines = lines.slice(-100);
   const baseIdx = lines.length - scanLines.length;
 
-  // First, look for TOTAL USD (most reliable for Cintas)
+  // FIRST PASS: Look for TOTAL USD specifically (most reliable for Cintas)
   for (let i = scanLines.length - 1; i >= 0; i--) {
     const line = scanLines[i];
 
     // Skip employee/dept subtotals
     if (isGroupSubtotal(line) || isDeptSubtotal(line)) continue;
 
+    // CRITICAL: Check for "TOTAL USD" pattern first
+    const totalUsdMatch = line.match(/TOTAL\s+USD\s*([\d,]+\.?\d*)/i);
+    if (totalUsdMatch) {
+      totals.totalCents = parseMoney(totalUsdMatch[1]);
+      totals.debug.totalLine = baseIdx + i;
+      console.log(`[CINTAS TOTALS] Found TOTAL USD: $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
+
+      // Now look backwards for subtotal and tax
+      for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+        const prevLine = scanLines[j];
+
+        if (!totals.debug.taxLine) {
+          for (const taxPat of taxPatterns) {
+            const taxMatch = prevLine.match(taxPat);
+            if (taxMatch) {
+              totals.taxCents = parseMoney(taxMatch[1]);
+              totals.debug.taxLine = baseIdx + j;
+              console.log(`[CINTAS TOTALS] Found TAX: $${(totals.taxCents/100).toFixed(2)} at line ${baseIdx + j}`);
+              break;
+            }
+          }
+        }
+
+        if (!totals.debug.subtotalLine) {
+          // Make sure we're not picking up a group subtotal
+          if (!isGroupSubtotal(prevLine) && !isDeptSubtotal(prevLine)) {
+            for (const subPat of subtotalPatterns) {
+              const subMatch = prevLine.match(subPat);
+              if (subMatch) {
+                totals.subtotalCents = parseMoney(subMatch[1]);
+                totals.debug.subtotalLine = baseIdx + j;
+                console.log(`[CINTAS TOTALS] Found SUBTOTAL: $${(totals.subtotalCents/100).toFixed(2)} at line ${baseIdx + j}`);
+                break;
+              }
+            }
+          }
+        }
+
+        if (totals.debug.taxLine && totals.debug.subtotalLine) break;
+      }
+
+      return totals;
+    }
+  }
+
+  // SECOND PASS: Try other total patterns if TOTAL USD not found
+  for (let i = scanLines.length - 1; i >= 0; i--) {
+    const line = scanLines[i];
+
+    // Skip employee/dept subtotals AND lines containing "SUBTOTAL"
+    if (isGroupSubtotal(line) || isDeptSubtotal(line) || /SUBTOTAL/i.test(line)) continue;
+
     for (const pattern of totalPatterns) {
       const match = line.match(pattern);
       if (match) {
         totals.totalCents = parseMoney(match[1]);
         totals.debug.totalLine = baseIdx + i;
+        console.log(`[CINTAS TOTALS] Found TOTAL (fallback): $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
 
         // Now look backwards for subtotal and tax
         for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
@@ -434,12 +488,13 @@ function extractTotals(text, lines) {
   }
 
   // Fallback: Look for stacked format "SUBTOTAL TAX TOTAL USD" on one line
-  // followed by numbers on next line
+  // followed by numbers on next line (columnar format common in PDFs)
   for (let i = scanLines.length - 1; i >= 1; i--) {
     const line = scanLines[i];
     const prevLine = scanLines[i - 1];
 
-    if (/SUBTOTAL\s+TAX\s+TOTAL/i.test(prevLine)) {
+    // Match variations: "SUBTOTAL TAX TOTAL", "SUBTOTAL TAX TOTAL USD", "SUBTOTAL SALES TAX TOTAL USD"
+    if (/SUBTOTAL\s+(?:SALES\s+)?TAX\s+TOTAL(?:\s+USD)?/i.test(prevLine)) {
       // Next line should have the numbers
       const numbers = line.match(/([\d,]+\.?\d*)/g);
       if (numbers && numbers.length >= 3) {
@@ -449,8 +504,52 @@ function extractTotals(text, lines) {
         totals.debug.subtotalLine = baseIdx + i;
         totals.debug.taxLine = baseIdx + i;
         totals.debug.totalLine = baseIdx + i;
+        console.log(`[CINTAS TOTALS] Found stacked format - Subtotal: $${(totals.subtotalCents/100).toFixed(2)}, Tax: $${(totals.taxCents/100).toFixed(2)}, Total: $${(totals.totalCents/100).toFixed(2)}`);
         return totals;
       }
+    }
+  }
+
+  // ADDITIONAL FALLBACK: Look for labeled rows near bottom
+  // Format: "SUBTOTAL 1867.42" then "SALES TAX 130.72" then "TOTAL USD 1998.14" (each on its own line)
+  for (let i = scanLines.length - 1; i >= 0; i--) {
+    const line = scanLines[i];
+
+    // Skip group/dept subtotals
+    if (isGroupSubtotal(line) || isDeptSubtotal(line)) continue;
+
+    // Look for "TOTAL USD" with value (may have been split by PDF extraction)
+    const totalUsdSpaced = line.match(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d*)/i);
+    if (totalUsdSpaced && parseMoney(totalUsdSpaced[1]) > 0) {
+      totals.totalCents = parseMoney(totalUsdSpaced[1]);
+      totals.debug.totalLine = baseIdx + i;
+      console.log(`[CINTAS TOTALS] Found TOTAL USD (labeled row): $${(totals.totalCents/100).toFixed(2)}`);
+
+      // Search backwards for subtotal and tax on their own lines
+      for (let j = i - 1; j >= Math.max(0, i - 15); j--) {
+        const prevLine = scanLines[j];
+        if (isGroupSubtotal(prevLine) || isDeptSubtotal(prevLine)) continue;
+
+        // SALES TAX pattern
+        if (!totals.debug.taxLine) {
+          const taxMatch = prevLine.match(/(?:SALES\s+)?TAX[\s:]*\$?([\d,]+\.?\d*)/i);
+          if (taxMatch && parseMoney(taxMatch[1]) >= 0) {
+            totals.taxCents = parseMoney(taxMatch[1]);
+            totals.debug.taxLine = baseIdx + j;
+          }
+        }
+
+        // SUBTOTAL pattern (not group subtotal)
+        if (!totals.debug.subtotalLine && /^SUBTOTAL/i.test(prevLine.trim())) {
+          const subMatch = prevLine.match(/SUBTOTAL[\s:]*\$?([\d,]+\.?\d*)/i);
+          if (subMatch && parseMoney(subMatch[1]) > 0) {
+            totals.subtotalCents = parseMoney(subMatch[1]);
+            totals.debug.subtotalLine = baseIdx + j;
+          }
+        }
+      }
+
+      return totals;
     }
   }
 

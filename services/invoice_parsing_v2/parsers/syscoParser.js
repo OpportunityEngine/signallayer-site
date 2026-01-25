@@ -634,21 +634,66 @@ function extractSyscoTotals(text, lines) {
     candidates: []
   };
 
-  // ========== UNIVERSAL TOTAL FINDER (PRIMARY) ==========
-  // This uses 7 different strategies to find the total NO MATTER WHERE it is
-  console.log(`[SYSCO TOTALS] Running Universal Total Finder...`);
-  const universalResult = findInvoiceTotal(text);
+  // ========== SYSCO-SPECIFIC PATTERN (HIGHEST PRIORITY) ==========
+  // Sysco always uses "INVOICE TOTAL" near the bottom - check this FIRST
+  console.log(`[SYSCO TOTALS] Scanning for INVOICE TOTAL pattern...`);
 
-  if (universalResult.found && universalResult.confidence >= 40) {
-    totals.totalCents = universalResult.totalCents;
-    totals.debug = {
-      universalFinder: {
-        confidence: universalResult.confidence,
-        strategy: universalResult.strategy,
-        candidates: universalResult.debug.candidateCount
+  // Pattern 1: "INVOICE TOTAL" on one line, value on next (common in Sysco PDFs)
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 50); i--) {
+    const line = lines[i].trim();
+    const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+
+    // Skip GROUP TOTAL lines
+    if (/GROUP\s+TOTAL/i.test(line)) continue;
+
+    // Look for "INVOICE" followed by "TOTAL" (may be split across lines)
+    if (/^(?:INVOICE[\s\r\n]*)?TOTAL\s*[:.]?\s*$/i.test(line) && !/GROUP|SUBTOTAL/i.test(line)) {
+      // Value should be on next line
+      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
+      if (moneyMatch) {
+        const value = parseMoney(moneyMatch[1]);
+        if (value > 100 && value < 100000000) {
+          totals.totalCents = value;
+          console.log(`[SYSCO TOTALS] Found INVOICE TOTAL (multi-line): "${line}" + "${nextLine}" = $${(value/100).toFixed(2)}`);
+          // Skip universal finder - we found it!
+          totals.debug = { syscoSpecific: true, foundAt: 'multi-line' };
+          break;
+        }
       }
-    };
-    console.log(`[SYSCO TOTALS] Universal Finder SUCCESS: $${universalResult.totalDollars.toFixed(2)} (${universalResult.confidence}% confidence via ${universalResult.strategy})`);
+    }
+
+    // Pattern 2: "INVOICE TOTAL" with value on same line
+    const sameLineMatch = line.match(/INVOICE[\s\r\n]*TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i);
+    if (sameLineMatch && !/GROUP/i.test(line)) {
+      const value = parseMoney(sameLineMatch[1]);
+      if (value > 100 && value < 100000000) {
+        totals.totalCents = value;
+        console.log(`[SYSCO TOTALS] Found INVOICE TOTAL (same line): $${(value/100).toFixed(2)}`);
+        totals.debug = { syscoSpecific: true, foundAt: 'same-line' };
+        break;
+      }
+    }
+  }
+
+  // ========== UNIVERSAL TOTAL FINDER (FALLBACK) ==========
+  // Only use if we didn't find INVOICE TOTAL above
+  if (totals.totalCents === 0) {
+    console.log(`[SYSCO TOTALS] INVOICE TOTAL not found, running Universal Total Finder...`);
+    const universalResult = findInvoiceTotal(text);
+
+    if (universalResult.found && universalResult.confidence >= 40) {
+      totals.totalCents = universalResult.totalCents;
+      totals.debug = {
+        universalFinder: {
+          confidence: universalResult.confidence,
+          strategy: universalResult.strategy,
+          candidates: universalResult.debug.candidateCount
+        }
+      };
+      console.log(`[SYSCO TOTALS] Universal Finder SUCCESS: $${universalResult.totalDollars.toFixed(2)} (${universalResult.confidence}% confidence via ${universalResult.strategy})`);
+    }
+  } else {
+    console.log(`[SYSCO TOTALS] Skipping Universal Finder - already found INVOICE TOTAL`);
   }
 
   // ========== LEGACY EXTRACTION (FALLBACK) ==========
