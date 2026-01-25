@@ -285,7 +285,7 @@ function findByBottomScan(text, lines) {
 
     for (const val of values) {
       // Reasonable invoice total range: $1 to $100,000
-      if (val.value >= 100 && val.value <= 10000000) {
+      if (val.value >= 1000 && val.value <= 10000000) {
         // Check if this line has "TOTAL" context
         const hasTotal = /TOTAL/i.test(line);
         const hasInvoice = /INVOICE/i.test(line);
@@ -343,7 +343,7 @@ function findByColumnFooter(text, lines) {
       const hasInvoice = /INVOICE/i.test(linesBefore) || /INVOICE/i.test(linesAfter);
       const isSubtotal = SUBTOTAL_LABELS.some(sub => linesBefore.includes(sub));
 
-      if (value > 100 && value < 10000000 && !isSubtotal) {
+      if (value > 1000 && value < 10000000 && !isSubtotal) {
         let score = 25;
         if (hasInvoice && hasTotal) score = 80;
         else if (hasTotal) score = 50;
@@ -406,7 +406,7 @@ function findByKeywordProximity(text, lines) {
         const values = extractAllMonetaryValues(context);
 
         for (const val of values) {
-          if (val.value >= 100 && val.value <= 10000000) {
+          if (val.value >= 1000 && val.value <= 10000000) {
             candidates.push({
               strategy: 'keyword_proximity',
               keyword: kw.word,
@@ -758,7 +758,7 @@ function findByDocumentPosition(text, lines) {
       if (/TOTAL/i.test(context)) score += 30;
       if (/INVOICE/i.test(context)) score += 25;
 
-      if (val.value >= 100 && val.value <= 10000000) {
+      if (val.value >= 1000 && val.value <= 10000000) {
         candidates.push({
           strategy: 'document_position',
           value: val.value,

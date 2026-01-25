@@ -513,16 +513,42 @@ function reconcileWithPrintedTotalPriority(parseResult, rawText, options = {}) {
 }
 
 /**
- * Get the authoritative invoice total (printed total wins)
+ * Get the authoritative invoice total (printed total wins, with sanity checks)
  * This is the value that should be stored in invoice_total_cents
  *
  * @param {Object} reconcileResult - Result from reconcileWithPrintedTotalPriority
  * @returns {number} - The authoritative total in cents
  */
 function getAuthoritativeTotalCents(reconcileResult) {
-  // RULE: Printed total ALWAYS wins (if available)
-  // The reconcileWithPrintedTotalPriority function already handles fallback to computed
-  return reconcileResult.printed_total_cents;
+  const printedTotal = reconcileResult.printed_total_cents || 0;
+  const computedTotal = reconcileResult.computed_total_cents || 0;
+
+  // SANITY CHECK 1: Minimum reasonable invoice total is $10.00 (1000 cents)
+  // Anything less is almost certainly a parsing error (like picking up "PAGE 1" as "$1.00")
+  const MIN_REASONABLE_TOTAL = 1000;  // $10.00
+
+  // SANITY CHECK 2: If printed total is less than 5% of computed total, something is wrong
+  // Use computed total instead (which is sum of line items - more reliable)
+  const MISMATCH_THRESHOLD = 0.05;  // 5%
+
+  // If printed total is suspiciously low
+  if (printedTotal < MIN_REASONABLE_TOTAL) {
+    if (computedTotal >= MIN_REASONABLE_TOTAL) {
+      console.log(`[AUTHORITATIVE TOTAL] Printed total ($${(printedTotal/100).toFixed(2)}) below minimum - using computed ($${(computedTotal/100).toFixed(2)})`);
+      return computedTotal;
+    }
+    // Both are low - return printed anyway (might be a small invoice)
+    return printedTotal;
+  }
+
+  // If printed total is vastly smaller than computed (likely a parsing error)
+  if (computedTotal > MIN_REASONABLE_TOTAL && printedTotal < computedTotal * MISMATCH_THRESHOLD) {
+    console.log(`[AUTHORITATIVE TOTAL] Printed total ($${(printedTotal/100).toFixed(2)}) is <5% of computed ($${(computedTotal/100).toFixed(2)}) - using computed`);
+    return computedTotal;
+  }
+
+  // Normal case: use printed total
+  return printedTotal;
 }
 
 /**

@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-01-25T22:14:55.706Z",
+  "vendorPatterns": {
+    "sysco": [
+      {
+        "fingerprint": "13f12836a374",
+        "vendor": "sysco",
+        "strategy": "unknown",
+        "confidence": 92,
+        "itemCount": 2,
+        "totalCents": 174730,
+        "features": [
+          "lines:10",
+          "prices:5",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T01:38:40.238Z",
+        "successCount": 3,
+        "lastUsed": "2026-01-25T01:39:22.831Z"
+      },
+      {
+        "fingerprint": "1094aac10f79",
+        "vendor": "sysco",
+        "strategy": "unknown",
+        "confidence": 92,
+        "itemCount": 2,
+        "totalCents": 174885,
+        "features": [
+          "lines:0",
+          "prices:5",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T01:38:40.241Z",
+        "successCount": 3,
+        "lastUsed": "2026-01-25T01:39:22.834Z"
+      },
+      {
+        "fingerprint": "23c63c06580c",
+        "vendor": "sysco",
+        "strategy": "unknown",
+        "confidence": 90,
+        "itemCount": 2,
+        "totalCents": 174885,
+        "features": [
+          "hdr:desc",
+          "hdr:price",
+          "hdr:qty",
+          "lines:10",
+          "prices:5",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T21:20:33.682Z",
+        "successCount": 3,
+        "lastUsed": "2026-01-25T21:20:43.327Z"
+      },
+      {
+        "fingerprint": "6ce8ad4b2189",
+        "vendor": "sysco",
+        "strategy": "unknown",
+        "confidence": 100,
+        "itemCount": 1,
+        "totalCents": 10788,
+        "features": [
+          "hdr:desc",
+          "hdr:price",
+          "hdr:qty",
+          "lines:10",
+          "prices:0",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T21:52:03.124Z",
+        "successCount": 2,
+        "lastUsed": "2026-01-25T21:52:21.572Z"
+      },
+      {
+        "fingerprint": "705f8138b7d3",
+        "vendor": "sysco",
+        "strategy": "unknown",
+        "confidence": 100,
+        "itemCount": 1,
+        "totalCents": 10788,
+        "features": [
+          "hdr:desc",
+          "hdr:price",
+          "hdr:qty",
+          "lines:0",
+          "prices:0",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T21:52:21.563Z",
+        "successCount": 1,
+        "lastUsed": "2026-01-25T21:52:21.563Z"
+      }
+    ],
+    "cintas": [
+      {
+        "fingerprint": "dbca75f2dd75",
+        "vendor": "cintas",
+        "strategy": "unknown",
+        "confidence": 65,
+        "itemCount": 0,
+        "totalCents": 199814,
+        "features": [
+          "lines:0",
+          "prices:5",
+          "vendor:cintas"
+        ],
+        "createdAt": "2026-01-25T01:39:19.111Z",
+        "successCount": 2,
+        "lastUsed": "2026-01-25T01:39:22.818Z"
+      }
+    ],
+    "generic": [
+      {
+        "fingerprint": "23c63c06580c",
+        "vendor": "generic",
+        "strategy": "unknown",
+        "confidence": 100,
+        "itemCount": 1,
+        "totalCents": 174885,
+        "features": [
+          "hdr:desc",
+          "hdr:price",
+          "hdr:qty",
+          "lines:10",
+          "prices:5",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T21:49:43.415Z",
+        "successCount": 3,
+        "lastUsed": "2026-01-25T22:14:55.705Z"
+      },
+      {
+        "fingerprint": "20e2125418ee",
+        "vendor": "generic",
+        "strategy": "unknown",
+        "confidence": 97,
+        "itemCount": 1,
+        "totalCents": 174885,
+        "features": [
+          "lines:0",
+          "prices:0",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-25T22:09:37.967Z",
+        "successCount": 1,
+        "lastUsed": "2026-01-25T22:09:37.971Z"
+      }
+    ]
+  },
+  "genericPatterns": [],
+  "fingerprintMap": {
+    "13f12836a374": {
+      "vendor": "sysco",
+      "strategy": "unknown",
+      "confidence": 92
+    },
+    "1094aac10f79": {
+      "vendor": "sysco",
+      "strategy": "unknown",
+      "confidence": 92
+    },
+    "dbca75f2dd75": {
+      "vendor": "cintas",
+      "strategy": "unknown",
+      "confidence": 65
+    },
+    "23c63c06580c": {
+      "vendor": "generic",
+      "strategy": "unknown",
+      "confidence": 100
+    },
+    "6ce8ad4b2189": {
+      "vendor": "sysco",
+      "strategy": "unknown",
+      "confidence": 100
+    },
+    "705f8138b7d3": {
+      "vendor": "sysco",
+      "strategy": "unknown",
+      "confidence": 100
+    },
+    "20e2125418ee": {
+      "vendor": "generic",
+      "strategy": "unknown",
+      "confidence": 97
+    }
+  },
+  "stats": {
+    "totalParses": 18,
+    "successfulParses": 16,
+    "patternsLearned": 8
+  }
+}
