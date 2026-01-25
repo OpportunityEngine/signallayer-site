@@ -455,6 +455,14 @@ function reconcileWithPrintedTotalPriority(parseResult, rawText, options = {}) {
     result.reconciliation.warnings.push('PRINTED_TOTAL_MISSING');
     // Use computed as fallback
     result.printed_total_cents = computedTotalCents;
+  } else if (adjustmentsSum !== 0 && Math.abs(printedTotalCents - lineItemsSum) <= TOLERANCES.totalsCents) {
+    // SPECIAL CASE: Printed total equals line items sum but we have adjustments
+    // This means the parser found a subtotal, not the true invoice total
+    // The true total should include adjustments
+    result.reconciliation.reason = 'Printed total appears to be subtotal - adding adjustments to get true total';
+    result.reconciliation.warnings.push('SUBTOTAL_DETECTED_AS_TOTAL');
+    result.printed_total_cents = computedTotalCents;  // Use computed (items + adjustments)
+    console.log(`[RECONCILE] Subtotal detected: printed $${(printedTotalCents/100).toFixed(2)} == items $${(lineItemsSum/100).toFixed(2)}, but have $${(adjustmentsSum/100).toFixed(2)} in adjustments. Using computed total: $${(computedTotalCents/100).toFixed(2)}`);
   } else if (absDelta === 0) {
     result.reconciliation.reason = 'Exact match between printed and computed totals';
     result.reconciliation.tolerance_ok = true;

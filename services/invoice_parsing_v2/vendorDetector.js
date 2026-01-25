@@ -34,7 +34,17 @@ const VENDOR_PATTERNS = {
       { regex: /GROUP\s+TOTAL\*{3,}/i, score: 75 },  // Sysco uses ****GROUP TOTAL**** format
       { regex: /T\/WT=/i, score: 70 },  // Sysco weight notation on line items
       { regex: /DELIVERY\s+COPY/i, score: 60 },  // Common on Sysco invoices
-      { regex: /PEACH\s+ORCHARD\s+ROAD/i, score: 85 }  // Sysco Eastern MD address
+      { regex: /PEACH\s+ORCHARD\s+ROAD/i, score: 85 },  // Sysco Eastern MD address
+      // Line item format patterns (Sysco-specific weight/pack formats)
+      { regex: /\d+\/\d+\s*LB\s+[A-Z]{2,}/gi, score: 65, minMatches: 3 },  // "12/1 LB PRODUCT" format
+      { regex: /ONLY\/?\s*(LB|GAL|EA)/gi, score: 70, minMatches: 2 },  // "ONLY/LB" Sysco notation
+      { regex: /\d+\s*CT\s+[A-Z]+.*\d+\/\d+/gi, score: 65, minMatches: 2 },  // "12 CT PRODUCT 4/5" format
+      { regex: /FUEL\s+SURCHARGE/i, score: 80 },  // Sysco MISC CHARGES
+      { regex: /DROP\s+SIZE\s+ALLOWANCE/i, score: 85 },  // Sysco-specific adjustment
+      { regex: /MISC\s+CHARGES/i, score: 75 },  // Sysco section header
+      { regex: /INVOICE\s+TOTAL\s+[\d,]+\.\d{2}/i, score: 60 },  // Sysco invoice total format
+      { regex: /SYS\s+CLS/gi, score: 70, minMatches: 2 },  // "SYS CLS" in product names (Sysco Classic)
+      { regex: /PACKER\s+[A-Z]+\s+[A-Z]+/gi, score: 60, minMatches: 2 }  // "PACKER MAHI MAHI" format
     ],
     name: 'Sysco Corporation'
   },
