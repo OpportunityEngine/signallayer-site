@@ -1656,6 +1656,216 @@ router.get('/debug/recent-parses', (req, res) => {
   }
 });
 
+// POST /api/debug/reparse/:id - Re-parse an invoice and update the database record
+router.post('/debug/reparse/:id', async (req, res) => {
+  try {
+    const invoiceId = parseInt(req.params.id);
+    if (!invoiceId || isNaN(invoiceId)) {
+      return res.status(400).json({ success: false, error: 'Invalid invoice ID' });
+    }
+
+    const database = db.getDatabase();
+
+    // Get the invoice record
+    const invoice = database.prepare(`
+      SELECT id, run_id, vendor_name, invoice_total_cents, file_name
+      FROM ingestion_runs WHERE id = ?
+    `).get(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, error: 'Invoice not found' });
+    }
+
+    // Load raw text from storage
+    const fs = require('fs');
+    const path = require('path');
+    const runDir = path.join(__dirname, 'storage', 'runs', invoice.run_id);
+
+    let rawText = '';
+
+    // Try to load raw text from different sources
+    const possibleFiles = [
+      path.join(runDir, 'raw_capture.json'),
+      path.join(runDir, 'parsed_invoice.json'),
+      path.join(runDir, 'extracted.json')
+    ];
+
+    for (const filePath of possibleFiles) {
+      if (fs.existsSync(filePath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          if (data.payload?.raw_text) {
+            rawText = data.payload.raw_text;
+            break;
+          }
+          if (data.raw_text) {
+            rawText = data.raw_text;
+            break;
+          }
+          if (data.extracted?.raw_text) {
+            rawText = data.extracted.raw_text;
+            break;
+          }
+        } catch (e) {
+          console.log(`[REPARSE] Could not parse ${filePath}: ${e.message}`);
+        }
+      }
+    }
+
+    if (!rawText || rawText.length < 50) {
+      return res.status(400).json({
+        success: false,
+        error: 'No raw text available for re-parsing. The invoice may need to be re-uploaded.',
+        run_id: invoice.run_id,
+        storage_dir: runDir,
+        files_checked: possibleFiles
+      });
+    }
+
+    // Re-parse using V2 parser
+    const { parseInvoiceText } = require('./services/invoice_parsing_v2');
+    const { extractTotalsByLineScan, selectBestTotal, computeInvoiceMath } = require('./services/invoice_parsing_v2/totals');
+
+    const parseResult = parseInvoiceText(rawText, { debug: true });
+
+    // Get best total
+    const lineScanTotals = extractTotalsByLineScan(rawText);
+    const computed = computeInvoiceMath(parseResult.lineItems || [], lineScanTotals);
+    const bestTotal = selectBestTotal(lineScanTotals, computed, parseResult.totals?.totalCents || 0);
+
+    // Update the database record
+    const newVendorName = parseResult.vendorName || 'Unknown Vendor';
+    const newTotalCents = bestTotal.totalCents || parseResult.totals?.totalCents || 0;
+
+    database.prepare(`
+      UPDATE ingestion_runs
+      SET vendor_name = ?, invoice_total_cents = ?
+      WHERE id = ?
+    `).run(newVendorName, newTotalCents, invoiceId);
+
+    console.log(`[REPARSE] Invoice ${invoiceId} updated: vendor="${newVendorName}", total=$${(newTotalCents/100).toFixed(2)}`);
+
+    res.json({
+      success: true,
+      invoice_id: invoiceId,
+      run_id: invoice.run_id,
+      before: {
+        vendor_name: invoice.vendor_name,
+        invoice_total: (invoice.invoice_total_cents / 100).toFixed(2)
+      },
+      after: {
+        vendor_name: newVendorName,
+        invoice_total: (newTotalCents / 100).toFixed(2)
+      },
+      parse_details: {
+        vendorKey: parseResult.vendorKey,
+        vendorName: parseResult.vendorName,
+        confidence: parseResult.confidence?.score || 0,
+        lineItemCount: (parseResult.lineItems || []).length,
+        totals: parseResult.totals,
+        bestTotal
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[API] Reparse error:', error);
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+
+// POST /api/debug/reparse-all - Re-parse all invoices with Unknown Vendor or wrong totals
+router.post('/debug/reparse-all', async (req, res) => {
+  try {
+    const database = db.getDatabase();
+    const fs = require('fs');
+    const path = require('path');
+
+    // Find invoices that need re-parsing (Unknown Vendor)
+    const invoices = database.prepare(`
+      SELECT id, run_id, vendor_name, invoice_total_cents, file_name
+      FROM ingestion_runs
+      WHERE vendor_name = 'Unknown Vendor' OR vendor_name IS NULL
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all();
+
+    const results = { updated: 0, failed: 0, skipped: 0, details: [] };
+    const { parseInvoiceText } = require('./services/invoice_parsing_v2');
+    const { extractTotalsByLineScan, selectBestTotal, computeInvoiceMath } = require('./services/invoice_parsing_v2/totals');
+
+    for (const invoice of invoices) {
+      const runDir = path.join(__dirname, 'storage', 'runs', invoice.run_id);
+      let rawText = '';
+
+      // Try to load raw text
+      const possibleFiles = [
+        path.join(runDir, 'raw_capture.json'),
+        path.join(runDir, 'parsed_invoice.json'),
+        path.join(runDir, 'extracted.json')
+      ];
+
+      for (const filePath of possibleFiles) {
+        if (fs.existsSync(filePath)) {
+          try {
+            const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            if (data.payload?.raw_text) rawText = data.payload.raw_text;
+            else if (data.raw_text) rawText = data.raw_text;
+            else if (data.extracted?.raw_text) rawText = data.extracted.raw_text;
+            if (rawText) break;
+          } catch (e) {}
+        }
+      }
+
+      if (!rawText || rawText.length < 50) {
+        results.skipped++;
+        results.details.push({ id: invoice.id, status: 'skipped', reason: 'no raw text' });
+        continue;
+      }
+
+      try {
+        const parseResult = parseInvoiceText(rawText, { debug: false });
+        const lineScanTotals = extractTotalsByLineScan(rawText);
+        const computed = computeInvoiceMath(parseResult.lineItems || [], lineScanTotals);
+        const bestTotal = selectBestTotal(lineScanTotals, computed, parseResult.totals?.totalCents || 0);
+
+        const newVendorName = parseResult.vendorName || 'Unknown Vendor';
+        const newTotalCents = bestTotal.totalCents || parseResult.totals?.totalCents || 0;
+
+        // Only update if we found a better vendor name or total
+        if (newVendorName !== 'Unknown Vendor' || newTotalCents !== invoice.invoice_total_cents) {
+          database.prepare(`
+            UPDATE ingestion_runs SET vendor_name = ?, invoice_total_cents = ? WHERE id = ?
+          `).run(newVendorName, newTotalCents, invoice.id);
+
+          results.updated++;
+          results.details.push({
+            id: invoice.id,
+            status: 'updated',
+            before: { vendor: invoice.vendor_name, total: invoice.invoice_total_cents },
+            after: { vendor: newVendorName, total: newTotalCents }
+          });
+        } else {
+          results.skipped++;
+          results.details.push({ id: invoice.id, status: 'skipped', reason: 'no improvement' });
+        }
+      } catch (parseError) {
+        results.failed++;
+        results.details.push({ id: invoice.id, status: 'failed', error: parseError.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      total_checked: invoices.length,
+      ...results,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[API] Reparse-all error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DEMO MODE ENDPOINT =====
 
 // GET /api/demo/status - Check if we should use demo or production data
