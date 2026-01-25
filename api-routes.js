@@ -1445,6 +1445,70 @@ router.get('/debug/parse-score/:runId', async (req, res) => {
   }
 });
 
+// GET /api/debug/v2-status - Verify V2 parser is active and show configuration
+router.get('/debug/v2-status', (req, res) => {
+  try {
+    const v2Enabled = process.env.INVOICE_PARSER_V2 === 'true';
+
+    // Try to load the V2 parser and get its version
+    let v2Available = false;
+    let v2Version = null;
+    let vendorPatterns = null;
+
+    try {
+      const v2Parser = require('./services/invoice_parsing_v2');
+      v2Available = true;
+
+      // Get vendor patterns for diagnosis
+      const { VENDOR_PATTERNS } = require('./services/invoice_parsing_v2/vendorDetector');
+      vendorPatterns = Object.keys(VENDOR_PATTERNS);
+
+      // Test a simple detection
+      const { detectVendor } = require('./services/invoice_parsing_v2/vendorDetector');
+      const testSysco = detectVendor('SYSCO EASTERN MARYLAND LLC');
+      const testCintas = detectVendor('CINTAS CORPORATION Invoice');
+
+      res.json({
+        success: true,
+        v2_status: {
+          enabled: v2Enabled,
+          env_value: process.env.INVOICE_PARSER_V2,
+          available: v2Available,
+          message: v2Enabled ? 'V2 Parser is ACTIVE' : 'V2 Parser is DISABLED (set INVOICE_PARSER_V2=true)'
+        },
+        vendor_detection: {
+          supported_vendors: vendorPatterns,
+          test_results: {
+            sysco_test: testSysco,
+            cintas_test: testCintas
+          }
+        },
+        critical_fixes: {
+          split_line_patterns: 'Enabled - handles INVOICE/TOTAL on separate lines',
+          total_usd_flexible: 'Enabled - handles TOTAL USD with whitespace/newline before value',
+          vendor_name_priority: 'Enabled - vendorDetector name takes priority over Unknown Vendor'
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (v2Error) {
+      res.json({
+        success: true,
+        v2_status: {
+          enabled: v2Enabled,
+          env_value: process.env.INVOICE_PARSER_V2,
+          available: false,
+          error: v2Error.message,
+          message: 'V2 Parser module failed to load'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('[API] V2 status debug error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== DEMO MODE ENDPOINT =====
 
 // GET /api/demo/status - Check if we should use demo or production data

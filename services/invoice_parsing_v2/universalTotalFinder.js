@@ -555,6 +555,16 @@ function findByRegexArmy(text) {
   const candidates = [];
 
   const patterns = [
+    // ===== HIGHEST PRIORITY - SPLIT-LINE PATTERNS (score >= 110) =====
+    // These handle PDFs where "INVOICE" is on one line and "TOTAL value" on next
+    { regex: /INVOICE[\s\r\n]+TOTAL[\s\r\n:]+\$?([\d,]+\.?\d{0,3})/gi, score: 115 },
+    // "TOTAL USD" with value on same or next line (Cintas)
+    { regex: /TOTAL\s+USD[\s\r\n:]+\$?([\d,]+\.?\d{0,3})/gi, score: 115 },
+    // "INVOICE" alone, then "TOTAL value" on next line
+    { regex: /INVOICE\s*\n\s*TOTAL\s+([\d,]+\.?\d{0,3})/gi, score: 110 },
+    // "TOTAL" alone, value on next line (for Sysco split format)
+    { regex: /(?:^|\n)TOTAL\s*\n\s*([\d,]+\.?\d{0,3})(?:\s*\n|$)/gi, score: 105 },
+
     // ===== SYSCO SPECIFIC PATTERNS =====
     // Sysco uses "INVOICE TOTAL" followed by value, sometimes on same line, sometimes split
     { regex: /INVOICE\s+TOTAL\s+([\d,]+\.\d{2})/gi, score: 100 },

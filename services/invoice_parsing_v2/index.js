@@ -327,8 +327,45 @@ function parseInvoiceText(rawText, options = {}) {
 
   // Step 7: Build final result
   // CRITICAL: Use vendor info from detection, not from bestResult (which may be generic)
-  const finalVendorKey = bestResult.vendorKey || vendorInfo.vendorKey;
-  const finalVendorName = vendorInfo.vendorName || bestResult.vendorDetection?.vendorName || 'Unknown Vendor';
+  // PRIORITY ORDER for vendor name:
+  // 1. vendorInfo.vendorName (from vendorDetector) - HIGHEST priority
+  // 2. bestResult.vendorDetection?.vendorName (from parser)
+  // 3. bestResult.header?.vendorName (from header extraction)
+  // 4. "Unknown Vendor" - LAST resort only
+  const finalVendorKey = bestResult.vendorKey || vendorInfo.vendorKey || 'generic';
+  let finalVendorName = 'Unknown Vendor';
+
+  // Priority 1: vendorInfo from vendorDetector (most reliable)
+  if (vendorInfo.vendorName && vendorInfo.vendorName !== 'Unknown Vendor') {
+    finalVendorName = vendorInfo.vendorName;
+    console.log(`[PARSER V2] Using vendor name from detector: ${finalVendorName}`);
+  }
+  // Priority 2: bestResult.vendorDetection
+  else if (bestResult.vendorDetection?.vendorName && bestResult.vendorDetection.vendorName !== 'Unknown Vendor') {
+    finalVendorName = bestResult.vendorDetection.vendorName;
+    console.log(`[PARSER V2] Using vendor name from parse result: ${finalVendorName}`);
+  }
+  // Priority 3: bestResult.header
+  else if (bestResult.header?.vendorName && bestResult.header.vendorName !== 'Unknown Vendor') {
+    finalVendorName = bestResult.header.vendorName;
+    console.log(`[PARSER V2] Using vendor name from header: ${finalVendorName}`);
+  }
+  // Priority 4: Try to infer from vendorKey
+  else if (finalVendorKey && finalVendorKey !== 'generic') {
+    const keyToName = {
+      'cintas': 'Cintas Corporation',
+      'sysco': 'Sysco Corporation',
+      'usfoods': 'US Foods',
+      'aramark': 'Aramark',
+      'unifirst': 'UniFirst'
+    };
+    if (keyToName[finalVendorKey]) {
+      finalVendorName = keyToName[finalVendorKey];
+      console.log(`[PARSER V2] Inferred vendor name from key: ${finalVendorName}`);
+    }
+  }
+
+  console.log(`[PARSER V2] FINAL vendor: key=${finalVendorKey}, name=${finalVendorName}`);
 
   const result = {
     success: true,

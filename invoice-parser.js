@@ -68,7 +68,10 @@ function parseInvoice(text, options = {}) {
     try {
       const v2 = getParserV2();
       if (v2.parseInvoiceText) {
-        console.log('[PARSER] Using V2 parser');
+        // CRITICAL: V2 proof logging - confirms V2 is running
+        console.log('==============================================================');
+        console.log('[PARSER V2 ACTIVATED] Environment: INVOICE_PARSER_V2=' + process.env.INVOICE_PARSER_V2);
+        console.log('==============================================================');
         const v2Result = v2.parseInvoiceText(text, { debug: true });
 
         if (v2Result.success && v2Result.confidence?.score >= 50) {

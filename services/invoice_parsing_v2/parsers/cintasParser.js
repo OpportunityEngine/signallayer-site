@@ -363,11 +363,13 @@ function extractTotals(text, lines) {
   // 2) Stacked: "SUBTOTAL TAX TOTAL USD" then "1227.60 0.00 1227.60"
 
   // CRITICAL: Prioritize TOTAL USD over generic TOTAL (to avoid picking up SUBTOTAL)
+  // ENHANCED: Handle split-line formats where "TOTAL USD" and value are separated by whitespace/newline
   const totalPatterns = [
-    /TOTAL\s+USD\s*([\d,]+\.?\d*)/i,          // Highest priority - Cintas specific
-    /INVOICE\s+TOTAL\s*([\d,]+\.?\d*)/i,       // High priority
-    /AMOUNT\s+DUE\s*([\d,]+\.?\d*)/i,          // Medium priority
-    /(?:^|\s)TOTAL\s*:?\s*\$?([\d,]+\.?\d*)/i  // Lowest priority - must not be SUBTOTAL
+    /TOTAL\s+USD[\s\r\n:]*\$?([\d,]+\.?\d*)/i,   // Highest priority - Cintas with flexible whitespace
+    /TOTAL\s+USD\s*([\d,]+\.?\d*)/i,             // Cintas specific (fallback)
+    /INVOICE\s+TOTAL\s*([\d,]+\.?\d*)/i,         // High priority
+    /AMOUNT\s+DUE\s*([\d,]+\.?\d*)/i,            // Medium priority
+    /(?:^|\s)TOTAL\s*:?\s*\$?([\d,]+\.?\d*)/i    // Lowest priority - must not be SUBTOTAL
   ];
 
   const subtotalPatterns = [
@@ -387,16 +389,98 @@ function extractTotals(text, lines) {
   // FIRST PASS: Look for TOTAL USD specifically (most reliable for Cintas)
   for (let i = scanLines.length - 1; i >= 0; i--) {
     const line = scanLines[i];
+    const nextLine = i + 1 < scanLines.length ? scanLines[i + 1] : '';
 
     // Skip employee/dept subtotals
     if (isGroupSubtotal(line) || isDeptSubtotal(line)) continue;
 
-    // CRITICAL: Check for "TOTAL USD" pattern first
-    const totalUsdMatch = line.match(/TOTAL\s+USD\s*([\d,]+\.?\d*)/i);
-    if (totalUsdMatch) {
+    // PATTERN 1: "TOTAL USD" with value on SAME line
+    const totalUsdMatch = line.match(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d*)/i);
+    if (totalUsdMatch && parseMoney(totalUsdMatch[1]) > 0) {
       totals.totalCents = parseMoney(totalUsdMatch[1]);
       totals.debug.totalLine = baseIdx + i;
-      console.log(`[CINTAS TOTALS] Found TOTAL USD: $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
+      console.log(`[CINTAS TOTALS] Found TOTAL USD (same line): $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
+
+      // Continue to find subtotal and tax, then return
+      for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+        const prevLine = scanLines[j];
+
+        if (!totals.debug.taxLine) {
+          for (const taxPat of taxPatterns) {
+            const taxMatch = prevLine.match(taxPat);
+            if (taxMatch) {
+              totals.taxCents = parseMoney(taxMatch[1]);
+              totals.debug.taxLine = baseIdx + j;
+              console.log(`[CINTAS TOTALS] Found TAX: $${(totals.taxCents/100).toFixed(2)} at line ${baseIdx + j}`);
+              break;
+            }
+          }
+        }
+
+        if (!totals.debug.subtotalLine) {
+          if (!isGroupSubtotal(prevLine) && !isDeptSubtotal(prevLine)) {
+            for (const subPat of subtotalPatterns) {
+              const subMatch = prevLine.match(subPat);
+              if (subMatch) {
+                totals.subtotalCents = parseMoney(subMatch[1]);
+                totals.debug.subtotalLine = baseIdx + j;
+                console.log(`[CINTAS TOTALS] Found SUBTOTAL: $${(totals.subtotalCents/100).toFixed(2)} at line ${baseIdx + j}`);
+                break;
+              }
+            }
+          }
+        }
+
+        if (totals.debug.taxLine && totals.debug.subtotalLine) break;
+      }
+
+      return totals;
+    }
+
+    // PATTERN 2: "TOTAL USD" on this line, VALUE on NEXT line (split by PDF extraction)
+    if (/TOTAL\s+USD\s*$/i.test(line.trim())) {
+      // Value should be on next line
+      const nextLineValue = nextLine.match(/^\s*\$?([\d,]+\.?\d*)\s*$/);
+      if (nextLineValue && parseMoney(nextLineValue[1]) > 0) {
+        totals.totalCents = parseMoney(nextLineValue[1]);
+        totals.debug.totalLine = baseIdx + i;
+        console.log(`[CINTAS TOTALS] Found TOTAL USD (split-line): $${(totals.totalCents/100).toFixed(2)} at lines ${baseIdx + i}-${baseIdx + i + 1}`);
+
+        // Find subtotal and tax
+        for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+          const prevLine = scanLines[j];
+          if (!totals.debug.taxLine) {
+            for (const taxPat of taxPatterns) {
+              const taxMatch = prevLine.match(taxPat);
+              if (taxMatch) {
+                totals.taxCents = parseMoney(taxMatch[1]);
+                totals.debug.taxLine = baseIdx + j;
+                break;
+              }
+            }
+          }
+          if (!totals.debug.subtotalLine && !isGroupSubtotal(prevLine) && !isDeptSubtotal(prevLine)) {
+            for (const subPat of subtotalPatterns) {
+              const subMatch = prevLine.match(subPat);
+              if (subMatch) {
+                totals.subtotalCents = parseMoney(subMatch[1]);
+                totals.debug.subtotalLine = baseIdx + j;
+                break;
+              }
+            }
+          }
+          if (totals.debug.taxLine && totals.debug.subtotalLine) break;
+        }
+        return totals;
+      }
+    }
+
+    // LEGACY: Original TOTAL USD pattern (for compatibility)
+    const totalUsdMatchLegacy = line.match(/TOTAL\s+USD\s*([\d,]+\.?\d*)/i);
+    if (totalUsdMatchLegacy) {
+      totals.totalCents = parseMoney(totalUsdMatchLegacy[1]);
+      totals.debug.totalLine = baseIdx + i;
+      console.log(`[CINTAS TOTALS] Found TOTAL USD (legacy): $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
 
       // Now look backwards for subtotal and tax
       for (let j = i - 1; j >= Math.max(0, i - 20); j--) {

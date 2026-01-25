@@ -638,31 +638,64 @@ function extractSyscoTotals(text, lines) {
   // Sysco always uses "INVOICE TOTAL" near the bottom - check this FIRST
   console.log(`[SYSCO TOTALS] Scanning for INVOICE TOTAL pattern...`);
 
-  // Pattern 1: "INVOICE TOTAL" on one line, value on next (common in Sysco PDFs)
+  // PATTERN 1: "INVOICE" on one line, "TOTAL value" on next line (common PDF split)
+  // Example: line N = "INVOICE", line N+1 = "TOTAL 1748.85"
   for (let i = lines.length - 1; i >= Math.max(0, lines.length - 50); i--) {
     const line = lines[i].trim();
     const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+    const nextNextLine = i + 2 < lines.length ? lines[i + 2].trim() : '';
 
     // Skip GROUP TOTAL lines
     if (/GROUP\s+TOTAL/i.test(line)) continue;
 
-    // Look for "INVOICE" followed by "TOTAL" (may be split across lines)
-    if (/^(?:INVOICE[\s\r\n]*)?TOTAL\s*[:.]?\s*$/i.test(line) && !/GROUP|SUBTOTAL/i.test(line)) {
-      // Value should be on next line
-      const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
-      if (moneyMatch) {
-        const value = parseMoney(moneyMatch[1]);
+    // PATTERN 1A: "INVOICE" alone, then "TOTAL value" on next line
+    if (/^INVOICE\s*$/i.test(line)) {
+      // Check if next line has "TOTAL value"
+      const totalMatch = nextLine.match(/^TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i);
+      if (totalMatch && !/GROUP|SUBTOTAL/i.test(nextLine)) {
+        const value = parseMoney(totalMatch[1]);
         if (value > 100 && value < 100000000) {
           totals.totalCents = value;
-          console.log(`[SYSCO TOTALS] Found INVOICE TOTAL (multi-line): "${line}" + "${nextLine}" = $${(value/100).toFixed(2)}`);
-          // Skip universal finder - we found it!
-          totals.debug = { syscoSpecific: true, foundAt: 'multi-line' };
+          console.log(`[SYSCO TOTALS] Found INVOICE/TOTAL split (Pattern 1A): "${line}" + "${nextLine}" = $${(value/100).toFixed(2)}`);
+          totals.debug = { syscoSpecific: true, foundAt: 'invoice-then-total' };
           break;
+        }
+      }
+      // Check if next line is "TOTAL" alone, value on line after
+      if (/^TOTAL\s*$/i.test(nextLine) && !/GROUP|SUBTOTAL/i.test(nextLine)) {
+        const valueMatch = nextNextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
+        if (valueMatch) {
+          const value = parseMoney(valueMatch[1]);
+          if (value > 100 && value < 100000000) {
+            totals.totalCents = value;
+            console.log(`[SYSCO TOTALS] Found INVOICE/TOTAL/VALUE triple-split: $${(value/100).toFixed(2)}`);
+            totals.debug = { syscoSpecific: true, foundAt: 'triple-split' };
+            break;
+          }
         }
       }
     }
 
-    // Pattern 2: "INVOICE TOTAL" with value on same line
+    // PATTERN 1B: "TOTAL" alone (without preceding INVOICE on same line), value on next line
+    // Only accept if we're in bottom 30 lines and no GROUP prefix
+    if (/^TOTAL\s*$/i.test(line) && !/GROUP|SUBTOTAL/i.test(line) && i > lines.length - 30) {
+      // Check if previous line was "INVOICE"
+      const prevLine = i > 0 ? lines[i - 1].trim() : '';
+      if (/INVOICE/i.test(prevLine) || i > lines.length - 15) {
+        const moneyMatch = nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/);
+        if (moneyMatch) {
+          const value = parseMoney(moneyMatch[1]);
+          if (value > 100 && value < 100000000) {
+            totals.totalCents = value;
+            console.log(`[SYSCO TOTALS] Found TOTAL + next-line value: "${line}" + "${nextLine}" = $${(value/100).toFixed(2)}`);
+            totals.debug = { syscoSpecific: true, foundAt: 'total-then-value' };
+            break;
+          }
+        }
+      }
+    }
+
+    // PATTERN 2: "INVOICE TOTAL" with value on same line
     const sameLineMatch = line.match(/INVOICE[\s\r\n]*TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})/i);
     if (sameLineMatch && !/GROUP/i.test(line)) {
       const value = parseMoney(sameLineMatch[1]);
@@ -671,6 +704,20 @@ function extractSyscoTotals(text, lines) {
         console.log(`[SYSCO TOTALS] Found INVOICE TOTAL (same line): $${(value/100).toFixed(2)}`);
         totals.debug = { syscoSpecific: true, foundAt: 'same-line' };
         break;
+      }
+    }
+
+    // PATTERN 3: Just "TOTAL value" at end of document (no INVOICE prefix)
+    if (i > lines.length - 20) {
+      const justTotalMatch = line.match(/^TOTAL[\s:]*\$?([\d,]+\.?\d{0,3})\s*$/i);
+      if (justTotalMatch && !/GROUP|SUBTOTAL/i.test(line)) {
+        const value = parseMoney(justTotalMatch[1]);
+        if (value > 100 && value < 100000000 && totals.totalCents === 0) {
+          totals.totalCents = value;
+          console.log(`[SYSCO TOTALS] Found standalone TOTAL: $${(value/100).toFixed(2)}`);
+          totals.debug = { syscoSpecific: true, foundAt: 'standalone-total' };
+          // Don't break - keep looking for better match
+        }
       }
     }
   }
