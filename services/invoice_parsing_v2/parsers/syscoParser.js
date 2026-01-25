@@ -642,22 +642,87 @@ function extractSyscoTotals(text, lines) {
   console.log(`[SYSCO TOTALS] ========== BULLETPROOF TWO-PASS STRATEGY ==========`);
   console.log(`[SYSCO TOTALS] Scanning ${lines.length} lines for INVOICE TOTAL...`);
 
-  // Normalize lines for better matching (handle split numbers like "1 748.85")
+  // Normalize lines for better matching (handle ALL spacing/formatting edge cases)
   const normalizedLines = lines.map(l => {
     return String(l || '')
       .replace(/\r/g, '')
-      .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
-      .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "1748 .85" -> "1748.85"
-      .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+      // Unicode space normalization (non-breaking spaces, em spaces, etc.)
+      .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+      // Tab to space
+      .replace(/\t/g, ' ')
+      // Normalize dashes (en-dash, em-dash, etc. to regular hyphen)
+      .replace(/[\u2010-\u2015\u2212]/g, '-')
+      // Fix split numbers: "1 748" -> "1748"
+      .replace(/(\d)\s+(?=\d)/g, '$1')
+      // Fix split decimals: "1748 .85" -> "1748.85"
+      .replace(/(\d)\s+\.(?=\d)/g, '$1.')
+      // Fix split decimals: "1748. 85" -> "1748.85"
+      .replace(/\.\s+(?=\d)/g, '.')
+      // Fix split commas: "1, 748" -> "1,748"
+      .replace(/,\s+(?=\d)/g, ',')
+      // Collapse multiple spaces to single
+      .replace(/\s{2,}/g, ' ')
       .trim();
   });
+
+  // ALSO normalize the raw text for regex patterns
+  const normalizedText = text
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .replace(/(\d)\s+(?=\d)/g, '$1')
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')
+    .replace(/\.\s+(?=\d)/g, '.')
+    .replace(/,\s+(?=\d)/g, ',');
 
   // CRITICAL: Helper to detect BAD total lines (GROUP, CATEGORY, SECTION, DEPT, SUBTOTAL)
   const isBadTotalLine = (s) => /GROUP\s*TOTAL|CATEGORY\s*TOTAL|SECTION\s*TOTAL|DEPT\.?\s*TOTAL|DEPARTMENT\s*TOTAL|\bSUBTOTAL\b/i.test(s);
 
+  // ========== PRIORITY PASS 0: BOTTOM-RIGHT CORNER FORMAT ==========
+  // Sysco invoices have totals in bottom-right corner with lots of whitespace:
+  // SUB TOTAL    4389.56
+  // TAX TOTAL
+  // INVOICE TOTAL    4389.56
+  // This format has 4+ spaces between label and value
+  console.log(`[SYSCO TOTALS] Checking for bottom-right corner format...`);
+
+  // Look for INVOICE TOTAL with whitespace and value on SAME LINE
+  for (let i = normalizedLines.length - 1; i >= Math.max(0, normalizedLines.length - 100); i--) {
+    const line = normalizedLines[i];
+
+    // Pattern: "INVOICE TOTAL" followed by lots of spaces then a number
+    // Handles: "INVOICE TOTAL    4389.56" or "INVOICE TOTAL 4,389.56"
+    const invoiceTotalMatch = line.match(/INVOICE\s+TOTAL\s{2,}([\d,]+\.?\d*)/i);
+    if (invoiceTotalMatch) {
+      const cents = parseMoney(invoiceTotalMatch[1]);
+      if (cents > 1000) {  // Must be > $10.00
+        totals.totalCents = cents;
+        totals.totalEvidence = `SYSCO_CORNER: "${line}"`;
+        console.log(`[SYSCO TOTALS] ✓ CORNER FORMAT: INVOICE TOTAL = $${(cents/100).toFixed(2)}`);
+
+        // Also look for SUB TOTAL nearby
+        for (let j = Math.max(0, i - 5); j < i; j++) {
+          const prevLine = normalizedLines[j];
+          const subMatch = prevLine.match(/SUB\s+TOTAL\s{2,}([\d,]+\.?\d*)/i);
+          if (subMatch) {
+            totals.subtotalCents = parseMoney(subMatch[1]);
+            console.log(`[SYSCO TOTALS] ✓ CORNER: SUB TOTAL = $${(totals.subtotalCents/100).toFixed(2)}`);
+          }
+          const taxMatch = prevLine.match(/TAX\s+TOTAL\s{2,}([\d,]+\.?\d*)/i);
+          if (taxMatch) {
+            totals.taxCents = parseMoney(taxMatch[1]);
+            console.log(`[SYSCO TOTALS] ✓ CORNER: TAX TOTAL = $${(totals.taxCents/100).toFixed(2)}`);
+          }
+        }
+        return totals;
+      }
+    }
+  }
+
   // ========== PASS A: INVOICE TOTAL ANCHOR PATTERNS (HIGHEST PRIORITY) ==========
   // These patterns SPECIFICALLY look for "INVOICE TOTAL" and return immediately when found
-  const start = Math.max(0, normalizedLines.length - 250);
+  // EXPANDED: Scan last 500 lines instead of 250 to handle longer invoices
+  const start = Math.max(0, normalizedLines.length - 500);
 
   for (let i = normalizedLines.length - 1; i >= start; i--) {
     const prev = i > 0 ? normalizedLines[i - 1] : '';
@@ -745,10 +810,19 @@ function extractSyscoTotals(text, lines) {
 
   console.log(`[SYSCO TOTALS] PASS A found nothing, trying raw text patterns...`);
 
-  // ========== PASS A.5: Raw text regex (catches multi-line joins) ==========
+  // ========== PASS A.5: Raw text regex (catches multi-line joins and whitespace) ==========
+  // CRITICAL: These patterns handle various PDF extraction quirks
   const rawPatterns = [
+    // Pattern 1: INVOICE TOTAL with LOTS of whitespace (corner format)
+    /INVOICE\s+TOTAL\s{2,}([\d,]+\.?\d*)/gi,
+    // Pattern 2: INVOICE TOTAL with any whitespace/newlines
     /INVOICE\s*TOTAL[\s:\r\n]*\$?([\d,]+\.\d{2})/gi,
+    // Pattern 3: INVOICE and TOTAL split by newline
     /INVOICE[\s\r\n]+TOTAL[\s:\r\n]*\$?([\d,]+\.\d{2})/gi,
+    // Pattern 4: SUB TOTAL then TAX TOTAL then INVOICE TOTAL (Sysco corner pattern)
+    /SUB\s+TOTAL[\s\S]{0,50}INVOICE\s+TOTAL\s+([\d,]+\.?\d*)/gi,
+    // Pattern 5: Just looking for INVOICE TOTAL anywhere with value
+    /INVOICE\s+TOTAL\s*[\s:]*\$?\s*([\d,]+\.?\d{2})/gi,
   ];
 
   for (const pattern of rawPatterns) {
@@ -758,12 +832,25 @@ function extractSyscoTotals(text, lines) {
       // Take the LAST match (closest to end of document)
       const lastMatch = matches[matches.length - 1];
       const cents = parseMoney(lastMatch[1]);
-      if (cents > 0) {
+      if (cents > 1000) {  // Must be > $10.00 to avoid false positives
         totals.totalCents = cents;
         totals.totalEvidence = `SYSCO_RAW: "${lastMatch[0].replace(/[\r\n]+/g, ' ').slice(0, 50)}"`;
         console.log(`[SYSCO TOTALS] ✓ PASS A.5 RAW: $${(cents/100).toFixed(2)}`);
         return totals;
       }
+    }
+  }
+
+  // ========== PASS A.6: Scan for corner format in raw text ==========
+  // Specifically look for the REMIT TO block with totals
+  const cornerMatch = text.match(/REMIT\s+TO[\s\S]{0,200}INVOICE\s+TOTAL\s+([\d,]+\.?\d*)/i);
+  if (cornerMatch) {
+    const cents = parseMoney(cornerMatch[1]);
+    if (cents > 1000) {
+      totals.totalCents = cents;
+      totals.totalEvidence = `SYSCO_REMIT_CORNER: found near REMIT TO`;
+      console.log(`[SYSCO TOTALS] ✓ PASS A.6 REMIT CORNER: $${(cents/100).toFixed(2)}`);
+      return totals;
     }
   }
 
@@ -940,7 +1027,50 @@ function extractSyscoTotals(text, lines) {
     }
   }
 
-  console.log(`[SYSCO TOTALS] Extracted: total=$${(totals.totalCents/100).toFixed(2)}, subtotal=$${(totals.subtotalCents/100).toFixed(2)}, tax=$${(totals.taxCents/100).toFixed(2)}`);
+  // ========== NUCLEAR FALLBACK: Use shared totals.js extractor ==========
+  // If we STILL have no total, use the battle-tested shared extractor
+  if (totals.totalCents === 0) {
+    console.log(`[SYSCO TOTALS] NUCLEAR FALLBACK: Using shared extractTotalsByLineScan...`);
+    try {
+      const { extractTotalsByLineScan } = require('../totals');
+      const sharedResult = extractTotalsByLineScan(text);
+      if (sharedResult.totalCents > 1000) {  // Must be > $10.00
+        totals.totalCents = sharedResult.totalCents;
+        totals.subtotalCents = sharedResult.subtotalCents || totals.subtotalCents;
+        totals.taxCents = sharedResult.taxCents || totals.taxCents;
+        totals.totalEvidence = `SYSCO_NUCLEAR: from shared totals.js`;
+        console.log(`[SYSCO TOTALS] ✓ NUCLEAR: $${(totals.totalCents/100).toFixed(2)} (subtotal: $${(totals.subtotalCents/100).toFixed(2)}, tax: $${(totals.taxCents/100).toFixed(2)})`);
+      }
+    } catch (e) {
+      console.log(`[SYSCO TOTALS] NUCLEAR fallback failed: ${e.message}`);
+    }
+  }
+
+  // ========== LAST RESORT: Scan for ANY large money value near INVOICE TOTAL ==========
+  if (totals.totalCents === 0) {
+    console.log(`[SYSCO TOTALS] LAST RESORT: Scanning for any money value near 'INVOICE TOTAL'...`);
+
+    // Find INVOICE TOTAL text position and grab nearby money values
+    const invoiceTotalPos = text.toUpperCase().lastIndexOf('INVOICE TOTAL');
+    if (invoiceTotalPos > 0) {
+      // Get 200 chars after INVOICE TOTAL
+      const afterText = text.slice(invoiceTotalPos, invoiceTotalPos + 200);
+      const moneyMatches = afterText.match(/[\d,]+\.?\d{0,2}/g);
+      if (moneyMatches) {
+        for (const m of moneyMatches) {
+          const cents = parseMoney(m);
+          if (cents > 1000 && cents < 100000000) {  // $10 to $1M range
+            totals.totalCents = cents;
+            totals.totalEvidence = `SYSCO_LASTRESORT: "${m}" near INVOICE TOTAL`;
+            console.log(`[SYSCO TOTALS] ✓ LAST RESORT: $${(cents/100).toFixed(2)}`);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  console.log(`[SYSCO TOTALS] FINAL: total=$${(totals.totalCents/100).toFixed(2)}, subtotal=$${(totals.subtotalCents/100).toFixed(2)}, tax=$${(totals.taxCents/100).toFixed(2)}`);
 
   return totals;
 }
