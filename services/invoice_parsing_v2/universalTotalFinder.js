@@ -172,7 +172,15 @@ function findByLabelPatterns(text, lines) {
     while ((idx = upperText.indexOf(label, idx)) !== -1) {
       // Check context - skip if preceded by subtotal indicators
       const contextBefore = upperText.substring(Math.max(0, idx - 20), idx);
-      const isSubtotal = SUBTOTAL_LABELS.some(sub => contextBefore.includes(sub));
+      const contextAround = upperText.substring(Math.max(0, idx - 10), idx + label.length + 10);
+
+      // Skip if this "TOTAL" is actually part of "SUBTOTAL", "GROUP TOTAL", etc.
+      const isSubtotal = SUBTOTAL_LABELS.some(sub => contextBefore.includes(sub)) ||
+                         /SUB[\s-]?TOTAL/.test(contextAround) ||
+                         /GROUP[\s\*]*TOTAL/.test(contextAround) ||
+                         /CATEGORY[\s]*TOTAL/.test(contextAround) ||
+                         /DEPT[\s]*TOTAL/.test(contextAround);
+
       const isExcluded = EXCLUDE_LABELS.some(ex => contextBefore.includes(ex) || upperText.substring(idx, idx + 30).includes(ex));
 
       if (!isSubtotal && !isExcluded) {
@@ -365,24 +373,33 @@ function findByKeywordProximity(text, lines) {
   for (const kw of keywords) {
     let idx = 0;
     while ((idx = upperText.indexOf(kw.word, idx)) !== -1) {
-      // Get character range around this keyword
-      const start = Math.max(0, idx - kw.distance);
-      const end = Math.min(text.length, idx + kw.word.length + kw.distance);
-      const context = text.substring(start, end);
+      // Skip if this keyword is part of a SUBTOTAL or GROUP TOTAL
+      const contextAround = upperText.substring(Math.max(0, idx - 10), idx + kw.word.length + 10);
+      const isSubtotal = /SUB[\s-]?TOTAL/.test(contextAround) ||
+                         /GROUP[\s\*]*TOTAL/.test(contextAround) ||
+                         /CATEGORY[\s]*TOTAL/.test(contextAround) ||
+                         /DEPT[\s]*TOTAL/.test(contextAround);
 
-      // Extract values from this context
-      const values = extractAllMonetaryValues(context);
+      if (!isSubtotal) {
+        // Get character range around this keyword
+        const start = Math.max(0, idx - kw.distance);
+        const end = Math.min(text.length, idx + kw.word.length + kw.distance);
+        const context = text.substring(start, end);
 
-      for (const val of values) {
-        if (val.value >= 100 && val.value <= 10000000) {
-          candidates.push({
-            strategy: 'keyword_proximity',
-            keyword: kw.word,
-            value: val.value,
-            dollars: val.dollars,
-            score: kw.score,
-            context: context.replace(/\n/g, ' ').trim().substring(0, 80)
-          });
+        // Extract values from this context
+        const values = extractAllMonetaryValues(context);
+
+        for (const val of values) {
+          if (val.value >= 100 && val.value <= 10000000) {
+            candidates.push({
+              strategy: 'keyword_proximity',
+              keyword: kw.word,
+              value: val.value,
+              dollars: val.dollars,
+              score: kw.score,
+              context: context.replace(/\n/g, ' ').trim().substring(0, 80)
+            });
+          }
         }
       }
 
@@ -480,17 +497,32 @@ function findByLastPageFocus(text, lines) {
 
   // If we found a last page marker, focus search there
   if (lastPageIndex > 0) {
-    const lastPageText = text.substring(lastPageIndex);
-    const lastPageLines = lastPageText.split('\n');
+    // Extract text BEFORE "LAST PAGE" (the invoice total is usually just before this marker)
+    // Take the last 500 chars before the marker (or less if document is short)
+    const beforeLastPage = text.substring(Math.max(0, lastPageIndex - 500), lastPageIndex);
+    const beforeLines = beforeLastPage.split('\n');
 
-    // Run bottom scan on just the last page content
-    const lastPageCandidates = findByBottomScan(lastPageText, lastPageLines);
+    // Run bottom scan on the content before "LAST PAGE"
+    const beforeCandidates = findByBottomScan(beforeLastPage, beforeLines);
 
-    for (const cand of lastPageCandidates) {
+    for (const cand of beforeCandidates) {
       candidates.push({
         ...cand,
         strategy: 'last_page_focus',
-        score: cand.score + 15  // Bonus for being on last page
+        score: cand.score + 25  // HIGH bonus for being right before LAST PAGE marker
+      });
+    }
+
+    // Also check text AFTER the marker (for cases where total comes after)
+    const afterLastPage = text.substring(lastPageIndex);
+    const afterLines = afterLastPage.split('\n');
+    const afterCandidates = findByBottomScan(afterLastPage, afterLines);
+
+    for (const cand of afterCandidates) {
+      candidates.push({
+        ...cand,
+        strategy: 'last_page_focus',
+        score: cand.score + 10  // Lower bonus for values after LAST PAGE
       });
     }
   }
@@ -576,7 +608,13 @@ function findByRegexArmy(text) {
         const contextStart = Math.max(0, match.index - 20);
         const context = text.substring(contextStart, match.index + match[0].length + 10).toUpperCase();
 
-        const isSubtotal = SUBTOTAL_LABELS.some(sub => context.includes(sub) && !context.includes('INVOICE'));
+        // Skip if this is a SUBTOTAL, GROUP TOTAL, etc. (not the final invoice total)
+        const isSubtotal = SUBTOTAL_LABELS.some(sub => context.includes(sub) && !context.includes('INVOICE')) ||
+                           /SUB[\s-]?TOTAL/.test(context) ||
+                           /GROUP[\s\*]*TOTAL/.test(context) ||
+                           /CATEGORY[\s]*TOTAL/.test(context) ||
+                           /DEPT[\s]*TOTAL/.test(context);
+
         const isExcluded = EXCLUDE_LABELS.some(ex => context.includes(ex));
 
         if (!isSubtotal && !isExcluded) {
@@ -600,6 +638,10 @@ function findByRegexArmy(text) {
  * Strategy 8: Tax + Subtotal Validation
  * If we find subtotal and tax, the total should be subtotal + tax
  * This helps validate our total candidate
+ *
+ * IMPORTANT: This is a VALIDATOR, not a primary finder.
+ * It should have LOWER confidence than explicit "INVOICE TOTAL" labels
+ * because many invoices have fees/adjustments not included in subtotal+tax.
  */
 function findByTaxSubtotalValidation(text, lines) {
   const candidates = [];
@@ -631,14 +673,23 @@ function findByTaxSubtotalValidation(text, lines) {
 
     for (const pattern of patterns) {
       if (pattern.test(text)) {
+        // Check if there's an "INVOICE TOTAL" or similar explicit label
+        const hasInvoiceTotalLabel = /INVOICE[\s\r\n]*TOTAL/i.test(text) ||
+                                     /GRAND[\s\r\n]*TOTAL/i.test(text) ||
+                                     /TOTAL[\s\r\n]*DUE/i.test(text);
+
+        // LOWER score if explicit total label exists (subtotal+tax might not include fees)
+        // HIGHER score if no explicit label (subtotal+tax is our best guess)
+        const score = hasInvoiceTotalLabel ? 45 : 75;
+
         candidates.push({
           strategy: 'tax_subtotal_validation',
           value: computedTotal,
           dollars: computedTotal / 100,
-          score: 90,  // High confidence if math checks out
+          score: score,
           context: `Computed from subtotal($${(subtotalCents/100).toFixed(2)}) + tax($${(taxCents/100).toFixed(2)})`
         });
-        console.log(`[TOTAL FINDER] Tax+Subtotal validation: $${(subtotalCents/100).toFixed(2)} + $${(taxCents/100).toFixed(2)} = $${(computedTotal/100).toFixed(2)}`);
+        console.log(`[TOTAL FINDER] Tax+Subtotal validation: $${(subtotalCents/100).toFixed(2)} + $${(taxCents/100).toFixed(2)} = $${(computedTotal/100).toFixed(2)} (score: ${score})`);
         break;
       }
     }
