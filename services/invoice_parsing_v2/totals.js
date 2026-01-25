@@ -285,6 +285,129 @@ function extractTotalsByLineScan(text) {
     { pattern: /PROMO(?:TION)?[:\s]*-?\$?([\d,]+\.?\d{0,3})/i, name: 'PROMO' },
   ];
 
+  // ===== PRIORITY PASS -1: HORIZONTAL HEADER FORMAT (CINTAS) =====
+  // Format: "SUBTOTAL SALES TAX TOTAL USD" on one line, values on next lines
+  for (let i = 0; i < lines.length - 3; i++) {
+    const line = lines[i]?.trim() || '';
+
+    // Match: "SUBTOTAL SALES TAX TOTAL USD" or "SUBTOTAL TAX TOTAL USD"
+    if (/SUBTOTAL\s+(?:SALES\s+)?TAX\s+TOTAL(?:\s+USD)?/i.test(line)) {
+      const line1 = lines[i + 1]?.trim() || '';
+      const line2 = lines[i + 2]?.trim() || '';
+      const line3 = lines[i + 3]?.trim() || '';
+
+      // Check if next 3 lines are all just numbers
+      const val1Match = line1.match(/^([\d,]+\.?\d*)$/);
+      const val2Match = line2.match(/^([\d,]+\.?\d*)$/);
+      const val3Match = line3.match(/^([\d,]+\.?\d*)$/);
+
+      if (val1Match && val2Match && val3Match) {
+        const subtotalVal = parseMoneyToCents(val1Match[1]);
+        const taxVal = parseMoneyToCents(val2Match[1]);
+        const totalVal = parseMoneyToCents(val3Match[1]);
+
+        if (totalVal > 0) {
+          console.log(`[TOTALS] HORIZONTAL HEADER FORMAT: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+          return {
+            totalCents: totalVal,
+            subtotalCents: subtotalVal,
+            taxCents: taxVal,
+            feesCents: 0,
+            discountCents: 0,
+            evidence: {
+              total: { cents: totalVal, name: 'HORIZONTAL HEADER (TOTAL USD)', line: `${line} -> ${line3}`, source: 'horizontal_header' },
+              subtotal: { cents: subtotalVal, name: 'HORIZONTAL HEADER (SUBTOTAL)', line: line1 },
+              tax: { cents: taxVal, name: 'HORIZONTAL HEADER (TAX)', line: line2 },
+              fees: [],
+              discounts: []
+            }
+          };
+        }
+      }
+
+      // Also check if values are on the SAME line as headers (space-separated)
+      const nextLine = lines[i + 1]?.trim() || '';
+      const numbers = nextLine.match(/([\d,]+\.?\d*)/g);
+      if (numbers && numbers.length >= 3) {
+        const subtotalVal = parseMoneyToCents(numbers[0]);
+        const taxVal = parseMoneyToCents(numbers[1]);
+        const totalVal = parseMoneyToCents(numbers[2]);
+
+        if (totalVal > 0) {
+          console.log(`[TOTALS] HORIZONTAL SAME-LINE FORMAT: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+          return {
+            totalCents: totalVal,
+            subtotalCents: subtotalVal,
+            taxCents: taxVal,
+            feesCents: 0,
+            discountCents: 0,
+            evidence: {
+              total: { cents: totalVal, name: 'HORIZONTAL SAME-LINE (TOTAL USD)', line: nextLine, source: 'horizontal_same_line' },
+              subtotal: { cents: subtotalVal, name: 'HORIZONTAL SAME-LINE (SUBTOTAL)', line: nextLine },
+              tax: { cents: taxVal, name: 'HORIZONTAL SAME-LINE (TAX)', line: nextLine },
+              fees: [],
+              discounts: []
+            }
+          };
+        }
+      }
+    }
+  }
+
+  // ===== PRIORITY PASS 0: STACKED LABEL COLUMN FORMAT (CINTAS) =====
+  // This MUST run FIRST to correctly handle:
+  // SUBTOTAL       <- Label line (i-2)
+  // SALES TAX      <- Label line (i-1)
+  // TOTAL USD      <- Label line (i)
+  // 1867.42        <- Value for SUBTOTAL (NOT the total!)
+  // 130.72         <- Value for TAX
+  // 1998.14        <- Value for TOTAL USD (THIS is the real total)
+  for (let i = 2; i < lines.length - 3; i++) {
+    const line0 = lines[i - 2]?.trim() || '';
+    const line1 = lines[i - 1]?.trim() || '';
+    const line2 = lines[i]?.trim() || '';
+    const line3 = lines[i + 1]?.trim() || '';
+    const line4 = lines[i + 2]?.trim() || '';
+    const line5 = lines[i + 3]?.trim() || '';
+
+    // Check if we have the stacked label pattern
+    const isSubtotalLabel = /^SUBTOTAL\s*$/i.test(line0);
+    const isTaxLabel = /^(?:SALES\s+)?TAX\s*$/i.test(line1);
+    const isTotalLabel = /^TOTAL\s+USD\s*$/i.test(line2);
+
+    if (isSubtotalLabel && isTaxLabel && isTotalLabel) {
+      // Check if next 3 lines are all just numbers (the values)
+      const val1Match = line3.match(/^([\d,]+\.?\d*)$/);
+      const val2Match = line4.match(/^([\d,]+\.?\d*)$/);
+      const val3Match = line5.match(/^([\d,]+\.?\d*)$/);
+
+      if (val1Match && val2Match && val3Match) {
+        const subtotalVal = parseMoneyToCents(val1Match[1]);
+        const taxVal = parseMoneyToCents(val2Match[1]);
+        const totalVal = parseMoneyToCents(val3Match[1]);
+
+        if (totalVal > 0) {
+          console.log(`[TOTALS] STACKED COLUMN FORMAT: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+          // Return immediately - this is the most reliable format
+          return {
+            totalCents: totalVal,
+            subtotalCents: subtotalVal,
+            taxCents: taxVal,
+            feesCents: 0,
+            discountCents: 0,
+            evidence: {
+              total: { cents: totalVal, name: 'STACKED COLUMN (TOTAL USD)', line: `${line2} -> ${line5}`, source: 'stacked_column' },
+              subtotal: { cents: subtotalVal, name: 'STACKED COLUMN (SUBTOTAL)', line: `${line0} -> ${line3}` },
+              tax: { cents: taxVal, name: 'STACKED COLUMN (TAX)', line: `${line1} -> ${line4}` },
+              fees: [],
+              discounts: []
+            }
+          };
+        }
+      }
+    }
+  }
+
   // FIRST PASS: Look for multi-line totals (label on one line, value on next)
   // This is critical for Sysco invoices where text extraction splits them
   for (let i = 0; i < lines.length - 1; i++) {
@@ -295,6 +418,13 @@ function extractTotalsByLineScan(text) {
 
     // Skip group subtotals
     if (isGroupSubtotalLine(line)) continue;
+
+    // ===== CHECK FOR STACKED LABEL COLUMN - SKIP IF FOUND =====
+    // If we're on "TOTAL USD" and the previous lines are SUBTOTAL/TAX labels,
+    // then the NEXT line is the SUBTOTAL value, NOT the total!
+    const prevLine1 = i >= 1 ? lines[i - 1]?.trim() : '';
+    const prevLine2 = i >= 2 ? lines[i - 2]?.trim() : '';
+    const isStackedLabelColumn = /^(?:SALES\s+)?TAX\s*$/i.test(prevLine1) && /^SUBTOTAL\s*$/i.test(prevLine2);
 
     // ===== CRITICAL FIX: SPLIT-LINE PATTERNS (HIGHEST PRIORITY) =====
     // These handle PDFs where labels and values are split across lines
@@ -318,7 +448,8 @@ function extractTotalsByLineScan(text) {
     }
 
     // PATTERN B: "TOTAL USD" alone on line N, value on line N+1 (Cintas format)
-    if (/^TOTAL\s+USD\s*$/i.test(lineNorm)) {
+    // BUT SKIP if this is part of a stacked label column!
+    if (!isStackedLabelColumn && /^TOTAL\s+USD\s*$/i.test(lineNorm)) {
       const valueMatch = nextLine ? nextLine.match(/^\s*\$?([\d,]+\.?\d{0,3})\s*$/) : null;
       if (valueMatch) {
         const cents = parseMoneyToCents(valueMatch[1]);
