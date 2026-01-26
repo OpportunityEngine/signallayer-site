@@ -63,6 +63,32 @@ function getOcrModule() {
   return ocrModule;
 }
 
+// Import new PDF extraction modules for full-page coverage
+let pdfjsExtract = null;
+let pdfOcr = null;
+
+function getPdfjsExtract() {
+  if (!pdfjsExtract) {
+    try {
+      pdfjsExtract = require('./services/pdf/pdfjsExtract');
+    } catch (e) {
+      console.warn('[UniversalProcessor] pdfjs-extract not available:', e.message);
+    }
+  }
+  return pdfjsExtract;
+}
+
+function getPdfOcr() {
+  if (!pdfOcr) {
+    try {
+      pdfOcr = require('./services/pdf/pdfOcr');
+    } catch (e) {
+      console.warn('[UniversalProcessor] pdf-ocr not available:', e.message);
+    }
+  }
+  return pdfOcr;
+}
+
 // Import invoice parser
 const invoiceParser = require('./invoice-parser');
 
@@ -303,6 +329,256 @@ async function advancedImagePreprocessing(imageBuffer) {
     console.error('[AdvancedPreprocess] Error:', err.message);
     return imageBuffer;
   }
+}
+
+// ============ COVERAGE ANALYSIS ============
+
+/**
+ * Analyze text coverage to detect when we missed margins/footers
+ * This is critical for triggering OCR fallback
+ *
+ * @param {string} text - Extracted text
+ * @returns {Object} Coverage analysis result
+ */
+function analyzeCoverage(text) {
+  const t = (text || '').toUpperCase();
+
+  // Check for total anchors (critical for invoice totals)
+  const hasTotalAnchor = /INVOICE\s*TOTAL|TOTAL\s+USD|AMOUNT\s+DUE|BALANCE\s+DUE|GRAND\s+TOTAL|TOTAL\s+DUE|NET\s+TOTAL/.test(t);
+
+  // Check for basic invoice word
+  const hasInvoiceWord = /\bINVOICE\b/.test(t);
+
+  // Check for known vendor hints (including space-separated versions from OCR)
+  const hasVendorHints = /\bSYSCO\b|\bCINTAS\b|\bUS\s*FOODS\b/.test(t) ||
+                         /S\s*Y\s*S\s*C\s*O/.test(t) ||
+                         /C\s*I\s*N\s*T\s*A\s*S/.test(t);
+
+  // Check for money values (at least one dollar amount)
+  const hasMoneyValues = /\$\s*[\d,]+\.?\d{0,2}|\d{1,3}(?:,\d{3})*\.\d{2}/.test(t);
+
+  // Text length
+  const textLen = (text || '').length;
+
+  // Determine if we're missing critical anchors
+  // An invoice should have EITHER:
+  // - A total anchor (INVOICE TOTAL, AMOUNT DUE, etc.)
+  // - OR at least have the word INVOICE plus money values
+  const missingCriticalAnchors = !(hasTotalAnchor || (hasInvoiceWord && hasMoneyValues));
+
+  return {
+    textLen,
+    hasTotalAnchor,
+    hasInvoiceWord,
+    hasVendorHints,
+    hasMoneyValues,
+    missingCriticalAnchors
+  };
+}
+
+/**
+ * Join unique text from multiple sources, removing duplicates
+ *
+ * @param {string[]} texts - Array of text strings from different sources
+ * @returns {string} Combined text with unique content
+ */
+function joinUniqueTexts(texts) {
+  if (!texts || texts.length === 0) return '';
+  if (texts.length === 1) return texts[0] || '';
+
+  // Filter out empty strings
+  const validTexts = texts.filter(t => t && t.trim().length > 0);
+  if (validTexts.length === 0) return '';
+  if (validTexts.length === 1) return validTexts[0];
+
+  // Start with the longest text as base
+  const sorted = [...validTexts].sort((a, b) => b.length - a.length);
+  let combined = sorted[0];
+
+  // Track lines we've seen (normalized for comparison)
+  const seenLines = new Set();
+  combined.split('\n').forEach(line => {
+    const normalized = line.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (normalized.length > 3) seenLines.add(normalized);
+  });
+
+  // Add unique lines from other sources
+  for (let i = 1; i < sorted.length; i++) {
+    const lines = sorted[i].split('\n');
+    const newLines = [];
+
+    for (const line of lines) {
+      const normalized = line.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (normalized.length > 3 && !seenLines.has(normalized)) {
+        // Check if line contains useful content
+        if (/\$|total|subtotal|tax|amount|due|qty|\d+\.\d{2}/.test(normalized)) {
+          newLines.push(line.trim());
+          seenLines.add(normalized);
+        }
+      }
+    }
+
+    if (newLines.length > 0) {
+      combined += '\n\n=== ADDITIONAL SOURCE ===\n' + newLines.join('\n');
+    }
+  }
+
+  return combined;
+}
+
+// ============ FULL-PAGE EXTRACTION PIPELINE ============
+
+/**
+ * Extract text from PDF using ALL available methods for maximum coverage
+ * This is the nuclear option for invoice extraction - it ensures we never miss totals
+ *
+ * Pipeline:
+ * 1. pdf-parse (standard text extraction)
+ * 2. pdfjs (position-aware, captures margins better)
+ * 3. OCR last page (if coverage check fails)
+ * 4. OCR all pages (if still missing critical content)
+ *
+ * @param {Buffer} pdfBuffer - PDF file as buffer
+ * @param {Object} opts - Options
+ * @returns {Promise<{rawText: string, coverage: Object, sourcesUsed: Object}>}
+ */
+async function extractFullInvoiceTextFromPDF(pdfBuffer, opts = {}) {
+  const { maxPages = 10, forceOcrLastPage = true } = opts;
+
+  const sourcesUsed = {
+    pdfParse: 0,
+    pdfJs: 0,
+    ocrLastPage: 0,
+    ocrAllPages: 0
+  };
+
+  const allTexts = [];
+  let bestCoverage = null;
+
+  console.log('[EXTRACT] Starting full-page extraction pipeline...');
+
+  // ===== STEP 1: pdf-parse (standard text extraction) =====
+  const pdfParseLib = getPdfParse();
+  let pdfParseText = '';
+
+  if (pdfParseLib) {
+    try {
+      console.log('[EXTRACT] Step 1: pdf-parse extraction...');
+      const pdfData = await Promise.race([
+        pdfParseLib(pdfBuffer),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('PDF parse timeout')), 30000)
+        )
+      ]);
+
+      pdfParseText = (pdfData.text || '').trim();
+      sourcesUsed.pdfParse = pdfParseText.length;
+      allTexts.push(pdfParseText);
+
+      console.log(`[EXTRACT] pdf-parse: ${pdfParseText.length} chars`);
+    } catch (err) {
+      console.warn('[EXTRACT] pdf-parse failed:', err.message);
+    }
+  }
+
+  // ===== STEP 2: pdfjs (position-aware text extraction) =====
+  const pdfjsMod = getPdfjsExtract();
+  let pdfjsText = '';
+
+  if (pdfjsMod) {
+    try {
+      console.log('[EXTRACT] Step 2: pdfjs position-aware extraction...');
+      const pdfjsResult = await pdfjsMod.extractTextPdfJs(pdfBuffer);
+      pdfjsText = (pdfjsResult.text || '').trim();
+      sourcesUsed.pdfJs = pdfjsText.length;
+      allTexts.push(pdfjsText);
+
+      console.log(`[EXTRACT] pdfjs: ${pdfjsText.length} chars`);
+    } catch (err) {
+      console.warn('[EXTRACT] pdfjs failed:', err.message);
+    }
+  }
+
+  // ===== STEP 3: Combine and analyze coverage =====
+  let combinedText = joinUniqueTexts(allTexts);
+  let coverage = analyzeCoverage(combinedText);
+
+  console.log('[EXTRACT] Coverage check:', {
+    textLen: coverage.textLen,
+    hasTotalAnchor: coverage.hasTotalAnchor,
+    hasInvoiceWord: coverage.hasInvoiceWord,
+    hasVendorHints: coverage.hasVendorHints,
+    missingCriticalAnchors: coverage.missingCriticalAnchors
+  });
+
+  // ===== STEP 4: OCR last page if coverage is poor OR forced =====
+  const pdfOcrMod = getPdfOcr();
+  const shouldOcrLastPage = forceOcrLastPage ||
+                            coverage.missingCriticalAnchors ||
+                            coverage.textLen < 500;
+
+  if (pdfOcrMod && pdfOcrMod.isOcrAvailable() && shouldOcrLastPage) {
+    try {
+      console.log('[EXTRACT] Step 4: OCR last page (totals usually here)...');
+      const ocrResult = await pdfOcrMod.ocrLastPage(pdfBuffer);
+
+      if (ocrResult.text && ocrResult.text.length > 50) {
+        sourcesUsed.ocrLastPage = ocrResult.text.length;
+        allTexts.push(ocrResult.text);
+
+        // Recombine and recheck coverage
+        combinedText = joinUniqueTexts(allTexts);
+        coverage = analyzeCoverage(combinedText);
+
+        console.log(`[EXTRACT] OCR last page: ${ocrResult.text.length} chars`);
+        console.log('[EXTRACT] Coverage after OCR:', {
+          hasTotalAnchor: coverage.hasTotalAnchor,
+          missingCriticalAnchors: coverage.missingCriticalAnchors
+        });
+      }
+    } catch (err) {
+      console.warn('[EXTRACT] OCR last page failed:', err.message);
+    }
+  }
+
+  // ===== STEP 5: OCR all pages if still missing critical content =====
+  if (pdfOcrMod && pdfOcrMod.isOcrAvailable() &&
+      (coverage.missingCriticalAnchors || coverage.textLen < 300)) {
+    try {
+      console.log('[EXTRACT] Step 5: OCR all pages (nuclear fallback)...');
+      const ocrAllResult = await pdfOcrMod.ocrAllPages(pdfBuffer, maxPages);
+
+      if (ocrAllResult.text && ocrAllResult.text.length > 100) {
+        sourcesUsed.ocrAllPages = ocrAllResult.text.length;
+        allTexts.push(ocrAllResult.text);
+
+        // Final combination
+        combinedText = joinUniqueTexts(allTexts);
+        coverage = analyzeCoverage(combinedText);
+
+        console.log(`[EXTRACT] OCR all pages: ${ocrAllResult.text.length} chars`);
+      }
+    } catch (err) {
+      console.warn('[EXTRACT] OCR all pages failed:', err.message);
+    }
+  }
+
+  // ===== FINAL: Log summary =====
+  console.log('[EXTRACT] Extraction complete:', {
+    sourcesUsed,
+    finalTextLen: combinedText.length,
+    coverage: {
+      hasTotalAnchor: coverage.hasTotalAnchor,
+      hasVendorHints: coverage.hasVendorHints,
+      missingCriticalAnchors: coverage.missingCriticalAnchors
+    }
+  });
+
+  return {
+    rawText: combinedText,
+    coverage,
+    sourcesUsed
+  };
 }
 
 // ============ TEXT EXTRACTION ============
@@ -951,8 +1227,23 @@ async function processInvoice(input, options = {}) {
         confidence: 0.95
       };
     } else if (result.fileType === 'pdf') {
-      // PDF file
-      extractionResult = await extractTextFromPDF(buffer, { maxPages: maxOCRPages });
+      // PDF file - use FULL extraction pipeline for maximum coverage
+      // This ensures we capture totals from margins/footers
+      const fullResult = await extractFullInvoiceTextFromPDF(buffer, {
+        maxPages: maxOCRPages,
+        forceOcrLastPage: true  // Always OCR last page for vendor invoices
+      });
+
+      extractionResult = {
+        text: fullResult.rawText,
+        method: 'full-pipeline',
+        confidence: fullResult.coverage.missingCriticalAnchors ? 0.5 : 0.85,
+        coverage: fullResult.coverage,
+        sourcesUsed: fullResult.sourcesUsed
+      };
+
+      // Log extraction sources for debugging
+      console.log(`[UniversalProcessor] PDF extraction sources used:`, fullResult.sourcesUsed);
     } else if (result.fileType === 'image') {
       // Image file (phone photo, screenshot, scan)
       extractionResult = await extractTextFromImage(buffer, {
@@ -1105,9 +1396,12 @@ module.exports = {
   advancedImagePreprocessing,
   highContrastPreprocessing,
   extractTextFromPDF,
+  extractFullInvoiceTextFromPDF,
   extractTextFromImage,
   calculateOCRConfidence,
   assessTextQuality,
   cleanExtractedText,
-  combineOCRResults
+  combineOCRResults,
+  analyzeCoverage,
+  joinUniqueTexts
 };
