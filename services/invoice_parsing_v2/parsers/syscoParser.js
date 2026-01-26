@@ -125,6 +125,47 @@ function parseSyscoLineItem(line) {
   }
 
   // =====================================================
+  // PATTERN 1b: UPC-style SKU with dashes + item code
+  // [Category] [Qty] [Unit] [Size] [Description] [UPC with dashes] [ItemCode] [UnitPrice] [ExtPrice]
+  // Example: C 4 CS 46LB SYS CLS POTATO CKD MASH REDSK 34730-48591-00 3010032 32.51 130.04
+  // =====================================================
+  match = trimmed.match(/^([CFPD])\s+(\d+)\s+([A-Z]{1,4})\s+(.+?)\s+(\d{4,6}-\d{4,6}-\d{2})\s+(\d{5,8})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s*$/i);
+
+  if (match) {
+    const category = match[1].toUpperCase();
+    const qty = parseInt(match[2], 10);
+    const unit = match[3].toUpperCase();
+    const descPart = match[4].trim();
+    const upcCode = match[5];  // UPC with dashes like 34730-48591-00
+    const itemCode = match[6];
+    const unitPriceDollars = parseMoneyToDollars(match[7], 3);
+    const unitPriceCents = parseMoney(match[7]);
+    const lineTotalCents = parseMoney(match[8]);
+    const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
+
+    const MAX_LINE_ITEM_CENTS = 2000000;
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceCents < MAX_LINE_ITEM_CENTS) {
+      console.log(`[SYSCO PARSE] Pattern 1b (UPC with dashes) matched: "${descPart.slice(0, 40)}" qty=${qty} total=$${(lineTotalCents/100).toFixed(2)}`);
+      return {
+        type: 'item',
+        sku: upcCode,  // Use UPC as primary SKU
+        itemCode: itemCode,
+        description: descPart,
+        qty: qty,
+        unit: unit,
+        category: categoryCodeToName(category),
+        unitPriceDollars: unitPriceDollars,
+        unitPriceCents: unitPriceCents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: computedTotalCents,
+        taxFlag: null,
+        raw: line,
+        patternUsed: '1b'
+      };
+    }
+  }
+
+  // =====================================================
   // PATTERN 2: Merged qty+unit (e.g., "1S" instead of "1 S")
   // [Category] [Qty][Unit] [Size] [Description] [SKU] [ItemCode] [UnitPrice] [ExtPrice]
   // Example: C 1S ONLY5LB CASAIMP CHEESE CHDR MILD FTHR SHRD YE 169734 2822343 15.73 15.73
