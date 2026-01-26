@@ -1133,10 +1133,11 @@ class EmailCheckService {
               // Store invoice items - use INTEGER id for FK
               for (const item of result.items) {
                 database.prepare(`
-                  INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
-                  VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+                  INSERT INTO invoice_items (run_id, sku, description, quantity, unit_price_cents, total_cents, category, created_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
                 `).run(
                   runIdInt,
+                  item.sku || null,
                   item.description || 'Item',
                   item.quantity || 1,
                   item.unitPriceCents || 0,

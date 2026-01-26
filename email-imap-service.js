@@ -910,9 +910,9 @@ class EmailIMAPService {
       const items = parsedItems.length > 0
         ? parsedItems.map(item => ({
             description: item.description,
-            quantity: item.quantity,
-            unitPriceCents: item.unitPriceCents,
-            totalCents: item.totalCents,
+            quantity: item.quantity || item.qty,
+            unitPriceCents: item.unitPriceCents || (item.unitPriceDollars ? Math.round(item.unitPriceDollars * 100) : 0),
+            totalCents: item.totalCents || item.lineTotalCents || 0,
             category: item.category,
             sku: item.sku,
             confidence: item.confidence
@@ -923,9 +923,9 @@ class EmailIMAPService {
       let itemsTotalCents = 0;
       for (const item of items) {
         db.getDatabase().prepare(`
-          INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).run(runIdInt, item.description, item.quantity, item.unitPriceCents, item.totalCents, item.category || 'general');
+          INSERT INTO invoice_items (run_id, sku, description, quantity, unit_price_cents, total_cents, category, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(runIdInt, item.sku || null, item.description, item.quantity, item.unitPriceCents, item.totalCents, item.category || 'general');
         itemsTotalCents += item.totalCents || 0;
       }
 

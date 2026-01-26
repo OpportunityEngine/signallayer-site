@@ -3375,14 +3375,15 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       // Store invoice items in database for analytics
       if (canonical && canonical.line_items && Array.isArray(canonical.line_items)) {
         const itemStmt = db.getDatabase().prepare(`
-          INSERT INTO invoice_items (run_id, description, quantity, unit_price_cents, total_cents, category)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO invoice_items (run_id, sku, description, quantity, unit_price_cents, total_cents, category)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const item of canonical.line_items) {
           try {
             itemStmt.run(
               internalRunId,
+              item.sku || null,
               item.raw_description || item.description || '',
               item.quantity || 0,
               item.unit_price?.amount || 0,

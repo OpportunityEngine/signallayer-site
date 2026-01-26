@@ -213,6 +213,14 @@ function initDatabase() {
         console.log('✅ Migration: Added description column to reorder_recommendations');
       }
 
+      // Add SKU column to invoice_items for inventory tracking
+      const invoiceItemsInfo = db.prepare("PRAGMA table_info(invoice_items)").all();
+      const hasSku = invoiceItemsInfo.some(col => col.name === 'sku');
+      if (!hasSku && invoiceItemsInfo.length > 0) {
+        db.exec(`ALTER TABLE invoice_items ADD COLUMN sku TEXT`);
+        console.log('✅ Migration: Added sku column to invoice_items');
+      }
+
       // Check if inventory_usage needs migration (convert from period-based to daily)
       const usageTableInfo = db.prepare("PRAGMA table_info(inventory_usage)").all();
       const hasDateColumn = usageTableInfo.some(col => col.name === 'date');

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS ingestion_runs (
 CREATE TABLE IF NOT EXISTS invoice_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id INTEGER NOT NULL,
+    sku TEXT,
     description TEXT,
     quantity REAL,
     unit_price_cents INTEGER,

@@ -345,7 +345,8 @@ function buildCanonicalInvoiceV1({
     const quantity = qtyNum !== null ? qtyNum : 1; // matches your current behavior (chrome example)
 
     // Unit price: accept unit_price, unitPrice, price, rate
-    const unitPriceInput =
+    // Also handle cents fields from Sysco/Cintas parsers
+    let unitPriceInput =
       it?.unit_price ??
       it?.unitPrice ??
       it?.price ??
@@ -353,7 +354,30 @@ function buildCanonicalInvoiceV1({
       it?.unit_cost ??
       null;
 
+    // If we have unitPriceCents or unitPriceDollars from parser, use those
+    if (unitPriceInput === null && it?.unitPriceDollars != null) {
+      unitPriceInput = it.unitPriceDollars;
+    } else if (unitPriceInput === null && it?.unitPriceCents != null) {
+      unitPriceInput = it.unitPriceCents / 100;
+    }
+
     const unit_price = parseMoney(unitPriceInput, currency);
+
+    // Total price: accept total_price, totalPrice, total, line_total
+    // Also handle cents fields from Sysco/Cintas parsers
+    let totalPriceInput =
+      it?.total_price ??
+      it?.totalPrice ??
+      it?.total ??
+      it?.line_total ??
+      null;
+
+    // If we have lineTotalCents from parser, use that
+    if (totalPriceInput === null && it?.lineTotalCents != null) {
+      totalPriceInput = it.lineTotalCents / 100;
+    }
+
+    const total_price = parseMoney(totalPriceInput, currency);
 
     const frequency = guessFrequency(it);
 
@@ -364,6 +388,7 @@ function buildCanonicalInvoiceV1({
       sku: sku || null,
       quantity,
       unit_price: unit_price || null,
+      total_price: total_price || null,
       frequency,
       attributes: isObj(it?.attributes) ? it.attributes : {}
     };

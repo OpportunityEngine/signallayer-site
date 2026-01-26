@@ -379,6 +379,13 @@ function parseInvoiceText(rawText, options = {}) {
         }
       }
 
+      // FILTER 8: Reject "Unknown Item" entries that lack both unit price and line total
+      // These are typically employee subtotal lines or charge notice headers (Cintas)
+      if (/^UNKNOWN\s*ITEM$/i.test(trimmedDesc) && !unitPrice && !lineTotal) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - Unknown Item without price data`);
+        return false;
+      }
+
       return true;
     });
 
