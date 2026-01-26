@@ -2756,9 +2756,10 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
       }
     } else {
       // Fallback to basic parser if processor fails
+      // CRITICAL: Use V2 parser with coreExtractor for correct totals
       const invoiceParser = require('./invoice-parser');
-      parsedInvoice = invoiceParser.parseInvoice(raw_text);
-      console.log(`[INGEST] Fallback parser: ${parsedInvoice.items.length} items`);
+      parsedInvoice = invoiceParser.parseInvoice(raw_text, { useV2: true, debug: true });
+      console.log(`[INGEST] Fallback parser (V2): ${parsedInvoice.items.length} items`);
     }
 
     // Build extracted object - prefer parsed items over payload items
@@ -3287,10 +3288,24 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
           lineScanTotals
         );
 
-        // Select best total using priority chain
-        const bestTotal = selectBestTotal(lineScanTotals, computed, parserTotalCents);
-        invoiceTotalCents = bestTotal.totalCents;
-        totalSource = bestTotal.source;
+        // CRITICAL FIX: If parser was corrected by coreExtractor (found TOTAL USD or INVOICE TOTAL),
+        // prioritize the parser's total over line scan results.
+        // The coreExtractor specifically handles Cintas TOTAL USD and Sysco INVOICE TOTAL.
+        const parserWasCorrected = parsedInvoice?.totals?.coreExtractorCorrected ||
+                                   parsedInvoice?.totals?.coreOverrideApplied ||
+                                   parsedInvoice?.totals?.sanityCheckCorrected;
+
+        if (parserWasCorrected && parserTotalCents > 0) {
+          // Trust the parser's corrected total - it found TOTAL USD or INVOICE TOTAL
+          invoiceTotalCents = parserTotalCents;
+          totalSource = `parser-coreExtractor (${parsedInvoice?.totals?.coreExtractorSource || 'corrected'})`;
+          console.log(`[INGEST TOTALS] Using parser's coreExtractor-corrected total: $${(parserTotalCents/100).toFixed(2)}`);
+        } else {
+          // Select best total using priority chain
+          const bestTotal = selectBestTotal(lineScanTotals, computed, parserTotalCents);
+          invoiceTotalCents = bestTotal.totalCents;
+          totalSource = bestTotal.source;
+        }
 
         // Reconcile extracted vs computed for logging
         if (lineScanTotals?.totalCents > 0 && computed?.computedTotalCents > 0) {
