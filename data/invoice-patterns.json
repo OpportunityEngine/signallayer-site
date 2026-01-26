@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-01-25T23:11:12.456Z",
+  "lastUpdated": "2026-01-26T01:18:38.206Z",
   "vendorPatterns": {
     "sysco": [
       {
@@ -51,8 +51,8 @@
           "vendor:sysco"
         ],
         "createdAt": "2026-01-25T21:20:33.682Z",
-        "successCount": 3,
-        "lastUsed": "2026-01-25T21:20:43.327Z"
+        "successCount": 6,
+        "lastUsed": "2026-01-26T01:18:38.206Z"
       },
       {
         "fingerprint": "6ce8ad4b2189",
@@ -186,9 +186,9 @@
       "confidence": 65
     },
     "23c63c06580c": {
-      "vendor": "generic",
+      "vendor": "sysco",
       "strategy": "unknown",
-      "confidence": 100
+      "confidence": 90
     },
     "6ce8ad4b2189": {
       "vendor": "sysco",
@@ -212,8 +212,8 @@
     }
   },
   "stats": {
-    "totalParses": 30,
-    "successfulParses": 28,
+    "totalParses": 33,
+    "successfulParses": 31,
     "patternsLearned": 9
   }
 }

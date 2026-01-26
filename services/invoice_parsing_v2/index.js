@@ -266,6 +266,34 @@ function parseInvoiceText(rawText, options = {}) {
         return false;
       }
 
+      // FILTER 5: Reject ADDRESS lines (CITY, STATE ZIP patterns)
+      // These get picked up when PDF extraction fails partially
+      if (/\b[A-Z]{2}\s+\d{5}\b/.test(desc) ||           // State + ZIP (e.g., "MD 21851")
+          /\bCITY\b.*\d{5}/i.test(desc) ||               // CITY ... ZIP
+          /\bFOTAL\b/i.test(desc) ||                     // Corrupted "TOTAL"
+          /\d{5,}\s*[A-Z]{2}\s*\d{5}/.test(desc) ||      // Multiple ZIPs
+          /^\d+\s+[A-Z]+\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT)\b/i.test(desc)) { // Street address
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - ADDRESS line`);
+        return false;
+      }
+
+      // FILTER 6: Reject items where description contains TOTAL (likely totals row, not item)
+      if (/\bTOTAL\b/i.test(desc) && !/TOTAL\s*CASE/i.test(desc)) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - contains TOTAL`);
+        return false;
+      }
+
+      // FILTER 7: Reject items where lineTotal equals the only item and matches invoice total
+      // This catches when a summary line is parsed as the only item
+      if (bestResult.lineItems.length === 1 && lineTotal === bestResult.totals?.totalCents) {
+        // Only one item and it equals the invoice total - suspicious
+        // Check if description looks like a summary, not a product
+        if (!/[A-Z]{3,}\s+[A-Z]{3,}/i.test(desc.replace(/[^A-Z\s]/gi, ''))) {
+          console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - single item equals total, likely summary line`);
+          return false;
+        }
+      }
+
       return true;
     });
 

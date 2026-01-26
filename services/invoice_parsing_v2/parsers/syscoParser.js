@@ -388,6 +388,20 @@ function parseSyscoLineItem(line) {
     const fullDesc = match[1].trim();
     const lineTotalCents = parseMoney(match[2]);
 
+    // CRITICAL: Reject ADDRESS lines that look like items
+    // Pattern: "CITY, STATE ZIP" or "STREET ADDRESS" or contains "FOTAL" (corrupted TOTAL)
+    const isAddressLine = /\b[A-Z]{2}\s+\d{5}\b/i.test(fullDesc) || // State + ZIP
+                          /\bCITY\b.*\d{5}/i.test(fullDesc) ||      // CITY ... ZIP
+                          /\bFOTAL\b/i.test(fullDesc) ||            // Corrupted TOTAL
+                          /\bTOTAL\b/i.test(fullDesc) ||            // TOTAL in description
+                          /\d{5,}\s*[A-Z]{2}\s*\d{5}/i.test(fullDesc) || // ZIP patterns
+                          /^\d+\s+[A-Z]+\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT)\b/i.test(fullDesc); // Street address
+
+    if (isAddressLine) {
+      console.log(`[SYSCO PARSE] REJECTED address-like line: "${fullDesc.slice(0, 50)}"`);
+      return null;
+    }
+
     // Must have description that looks like a product (has letters)
     if (/[A-Z]{2,}/i.test(fullDesc) && lineTotalCents > 0 && lineTotalCents < 2000000) {
       // Extract qty if present

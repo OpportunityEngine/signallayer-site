@@ -434,13 +434,72 @@ function extractTotals(text, lines) {
     console.log(`[CINTAS RAW] TAX #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
   });
 
-  // Find ALL TOTAL USD mentions (THE KEY ONE)
+  // Find ALL TOTAL USD mentions (THE KEY ONE) - Multiple patterns for robustness
+  // Pattern 1: TOTAL USD followed by value on same line
   const totalUsdMatches = [...text.matchAll(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d*)/gi)];
   totalUsdMatches.forEach((m, i) => {
     const val = parseMoney(m[1]);
-    diagnostics.rawMatches.totalUsd.push({ raw: m[0], value: val, index: m.index });
-    console.log(`[CINTAS RAW] TOTAL USD #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+    if (val > 0) {
+      diagnostics.rawMatches.totalUsd.push({ raw: m[0], value: val, index: m.index });
+      console.log(`[CINTAS RAW] TOTAL USD (pattern 1) #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+    }
   });
+
+  // Pattern 2: TOTAL USD on one line, value on next line (stacked format)
+  const totalUsdStackedPattern = /TOTAL\s+USD\s*\n\s*\$?([\d,]+\.?\d{2})/gi;
+  const totalUsdStackedMatches = [...text.matchAll(totalUsdStackedPattern)];
+  totalUsdStackedMatches.forEach((m, i) => {
+    const val = parseMoney(m[1]);
+    if (val > 0) {
+      diagnostics.rawMatches.totalUsd.push({ raw: m[0].replace(/\n/g, ' '), value: val, index: m.index });
+      console.log(`[CINTAS RAW] TOTAL USD (stacked) #${i+1}: "${m[0].replace(/\n/g, '\\n')}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+    }
+  });
+
+  // Pattern 3: Line-by-line search - find "TOTAL USD" line, then look at next line for value
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (/^TOTAL\s+USD\s*$/i.test(line) || /TOTAL\s+USD\s*$/i.test(line)) {
+      // Check same line for value first
+      const sameLine = line.match(/TOTAL\s+USD\s+\$?([\d,]+\.?\d{2})/i);
+      if (sameLine) {
+        const val = parseMoney(sameLine[1]);
+        if (val > 0 && !diagnostics.rawMatches.totalUsd.find(m => m.value === val)) {
+          diagnostics.rawMatches.totalUsd.push({ raw: line, value: val, index: i, lineNum: i });
+          console.log(`[CINTAS RAW] TOTAL USD (line ${i}) same line: "${line}" => $${(val/100).toFixed(2)}`);
+        }
+      }
+      // Check next line for value
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        const nextVal = parseMoney(nextLine);
+        if (nextVal > 100000) { // At least $1000 to be a total
+          if (!diagnostics.rawMatches.totalUsd.find(m => m.value === nextVal)) {
+            diagnostics.rawMatches.totalUsd.push({ raw: `${line} / ${nextLine}`, value: nextVal, index: i, lineNum: i });
+            console.log(`[CINTAS RAW] TOTAL USD (line ${i}+${i+1}) next line: "${nextLine}" => $${(nextVal/100).toFixed(2)}`);
+          }
+        }
+      }
+    }
+  }
+
+  // Pattern 4: NUCLEAR - scan ALL lines for money values near "TOTAL USD" text
+  const totalUsdLineIdx = lines.findIndex(l => /TOTAL\s+USD/i.test(l));
+  if (totalUsdLineIdx >= 0) {
+    console.log(`[CINTAS RAW] Found TOTAL USD at line ${totalUsdLineIdx}: "${lines[totalUsdLineIdx].trim()}"`);
+    // Check for value on same line (right side)
+    const lineText = lines[totalUsdLineIdx];
+    const allNumbers = [...lineText.matchAll(/([\d,]+\.\d{2})/g)];
+    allNumbers.forEach((m, i) => {
+      const val = parseMoney(m[1]);
+      if (val > 100000) { // At least $1000
+        if (!diagnostics.rawMatches.totalUsd.find(match => match.value === val)) {
+          diagnostics.rawMatches.totalUsd.push({ raw: lineText.trim(), value: val, index: totalUsdLineIdx, source: 'nuclear_same_line' });
+          console.log(`[CINTAS RAW] TOTAL USD (NUCLEAR same line): "${m[1]}" => $${(val/100).toFixed(2)}`);
+        }
+      }
+    });
+  }
 
   // Find generic TOTAL (but not SUBTOTAL or TOTAL USD)
   const genericTotalMatches = [...text.matchAll(/(?<!SUB)TOTAL(?!\s+USD)[\s:]*\$?([\d,]+\.?\d*)/gi)];
@@ -1079,6 +1138,24 @@ function extractTotals(text, lines) {
   // Store diagnostics for debugging
   totals.debug.diagnostics = diagnostics;
 
+  // =====================================================================
+  // NUCLEAR FAILSAFE: If we have ANY TOTAL USD matches and they're larger
+  // than what we're returning, USE THEM. This catches all edge cases.
+  // =====================================================================
+  if (diagnostics.rawMatches.totalUsd.length > 0) {
+    const largestTotalUsd = Math.max(...diagnostics.rawMatches.totalUsd.map(m => m.value));
+    console.log(`[CINTAS TOTALS] NUCLEAR CHECK: Largest TOTAL USD found = $${(largestTotalUsd/100).toFixed(2)}, current total = $${(totals.totalCents/100).toFixed(2)}`);
+
+    if (largestTotalUsd > totals.totalCents) {
+      console.log(`[CINTAS TOTALS] ⚠️  NUCLEAR OVERRIDE: Using TOTAL USD $${(largestTotalUsd/100).toFixed(2)} instead of $${(totals.totalCents/100).toFixed(2)}`);
+      totals.totalCents = largestTotalUsd;
+      totals.debug.method = 'nuclear_total_usd_override';
+    }
+  }
+
+  // FINAL LOG: What are we actually returning?
+  console.log(`[CINTAS TOTALS] ========== FINAL RETURN VALUES ==========`);
+  console.log(`[CINTAS TOTALS] >>> RETURNING TOTAL: $${(totals.totalCents/100).toFixed(2)} <<<`);
   console.log(`[CINTAS TOTALS] ========== END EXTRACTION ==========`);
 
   return totals;

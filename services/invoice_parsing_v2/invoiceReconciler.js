@@ -523,31 +523,46 @@ function getAuthoritativeTotalCents(reconcileResult) {
   const printedTotal = reconcileResult.printed_total_cents || 0;
   const computedTotal = reconcileResult.computed_total_cents || 0;
 
-  // SANITY CHECK 1: Minimum reasonable invoice total is $10.00 (1000 cents)
-  // Anything less is almost certainly a parsing error (like picking up "PAGE 1" as "$1.00")
+  console.log(`[AUTHORITATIVE TOTAL] Evaluating: printed=$${(printedTotal/100).toFixed(2)}, computed=$${(computedTotal/100).toFixed(2)}`);
+
+  // SANITY CHECK: Minimum reasonable invoice total is $10.00 (1000 cents)
   const MIN_REASONABLE_TOTAL = 1000;  // $10.00
 
-  // SANITY CHECK 2: If printed total is less than 5% of computed total, something is wrong
-  // Use computed total instead (which is sum of line items - more reliable)
-  const MISMATCH_THRESHOLD = 0.05;  // 5%
+  // =====================================================================
+  // CRITICAL FIX: If printed total is LARGER than computed, ALWAYS use printed
+  // This is the case where parser found TOTAL USD but line items don't sum to it
+  // (due to missing line items, fees, taxes, employee subtotals not adding up, etc.)
+  // =====================================================================
+  if (printedTotal > computedTotal && printedTotal >= MIN_REASONABLE_TOTAL) {
+    console.log(`[AUTHORITATIVE TOTAL] ✓ Printed ($${(printedTotal/100).toFixed(2)}) > computed ($${(computedTotal/100).toFixed(2)}) - USING PRINTED (correct!)`);
+    return printedTotal;
+  }
 
-  // If printed total is suspiciously low
+  // If printed total is suspiciously low (below $10) but computed is reasonable
   if (printedTotal < MIN_REASONABLE_TOTAL) {
     if (computedTotal >= MIN_REASONABLE_TOTAL) {
-      console.log(`[AUTHORITATIVE TOTAL] Printed total ($${(printedTotal/100).toFixed(2)}) below minimum - using computed ($${(computedTotal/100).toFixed(2)})`);
+      console.log(`[AUTHORITATIVE TOTAL] Printed total ($${(printedTotal/100).toFixed(2)}) below $10 minimum - using computed ($${(computedTotal/100).toFixed(2)})`);
       return computedTotal;
     }
     // Both are low - return printed anyway (might be a small invoice)
     return printedTotal;
   }
 
-  // If printed total is vastly smaller than computed (likely a parsing error)
-  if (computedTotal > MIN_REASONABLE_TOTAL && printedTotal < computedTotal * MISMATCH_THRESHOLD) {
-    console.log(`[AUTHORITATIVE TOTAL] Printed total ($${(printedTotal/100).toFixed(2)}) is <5% of computed ($${(computedTotal/100).toFixed(2)}) - using computed`);
+  // If printed and computed are both reasonable and close (within 50-200%), use printed
+  const ratio = computedTotal > 0 ? printedTotal / computedTotal : 1;
+  if (ratio >= 0.5 && ratio <= 2.0) {
+    console.log(`[AUTHORITATIVE TOTAL] Printed and computed within reasonable range (ratio=${ratio.toFixed(2)}) - using printed ($${(printedTotal/100).toFixed(2)})`);
+    return printedTotal;
+  }
+
+  // If printed total is vastly smaller than computed (less than 5% - likely picked up page number)
+  if (computedTotal > MIN_REASONABLE_TOTAL && printedTotal < computedTotal * 0.05) {
+    console.log(`[AUTHORITATIVE TOTAL] ⚠️ Printed ($${(printedTotal/100).toFixed(2)}) is <5% of computed ($${(computedTotal/100).toFixed(2)}) - using computed`);
     return computedTotal;
   }
 
-  // Normal case: use printed total
+  // Default: use printed total (it came from the actual invoice)
+  console.log(`[AUTHORITATIVE TOTAL] Using printed total: $${(printedTotal/100).toFixed(2)}`);
   return printedTotal;
 }
 
