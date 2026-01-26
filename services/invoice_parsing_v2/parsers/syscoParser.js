@@ -919,8 +919,17 @@ function extractSyscoTotals(text, lines) {
         // Max reasonable invoice total: $100,000 (10,000,000 cents)
         const MAX_REASONABLE_TOTAL_CENTS = 10000000; // $100,000
 
+        // CRITICAL SANITY CHECK: Reject too-small totals for HORIZ SAME LINE
+        // FORMAT 4 can produce false positives from line item rows
+        // Sysco invoices are typically $500+ for delivery orders
+        const MIN_SYSCO_TOTAL_CENTS = 10000; // $100 minimum for Sysco
+
         if (sharedResult.totalCents > MAX_REASONABLE_TOTAL_CENTS) {
           console.log(`[SYSCO TOTALS] REJECTED shared result - total $${(sharedResult.totalCents/100).toFixed(2)} exceeds $100k max (likely SKU number)`);
+        }
+        // Reject small totals from HORIZ patterns (likely false positive from line items)
+        else if (evidence.includes('HORIZ') && sharedResult.totalCents < MIN_SYSCO_TOTAL_CENTS) {
+          console.log(`[SYSCO TOTALS] REJECTED shared result - HORIZ total $${(sharedResult.totalCents/100).toFixed(2)} below $100 min (likely false positive)`);
         }
         // Accept shared result for INVOICE TOTAL or other trusted patterns
         else if (evidence.includes('INVOICE') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {

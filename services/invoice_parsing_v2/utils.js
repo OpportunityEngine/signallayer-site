@@ -19,8 +19,17 @@ function parseMoneyToDollars(str, decimals = 3) {
     return Math.round(str * multiplier) / multiplier;
   }
 
-  const s = String(str).trim();
+  let s = String(str).trim();
   if (!s) return 0;
+
+  // CRITICAL: Normalize spaces in money values BEFORE parsing
+  // PDF extraction often produces "4207 .02" or "1 748.85" with embedded spaces
+  s = s
+    .replace(/\r/g, '')
+    .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "4207 .02" -> "4207.02"
+    .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+    .replace(/,\s+(?=\d)/g, ',');         // "1,748 .85" -> "1,748.85"
 
   // Check for negative (parentheses)
   const isNegative = s.startsWith('(') && s.endsWith(')') || s.startsWith('-');
@@ -50,8 +59,17 @@ function parseMoney(str) {
   if (str === null || str === undefined) return 0;
   if (typeof str === 'number') return Math.round(str * 100);
 
-  const s = String(str).trim();
+  let s = String(str).trim();
   if (!s) return 0;
+
+  // CRITICAL: Normalize spaces in money values BEFORE parsing
+  // PDF extraction often produces "4207 .02" or "1 748.85" with embedded spaces
+  s = s
+    .replace(/\r/g, '')
+    .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "4207 .02" -> "4207.02"
+    .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+    .replace(/,\s+(?=\d)/g, ',');         // "1,748 .85" -> "1,748.85"
 
   // Check for negative (parentheses)
   const isNegative = s.startsWith('(') && s.endsWith(')') || s.startsWith('-');

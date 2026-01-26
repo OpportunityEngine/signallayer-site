@@ -31,6 +31,16 @@ function parseMoneyToCents(str) {
   let s = String(str).trim();
   if (!s) return 0;
 
+  // CRITICAL: Normalize spaces in money values BEFORE parsing
+  // PDF extraction often produces "4207 .02" or "1 748.85" with embedded spaces
+  // This must happen FIRST before any other processing
+  s = s
+    .replace(/\r/g, '')
+    .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "4207 .02" -> "4207.02"
+    .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+    .replace(/,\s+(?=\d)/g, ',');         // "1,748 .85" -> "1,748.85"
+
   // Check for negative indicators
   const isNegative = s.startsWith('(') && s.endsWith(')') ||
                      s.startsWith('-') ||
@@ -191,7 +201,17 @@ function extractTotalsByLineScan(text) {
     };
   }
 
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  // CRITICAL FIX: Normalize money values in text BEFORE pattern matching
+  // PDF extraction often produces "4207 .02" or "1 748.85" with embedded spaces
+  // This must happen BEFORE we split into lines so regex patterns match correctly
+  // Example: "TOTAL 4207 .02" becomes "TOTAL 4207.02"
+  const normalizedText = text
+    .replace(/(\d)\s+(?=\d)/g, '$1')      // "1 748" -> "1748"
+    .replace(/(\d)\s+\.(?=\d)/g, '$1.')   // "4207 .02" -> "4207.02"
+    .replace(/\.\s+(?=\d)/g, '.')         // "1748. 85" -> "1748.85"
+    .replace(/,\s+(?=\d)/g, ',');         // "1,748 .85" -> "1,748.85"
+
+  const lines = normalizedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
   // Result containers
   let totalCents = 0;
@@ -417,11 +437,44 @@ function extractTotalsByLineScan(text) {
     const valueLine = lines[i + 1]?.trim() || '';
 
     if (/(?:SUB[\s-]?TOTAL)\s+(?:(?:SALES\s+)?TAX)\s+(?:TOTAL|GRAND\s+TOTAL|AMOUNT\s+DUE)/i.test(header)) {
+      // GUARD 1: Reject if header is too long (real headers are short, like "SUBTOTAL TAX TOTAL")
+      // Sysco invoice column headers are long: "X SUB TOTAL TAX TOTAL INVOICE TOTAL *****POULTRY*****"
+      if (header.length > 50) {
+        console.log(`[TOTALS] FORMAT 4 SKIP: Header too long (${header.length} chars): "${header.slice(0, 60)}..."`);
+        continue;
+      }
+
+      // GUARD 2: Reject if header contains category markers (Sysco section headers)
+      if (/\*{3,}|POULTRY|SEAFOOD|PRODUCE|DAIRY|FROZEN|MEAT|BEVERAGE/i.test(header)) {
+        console.log(`[TOTALS] FORMAT 4 SKIP: Header contains category marker: "${header.slice(0, 60)}"`);
+        continue;
+      }
+
+      // GUARD 3: Reject if next line looks like a line item (starts with category prefix)
+      // Sysco line items start with: "F 1 CS", "C 2 CS", "D 1 CS", etc.
+      if (/^[CFPD]\s+\d+\s+(CS|EA|LB|GAL|OZ|CT)/i.test(valueLine)) {
+        console.log(`[TOTALS] FORMAT 4 SKIP: Next line is a line item: "${valueLine.slice(0, 60)}..."`);
+        continue;
+      }
+
       const numbers = valueLine.match(/([\d,]+\.?\d*)/g);
       if (numbers && numbers.length >= 3) {
         const subtotalVal = parseMoneyToCents(numbers[0]);
         const taxVal = parseMoneyToCents(numbers[1]);
         const totalVal = parseMoneyToCents(numbers[2]);
+
+        // GUARD 4: Reject unreasonably large values (likely SKU numbers)
+        if (totalVal > 10000000) { // > $100k is suspicious
+          console.log(`[TOTALS] FORMAT 4 SKIP: Total too large ($${(totalVal/100).toFixed(2)}) - likely SKU`);
+          continue;
+        }
+
+        // GUARD 5: Reject if total is very small but we haven't finished scanning
+        // Small totals (<$100) from FORMAT 4 are likely false positives
+        if (totalVal < 10000 && i < lines.length - 10) {
+          console.log(`[TOTALS] FORMAT 4 SKIP: Total too small ($${(totalVal/100).toFixed(2)}) and not at end of document`);
+          continue;
+        }
 
         if (totalVal > 0 && totalVal >= subtotalVal) {
           console.log(`[TOTALS] FORMAT 4 (horizontal header, same-line values): Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
