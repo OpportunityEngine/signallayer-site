@@ -369,6 +369,93 @@ function extractTotals(text, lines) {
   console.log(`[CINTAS TOTALS] Scanning ${lines.length} lines for totals...`);
 
   // =====================================================================
+  // COMPREHENSIVE DIAGNOSTIC DUMP - Track every extraction attempt
+  // =====================================================================
+  const diagnostics = {
+    textLength: text.length,
+    lineCount: lines.length,
+    attempts: [],
+    rawMatches: {
+      subtotal: [],
+      tax: [],
+      totalUsd: [],
+      genericTotal: []
+    },
+    formatFingerprint: {
+      hasSubtotalKeyword: false,
+      hasTaxKeyword: false,
+      hasTotalUsdKeyword: false,
+      hasStackedFormat: false,
+      hasHorizontalFormat: false,
+      hasSplitLineFormat: false,
+      dollarSignsFound: 0,
+      moneyValuesFound: 0
+    },
+    finalDecision: null
+  };
+
+  // FORMAT FINGERPRINTING - Identify invoice structure
+  const textUpper = text.toUpperCase();
+  diagnostics.formatFingerprint.hasSubtotalKeyword = /SUBTOTAL/i.test(text);
+  diagnostics.formatFingerprint.hasTaxKeyword = /\bTAX\b/i.test(text);
+  diagnostics.formatFingerprint.hasTotalUsdKeyword = /TOTAL\s+USD/i.test(text);
+  diagnostics.formatFingerprint.dollarSignsFound = (text.match(/\$/g) || []).length;
+  diagnostics.formatFingerprint.moneyValuesFound = (text.match(/\d+\.\d{2}/g) || []).length;
+
+  // PRODUCTION DEBUG: Log last 50 lines so we can see actual PDF format
+  console.log(`[CINTAS TOTALS] === LAST 50 LINES OF TEXT (for debugging) ===`);
+  const last50 = lines.slice(-50);
+  last50.forEach((line, idx) => {
+    const lineNum = lines.length - 50 + idx;
+    // Highlight lines with money values or total keywords
+    const hasMoney = /\d+\.\d{2}/.test(line);
+    const hasTotal = /TOTAL|SUBTOTAL|TAX/i.test(line);
+    const marker = hasTotal ? '>>>' : (hasMoney ? '  $' : '   ');
+    console.log(`[CINTAS L${lineNum}]${marker} "${line}"`);
+  });
+  console.log(`[CINTAS TOTALS] === END LAST 50 LINES ===`);
+
+  // RAW TEXT SEARCH - Find ALL occurrences of key patterns
+  console.log(`[CINTAS TOTALS] === RAW PATTERN SEARCH ===`);
+
+  // Find ALL SUBTOTAL mentions
+  const subtotalMatches = [...text.matchAll(/SUBTOTAL[\s:]*\$?([\d,]+\.?\d*)/gi)];
+  subtotalMatches.forEach((m, i) => {
+    const val = parseMoney(m[1]);
+    diagnostics.rawMatches.subtotal.push({ raw: m[0], value: val, index: m.index });
+    console.log(`[CINTAS RAW] SUBTOTAL #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+  });
+
+  // Find ALL TAX mentions
+  const taxMatches = [...text.matchAll(/(?:SALES\s+)?TAX[\s:]*\$?([\d,]+\.?\d*)/gi)];
+  taxMatches.forEach((m, i) => {
+    const val = parseMoney(m[1]);
+    diagnostics.rawMatches.tax.push({ raw: m[0], value: val, index: m.index });
+    console.log(`[CINTAS RAW] TAX #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+  });
+
+  // Find ALL TOTAL USD mentions (THE KEY ONE)
+  const totalUsdMatches = [...text.matchAll(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d*)/gi)];
+  totalUsdMatches.forEach((m, i) => {
+    const val = parseMoney(m[1]);
+    diagnostics.rawMatches.totalUsd.push({ raw: m[0], value: val, index: m.index });
+    console.log(`[CINTAS RAW] TOTAL USD #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+  });
+
+  // Find generic TOTAL (but not SUBTOTAL or TOTAL USD)
+  const genericTotalMatches = [...text.matchAll(/(?<!SUB)TOTAL(?!\s+USD)[\s:]*\$?([\d,]+\.?\d*)/gi)];
+  genericTotalMatches.forEach((m, i) => {
+    const val = parseMoney(m[1]);
+    if (val > 0) {
+      diagnostics.rawMatches.genericTotal.push({ raw: m[0], value: val, index: m.index });
+      console.log(`[CINTAS RAW] GENERIC TOTAL #${i+1}: "${m[0]}" => $${(val/100).toFixed(2)} at pos ${m.index}`);
+    }
+  });
+
+  console.log(`[CINTAS TOTALS] === END RAW PATTERN SEARCH ===`);
+  console.log(`[CINTAS TOTALS] Format fingerprint:`, JSON.stringify(diagnostics.formatFingerprint));
+
+  // =====================================================================
   // UNIVERSAL TEXT NORMALIZATION
   // Handle ALL whitespace, unicode, and PDF extraction quirks
   // =====================================================================
@@ -948,6 +1035,51 @@ function extractTotals(text, lines) {
       totals.totalCents = preScannedTotalUsd;
     }
   }
+
+  // =====================================================================
+  // FINAL DIAGNOSTIC SUMMARY - Why did we pick this total?
+  // =====================================================================
+  console.log(`[CINTAS TOTALS] ========== EXTRACTION DECISION SUMMARY ==========`);
+  console.log(`[CINTAS TOTALS] FINAL VALUES:`);
+  console.log(`[CINTAS TOTALS]   Subtotal: $${(totals.subtotalCents/100).toFixed(2)}`);
+  console.log(`[CINTAS TOTALS]   Tax:      $${(totals.taxCents/100).toFixed(2)}`);
+  console.log(`[CINTAS TOTALS]   TOTAL:    $${(totals.totalCents/100).toFixed(2)} <-- THIS IS WHAT WE'RE RETURNING`);
+  console.log(`[CINTAS TOTALS]   Method:   ${totals.debug.method || 'unknown'}`);
+
+  // CRITICAL CHECK: Did we pick SUBTOTAL as TOTAL?
+  if (totals.totalCents > 0 && totals.subtotalCents > 0) {
+    if (totals.totalCents === totals.subtotalCents) {
+      console.log(`[CINTAS TOTALS] ⚠️  WARNING: TOTAL equals SUBTOTAL! This might be wrong.`);
+      console.log(`[CINTAS TOTALS]     Raw TOTAL USD matches found: ${diagnostics.rawMatches.totalUsd.length}`);
+      if (diagnostics.rawMatches.totalUsd.length > 0) {
+        const largestTotalUsd = Math.max(...diagnostics.rawMatches.totalUsd.map(m => m.value));
+        if (largestTotalUsd > totals.totalCents) {
+          console.log(`[CINTAS TOTALS] ⚠️  FOUND LARGER TOTAL USD: $${(largestTotalUsd/100).toFixed(2)} - CORRECTING!`);
+          totals.totalCents = largestTotalUsd;
+          totals.debug.method = 'diagnostic_correction';
+        }
+      }
+    }
+  }
+
+  // Check if total < subtotal (definitely wrong)
+  if (totals.totalCents > 0 && totals.subtotalCents > 0 && totals.totalCents < totals.subtotalCents) {
+    console.log(`[CINTAS TOTALS] ⚠️  WARNING: TOTAL < SUBTOTAL! This is definitely wrong.`);
+    // Look for larger total
+    if (diagnostics.rawMatches.totalUsd.length > 0) {
+      const largestTotalUsd = Math.max(...diagnostics.rawMatches.totalUsd.map(m => m.value));
+      if (largestTotalUsd > totals.subtotalCents) {
+        console.log(`[CINTAS TOTALS] ⚠️  FOUND CORRECT TOTAL USD: $${(largestTotalUsd/100).toFixed(2)} - CORRECTING!`);
+        totals.totalCents = largestTotalUsd;
+        totals.debug.method = 'diagnostic_correction_lt_subtotal';
+      }
+    }
+  }
+
+  // Store diagnostics for debugging
+  totals.debug.diagnostics = diagnostics;
+
+  console.log(`[CINTAS TOTALS] ========== END EXTRACTION ==========`);
 
   return totals;
 }

@@ -331,6 +331,98 @@ function parseSyscoLineItem(line) {
     }
   }
 
+  // =====================================================
+  // PATTERN 6: Flexible format - ANY line with sku + two prices at end
+  // This catches formats that don't have the standard Sysco column layout
+  // Format: [anything] [5-8 digit sku] [price] [price]
+  // =====================================================
+  match = trimmed.match(/^(.+?)\s+(\d{5,8})\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\s*$/);
+  if (match) {
+    const fullDesc = match[1].trim();
+    const sku = match[2];
+    const unitPriceCents = parseMoney(match[3]);
+    const lineTotalCents = parseMoney(match[4]);
+
+    // Try to extract quantity from description
+    let qty = 1;
+    let description = fullDesc;
+
+    // Pattern: "1 CS DESCRIPTION" or "2 EA PRODUCT NAME"
+    const qtyExtract = fullDesc.match(/^(\d+)\s*([A-Z]{1,4})?\s+(.+)$/i);
+    if (qtyExtract) {
+      const parsedQty = parseInt(qtyExtract[1], 10);
+      if (parsedQty >= 1 && parsedQty <= 999) {
+        qty = parsedQty;
+        description = qtyExtract[3] || fullDesc;
+      }
+    }
+
+    // Sanity check
+    const MAX_LINE_ITEM_CENTS = 2000000;
+    if (description.length >= 3 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceCents < MAX_LINE_ITEM_CENTS) {
+      console.log(`[SYSCO PARSE] Pattern 6 matched: "${description.slice(0, 40)}" qty=${qty} total=$${(lineTotalCents/100).toFixed(2)}`);
+      return {
+        type: 'item',
+        sku: sku,
+        description: description,
+        qty: qty,
+        unit: '',
+        category: 'food_supplies',
+        unitPriceDollars: unitPriceCents / 100,
+        unitPriceCents: unitPriceCents,
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: Math.round(qty * unitPriceCents),
+        taxFlag: null,
+        raw: line,
+        patternUsed: 6
+      };
+    }
+  }
+
+  // =====================================================
+  // PATTERN 7: Ultra-flexible - just description + price at end
+  // For invoices with minimal structure
+  // =====================================================
+  match = trimmed.match(/^(.{10,}?)\s+([\d,]+\.\d{2})\s*$/);
+  if (match) {
+    const fullDesc = match[1].trim();
+    const lineTotalCents = parseMoney(match[2]);
+
+    // Must have description that looks like a product (has letters)
+    if (/[A-Z]{2,}/i.test(fullDesc) && lineTotalCents > 0 && lineTotalCents < 2000000) {
+      // Extract qty if present
+      let qty = 1;
+      let description = fullDesc;
+
+      const qtyExtract = fullDesc.match(/^(\d+)\s*([A-Z]{1,4})?\s+(.+)$/i);
+      if (qtyExtract && parseInt(qtyExtract[1], 10) <= 999) {
+        qty = parseInt(qtyExtract[1], 10);
+        description = qtyExtract[3] || fullDesc;
+      }
+
+      // Try to extract SKU from description
+      const skuMatch = fullDesc.match(/\b(\d{5,8})\b/);
+      const sku = skuMatch ? skuMatch[1] : null;
+
+      console.log(`[SYSCO PARSE] Pattern 7 (ultra-flexible) matched: "${description.slice(0, 40)}" total=$${(lineTotalCents/100).toFixed(2)}`);
+      return {
+        type: 'item',
+        sku: sku,
+        description: description,
+        qty: qty,
+        unit: '',
+        category: 'food_supplies',
+        unitPriceDollars: lineTotalCents / 100 / qty,
+        unitPriceCents: Math.round(lineTotalCents / qty),
+        lineTotalCents: lineTotalCents,
+        computedTotalCents: lineTotalCents,
+        taxFlag: null,
+        raw: line,
+        patternUsed: 7
+      };
+    }
+  }
+
   return null;
 }
 
@@ -1183,27 +1275,130 @@ function parseSyscoInvoice(normalizedText, options = {}) {
   const lineItems = [];
   let inItemSection = false;
 
+  // =====================================================================
+  // COMPREHENSIVE LINE ITEM DIAGNOSTICS
+  // =====================================================================
+  const itemDiagnostics = {
+    totalLines: lines.length,
+    linesWithPrices: 0,
+    linesWithSkus: 0,
+    linesWithCategoryPrefix: 0,
+    potentialItems: [],
+    rejectedLines: [],
+    formatFingerprint: {
+      hasCategoryPrefixes: false,
+      hasSkuPattern: false,
+      hasTwoPriceColumns: false,
+      hasDescriptionColumn: false
+    }
+  };
+
+  // SCAN ALL LINES to understand the format
+  console.log(`[SYSCO PARSE] ========== COMPREHENSIVE LINE ITEM DIAGNOSTICS ==========`);
+  console.log(`[SYSCO PARSE] Total lines: ${lines.length}`);
+
+  // First pass: understand the format
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.length < 5) return;
+
+    const hasCategoryPrefix = /^[CFPD]\s+\d+/i.test(trimmed);
+    const hasSku = /\d{5,8}/.test(trimmed);
+    const hasTwoPrices = /[\d,]+\.\d{2}\s+[\d,]+\.\d{2}/.test(trimmed);
+    const hasOnePrice = /[\d,]+\.\d{2}/.test(trimmed);
+
+    if (hasOnePrice) itemDiagnostics.linesWithPrices++;
+    if (hasSku) itemDiagnostics.linesWithSkus++;
+    if (hasCategoryPrefix) {
+      itemDiagnostics.linesWithCategoryPrefix++;
+      itemDiagnostics.formatFingerprint.hasCategoryPrefixes = true;
+    }
+    if (hasTwoPrices) itemDiagnostics.formatFingerprint.hasTwoPriceColumns = true;
+    if (hasSku) itemDiagnostics.formatFingerprint.hasSkuPattern = true;
+
+    // Mark potential item lines
+    if ((hasCategoryPrefix || hasSku || hasTwoPrices) && !(/TOTAL|SUBTOTAL|INVOICE|TAX|SUMMARY/i.test(trimmed))) {
+      itemDiagnostics.potentialItems.push({ line: idx, text: trimmed.slice(0, 80), hasCat: hasCategoryPrefix, hasSku, hasTwoPrices });
+    }
+  });
+
+  console.log(`[SYSCO PARSE] FORMAT FINGERPRINT:`);
+  console.log(`[SYSCO PARSE]   Lines with prices: ${itemDiagnostics.linesWithPrices}`);
+  console.log(`[SYSCO PARSE]   Lines with SKUs: ${itemDiagnostics.linesWithSkus}`);
+  console.log(`[SYSCO PARSE]   Lines with category prefix [CFPD]: ${itemDiagnostics.linesWithCategoryPrefix}`);
+  console.log(`[SYSCO PARSE]   Has two-price columns: ${itemDiagnostics.formatFingerprint.hasTwoPriceColumns}`);
+  console.log(`[SYSCO PARSE]   Potential item lines: ${itemDiagnostics.potentialItems.length}`);
+
+  // Log first 10 potential items
+  console.log(`[SYSCO PARSE] === POTENTIAL ITEM LINES (first 10) ===`);
+  itemDiagnostics.potentialItems.slice(0, 10).forEach((item, idx) => {
+    console.log(`[SYSCO POTENTIAL ${idx+1}] L${item.line}: cat=${item.hasCat} sku=${item.hasSku} 2price=${item.hasTwoPrices} "${item.text}"`);
+  });
+  console.log(`[SYSCO PARSE] === END POTENTIAL ITEMS ===`);
+
+  // Log ALL lines in the middle section (where items typically are)
+  const middleStart = Math.floor(lines.length * 0.1);
+  const middleEnd = Math.floor(lines.length * 0.7);
+  console.log(`[SYSCO PARSE] === MIDDLE SECTION LINES ${middleStart}-${Math.min(middleEnd, middleStart + 30)} ===`);
+  lines.slice(middleStart, Math.min(middleEnd, middleStart + 30)).forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.length > 5) {
+      const looksLikeItem = /^[CFPD]\s+\d+/i.test(trimmed) || /\d{5,8}.*\d+\.\d{2}/.test(trimmed);
+      const marker = looksLikeItem ? '>>>' : '   ';
+      console.log(`[SYSCO L${middleStart + idx}]${marker} "${trimmed.slice(0, 100)}"`);
+    }
+  });
+  console.log(`[SYSCO PARSE] === END MIDDLE SECTION ===`);
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmedLine = line.trim();
 
     // Detect start of item section
     if (!inItemSection) {
-      if (/DESCRIPTION|ITEM\s+(CODE|#)|QTY.*PRICE|PACK.*SIZE/i.test(line)) {
+      // Pattern 1: Standard header keywords
+      if (/DESCRIPTION|ITEM\s+(CODE|#)|QTY.*PRICE|PACK.*SIZE|EXTENDED\s+PRICE/i.test(line)) {
+        console.log(`[SYSCO PARSE] Found item section header at line ${i}: "${line.slice(0, 60)}"`);
         inItemSection = true;
         continue;
       }
-      // Check if line looks like a Sysco item
-      if (/^[CFPD]\s+\d+/i.test(line.trim())) {
+      // Pattern 2: Line starts with category letter + quantity (standard Sysco format)
+      if (/^[CFPD]\s+\d+/i.test(trimmedLine)) {
+        console.log(`[SYSCO PARSE] Found category-prefixed item at ${i}: "${trimmedLine.slice(0, 60)}"`);
         inItemSection = true;
+      }
+      // Pattern 3: Line has SKU pattern (5-8 digits) + two prices at end - AGGRESSIVE MATCH
+      // This catches items even without header detection
+      if (/\d{5,8}\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2}\s*$/.test(trimmedLine) && trimmedLine.length > 30) {
+        console.log(`[SYSCO PARSE] Found SKU+prices pattern at ${i}: "${trimmedLine.slice(0, 60)}"`);
+        inItemSection = true;
+      }
+      // Pattern 4: Line ends with two prices (catch-all for any item format)
+      if (/[\d,]+\.\d{2}\s+[\d,]+\.\d{2}\s*$/.test(trimmedLine) && /[A-Z]{3,}/i.test(trimmedLine) && trimmedLine.length > 20) {
+        // But skip header/total lines
+        if (!/TOTAL|SUBTOTAL|INVOICE|SUMMARY|CHARGE|TAX|SHIP|DELIVER/i.test(trimmedLine)) {
+          console.log(`[SYSCO PARSE] Found two-price pattern at ${i}: "${trimmedLine.slice(0, 60)}"`);
+          inItemSection = true;
+        }
       }
     }
 
     if (inItemSection) {
       // Stop at totals section
-      if (/^INVOICE\s+TOTAL/i.test(line.trim())) break;
-      if (/^SUBTOTAL\s*[\d$]/i.test(line.trim()) && !/GROUP/i.test(line)) break;
+      if (/^INVOICE\s+TOTAL/i.test(line.trim())) {
+        console.log(`[SYSCO PARSE] Stopped at INVOICE TOTAL line ${i}`);
+        break;
+      }
+      if (/^SUBTOTAL\s*[\d$]/i.test(line.trim()) && !/GROUP/i.test(line)) {
+        console.log(`[SYSCO PARSE] Stopped at SUBTOTAL line ${i}`);
+        break;
+      }
 
       const item = parseSyscoLineItem(line);
+      if (!item && line.trim().length > 10 && /\d+\.\d{2}/.test(line)) {
+        // Log lines that LOOK like they could be items but weren't parsed
+        console.log(`[SYSCO PARSE] Line ${i} NOT PARSED but has prices: "${line.trim().slice(0, 80)}"`);
+      }
       if (item) {
         // Look ahead for T/WT= continuation line (weight info on next line)
         // Format: "84.000 T/WT= 84.000" - the weight is used to calculate true qty
@@ -1299,7 +1494,46 @@ function parseSyscoInvoice(normalizedText, options = {}) {
 
   const confidence = calculateSyscoConfidence(validatedItems, totals);
 
-  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}, weight-corrected: ${weightCorrectedCount}, adjustments: ${finalAdjustments.length}`);
+  console.log(`[SYSCO] ========== PARSE SUMMARY ==========`);
+  console.log(`[SYSCO] Parsed ${validatedItems.length} items, total: $${(totals.totalCents/100).toFixed(2)}`);
+  console.log(`[SYSCO] Weight-corrected: ${weightCorrectedCount}, adjustments: ${finalAdjustments.length}`);
+
+  if (validatedItems.length === 0) {
+    console.log(`[SYSCO] ⚠️  WARNING: No line items extracted!`);
+    console.log(`[SYSCO] ⚠️  Diagnostic info:`);
+    console.log(`[SYSCO]     - Format fingerprint: ${JSON.stringify(itemDiagnostics.formatFingerprint)}`);
+    console.log(`[SYSCO]     - Lines with prices: ${itemDiagnostics.linesWithPrices}`);
+    console.log(`[SYSCO]     - Potential items identified: ${itemDiagnostics.potentialItems.length}`);
+
+    // EMERGENCY RECOVERY: Try to parse potential items directly
+    if (itemDiagnostics.potentialItems.length > 0) {
+      console.log(`[SYSCO] ⚠️  ATTEMPTING EMERGENCY ITEM RECOVERY...`);
+      for (const potential of itemDiagnostics.potentialItems.slice(0, 50)) {
+        const line = lines[potential.line];
+        const item = parseSyscoLineItem(line);
+        if (item) {
+          console.log(`[SYSCO RECOVERY] Recovered item: "${item.description?.slice(0, 30)}" $${(item.lineTotalCents/100).toFixed(2)}`);
+          validatedItems.push(item);
+        }
+      }
+      console.log(`[SYSCO] ⚠️  Recovery found ${validatedItems.length} items`);
+    }
+  } else {
+    console.log(`[SYSCO] First 3 items:`);
+    validatedItems.slice(0, 3).forEach((item, idx) => {
+      console.log(`[SYSCO]   ${idx + 1}. ${item.description?.slice(0, 40)} - qty: ${item.qty}, total: $${(item.lineTotalCents/100).toFixed(2)}`);
+    });
+  }
+
+  // Store diagnostics for debugging
+  const debugDiagnostics = {
+    itemDiagnostics: {
+      ...itemDiagnostics,
+      potentialItems: itemDiagnostics.potentialItems.slice(0, 20) // Limit for storage
+    }
+  };
+
+  console.log(`[SYSCO] =====================================`);
 
   return {
     vendorKey: 'sysco',

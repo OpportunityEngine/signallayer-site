@@ -1610,6 +1610,183 @@ router.post('/debug/test-parse', (req, res) => {
   }
 });
 
+// POST /api/debug/deep-diagnose - Comprehensive parsing diagnostics for Cintas/Sysco issues
+router.post('/debug/deep-diagnose', (req, res) => {
+  try {
+    const { rawText, vendorHint } = req.body;
+
+    if (!rawText || rawText.length < 50) {
+      return res.status(400).json({
+        success: false,
+        error: 'rawText must be at least 50 characters'
+      });
+    }
+
+    console.log(`[DEEP-DIAGNOSE] ========================================`);
+    console.log(`[DEEP-DIAGNOSE] Starting deep diagnostics...`);
+    console.log(`[DEEP-DIAGNOSE] Text length: ${rawText.length} chars`);
+
+    const diagnosis = {
+      timestamp: new Date().toISOString(),
+      inputStats: {
+        textLength: rawText.length,
+        lineCount: rawText.split('\n').length,
+        vendorHint: vendorHint || null
+      },
+      vendorDetection: null,
+      formatAnalysis: null,
+      totalsAnalysis: null,
+      lineItemAnalysis: null,
+      parserResults: {},
+      recommendations: []
+    };
+
+    // 1. Vendor Detection
+    const { detectVendor } = require('./services/invoice_parsing_v2/vendorDetector');
+    diagnosis.vendorDetection = detectVendor(rawText);
+    console.log(`[DEEP-DIAGNOSE] Vendor: ${diagnosis.vendorDetection.vendorName} (${diagnosis.vendorDetection.confidence}%)`);
+
+    // 2. Format Analysis
+    const lines = rawText.split('\n');
+    diagnosis.formatAnalysis = {
+      hasSubtotalKeyword: /SUBTOTAL/i.test(rawText),
+      hasTaxKeyword: /\bTAX\b/i.test(rawText),
+      hasTotalUsdKeyword: /TOTAL\s+USD/i.test(rawText),
+      hasInvoiceTotalKeyword: /INVOICE\s+TOTAL/i.test(rawText),
+      hasGroupTotalKeyword: /GROUP\s+TOTAL/i.test(rawText),
+      dollarSignCount: (rawText.match(/\$/g) || []).length,
+      moneyValueCount: (rawText.match(/\d+\.\d{2}/g) || []).length,
+      linesWithPrices: lines.filter(l => /\d+\.\d{2}/.test(l)).length,
+      linesWithCategoryPrefix: lines.filter(l => /^[CFPD]\s+\d+/i.test(l.trim())).length,
+      last20Lines: lines.slice(-20).map((l, i) => ({ lineNum: lines.length - 20 + i, text: l.slice(0, 100) }))
+    };
+
+    // 3. Totals Analysis - Find ALL potential totals
+    const { extractTotalsByLineScan } = require('./services/invoice_parsing_v2/totals');
+    const lineScanTotals = extractTotalsByLineScan(rawText);
+    diagnosis.totalsAnalysis = {
+      lineScanResult: lineScanTotals,
+      rawSubtotalMatches: [...rawText.matchAll(/SUBTOTAL[\s:]*\$?([\d,]+\.?\d*)/gi)].map(m => ({
+        match: m[0],
+        value: m[1],
+        position: m.index
+      })),
+      rawTaxMatches: [...rawText.matchAll(/(?:SALES\s+)?TAX[\s:]*\$?([\d,]+\.?\d*)/gi)].map(m => ({
+        match: m[0],
+        value: m[1],
+        position: m.index
+      })),
+      rawTotalUsdMatches: [...rawText.matchAll(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d*)/gi)].map(m => ({
+        match: m[0],
+        value: m[1],
+        position: m.index
+      })),
+      rawInvoiceTotalMatches: [...rawText.matchAll(/INVOICE\s+TOTAL[\s:]*\$?([\d,]+\.?\d*)/gi)].map(m => ({
+        match: m[0],
+        value: m[1],
+        position: m.index
+      })),
+      rawGroupTotalMatches: [...rawText.matchAll(/GROUP\s+TOTAL[\s:]*\$?([\d,]+\.?\d*)/gi)].map(m => ({
+        match: m[0],
+        value: m[1],
+        position: m.index
+      }))
+    };
+
+    // 4. Line Item Analysis - Check if line item patterns match
+    diagnosis.lineItemAnalysis = {
+      potentialItemLines: [],
+      syscoPatternMatches: 0,
+      cintasPatternMatches: 0
+    };
+
+    // Check for Sysco patterns
+    const syscoPattern1 = /^[CFPD]\s+\d+\s+[A-Z]{1,4}\s+.+\s+\d{5,8}\s+\d{5,8}\s+[\d,]+\.?\d*\s+[\d,]+\.?\d*/i;
+    const syscoPattern2 = /^[CFPD]\s+\d+[A-Z]{1,4}\s+.+\s+\d{5,8}\s+\d{5,8}\s+[\d,]+\.?\d*\s+[\d,]+\.?\d*/i;
+
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+      if (syscoPattern1.test(trimmed) || syscoPattern2.test(trimmed)) {
+        diagnosis.lineItemAnalysis.syscoPatternMatches++;
+        diagnosis.lineItemAnalysis.potentialItemLines.push({ line: idx, text: trimmed.slice(0, 80), type: 'sysco' });
+      }
+      // Check for lines that LOOK like items (have prices at end)
+      if (/[\d,]+\.\d{2}\s+[\d,]+\.\d{2}\s*$/.test(trimmed) && trimmed.length > 20) {
+        if (!diagnosis.lineItemAnalysis.potentialItemLines.find(p => p.line === idx)) {
+          diagnosis.lineItemAnalysis.potentialItemLines.push({ line: idx, text: trimmed.slice(0, 80), type: 'generic' });
+        }
+      }
+    });
+
+    // 5. Run parsers and capture results
+    const vendorKey = diagnosis.vendorDetection.vendorKey;
+
+    if (vendorKey === 'cintas' || vendorHint === 'cintas') {
+      const { parseCintasInvoice } = require('./services/invoice_parsing_v2/parsers/cintasParser');
+      const { normalizeInvoiceText } = require('./services/invoice_parsing_v2/utils');
+      const normalizedText = normalizeInvoiceText(rawText);
+      const cintasResult = parseCintasInvoice(normalizedText, { debug: true });
+      diagnosis.parserResults.cintas = {
+        totals: cintasResult.totals,
+        lineItemCount: cintasResult.lineItems?.length || 0,
+        confidence: cintasResult.confidence,
+        debug: cintasResult.debug
+      };
+    }
+
+    if (vendorKey === 'sysco' || vendorHint === 'sysco') {
+      const { parseSyscoInvoice } = require('./services/invoice_parsing_v2/parsers/syscoParser');
+      const { normalizeInvoiceText } = require('./services/invoice_parsing_v2/utils');
+      const normalizedText = normalizeInvoiceText(rawText);
+      const syscoResult = parseSyscoInvoice(normalizedText, { debug: true });
+      diagnosis.parserResults.sysco = {
+        totals: syscoResult.totals,
+        lineItemCount: syscoResult.lineItems?.length || 0,
+        firstItems: (syscoResult.lineItems || []).slice(0, 5).map(i => ({
+          desc: i.description?.slice(0, 40),
+          qty: i.qty,
+          total: i.lineTotalCents
+        })),
+        confidence: syscoResult.confidence,
+        debug: syscoResult.debug
+      };
+    }
+
+    // 6. Generate recommendations
+    if (diagnosis.parserResults.cintas) {
+      const ct = diagnosis.parserResults.cintas.totals;
+      if (ct.totalCents === ct.subtotalCents && ct.totalCents > 0) {
+        diagnosis.recommendations.push('CINTAS: Total equals subtotal - TOTAL USD extraction may have failed');
+      }
+      if (diagnosis.totalsAnalysis.rawTotalUsdMatches.length > 0) {
+        const maxTotalUsd = Math.max(...diagnosis.totalsAnalysis.rawTotalUsdMatches.map(m => parseFloat(m.value.replace(/,/g, '')) * 100));
+        if (maxTotalUsd > ct.totalCents) {
+          diagnosis.recommendations.push(`CINTAS: Found larger TOTAL USD in raw text: $${(maxTotalUsd/100).toFixed(2)} vs extracted $${(ct.totalCents/100).toFixed(2)}`);
+        }
+      }
+    }
+
+    if (diagnosis.parserResults.sysco) {
+      const sr = diagnosis.parserResults.sysco;
+      if (sr.lineItemCount === 0 && diagnosis.lineItemAnalysis.potentialItemLines.length > 0) {
+        diagnosis.recommendations.push(`SYSCO: No items extracted but ${diagnosis.lineItemAnalysis.potentialItemLines.length} potential item lines found - parsing pattern mismatch`);
+      }
+    }
+
+    console.log(`[DEEP-DIAGNOSE] Complete. Recommendations: ${diagnosis.recommendations.length}`);
+    console.log(`[DEEP-DIAGNOSE] ========================================`);
+
+    res.json({
+      success: true,
+      diagnosis
+    });
+
+  } catch (error) {
+    console.error('[API] Deep diagnose error:', error);
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+
 // GET /api/debug/recent-parses - Show recent invoice parses with totals for debugging
 router.get('/debug/recent-parses', (req, res) => {
   try {
