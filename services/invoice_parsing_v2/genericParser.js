@@ -19,6 +19,7 @@ const { parseAdaptive } = require('./adaptiveParser');
 const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
 const { validateAndFixLineItems } = require('./numberClassifier');
 const { findInvoiceTotal, extractTotalWithUniversalFinder } = require('./universalTotalFinder');
+const { UNIVERSAL_SKU_PATTERN, extractSku, looksLikeSku, extractAllSkus, isLikelyPrice, isLikelyDate } = require('./skuPatterns');
 
 /**
  * Process price string with 3 decimal precision
@@ -541,9 +542,12 @@ function extractGenericLineItems(text, lines) {
 
         // Sanity check: reject absurdly high prices (likely order numbers misread as prices)
         if (unitPriceCents < MAX_LINE_ITEM_CENTS && lineTotalCents < MAX_LINE_ITEM_CENTS) {
+          // Extract SKU using universal patterns (handles dashed, alphanumeric, pure digits)
+          const sku = extractSku(description) || extractSku(line);
+
           items.push({
             type: 'item',
-            sku: null,
+            sku: sku,
             description: description,
             qty: qty,
             unitPriceDollars: unitPriceDollars,

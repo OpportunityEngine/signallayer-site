@@ -22,6 +22,7 @@ const {
   isProgramFeeLine
 } = require('../utils');
 const { validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
+const { UNIVERSAL_SKU_PATTERN, extractSku, looksLikeSku, SKU_PATTERNS } = require('../skuPatterns');
 
 /**
  * Process price string with 3 decimal precision
@@ -297,9 +298,17 @@ function parseItemRow(line) {
     }
   }
 
-  // Extract SKU (X##### pattern for Cintas)
-  const skuMatch = line.match(/\b(X\d{4,6})\b/i);
-  const sku = skuMatch ? skuMatch[1].toUpperCase() : null;
+  // Extract SKU - try Cintas-specific X##### first, then universal patterns
+  let sku = null;
+
+  // Pattern 1: Cintas-specific X##### format (highest priority for Cintas invoices)
+  const cintasSkuMatch = line.match(/\b(X\d{4,6})\b/i);
+  if (cintasSkuMatch) {
+    sku = cintasSkuMatch[1].toUpperCase();
+  } else {
+    // Pattern 2: Try universal SKU pattern (handles dashed, alphanumeric, pure digits)
+    sku = extractSku(line);
+  }
 
   // Extract employee ID if present (4-digit number at start)
   const empMatch = line.match(/^(\d{4})\s+/);

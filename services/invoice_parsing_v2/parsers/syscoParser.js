@@ -20,6 +20,7 @@ const { detectUOM, detectContinuationLine, enhanceLineItemWithUOM, parseSyscoSiz
 const { extractTotalCandidates, findReconcilableTotal } = require('../totalsCandidates');
 const { extractAdjustments, calculateAdjustmentsSummary } = require('../adjustmentsExtractor');
 const { findInvoiceTotal } = require('../universalTotalFinder');
+const { UNIVERSAL_SKU_PATTERN, extractSku, looksLikeSku, isLikelyPrice, isLikelyDate } = require('../skuPatterns');
 
 /**
  * Process price string with 3 decimal precision
@@ -162,6 +163,55 @@ function parseSyscoLineItem(line) {
         raw: line,
         patternUsed: '1b'
       };
+    }
+  }
+
+  // =====================================================
+  // PATTERN 1c: Universal SKU pattern + item code (catches ANY SKU format)
+  // [Category] [Qty] [Unit] [Size] [Description] [UniversalSKU] [ItemCode] [UnitPrice] [ExtPrice]
+  // Handles: dashed UPCs, alphanumeric, dotted, pure digits, etc.
+  // =====================================================
+  const universalSkuMatch = trimmed.match(new RegExp(
+    '^([CFPD])\\s+(\\d+)\\s+([A-Z]{1,4})\\s+(.+?)\\s+' +
+    UNIVERSAL_SKU_PATTERN.source +  // Universal SKU pattern
+    '\\s+(\\d{5,8})\\s+([\\d,]+\\.?\\d*)\\s+([\\d,]+\\.?\\d*)\\s*$',
+    'i'
+  ));
+
+  if (universalSkuMatch) {
+    const category = universalSkuMatch[1].toUpperCase();
+    const qty = parseInt(universalSkuMatch[2], 10);
+    const unit = universalSkuMatch[3].toUpperCase();
+    const descPart = universalSkuMatch[4].trim();
+    const sku = universalSkuMatch[5];  // Universal SKU (any format)
+    const itemCode = universalSkuMatch[6];
+    const unitPriceDollars = parseMoneyToDollars(universalSkuMatch[7], 3);
+    const unitPriceCents = parseMoney(universalSkuMatch[7]);
+    const lineTotalCents = parseMoney(universalSkuMatch[8]);
+    const computedTotalCents = calculateLineTotalCents(qty, unitPriceDollars);
+
+    const MAX_LINE_ITEM_CENTS = 2000000;
+    if (qty >= 1 && qty <= 999 && lineTotalCents > 0 && lineTotalCents < MAX_LINE_ITEM_CENTS && unitPriceCents < MAX_LINE_ITEM_CENTS) {
+      // Validate SKU isn't a price or date
+      if (!isLikelyPrice(sku) && !isLikelyDate(sku)) {
+        console.log(`[SYSCO PARSE] Pattern 1c (Universal SKU) matched: "${descPart.slice(0, 40)}" sku=${sku} qty=${qty} total=$${(lineTotalCents/100).toFixed(2)}`);
+        return {
+          type: 'item',
+          sku: sku,
+          itemCode: itemCode,
+          description: descPart,
+          qty: qty,
+          unit: unit,
+          category: categoryCodeToName(category),
+          unitPriceDollars: unitPriceDollars,
+          unitPriceCents: unitPriceCents,
+          lineTotalCents: lineTotalCents,
+          computedTotalCents: computedTotalCents,
+          taxFlag: null,
+          raw: line,
+          patternUsed: '1c'
+        };
+      }
     }
   }
 
