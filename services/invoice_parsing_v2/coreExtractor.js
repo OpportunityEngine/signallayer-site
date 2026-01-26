@@ -54,8 +54,12 @@ function extractAllMonetaryValues(text) {
     { regex: /NET\s+TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi, type: 'NET TOTAL', priority: 3 },
 
     // Split-line patterns (label on one line, value on next)
+    // ENHANCED: Handle multiple newlines, whitespace, optional $ sign
     { regex: /INVOICE\s*\n\s*TOTAL[\s:]*\n?\s*\$?([\d,]+\.?\d{0,2})/gi, type: 'INVOICE TOTAL (split)', priority: 1 },
-    { regex: /TOTAL\s+USD\s*\n\s*\$?([\d,]+\.?\d{0,2})/gi, type: 'TOTAL USD (split)', priority: 1 },
+    { regex: /TOTAL\s+USD\s*[\n\r]+\s*\$?([\d,]+\.?\d{2})/gi, type: 'TOTAL USD (split)', priority: 1 },
+    { regex: /TOTAL\s+USD\s*[\n\r\s]+\$?([\d,]+\.?\d{2})/gi, type: 'TOTAL USD (split-flex)', priority: 1 },
+    // Handle case where there's a blank line between label and value
+    { regex: /TOTAL\s+USD\s*\n\s*\n\s*\$?([\d,]+\.?\d{2})/gi, type: 'TOTAL USD (split-blank)', priority: 1 },
 
     // Generic TOTAL (lower priority - might be subtotal or category total)
     { regex: /(?:^|\n)\s*TOTAL[\s:]+\$?([\d,]+\.?\d{0,2})/gim, type: 'TOTAL', priority: 5 },
@@ -82,6 +86,96 @@ function extractAllMonetaryValues(text) {
           index: match.index,
           context: context.trim()
         });
+      }
+    }
+  }
+
+  // ============================================================
+  // LINE-BY-LINE SEARCH for TOTAL USD (most reliable for split formats)
+  // This catches cases where regex patterns fail due to unusual whitespace
+  // ============================================================
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim().toUpperCase();
+
+    // Check if this line contains "TOTAL USD" label
+    if (/TOTAL\s+USD/i.test(line)) {
+      // Case 1: Value on same line - "TOTAL USD 1998.14" or "TOTAL USD: $1,998.14"
+      const sameLineMatch = line.match(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d{2})/i);
+      if (sameLineMatch) {
+        const cents = parseMoney(sameLineMatch[1]);
+        if (cents > 100 && cents < 100000000) {
+          // Check if we already have this value
+          const alreadyFound = result.totals.some(t => t.cents === cents && t.type.includes('TOTAL USD'));
+          if (!alreadyFound) {
+            result.totals.push({
+              cents,
+              type: 'TOTAL USD (line-scan)',
+              priority: 1,
+              isGroupContext: false,
+              raw: line,
+              index: i,
+              context: line
+            });
+            console.log(`[CORE EXTRACTOR] Line-scan found TOTAL USD on line ${i}: $${(cents/100).toFixed(2)}`);
+          }
+        }
+      }
+      // Case 2: Value on next line(s) - "TOTAL USD" then "1998.14"
+      else if (/^TOTAL\s+USD\s*$/i.test(line) || /TOTAL\s+USD\s*$/i.test(line)) {
+        // Look at next few lines for a money value
+        for (let j = 1; j <= 3 && (i + j) < lines.length; j++) {
+          const nextLine = lines[i + j].trim();
+          // Skip empty lines
+          if (!nextLine) continue;
+          // Check if it's just a money value
+          if (/^\$?\s*[\d,]+\.\d{2}\s*$/.test(nextLine)) {
+            const cents = parseMoney(nextLine);
+            if (cents > 100 && cents < 100000000) {
+              const alreadyFound = result.totals.some(t => t.cents === cents && t.type.includes('TOTAL USD'));
+              if (!alreadyFound) {
+                result.totals.push({
+                  cents,
+                  type: 'TOTAL USD (line-scan-next)',
+                  priority: 1,
+                  isGroupContext: false,
+                  raw: `${line} / ${nextLine}`,
+                  index: i,
+                  context: `${line} -> ${nextLine}`
+                });
+                console.log(`[CORE EXTRACTOR] Line-scan found TOTAL USD (split) lines ${i}/${i+j}: $${(cents/100).toFixed(2)}`);
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Also check for INVOICE TOTAL split format
+    if (/INVOICE\s+TOTAL/i.test(line) && !/[\d,]+\.\d{2}/.test(line)) {
+      for (let j = 1; j <= 3 && (i + j) < lines.length; j++) {
+        const nextLine = lines[i + j].trim();
+        if (!nextLine) continue;
+        if (/^\$?\s*[\d,]+\.\d{2}\s*$/.test(nextLine)) {
+          const cents = parseMoney(nextLine);
+          if (cents > 100 && cents < 100000000) {
+            const alreadyFound = result.totals.some(t => t.cents === cents && t.type.includes('INVOICE TOTAL'));
+            if (!alreadyFound) {
+              result.totals.push({
+                cents,
+                type: 'INVOICE TOTAL (line-scan-next)',
+                priority: 1,
+                isGroupContext: false,
+                raw: `${line} / ${nextLine}`,
+                index: i,
+                context: `${line} -> ${nextLine}`
+              });
+              console.log(`[CORE EXTRACTOR] Line-scan found INVOICE TOTAL (split) lines ${i}/${i+j}: $${(cents/100).toFixed(2)}`);
+            }
+            break;
+          }
+        }
       }
     }
   }
@@ -505,23 +599,83 @@ function validateParserTotals(parserTotals, text, vendorKey = 'generic') {
   // ============================================================
   // RULE 4: Vendor-specific overrides
   // ============================================================
-  if (vendorKey === 'cintas' && core.monetaryValues.totals.some(t => t.type === 'TOTAL USD')) {
-    const totalUsd = core.monetaryValues.totals.find(t => t.type === 'TOTAL USD');
-    if (totalUsd && totalUsd.cents > parserTotal) {
-      console.log(`[CORE EXTRACTOR] RULE 4 (Cintas): Using TOTAL USD`);
-      corrected.totalCents = totalUsd.cents;
-      corrected.coreExtractorCorrected = true;
-      corrected.coreExtractorSource = 'TOTAL USD';
+
+  // Log all TOTAL USD values found for debugging
+  const totalUsdMatches = core.monetaryValues.totals.filter(t => t.type.includes('TOTAL USD'));
+  if (totalUsdMatches.length > 0) {
+    console.log(`[CORE EXTRACTOR] Found ${totalUsdMatches.length} TOTAL USD match(es):`);
+    totalUsdMatches.forEach((m, i) => {
+      console.log(`[CORE EXTRACTOR]   ${i+1}. ${m.type}: $${(m.cents/100).toFixed(2)}`);
+    });
+  }
+
+  // For Cintas: Always prefer TOTAL USD over SUBTOTAL
+  // This handles cases where parser picks SUBTOTAL by mistake
+  if (vendorKey === 'cintas') {
+    const totalUsdAll = core.monetaryValues.totals.filter(t => t.type.includes('TOTAL USD'));
+    if (totalUsdAll.length > 0) {
+      // Get the largest TOTAL USD value
+      const largestTotalUsd = totalUsdAll.reduce((max, t) => t.cents > max.cents ? t : max, totalUsdAll[0]);
+
+      // Also check if parser total equals a SUBTOTAL value
+      const subtotalMatch = core.monetaryValues.subtotals.find(s => s.cents === parserTotal);
+      const isParserUsingSubtotal = subtotalMatch && largestTotalUsd.cents > parserTotal;
+
+      if (largestTotalUsd.cents > parserTotal || isParserUsingSubtotal) {
+        console.log(`[CORE EXTRACTOR] RULE 4 (Cintas): Using TOTAL USD $${(largestTotalUsd.cents/100).toFixed(2)} instead of $${(parserTotal/100).toFixed(2)}`);
+        if (isParserUsingSubtotal) {
+          console.log(`[CORE EXTRACTOR]   (Parser was using SUBTOTAL: $${(subtotalMatch.cents/100).toFixed(2)})`);
+        }
+        corrected.totalCents = largestTotalUsd.cents;
+        corrected.coreExtractorCorrected = true;
+        corrected.coreExtractorSource = largestTotalUsd.type;
+      }
     }
   }
 
-  if (vendorKey === 'sysco' && core.monetaryValues.totals.some(t => t.type.includes('INVOICE TOTAL'))) {
-    const invoiceTotal = core.monetaryValues.totals.find(t => t.type.includes('INVOICE TOTAL'));
-    if (invoiceTotal && invoiceTotal.cents > parserTotal) {
-      console.log(`[CORE EXTRACTOR] RULE 4 (Sysco): Using INVOICE TOTAL`);
-      corrected.totalCents = invoiceTotal.cents;
-      corrected.coreExtractorCorrected = true;
-      corrected.coreExtractorSource = 'INVOICE TOTAL';
+  // For Sysco: Handle multi-page invoices carefully
+  // - Pick INVOICE TOTAL from the LAST page (highest index)
+  // - Reject GROUP TOTAL values (marked with isGroupContext)
+  // - The correct total is usually the one closest to the end of the document
+  if (vendorKey === 'sysco') {
+    const invoiceTotals = core.monetaryValues.totals.filter(t =>
+      t.type.includes('INVOICE TOTAL') && !t.isGroupContext
+    );
+
+    if (invoiceTotals.length > 0) {
+      // Sort by index (position in document) and pick the LAST one
+      invoiceTotals.sort((a, b) => (b.index || 0) - (a.index || 0));
+      const lastInvoiceTotal = invoiceTotals[0];
+
+      console.log(`[CORE EXTRACTOR] RULE 4 (Sysco): Found ${invoiceTotals.length} INVOICE TOTAL(s), using last: $${(lastInvoiceTotal.cents/100).toFixed(2)}`);
+
+      // Only use if different from parser's choice
+      if (lastInvoiceTotal.cents !== parserTotal) {
+        console.log(`[CORE EXTRACTOR] RULE 4 (Sysco): Correcting from $${(parserTotal/100).toFixed(2)} to $${(lastInvoiceTotal.cents/100).toFixed(2)}`);
+        corrected.totalCents = lastInvoiceTotal.cents;
+        corrected.coreExtractorCorrected = true;
+        corrected.coreExtractorSource = 'INVOICE TOTAL (last)';
+      }
+    }
+
+    // Also check: if parser total matches a GROUP context total, override it
+    const parserMatchesGroup = core.monetaryValues.totals.some(t =>
+      t.cents === parserTotal && t.isGroupContext
+    );
+    if (parserMatchesGroup) {
+      // Find a better non-group total
+      const nonGroupTotals = core.monetaryValues.totals.filter(t => !t.isGroupContext);
+      if (nonGroupTotals.length > 0) {
+        // Prefer INVOICE TOTAL, then highest value
+        const best = nonGroupTotals.find(t => t.type.includes('INVOICE TOTAL')) ||
+                    nonGroupTotals.sort((a, b) => b.cents - a.cents)[0];
+        if (best && best.cents !== parserTotal) {
+          console.log(`[CORE EXTRACTOR] RULE 4 (Sysco): Parser used GROUP TOTAL, using ${best.type}: $${(best.cents/100).toFixed(2)}`);
+          corrected.totalCents = best.cents;
+          corrected.coreExtractorCorrected = true;
+          corrected.coreExtractorSource = best.type + ' (corrected from GROUP)';
+        }
+      }
     }
   }
 

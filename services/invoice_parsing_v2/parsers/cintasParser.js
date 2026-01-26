@@ -317,7 +317,7 @@ function parseItemRow(line) {
 
   // Description is everything between SKU (or start) and the first number we're using
   const lastUsedNumIdx = numbers.length >= 3 ? numbers[numbers.length - 3].index : numbers[numbers.length - 2].index;
-  let descStart = skuMatch ? skuMatch.index + skuMatch[0].length : (empMatch ? empMatch[0].length : 0);
+  let descStart = cintasSkuMatch ? cintasSkuMatch.index + cintasSkuMatch[0].length : (empMatch ? empMatch[0].length : 0);
   const description = workLine.slice(descStart, lastUsedNumIdx).trim();
 
   // Use precision processing for accurate calculations
