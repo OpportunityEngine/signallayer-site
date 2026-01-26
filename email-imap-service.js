@@ -984,13 +984,71 @@ class EmailIMAPService {
       }
       // ===== END INVENTORY INTELLIGENCE =====
 
-      // Use parser's extracted total if available (more accurate for vendors like Cintas)
-      // Fall back to summed items total if parser didn't find a total
-      let totalCents = parsedInvoice.totals?.totalCents > 0
-        ? parsedInvoice.totals.totalCents
-        : itemsTotalCents;
+      // ===== TOTALS EXTRACTION - SAME AS MANUAL UPLOAD PATH =====
+      // Run extractTotalsByLineScan as a SECOND pass (same as server.js /ingest)
+      // This finds TOTAL USD and INVOICE TOTAL more reliably than parser alone
+      let totalCents = 0;
+      let totalSource = 'none';
 
-      console.log(`[EMAIL IMAP] Invoice total: $${(totalCents/100).toFixed(2)} (parser: $${(parsedInvoice.totals?.totalCents/100 || 0).toFixed(2)}, items sum: $${(itemsTotalCents/100).toFixed(2)})`);
+      try {
+        const { extractTotalsByLineScan, computeInvoiceMath, selectBestTotal } = require('./services/invoice_parsing_v2/totals');
+
+        // Get raw text from parser result or payload
+        const rawText = parsedInvoice.rawText || payload.rawText || '';
+
+        if (rawText) {
+          // Run line scan extraction (same as server.js manual upload)
+          const lineScanTotals = extractTotalsByLineScan(rawText);
+
+          // Get parser total
+          const parserTotalCents = parsedInvoice.totals?.totalCents || 0;
+
+          // Compute total from line items
+          const computed = computeInvoiceMath(
+            items.map(item => ({ totalCents: item.totalCents || 0 })),
+            lineScanTotals
+          );
+
+          // Check if parser was corrected by coreExtractor
+          const parserWasCorrected = parsedInvoice.totals?.coreExtractorCorrected ||
+                                     parsedInvoice.totals?.coreOverrideApplied ||
+                                     parsedInvoice.totals?.sanityCheckCorrected;
+
+          if (parserWasCorrected && parserTotalCents > 0) {
+            // Trust the parser's corrected total
+            totalCents = parserTotalCents;
+            totalSource = `parser-coreExtractor (${parsedInvoice.totals?.coreExtractorSource || 'corrected'})`;
+            console.log(`[EMAIL IMAP] Using parser's coreExtractor-corrected total: $${(parserTotalCents/100).toFixed(2)}`);
+          } else {
+            // Select best total using priority chain (same as server.js)
+            const bestTotal = selectBestTotal(lineScanTotals, computed, parserTotalCents);
+            totalCents = bestTotal.totalCents;
+            totalSource = bestTotal.source;
+          }
+
+          console.log(`[EMAIL IMAP TOTALS] Selected: $${(totalCents/100).toFixed(2)} (source: ${totalSource})`);
+          console.log(`[EMAIL IMAP TOTALS] LineScan: $${((lineScanTotals?.totalCents || 0)/100).toFixed(2)}, Parser: $${(parserTotalCents/100).toFixed(2)}, Computed: $${((computed?.computedTotalCents || 0)/100).toFixed(2)}`);
+        } else {
+          // No raw text - use parser total
+          totalCents = parsedInvoice.totals?.totalCents || itemsTotalCents;
+          totalSource = 'parser (no raw text)';
+        }
+      } catch (totalsError) {
+        // Fallback to original logic
+        console.warn('[EMAIL IMAP] Line scan extraction failed, using parser total:', totalsError.message);
+        totalCents = parsedInvoice.totals?.totalCents > 0
+          ? parsedInvoice.totals.totalCents
+          : itemsTotalCents;
+        totalSource = 'fallback';
+      }
+
+      // Final fallback if still no total
+      if (totalCents === 0) {
+        totalCents = itemsTotalCents;
+        totalSource = 'items_sum';
+      }
+
+      console.log(`[EMAIL IMAP] Invoice total: $${(totalCents/100).toFixed(2)} (source: ${totalSource}, parser: $${(parsedInvoice.totals?.totalCents/100 || 0).toFixed(2)}, items sum: $${(itemsTotalCents/100).toFixed(2)})`);
 
       // ===== SANITY CHECK: Detect suspiciously high totals =====
       // Most business invoices are under $100,000. Flag anything over $500,000 as suspicious
