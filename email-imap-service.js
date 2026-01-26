@@ -610,12 +610,14 @@ class EmailIMAPService {
           const accountName = monitor.account_name;
 
           // Build invoice payload for ingestInvoice
-          // Sanitize vendor name to filter out garbage text from parser
-          const rawVendorName = processorResult.vendor?.name || vendorName;
+          // CRITICAL FIX: V2 parser puts vendorName at TOP LEVEL, not inside vendor object
+          // Priority: processorResult.vendorName > processorResult.vendor?.name > vendorName
+          const rawVendorName = processorResult.vendorName || processorResult.vendor?.name || vendorName;
           const sanitizedVendorName = this.sanitizeVendorName(rawVendorName);
           if (sanitizedVendorName !== rawVendorName) {
             console.log(`[EMAIL IMAP] Vendor name sanitized: "${rawVendorName?.substring(0, 40)}" → "${sanitizedVendorName}"`);
           }
+          console.log(`[EMAIL IMAP] Vendor detection: processorResult.vendorName="${processorResult.vendorName}", processorResult.vendor?.name="${processorResult.vendor?.name}", fallback="${vendorName}" → USING: "${sanitizedVendorName}"`);
 
           const invoicePayload = {
             rawText: processorResult.rawText,
@@ -1039,13 +1041,23 @@ class EmailIMAPService {
         console.error('[EMAIL IMAP] Rules engine error:', rulesError.message);
       }
 
-      // Mark run as complete and store the parser-extracted total
-      // Use totalCents which is from parser's extracted total (not sum of items)
+      // ===== CRITICAL FIX: Get correct vendor name from V2 parser =====
+      // V2 parser puts vendorName at TOP LEVEL, not inside vendor object
+      // Priority: parsedInvoice.vendorName > parsedInvoice.vendor?.name > payload.vendorName
+      const finalVendorName = parsedInvoice.vendorName || parsedInvoice.vendor?.name || payload.vendorName;
+      const sanitizedFinalVendorName = this.sanitizeVendorName(finalVendorName);
+
+      console.log(`[EMAIL IMAP] Final vendor name: parsedInvoice.vendorName="${parsedInvoice.vendorName}", parsedInvoice.vendor?.name="${parsedInvoice.vendor?.name}", payload="${payload.vendorName}" → USING: "${sanitizedFinalVendorName}"`);
+
+      // Mark run as complete and store the parser-extracted total AND correct vendor name
+      // CRITICAL: Update vendor_name with the V2 parser's detected vendor (not the initial email domain)
       db.getDatabase().prepare(`
         UPDATE ingestion_runs
-        SET status = 'completed', completed_at = CURRENT_TIMESTAMP, invoice_total_cents = ?
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP, invoice_total_cents = ?, vendor_name = ?
         WHERE run_id = ?
-      `).run(totalCents, runId);
+      `).run(totalCents, sanitizedFinalVendorName, runId);
+
+      console.log(`[EMAIL IMAP] ✅ Updated ingestion_run: vendor="${sanitizedFinalVendorName}", total=$${(totalCents/100).toFixed(2)}`);
 
       // Update user's invoice count if on trial
       if (user.is_trial) {
@@ -1056,8 +1068,8 @@ class EmailIMAPService {
         `).run(user.id);
       }
 
-      // Use vendor name from parser if available (more accurate)
-      const vendorName = parsedInvoice.vendor?.name || payload.vendorName;
+      // Use the correct vendor name for tracking
+      const vendorName = sanitizedFinalVendorName;
       const customerName = parsedInvoice.customer?.name || payload.accountName;
 
       // Track vendor for future price comparisons

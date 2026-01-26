@@ -268,11 +268,18 @@ function parseInvoiceText(rawText, options = {}) {
 
       // FILTER 5: Reject ADDRESS lines (CITY, STATE ZIP patterns)
       // These get picked up when PDF extraction fails partially
-      if (/\b[A-Z]{2}\s+\d{5}\b/.test(desc) ||           // State + ZIP (e.g., "MD 21851")
-          /\bCITY\b.*\d{5}/i.test(desc) ||               // CITY ... ZIP
-          /\bFOTAL\b/i.test(desc) ||                     // Corrupted "TOTAL"
-          /\d{5,}\s*[A-Z]{2}\s*\d{5}/.test(desc) ||      // Multiple ZIPs
-          /^\d+\s+[A-Z]+\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT)\b/i.test(desc)) { // Street address
+      // NUCLEAR: Check MULTIPLE patterns to ensure addresses don't slip through
+      const isAddressLine =
+        /\b[A-Z]{2}\s+\d{5}\b/.test(desc) ||           // State + ZIP (e.g., "MD 21851")
+        /\b[A-Z]{2},?\s*\d{5}/.test(desc) ||           // State,ZIP (no space: "MD,21851" or "MD 21851")
+        /\bCITY\b/i.test(desc) ||                      // Contains word "CITY"
+        /\bFOTAL\b/i.test(desc) ||                     // Corrupted "TOTAL" (OCR error T→F)
+        /\d{5,}\s*[A-Z]{2}\s*\d{5}/.test(desc) ||      // Multiple ZIPs
+        /^\d+\s+[A-Z]+\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT|ROAD|DRIVE|LANE|COURT|CIRCLE|PIKE|HWY|HIGHWAY)\b/i.test(desc) || // Street address
+        /POCOMOKE|BALTIMORE|ANNAPOLIS|ROCKVILLE/i.test(desc) ||  // Common city names (Maryland)
+        (/\b\d{5}\b/.test(desc) && /\b[A-Z]{2}\b/.test(desc) && !/\d{6,}/.test(desc) && !/[A-Z]{3,}/i.test(desc.replace(/[^A-Z]/gi, '').slice(0,20)));  // Has zip+state but NOT product-like description
+
+      if (isAddressLine) {
         console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - ADDRESS line`);
         return false;
       }
