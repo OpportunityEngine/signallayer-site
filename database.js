@@ -2357,7 +2357,7 @@ function logEmailProcessing(data) {
     data.status,
     data.attachmentsCount || 0,
     data.invoicesCreated || 0,
-    data.invoiceIds || null,
+    Array.isArray(data.invoiceIds) ? JSON.stringify(data.invoiceIds) : (data.invoiceIds || null),
     data.processingTimeMs || 0,
     data.errorMessage || null,
     data.skipReason || null

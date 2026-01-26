@@ -356,7 +356,7 @@ class EmailCheckService {
       data.attachmentMimeList ? JSON.stringify(data.attachmentMimeList.slice(0, 10)) : null,
       data.attachmentNameList ? JSON.stringify(data.attachmentNameList.slice(0, 10)) : null,
       data.invoicesCreated || 0,
-      data.invoiceIds || null,
+      Array.isArray(data.invoiceIds) ? JSON.stringify(data.invoiceIds) : (data.invoiceIds || null),
       data.processingTimeMs || 0,
       data.errorMessage ? String(data.errorMessage).substring(0, 1000) : null
     );
@@ -1144,8 +1144,15 @@ class EmailCheckService {
                   item.totalCents || 0,
                   item.category || 'general'
                 );
-                totalCents += (item.totalCents || 0);
               }
+
+              // CRITICAL FIX: Use authoritative total from parser, not sum of line items
+              // Parser's totalCents is the printed total (what the invoice says),
+              // which may differ from sum of line items due to fees, discounts, etc.
+              const computedSum = result.items.reduce((sum, item) => sum + (item.totalCents || 0), 0);
+              totalCents = result.totals?.totalCents || computedSum;
+              console.log(`[EMAIL-CHECK] Invoice total: ${totalCents} cents (authoritative: ${result.totals?.totalCents || 'N/A'}, computed: ${computedSum})`);
+
               processed = true;
             }
           } catch (procErr) {
