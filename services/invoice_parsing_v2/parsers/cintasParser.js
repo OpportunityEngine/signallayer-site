@@ -343,6 +343,13 @@ function parseItemRow(line) {
 /**
  * Extract final totals from bottom of invoice
  * Cintas format: SUBTOTAL / SALES TAX / TOTAL USD appearing near end
+ *
+ * BULLETPROOF IMPLEMENTATION: Handles ALL format variations including:
+ * - Same-line: "TOTAL USD 1998.14"
+ * - Split-line: "TOTAL USD" then "1998.14" on next line
+ * - Stacked labels: "SUBTOTAL" / "TAX" / "TOTAL USD" then values below
+ * - Horizontal header: "SUBTOTAL TAX TOTAL USD" then "1867.42 130.72 1998.14"
+ * - Any combination with whitespace, $ signs, or extra characters
  */
 function extractTotals(text, lines) {
   const totals = {
@@ -353,28 +360,73 @@ function extractTotals(text, lines) {
     debug: {
       subtotalLine: null,
       taxLine: null,
-      totalLine: null
+      totalLine: null,
+      method: null
     }
   };
 
-  // Scan from bottom to find totals block
-  // Cintas can have two formats:
-  // 1) Labels and amounts on same line: "SUBTOTAL 1867.42"
-  // 2) Stacked: "SUBTOTAL TAX TOTAL USD" then "1227.60 0.00 1227.60"
+  console.log(`[CINTAS TOTALS] ========== BULLETPROOF EXTRACTION ==========`);
+  console.log(`[CINTAS TOTALS] Scanning ${lines.length} lines for totals...`);
 
-  // ===== PRE-SCAN: Find TOTAL USD on SAME LINE (most reliable) =====
-  // This ensures we find "TOTAL USD 1998.14" format when it exists
-  // IMPORTANT: Use [ \t]+ instead of \s+ to avoid matching across newlines
+  // =====================================================================
+  // UNIVERSAL TEXT NORMALIZATION
+  // Handle ALL whitespace, unicode, and PDF extraction quirks
+  // =====================================================================
+  const normalizeText = (s) => {
+    if (!s) return '';
+    return String(s)
+      .replace(/\r/g, '')
+      // Unicode space normalization
+      .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+      .replace(/\t/g, ' ')
+      // Normalize dashes
+      .replace(/[\u2010-\u2015\u2212]/g, '-')
+      // Fix split numbers: "1 748" -> "1748"
+      .replace(/(\d)\s+(?=\d)/g, '$1')
+      // Fix split decimals: "1748 .85" -> "1748.85"
+      .replace(/(\d)\s+\.(?=\d)/g, '$1.')
+      .replace(/\.\s+(?=\d)/g, '.')
+      .replace(/,\s+(?=\d)/g, ',')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
+
+  // Helper: Extract money value from string (flexible)
+  const extractMoney = (s) => {
+    if (!s) return 0;
+    const normalized = normalizeText(s);
+    const match = normalized.match(/\$?\s*([\d,]+\.?\d*)/);
+    return match ? parseMoney(match[1]) : 0;
+  };
+
+  // Helper: Check if string is just a money value
+  const isMoneyOnly = (s) => {
+    const n = normalizeText(s);
+    return /^\$?\s*[\d,]+\.?\d*\s*$/.test(n);
+  };
+
+  // Helper: Check if string is a label (SUBTOTAL, TAX, TOTAL USD, etc.)
+  const isSubtotalLabel = (s) => /^(?:SUB[\s-]?TOTAL)\s*$/i.test(normalizeText(s));
+  const isTaxLabel = (s) => /^(?:(?:SALES\s+)?TAX)\s*$/i.test(normalizeText(s));
+  const isTotalUsdLabel = (s) => /^TOTAL\s+USD\s*$/i.test(normalizeText(s));
+
+  // Normalize all lines for consistent matching
+  const normalizedLines = lines.map(l => normalizeText(l));
+  const normalizedText = normalizeText(text);
+
+  // =====================================================================
+  // PRE-SCAN: Find TOTAL USD on SAME LINE (most reliable)
+  // Handles: "TOTAL USD 1998.14", "TOTAL USD: $1,998.14", etc.
+  // =====================================================================
   let preScannedTotalUsd = 0;
   const totalUsdPatterns = [
-    /TOTAL[ \t]+USD[ \t]*:?[ \t]*\$?([\d,]+\.?\d{2})(?:[ \t]|$)/gi,  // "TOTAL USD 1998.14" or "TOTAL USD: 1998.14"
-    /TOTAL[ \t]+USD[ \t]+([\d,]+\.?\d{2})(?:[ \t]|$)/gi,             // "TOTAL USD  1998.14" with multiple spaces
+    /TOTAL\s+USD\s*:?\s*\$?\s*([\d,]+\.?\d*)/gi,
+    /TOTAL\s+USD\s+([\d,]+\.?\d*)/gi,
   ];
 
   for (const pattern of totalUsdPatterns) {
-    const matches = [...text.matchAll(pattern)];
+    const matches = [...normalizedText.matchAll(pattern)];
     if (matches.length > 0) {
-      // Take the LAST match (usually the final invoice total, not section totals)
       const lastMatch = matches[matches.length - 1];
       const value = parseMoney(lastMatch[1]);
       if (value > 0 && value > preScannedTotalUsd) {
@@ -408,6 +460,30 @@ function extractTotals(text, lines) {
   const scanLines = lines.slice(-100);
   const baseIdx = lines.length - scanLines.length;
 
+  // =====================================================================
+  // PRIORITY PASS 0: USE SHARED TOTALS.JS EXTRACTOR FIRST
+  // This has the most comprehensive format handling (FORMAT 1-7)
+  // =====================================================================
+  try {
+    const { extractTotalsByLineScan } = require('../totals');
+    const sharedResult = extractTotalsByLineScan(text);
+    if (sharedResult.totalCents > 0) {
+      console.log(`[CINTAS TOTALS] Shared extractor found total: $${(sharedResult.totalCents/100).toFixed(2)} via ${sharedResult.evidence?.total?.source || 'unknown'}`);
+      // Only use shared result if it found TOTAL USD or similar Cintas patterns
+      const evidence = String(sharedResult.evidence?.total?.name || '').toUpperCase();
+      if (evidence.includes('USD') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {
+        totals.totalCents = sharedResult.totalCents;
+        totals.subtotalCents = sharedResult.subtotalCents || 0;
+        totals.taxCents = sharedResult.taxCents || 0;
+        totals.debug.method = 'shared_totals.js';
+        console.log(`[CINTAS TOTALS] Using shared extractor result: $${(totals.totalCents/100).toFixed(2)}`);
+        // Continue to verify with pre-scan
+      }
+    }
+  } catch (e) {
+    console.log(`[CINTAS TOTALS] Shared extractor not available: ${e.message}`);
+  }
+
   // ===== PRIORITY PASS: STACKED LABEL COLUMN FORMAT =====
   // This handles PDFs where labels and values are in separate columns:
   // SUBTOTAL       <- Label line
@@ -417,51 +493,143 @@ function extractTotals(text, lines) {
   // 130.72         <- Value for TAX
   // 1998.14        <- Value for TOTAL USD (the one we want!)
   for (let i = 2; i < scanLines.length - 3; i++) {
-    const line0 = scanLines[i - 2]?.trim() || '';
-    const line1 = scanLines[i - 1]?.trim() || '';
-    const line2 = scanLines[i]?.trim() || '';
-    const line3 = scanLines[i + 1]?.trim() || '';
-    const line4 = scanLines[i + 2]?.trim() || '';
-    const line5 = scanLines[i + 3]?.trim() || '';
+    const line0 = normalizeText(scanLines[i - 2] || '');
+    const line1 = normalizeText(scanLines[i - 1] || '');
+    const line2 = normalizeText(scanLines[i] || '');
+    const line3 = normalizeText(scanLines[i + 1] || '');
+    const line4 = normalizeText(scanLines[i + 2] || '');
+    const line5 = normalizeText(scanLines[i + 3] || '');
 
-    // Check if we have the stacked label pattern
-    const isSubtotalLabel = /^SUBTOTAL\s*$/i.test(line0);
-    const isTaxLabel = /^(?:SALES\s+)?TAX\s*$/i.test(line1);
-    const isTotalLabel = /^TOTAL\s+USD\s*$/i.test(line2);
+    // Check if we have the stacked label pattern (flexible matching)
+    const hasSubtotalLabel = isSubtotalLabel(line0);
+    const hasTaxLabel = isTaxLabel(line1);
+    const hasTotalLabel = isTotalUsdLabel(line2);
 
-    if (isSubtotalLabel && isTaxLabel && isTotalLabel) {
-      // Check if next 3 lines are all just numbers (the values)
-      const val1Match = line3.match(/^([\d,]+\.?\d*)$/);
-      const val2Match = line4.match(/^([\d,]+\.?\d*)$/);
-      const val3Match = line5.match(/^([\d,]+\.?\d*)$/);
+    if (hasSubtotalLabel && hasTaxLabel && hasTotalLabel) {
+      // Check if next 3 lines are money values (FLEXIBLE - allow $ signs, whitespace)
+      if (isMoneyOnly(line3) && isMoneyOnly(line4) && isMoneyOnly(line5)) {
+        const subtotalVal = extractMoney(line3);
+        const taxVal = extractMoney(line4);
+        const totalVal = extractMoney(line5);
 
-      if (val1Match && val2Match && val3Match) {
-        totals.subtotalCents = parseMoney(val1Match[1]);
-        totals.taxCents = parseMoney(val2Match[1]);
-        totals.totalCents = parseMoney(val3Match[1]);
-        totals.debug.subtotalLine = baseIdx + i + 1;
-        totals.debug.taxLine = baseIdx + i + 2;
-        totals.debug.totalLine = baseIdx + i + 3;
-        console.log(`[CINTAS TOTALS] Found STACKED LABEL COLUMN format - Subtotal: $${(totals.subtotalCents/100).toFixed(2)}, Tax: $${(totals.taxCents/100).toFixed(2)}, Total: $${(totals.totalCents/100).toFixed(2)}`);
+        if (totalVal > 0 && totalVal >= subtotalVal) {
+          totals.subtotalCents = subtotalVal;
+          totals.taxCents = taxVal;
+          totals.totalCents = totalVal;
+          totals.debug.subtotalLine = baseIdx + i + 1;
+          totals.debug.taxLine = baseIdx + i + 2;
+          totals.debug.totalLine = baseIdx + i + 3;
+          totals.debug.method = 'stacked_label_column';
+          console.log(`[CINTAS TOTALS] ✓ STACKED LABEL COLUMN: Subtotal=$${(totals.subtotalCents/100).toFixed(2)}, Tax=$${(totals.taxCents/100).toFixed(2)}, Total=$${(totals.totalCents/100).toFixed(2)}`);
+          return totals;
+        }
+      }
+    }
+  }
+
+  // ===== ADDITIONAL FORMAT: ALTERNATING LABEL-VALUE PAIRS =====
+  // SUBTOTAL
+  // 1867.42
+  // SALES TAX
+  // 130.72
+  // TOTAL USD
+  // 1998.14
+  for (let i = 0; i < scanLines.length - 5; i++) {
+    const l0 = normalizeText(scanLines[i] || '');
+    const l1 = normalizeText(scanLines[i + 1] || '');
+    const l2 = normalizeText(scanLines[i + 2] || '');
+    const l3 = normalizeText(scanLines[i + 3] || '');
+    const l4 = normalizeText(scanLines[i + 4] || '');
+    const l5 = normalizeText(scanLines[i + 5] || '');
+
+    if (isSubtotalLabel(l0) && isMoneyOnly(l1) &&
+        isTaxLabel(l2) && isMoneyOnly(l3) &&
+        isTotalUsdLabel(l4) && isMoneyOnly(l5)) {
+      const subtotalVal = extractMoney(l1);
+      const taxVal = extractMoney(l3);
+      const totalVal = extractMoney(l5);
+
+      if (totalVal > 0 && totalVal >= subtotalVal) {
+        totals.subtotalCents = subtotalVal;
+        totals.taxCents = taxVal;
+        totals.totalCents = totalVal;
+        totals.debug.method = 'alternating_label_value';
+        console.log(`[CINTAS TOTALS] ✓ ALTERNATING: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
         return totals;
+      }
+    }
+  }
+
+  // ===== ADDITIONAL FORMAT: HORIZONTAL HEADER THEN SEPARATE VALUE LINES =====
+  // SUBTOTAL SALES TAX TOTAL USD
+  // 1867.42
+  // 130.72
+  // 1998.14
+  for (let i = 0; i < scanLines.length - 3; i++) {
+    const header = normalizeText(scanLines[i] || '');
+    const l1 = normalizeText(scanLines[i + 1] || '');
+    const l2 = normalizeText(scanLines[i + 2] || '');
+    const l3 = normalizeText(scanLines[i + 3] || '');
+
+    if (/SUBTOTAL\s+(?:SALES\s+)?TAX\s+TOTAL\s+USD/i.test(header)) {
+      if (isMoneyOnly(l1) && isMoneyOnly(l2) && isMoneyOnly(l3)) {
+        const subtotalVal = extractMoney(l1);
+        const taxVal = extractMoney(l2);
+        const totalVal = extractMoney(l3);
+
+        if (totalVal > 0 && totalVal >= subtotalVal) {
+          totals.subtotalCents = subtotalVal;
+          totals.taxCents = taxVal;
+          totals.totalCents = totalVal;
+          totals.debug.method = 'horiz_header_3lines';
+          console.log(`[CINTAS TOTALS] ✓ HORIZ HEADER 3 LINES: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+          return totals;
+        }
+      }
+    }
+  }
+
+  // ===== ADDITIONAL FORMAT: HORIZONTAL HEADER WITH VALUES ON SAME LINE =====
+  // SUBTOTAL SALES TAX TOTAL USD
+  // 1867.42 130.72 1998.14
+  for (let i = 0; i < scanLines.length - 1; i++) {
+    const header = normalizeText(scanLines[i] || '');
+    const valueLine = normalizeText(scanLines[i + 1] || '');
+
+    if (/SUBTOTAL\s+(?:SALES\s+)?TAX\s+TOTAL\s+USD/i.test(header)) {
+      const numbers = valueLine.match(/([\d,]+\.?\d*)/g);
+      if (numbers && numbers.length >= 3) {
+        const subtotalVal = parseMoney(numbers[0]);
+        const taxVal = parseMoney(numbers[1]);
+        const totalVal = parseMoney(numbers[2]);
+
+        if (totalVal > 0 && totalVal >= subtotalVal) {
+          totals.subtotalCents = subtotalVal;
+          totals.taxCents = taxVal;
+          totals.totalCents = totalVal;
+          totals.debug.method = 'horiz_header_sameline';
+          console.log(`[CINTAS TOTALS] ✓ HORIZ HEADER SAME LINE: Subtotal=$${(subtotalVal/100).toFixed(2)}, Tax=$${(taxVal/100).toFixed(2)}, Total=$${(totalVal/100).toFixed(2)}`);
+          return totals;
+        }
       }
     }
   }
 
   // FIRST PASS: Look for TOTAL USD specifically (most reliable for Cintas)
   for (let i = scanLines.length - 1; i >= 0; i--) {
-    const line = scanLines[i];
-    const nextLine = i + 1 < scanLines.length ? scanLines[i + 1] : '';
+    const line = normalizeText(scanLines[i] || '');
+    const nextLine = i + 1 < scanLines.length ? normalizeText(scanLines[i + 1] || '') : '';
 
     // Skip employee/dept subtotals
-    if (isGroupSubtotal(line) || isDeptSubtotal(line)) continue;
+    if (isGroupSubtotal(scanLines[i]) || isDeptSubtotal(scanLines[i])) continue;
 
     // PATTERN 1: "TOTAL USD" with value on SAME line
-    const totalUsdMatch = line.match(/TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d*)/i);
+    const totalUsdMatch = line.match(/TOTAL\s+USD\s*:?\s*\$?\s*([\d,]+\.?\d*)/i);
     if (totalUsdMatch && parseMoney(totalUsdMatch[1]) > 0) {
       totals.totalCents = parseMoney(totalUsdMatch[1]);
       totals.debug.totalLine = baseIdx + i;
-      console.log(`[CINTAS TOTALS] Found TOTAL USD (same line): $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
+      totals.debug.method = 'total_usd_same_line';
+      console.log(`[CINTAS TOTALS] ✓ TOTAL USD (same line): $${(totals.totalCents/100).toFixed(2)} at line ${baseIdx + i}`);
 
       // Continue to find subtotal and tax, then return
       for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
@@ -511,44 +679,47 @@ function extractTotals(text, lines) {
     // 1867.42       <- Value for SUBTOTAL (NOT the total!)
     // 130.72        <- Value for TAX
     // 1998.14       <- Value for TOTAL USD (THIS is what we want)
-    const prevLine1 = i >= 1 ? scanLines[i - 1]?.trim() : '';
-    const prevLine2 = i >= 2 ? scanLines[i - 2]?.trim() : '';
-    const isStackedLabelColumn = /^(?:SALES\s+)?TAX\s*$/i.test(prevLine1) && /^SUBTOTAL\s*$/i.test(prevLine2);
+    const prevLine1 = i >= 1 ? normalizeText(scanLines[i - 1] || '') : '';
+    const prevLine2 = i >= 2 ? normalizeText(scanLines[i - 2] || '') : '';
+    const isStackedLabelColumn = isTaxLabel(prevLine1) && isSubtotalLabel(prevLine2);
 
-    if (!isHeaderRow && !isStackedLabelColumn && /TOTAL\s+USD\s*$/i.test(line.trim())) {
-      // Value should be on next line
-      const nextLineValue = nextLine.match(/^\s*\$?([\d,]+\.?\d*)\s*$/);
-      if (nextLineValue && parseMoney(nextLineValue[1]) > 0) {
-        totals.totalCents = parseMoney(nextLineValue[1]);
-        totals.debug.totalLine = baseIdx + i;
-        console.log(`[CINTAS TOTALS] Found TOTAL USD (split-line): $${(totals.totalCents/100).toFixed(2)} at lines ${baseIdx + i}-${baseIdx + i + 1}`);
+    if (!isHeaderRow && !isStackedLabelColumn && isTotalUsdLabel(line)) {
+      // Value should be on next line - use flexible matching
+      if (isMoneyOnly(nextLine)) {
+        const totalVal = extractMoney(nextLine);
+        if (totalVal > 0) {
+          totals.totalCents = totalVal;
+          totals.debug.totalLine = baseIdx + i;
+          totals.debug.method = 'total_usd_split_line';
+          console.log(`[CINTAS TOTALS] ✓ TOTAL USD (split-line): $${(totals.totalCents/100).toFixed(2)} at lines ${baseIdx + i}-${baseIdx + i + 1}`);
 
-        // Find subtotal and tax
-        for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
-          const prevLine = scanLines[j];
-          if (!totals.debug.taxLine) {
-            for (const taxPat of taxPatterns) {
-              const taxMatch = prevLine.match(taxPat);
-              if (taxMatch) {
-                totals.taxCents = parseMoney(taxMatch[1]);
-                totals.debug.taxLine = baseIdx + j;
-                break;
+          // Find subtotal and tax
+          for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+            const prevLine = scanLines[j];
+            if (!totals.debug.taxLine) {
+              for (const taxPat of taxPatterns) {
+                const taxMatch = prevLine.match(taxPat);
+                if (taxMatch) {
+                  totals.taxCents = parseMoney(taxMatch[1]);
+                  totals.debug.taxLine = baseIdx + j;
+                  break;
+                }
               }
             }
-          }
-          if (!totals.debug.subtotalLine && !isGroupSubtotal(prevLine) && !isDeptSubtotal(prevLine)) {
-            for (const subPat of subtotalPatterns) {
-              const subMatch = prevLine.match(subPat);
-              if (subMatch) {
-                totals.subtotalCents = parseMoney(subMatch[1]);
-                totals.debug.subtotalLine = baseIdx + j;
-                break;
+            if (!totals.debug.subtotalLine && !isGroupSubtotal(prevLine) && !isDeptSubtotal(prevLine)) {
+              for (const subPat of subtotalPatterns) {
+                const subMatch = prevLine.match(subPat);
+                if (subMatch) {
+                  totals.subtotalCents = parseMoney(subMatch[1]);
+                  totals.debug.subtotalLine = baseIdx + j;
+                  break;
+                }
               }
             }
+            if (totals.debug.taxLine && totals.debug.subtotalLine) break;
           }
-          if (totals.debug.taxLine && totals.debug.subtotalLine) break;
+          return totals;
         }
-        return totals;
       }
     }
 

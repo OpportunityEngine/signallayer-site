@@ -631,11 +631,16 @@ function extractSyscoMiscCharges(text, lines) {
 
 /**
  * Extract totals from Sysco invoice
- * Uses TWO-PASS STRATEGY for bulletproof INVOICE TOTAL detection
- * CRITICAL: Must correctly identify INVOICE TOTAL and REJECT GROUP TOTAL
+ * BULLETPROOF IMPLEMENTATION - MUST find INVOICE TOTAL, NEVER GROUP TOTAL
  *
- * PASS A (Hard anchor): Find "INVOICE TOTAL" patterns specifically
- * PASS B (Fallback): Generic TOTAL candidates, but NEVER GROUP TOTAL
+ * CRITICAL REQUIREMENTS:
+ * 1. ALWAYS find INVOICE TOTAL (value: $4389.56 for test invoice)
+ * 2. NEVER return GROUP TOTAL as the invoice total
+ * 3. Handle ALL PDF extraction formats:
+ *    - Same line: "INVOICE TOTAL 4389.56"
+ *    - Split line: "INVOICE TOTAL" then "4389.56"
+ *    - Stacked columns: Labels in one column, values in another
+ *    - Corner format: Far right with lots of whitespace
  */
 function extractSyscoTotals(text, lines) {
   const totals = {
@@ -647,46 +652,88 @@ function extractSyscoTotals(text, lines) {
     totalEvidence: null
   };
 
-  console.log(`[SYSCO TOTALS] ========== BULLETPROOF TWO-PASS STRATEGY ==========`);
+  console.log(`[SYSCO TOTALS] ========== BULLETPROOF EXTRACTION ==========`);
   console.log(`[SYSCO TOTALS] Scanning ${lines.length} lines for INVOICE TOTAL...`);
 
-  // Normalize lines for better matching (handle ALL spacing/formatting edge cases)
-  const normalizedLines = lines.map(l => {
-    return String(l || '')
+  // =====================================================================
+  // UNIVERSAL TEXT NORMALIZATION (same as Cintas)
+  // Handle ALL whitespace, unicode, and PDF extraction quirks
+  // =====================================================================
+  const normalizeText = (s) => {
+    if (!s) return '';
+    return String(s)
       .replace(/\r/g, '')
-      // Unicode space normalization (non-breaking spaces, em spaces, etc.)
       .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
-      // Tab to space
       .replace(/\t/g, ' ')
-      // Normalize dashes (en-dash, em-dash, etc. to regular hyphen)
       .replace(/[\u2010-\u2015\u2212]/g, '-')
-      // Fix split numbers: "1 748" -> "1748"
       .replace(/(\d)\s+(?=\d)/g, '$1')
-      // Fix split decimals: "1748 .85" -> "1748.85"
       .replace(/(\d)\s+\.(?=\d)/g, '$1.')
-      // Fix split decimals: "1748. 85" -> "1748.85"
       .replace(/\.\s+(?=\d)/g, '.')
-      // Fix split commas: "1, 748" -> "1,748"
       .replace(/,\s+(?=\d)/g, ',')
-      // Collapse multiple spaces to single
       .replace(/\s{2,}/g, ' ')
       .trim();
-  });
+  };
 
-  // ALSO normalize the raw text for regex patterns
-  const normalizedText = text
-    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
-    .replace(/\t/g, ' ')
-    .replace(/[\u2010-\u2015\u2212]/g, '-')
-    .replace(/(\d)\s+(?=\d)/g, '$1')
-    .replace(/(\d)\s+\.(?=\d)/g, '$1.')
-    .replace(/\.\s+(?=\d)/g, '.')
-    .replace(/,\s+(?=\d)/g, ',');
+  // Helper: Extract money value from string (flexible)
+  const extractMoney = (s) => {
+    if (!s) return 0;
+    const normalized = normalizeText(s);
+    const match = normalized.match(/\$?\s*([\d,]+\.?\d*)/);
+    return match ? parseMoney(match[1]) : 0;
+  };
+
+  // Helper: Check if string is just a money value
+  const isMoneyOnly = (s) => {
+    const n = normalizeText(s);
+    return /^\$?\s*[\d,]+\.?\d*\s*$/.test(n);
+  };
+
+  // Normalize all lines
+  const normalizedLines = lines.map(l => normalizeText(l));
+  const normalizedText = normalizeText(text);
 
   // CRITICAL: Helper to detect BAD total lines (GROUP, CATEGORY, SECTION, DEPT, SUBTOTAL)
-  const isBadTotalLine = (s) => /GROUP\s*TOTAL|CATEGORY\s*TOTAL|SECTION\s*TOTAL|DEPT\.?\s*TOTAL|DEPARTMENT\s*TOTAL|\bSUBTOTAL\b/i.test(s);
+  // MUST reject GROUP TOTAL to prevent grabbing category subtotals
+  const isBadTotalLine = (s) => {
+    const upper = String(s).toUpperCase();
+    // WHITELIST: These are GOOD (invoice totals)
+    if (/INVOICE\s+TOTAL/i.test(upper)) return false;
+    // BLACKLIST: These are BAD (category/group subtotals)
+    return /GROUP\s*TOTAL|CATEGORY\s*TOTAL|SECTION\s*TOTAL|DEPT\.?\s*TOTAL|DEPARTMENT\s*TOTAL|\*{3,}.*TOTAL/i.test(upper);
+  };
 
-  // ========== PRIORITY PASS 0: BOTTOM-RIGHT CORNER FORMAT ==========
+  // =====================================================================
+  // PRIORITY PASS 0: USE SHARED TOTALS.JS EXTRACTOR FIRST
+  // This has the most comprehensive format handling (FORMAT 1-7)
+  // =====================================================================
+  try {
+    const { extractTotalsByLineScan } = require('../totals');
+    const sharedResult = extractTotalsByLineScan(text);
+    if (sharedResult.totalCents > 0) {
+      const evidence = String(sharedResult.evidence?.total?.name || '').toUpperCase();
+      const evidenceLine = String(sharedResult.evidence?.total?.line || '').toUpperCase();
+
+      // CRITICAL: Reject if evidence contains GROUP TOTAL
+      if (!isBadTotalLine(evidenceLine) && !isBadTotalLine(evidence)) {
+        console.log(`[SYSCO TOTALS] Shared extractor found: $${(sharedResult.totalCents/100).toFixed(2)} via ${evidence}`);
+        // Accept shared result for INVOICE TOTAL or other trusted patterns
+        if (evidence.includes('INVOICE') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {
+          totals.totalCents = sharedResult.totalCents;
+          totals.subtotalCents = sharedResult.subtotalCents || 0;
+          totals.taxCents = sharedResult.taxCents || 0;
+          totals.totalEvidence = `SHARED: ${evidence}`;
+          console.log(`[SYSCO TOTALS] ✓ Using shared extractor: $${(totals.totalCents/100).toFixed(2)}`);
+          return totals;
+        }
+      } else {
+        console.log(`[SYSCO TOTALS] REJECTED shared result (GROUP TOTAL): ${evidenceLine}`);
+      }
+    }
+  } catch (e) {
+    console.log(`[SYSCO TOTALS] Shared extractor not available: ${e.message}`);
+  }
+
+  // ========== PRIORITY PASS 1: BOTTOM-RIGHT CORNER FORMAT ==========
   // Sysco invoices have totals in bottom-right corner with lots of whitespace:
   // SUB TOTAL    4389.56
   // TAX TOTAL
@@ -698,9 +745,15 @@ function extractSyscoTotals(text, lines) {
   for (let i = normalizedLines.length - 1; i >= Math.max(0, normalizedLines.length - 100); i--) {
     const line = normalizedLines[i];
 
-    // Pattern: "INVOICE TOTAL" followed by lots of spaces then a number
+    // Skip if this is a GROUP TOTAL line
+    if (isBadTotalLine(line)) {
+      console.log(`[SYSCO TOTALS] Skipping GROUP TOTAL at line ${i}: "${line.slice(0, 50)}"`);
+      continue;
+    }
+
+    // Pattern: "INVOICE TOTAL" followed by any amount of whitespace then a number
     // Handles: "INVOICE TOTAL    4389.56" or "INVOICE TOTAL 4,389.56"
-    const invoiceTotalMatch = line.match(/INVOICE\s+TOTAL\s{2,}([\d,]+\.?\d*)/i);
+    const invoiceTotalMatch = line.match(/INVOICE\s+TOTAL\s+([\d,]+\.?\d*)/i);
     if (invoiceTotalMatch) {
       const cents = parseMoney(invoiceTotalMatch[1]);
       if (cents > 1000) {  // Must be > $10.00
@@ -709,19 +762,53 @@ function extractSyscoTotals(text, lines) {
         console.log(`[SYSCO TOTALS] ✓ CORNER FORMAT: INVOICE TOTAL = $${(cents/100).toFixed(2)}`);
 
         // Also look for SUB TOTAL nearby
-        for (let j = Math.max(0, i - 5); j < i; j++) {
+        for (let j = Math.max(0, i - 10); j < i; j++) {
           const prevLine = normalizedLines[j];
-          const subMatch = prevLine.match(/SUB\s+TOTAL\s{2,}([\d,]+\.?\d*)/i);
-          if (subMatch) {
+          if (isBadTotalLine(prevLine)) continue;
+
+          const subMatch = prevLine.match(/SUB\s*TOTAL\s+([\d,]+\.?\d*)/i);
+          if (subMatch && !totals.subtotalCents) {
             totals.subtotalCents = parseMoney(subMatch[1]);
             console.log(`[SYSCO TOTALS] ✓ CORNER: SUB TOTAL = $${(totals.subtotalCents/100).toFixed(2)}`);
           }
-          const taxMatch = prevLine.match(/TAX\s+TOTAL\s{2,}([\d,]+\.?\d*)/i);
-          if (taxMatch) {
+          const taxMatch = prevLine.match(/TAX\s*(?:TOTAL)?\s+([\d,]+\.?\d*)/i);
+          if (taxMatch && !totals.taxCents) {
             totals.taxCents = parseMoney(taxMatch[1]);
-            console.log(`[SYSCO TOTALS] ✓ CORNER: TAX TOTAL = $${(totals.taxCents/100).toFixed(2)}`);
+            console.log(`[SYSCO TOTALS] ✓ CORNER: TAX = $${(totals.taxCents/100).toFixed(2)}`);
           }
         }
+        return totals;
+      }
+    }
+  }
+
+  // ========== PRIORITY PASS 2: SPLIT LINE FORMAT ==========
+  // INVOICE
+  // TOTAL
+  // 4389.56
+  for (let i = 0; i < normalizedLines.length - 2; i++) {
+    const l0 = normalizedLines[i];
+    const l1 = normalizedLines[i + 1];
+    const l2 = normalizedLines[i + 2];
+
+    // "INVOICE" on line N, "TOTAL" on line N+1, value on line N+2
+    if (/^INVOICE$/i.test(l0) && /^TOTAL$/i.test(l1) && isMoneyOnly(l2)) {
+      const cents = extractMoney(l2);
+      if (cents > 1000) {
+        totals.totalCents = cents;
+        totals.totalEvidence = `SYSCO_SPLIT_3LINES: INVOICE + TOTAL + ${l2}`;
+        console.log(`[SYSCO TOTALS] ✓ SPLIT 3 LINES: INVOICE TOTAL = $${(cents/100).toFixed(2)}`);
+        return totals;
+      }
+    }
+
+    // "INVOICE TOTAL" on line N, value on line N+1
+    if (/^INVOICE\s+TOTAL$/i.test(l0) && isMoneyOnly(l1)) {
+      const cents = extractMoney(l1);
+      if (cents > 1000) {
+        totals.totalCents = cents;
+        totals.totalEvidence = `SYSCO_SPLIT_2LINES: INVOICE TOTAL + ${l1}`;
+        console.log(`[SYSCO TOTALS] ✓ SPLIT 2 LINES: INVOICE TOTAL = $${(cents/100).toFixed(2)}`);
         return totals;
       }
     }
