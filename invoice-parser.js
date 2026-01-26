@@ -98,7 +98,14 @@ function parseInvoice(text, options = {}) {
         console.log('==============================================================');
         const v2Result = v2.parseInvoiceText(text, { debug: true });
 
-        if (v2Result.success && v2Result.confidence?.score >= 50) {
+        // CRITICAL FIX: Use V2 result if EITHER:
+        // 1. Confidence score >= 50, OR
+        // 2. V2 found multiple line items (even with low confidence, real items > no items)
+        const hasRealItems = v2Result.lineItems && v2Result.lineItems.length >= 3;
+        const hasReasonableTotal = v2Result.totals?.totalCents > 1000 && v2Result.totals?.totalCents < 10000000; // $10 - $100k
+        const shouldUseV2 = (v2Result.confidence?.score >= 50) || (hasRealItems && hasReasonableTotal);
+
+        if (v2Result.success && shouldUseV2) {
           // Convert V2 result to V1 format for compatibility
           const v1Compat = v2.convertToV1Format(v2Result);
 
@@ -143,7 +150,9 @@ function parseInvoice(text, options = {}) {
             v2Debug: v2Result.debug
           };
         } else {
-          console.log(`[PARSER V2] Score too low (${v2Result.confidence?.score || 0}), falling back to V1`);
+          const itemCount = v2Result.lineItems?.length || 0;
+          const totalCents = v2Result.totals?.totalCents || 0;
+          console.log(`[PARSER V2] Not using V2: score=${v2Result.confidence?.score || 0}, items=${itemCount}, total=$${(totalCents/100).toFixed(2)} - falling back to V1`);
         }
       }
     } catch (e) {

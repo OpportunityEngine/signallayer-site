@@ -615,15 +615,22 @@ function extractTotals(text, lines) {
     const sharedResult = extractTotalsByLineScan(text);
     if (sharedResult.totalCents > 0) {
       console.log(`[CINTAS TOTALS] Shared extractor found total: $${(sharedResult.totalCents/100).toFixed(2)} via ${sharedResult.evidence?.total?.source || 'unknown'}`);
-      // Only use shared result if it found TOTAL USD or similar Cintas patterns
-      const evidence = String(sharedResult.evidence?.total?.name || '').toUpperCase();
-      if (evidence.includes('USD') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {
-        totals.totalCents = sharedResult.totalCents;
-        totals.subtotalCents = sharedResult.subtotalCents || 0;
-        totals.taxCents = sharedResult.taxCents || 0;
-        totals.debug.method = 'shared_totals.js';
-        console.log(`[CINTAS TOTALS] Using shared extractor result: $${(totals.totalCents/100).toFixed(2)}`);
-        // Continue to verify with pre-scan
+
+      // CRITICAL SANITY CHECK: Reject absurdly high totals (likely misread numbers)
+      const MAX_REASONABLE_TOTAL_CENTS = 10000000; // $100,000
+      if (sharedResult.totalCents > MAX_REASONABLE_TOTAL_CENTS) {
+        console.log(`[CINTAS TOTALS] REJECTED shared result - total $${(sharedResult.totalCents/100).toFixed(2)} exceeds $100k max`);
+      } else {
+        // Only use shared result if it found TOTAL USD or similar Cintas patterns
+        const evidence = String(sharedResult.evidence?.total?.name || '').toUpperCase();
+        if (evidence.includes('USD') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {
+          totals.totalCents = sharedResult.totalCents;
+          totals.subtotalCents = sharedResult.subtotalCents || 0;
+          totals.taxCents = sharedResult.taxCents || 0;
+          totals.debug.method = 'shared_totals.js';
+          console.log(`[CINTAS TOTALS] Using shared extractor result: $${(totals.totalCents/100).toFixed(2)}`);
+          // Continue to verify with pre-scan
+        }
       }
     }
   } catch (e) {

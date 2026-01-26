@@ -822,8 +822,16 @@ function extractSyscoTotals(text, lines) {
       // CRITICAL: Reject if evidence contains GROUP TOTAL
       if (!isBadTotalLine(evidenceLine) && !isBadTotalLine(evidence)) {
         console.log(`[SYSCO TOTALS] Shared extractor found: $${(sharedResult.totalCents/100).toFixed(2)} via ${evidence}`);
+
+        // CRITICAL SANITY CHECK: Reject absurdly high totals (likely SKU numbers)
+        // Max reasonable invoice total: $100,000 (10,000,000 cents)
+        const MAX_REASONABLE_TOTAL_CENTS = 10000000; // $100,000
+
+        if (sharedResult.totalCents > MAX_REASONABLE_TOTAL_CENTS) {
+          console.log(`[SYSCO TOTALS] REJECTED shared result - total $${(sharedResult.totalCents/100).toFixed(2)} exceeds $100k max (likely SKU number)`);
+        }
         // Accept shared result for INVOICE TOTAL or other trusted patterns
-        if (evidence.includes('INVOICE') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {
+        else if (evidence.includes('INVOICE') || evidence.includes('STACKED') || evidence.includes('ALTERNATING') || evidence.includes('HORIZ')) {
           totals.totalCents = sharedResult.totalCents;
           totals.subtotalCents = sharedResult.subtotalCents || 0;
           totals.taxCents = sharedResult.taxCents || 0;
