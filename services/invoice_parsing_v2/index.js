@@ -33,6 +33,7 @@ const { extractAdjustments, calculateAdjustmentsSummary, extractTax } = require(
 const { isLayoutExtractionAvailable, extractWithLayout, getLayoutQuality } = require('./pdfLayoutExtractor');
 const { detectUOM, enhanceLineItemWithUOM, PRODUCT_CATEGORY_HINTS } = require('./unitOfMeasure');
 const { validateAndCorrectTotals } = require('./totalsValidator');
+const { extractCore, validateParserTotals } = require('./coreExtractor');
 
 /**
  * Main parsing function
@@ -84,6 +85,14 @@ function parseInvoiceText(rawText, options = {}) {
       // Pattern store is optional, don't fail if it errors
     }
   }
+
+  // Step 2.7: CORE EXTRACTION - Run BEFORE any vendor-specific parsers
+  // This extracts ALL possible totals, line items, fees, taxes, etc.
+  // without applying any complex logic that might reject valid data
+  console.log('[PARSER V2] Running core extraction FIRST...');
+  const coreExtraction = extractCore(fullText);
+  console.log(`[PARSER V2] Core extraction found: ${coreExtraction.monetaryValues.totals.length} totals, ${coreExtraction.lineItems.length} line items`);
+  console.log(`[PARSER V2] Core best total: $${(coreExtraction.bestTotal.totalCents/100).toFixed(2)} via ${coreExtraction.bestTotal.source}`);
 
   // Step 3: Run vendor-specific parser
   const candidates = [];
@@ -188,13 +197,53 @@ function parseInvoiceText(rawText, options = {}) {
     }
   }
 
-  // Step 3.5: Validate ALL candidate totals using unified validator
+  // Step 3.5: Validate ALL candidate totals using BOTH validators
+  // First: Use totalsValidator for basic validation
+  // Second: Use coreExtractor for comprehensive validation
   // This ensures consistent totals extraction across ALL parsers
   for (let i = 0; i < candidates.length; i++) {
     if (candidates[i].totals) {
       const vendorKey = candidates[i].vendorKey || vendorInfo.vendorKey || 'generic';
       console.log(`[PARSER V2] Validating candidate ${i + 1} totals (${vendorKey})...`);
+
+      // First pass: Original totals validator
       candidates[i].totals = validateAndCorrectTotals(candidates[i].totals, fullText, vendorKey);
+
+      // Second pass: Core extractor validation (more comprehensive)
+      candidates[i].totals = validateParserTotals(candidates[i].totals, fullText, vendorKey);
+
+      // CRITICAL: If parser found 0 total but core extraction found something, use core
+      if ((candidates[i].totals.totalCents || 0) === 0 && coreExtraction.bestTotal.totalCents > 0) {
+        console.log(`[PARSER V2] Candidate ${i + 1} had no total, using core extraction: $${(coreExtraction.bestTotal.totalCents/100).toFixed(2)}`);
+        candidates[i].totals.totalCents = coreExtraction.bestTotal.totalCents;
+        candidates[i].totals.coreExtractionUsed = true;
+        candidates[i].totals.coreExtractionSource = coreExtraction.bestTotal.source;
+      }
+    }
+  }
+
+  // Step 3.6: FINAL SAFETY NET - Use core extraction if ALL candidates have wrong totals
+  const allCandidateTotals = candidates.map(c => c.totals?.totalCents || 0);
+  const maxCandidateTotal = Math.max(...allCandidateTotals);
+
+  if (coreExtraction.bestTotal.totalCents > 0 && maxCandidateTotal > 0) {
+    // If core extraction found a significantly higher total (INVOICE TOTAL > SUBTOTAL)
+    // and the best candidate total is less than core extraction, log warning
+    if (coreExtraction.bestTotal.totalCents > maxCandidateTotal * 1.05) {
+      console.log(`[PARSER V2] ⚠️ WARNING: Core extraction found higher total ($${(coreExtraction.bestTotal.totalCents/100).toFixed(2)}) than best candidate ($${(maxCandidateTotal/100).toFixed(2)})`);
+      console.log(`[PARSER V2] Core source: ${coreExtraction.bestTotal.source}`);
+
+      // If core found INVOICE TOTAL or TOTAL USD (high priority), use it for ALL candidates
+      if (coreExtraction.bestTotal.source.includes('INVOICE TOTAL') || coreExtraction.bestTotal.source.includes('TOTAL USD')) {
+        for (let i = 0; i < candidates.length; i++) {
+          if (candidates[i].totals && candidates[i].totals.totalCents < coreExtraction.bestTotal.totalCents) {
+            console.log(`[PARSER V2] Overriding candidate ${i + 1} total with core extraction`);
+            candidates[i].totals.totalCents = coreExtraction.bestTotal.totalCents;
+            candidates[i].totals.coreOverrideApplied = true;
+            candidates[i].totals.coreOverrideSource = coreExtraction.bestTotal.source;
+          }
+        }
+      }
     }
   }
 
@@ -374,6 +423,7 @@ function parseInvoiceText(rawText, options = {}) {
   }
 
   // Step 5.9: SANITY CHECK - Verify total isn't suspiciously low compared to line items
+  // Uses CORE EXTRACTION as primary source for correct totals
   // This catches cases where GROUP TOTAL or SUBTOTAL was picked instead of INVOICE TOTAL
   if (bestResult.lineItems && bestResult.lineItems.length > 0 && bestResult.totals) {
     const lineItemsSum = bestResult.lineItems.reduce((sum, item) => {
@@ -385,35 +435,42 @@ function parseInvoiceText(rawText, options = {}) {
     if (lineItemsSum > 10000 && currentTotal > 0 && currentTotal < lineItemsSum * 0.5) {
       console.log(`[PARSER V2] ⚠️ SANITY CHECK FAILED: Total $${(currentTotal/100).toFixed(2)} is less than 50% of line items sum $${(lineItemsSum/100).toFixed(2)}`);
 
-      // Search raw text for INVOICE TOTAL or TOTAL USD more aggressively
-      const upperText = fullText.toUpperCase();
-
-      // Priority 1: Look for INVOICE TOTAL with value
       let betterTotal = 0;
-      const invoiceTotalPatterns = [
-        /INVOICE\s+TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
-        /INVOICE\s*\n\s*TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
-        /TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
-        /TOTAL\s+USD\s*\n\s*\$?([\d,]+\.?\d{0,2})/gi,
-      ];
 
-      for (const pattern of invoiceTotalPatterns) {
-        const matches = [...fullText.matchAll(pattern)];
-        for (const match of matches) {
-          const cents = parseMoney(match[1]);
-          // Accept if it's larger than current total and makes sense with line items
-          if (cents > currentTotal && cents >= lineItemsSum * 0.8 && cents <= lineItemsSum * 1.5) {
-            betterTotal = cents;
-            console.log(`[PARSER V2] ✓ Found better total via pattern: $${(cents/100).toFixed(2)}`);
-            break;
-          }
-        }
-        if (betterTotal > 0) break;
+      // PRIORITY 1: Use core extraction's best total (already validated)
+      if (coreExtraction.bestTotal.totalCents > currentTotal &&
+          coreExtraction.bestTotal.totalCents >= lineItemsSum * 0.8) {
+        betterTotal = coreExtraction.bestTotal.totalCents;
+        console.log(`[PARSER V2] ✓ Using core extraction total: $${(betterTotal/100).toFixed(2)} via ${coreExtraction.bestTotal.source}`);
       }
 
-      // Priority 2: If no pattern match, use computed sum + tax (if available)
+      // PRIORITY 2: Search raw text for INVOICE TOTAL or TOTAL USD more aggressively
       if (betterTotal === 0) {
-        const taxCents = bestResult.totals.taxCents || 0;
+        const invoiceTotalPatterns = [
+          /INVOICE\s+TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
+          /INVOICE\s*\n\s*TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
+          /TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
+          /TOTAL\s+USD\s*\n\s*\$?([\d,]+\.?\d{0,2})/gi,
+        ];
+
+        for (const pattern of invoiceTotalPatterns) {
+          const matches = [...fullText.matchAll(pattern)];
+          for (const match of matches) {
+            const cents = parseMoney(match[1]);
+            // Accept if it's larger than current total and makes sense with line items
+            if (cents > currentTotal && cents >= lineItemsSum * 0.8 && cents <= lineItemsSum * 1.5) {
+              betterTotal = cents;
+              console.log(`[PARSER V2] ✓ Found better total via pattern: $${(cents/100).toFixed(2)}`);
+              break;
+            }
+          }
+          if (betterTotal > 0) break;
+        }
+      }
+
+      // PRIORITY 3: If no pattern match, use computed sum + tax (if available)
+      if (betterTotal === 0) {
+        const taxCents = bestResult.totals.taxCents || coreExtraction.taxCents || 0;
         const computedTotal = lineItemsSum + taxCents;
         // Use computed if it's reasonable
         if (computedTotal > currentTotal * 2) {
@@ -428,6 +485,26 @@ function parseInvoiceText(rawText, options = {}) {
         bestResult.totals.totalCents = betterTotal;
         bestResult.totals.sanityCheckCorrected = true;
         bestResult.totals.originalTotalCents = currentTotal;
+      }
+    }
+
+    // ADDITIONAL CHECK: If current total equals subtotal exactly, we may be missing tax
+    if (currentTotal > 0 && coreExtraction.taxCents > 0) {
+      const subtotalFromCore = coreExtraction.subtotalCents || 0;
+      if (Math.abs(currentTotal - subtotalFromCore) < 100) { // Within $1 of subtotal
+        const expectedTotal = subtotalFromCore + coreExtraction.taxCents;
+        console.log(`[PARSER V2] Total appears to be subtotal (missing tax $${(coreExtraction.taxCents/100).toFixed(2)})`);
+
+        // Check if core extraction found a total that matches subtotal + tax
+        const matchingTotal = coreExtraction.monetaryValues.totals.find(t =>
+          Math.abs(t.cents - expectedTotal) < 100
+        );
+        if (matchingTotal) {
+          console.log(`[PARSER V2] ✓ Found matching INVOICE TOTAL: $${(matchingTotal.cents/100).toFixed(2)}`);
+          bestResult.totals.totalCents = matchingTotal.cents;
+          bestResult.totals.taxCorrected = true;
+          bestResult.totals.taxCents = coreExtraction.taxCents;
+        }
       }
     }
   }

@@ -21,6 +21,7 @@ const { extractTotalCandidates, findReconcilableTotal } = require('../totalsCand
 const { extractAdjustments, calculateAdjustmentsSummary } = require('../adjustmentsExtractor');
 const { findInvoiceTotal } = require('../universalTotalFinder');
 const { UNIVERSAL_SKU_PATTERN, extractSku, looksLikeSku, isLikelyPrice, isLikelyDate } = require('../skuPatterns');
+const { validateParserTotals } = require('../coreExtractor');
 
 /**
  * Process price string with 3 decimal precision
@@ -1382,8 +1383,13 @@ function parseSyscoInvoice(normalizedText, options = {}) {
   const lines = normalizedText.split('\n');
 
   const header = parseSyscoHeader(normalizedText, lines);
-  const totals = extractSyscoTotals(normalizedText, lines);
+  let totals = extractSyscoTotals(normalizedText, lines);
   const miscCharges = extractSyscoMiscCharges(normalizedText, lines);
+
+  // CRITICAL: Validate totals using core extraction
+  // This ensures we get INVOICE TOTAL instead of GROUP TOTAL
+  console.log(`[SYSCO PARSER] Validating totals with core extractor...`);
+  totals = validateParserTotals(totals, normalizedText, 'sysco');
 
   const lineItems = [];
   let inItemSection = false;

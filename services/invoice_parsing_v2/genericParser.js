@@ -20,6 +20,7 @@ const { analyzeLayout, generateParsingHints } = require('./layoutAnalyzer');
 const { validateAndFixLineItems } = require('./numberClassifier');
 const { findInvoiceTotal, extractTotalWithUniversalFinder } = require('./universalTotalFinder');
 const { UNIVERSAL_SKU_PATTERN, extractSku, looksLikeSku, extractAllSkus, isLikelyPrice, isLikelyDate } = require('./skuPatterns');
+const { validateParserTotals } = require('./coreExtractor');
 
 /**
  * Process price string with 3 decimal precision
@@ -578,10 +579,15 @@ function parseGenericInvoice(normalizedText, options = {}) {
 
   // Extract header and totals first (these are relatively reliable)
   const header = parseGenericHeader(normalizedText, lines);
-  const totals = extractGenericTotals(normalizedText, lines);
+  let totals = extractGenericTotals(normalizedText, lines);
 
   // Extract fees and adjustments (fuel surcharge, allowances, credits, etc.)
   const miscCharges = extractGenericAdjustments(normalizedText, lines);
+
+  // CRITICAL: Validate totals using core extraction
+  // This ensures we get the correct INVOICE TOTAL
+  console.log(`[GENERIC PARSER] Validating totals with core extractor...`);
+  totals = validateParserTotals(totals, normalizedText, 'generic');
 
   // Try traditional line item extraction first
   let lineItems = extractGenericLineItems(normalizedText, lines);

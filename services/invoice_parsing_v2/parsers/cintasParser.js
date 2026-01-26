@@ -23,6 +23,7 @@ const {
 } = require('../utils');
 const { validateAndFixLineItems, isLikelyMisclassifiedItemCode } = require('../numberClassifier');
 const { UNIVERSAL_SKU_PATTERN, extractSku, looksLikeSku, SKU_PATTERNS } = require('../skuPatterns');
+const { validateParserTotals } = require('../coreExtractor');
 
 /**
  * Process price string with 3 decimal precision
@@ -1297,12 +1298,17 @@ function parseCintasInvoice(normalizedText, options = {}) {
   const lines = normalizedText.split('\n');
 
   // Extract totals and adjustments
-  const totals = extractTotals(normalizedText, lines);
+  let totals = extractTotals(normalizedText, lines);
   const miscCharges = extractCintasAdjustments(normalizedText, lines);
 
   // Add adjustments to totals
   totals.adjustmentsCents = miscCharges.totalAdjustmentsCents;
   totals.adjustments = miscCharges.adjustments;
+
+  // CRITICAL: Validate totals using core extraction
+  // This ensures we get TOTAL USD instead of SUBTOTAL
+  console.log(`[CINTAS PARSER] Validating totals with core extractor...`);
+  totals = validateParserTotals(totals, normalizedText, 'cintas');
 
   const result = {
     vendorKey: 'cintas',
