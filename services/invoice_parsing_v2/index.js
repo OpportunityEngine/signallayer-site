@@ -32,6 +32,7 @@ const { extractTotalCandidates, findReconcilableTotal, validateTotalsEquation } 
 const { extractAdjustments, calculateAdjustmentsSummary, extractTax } = require('./adjustmentsExtractor');
 const { isLayoutExtractionAvailable, extractWithLayout, getLayoutQuality } = require('./pdfLayoutExtractor');
 const { detectUOM, enhanceLineItemWithUOM, PRODUCT_CATEGORY_HINTS } = require('./unitOfMeasure');
+const { validateAndCorrectTotals } = require('./totalsValidator');
 
 /**
  * Main parsing function
@@ -184,6 +185,16 @@ function parseInvoiceText(rawText, options = {}) {
       } catch (err) {
         console.error('[PARSER V2] Adaptive parser error:', err.message);
       }
+    }
+  }
+
+  // Step 3.5: Validate ALL candidate totals using unified validator
+  // This ensures consistent totals extraction across ALL parsers
+  for (let i = 0; i < candidates.length; i++) {
+    if (candidates[i].totals) {
+      const vendorKey = candidates[i].vendorKey || vendorInfo.vendorKey || 'generic';
+      console.log(`[PARSER V2] Validating candidate ${i + 1} totals (${vendorKey})...`);
+      candidates[i].totals = validateAndCorrectTotals(candidates[i].totals, fullText, vendorKey);
     }
   }
 
@@ -359,6 +370,65 @@ function parseInvoiceText(rawText, options = {}) {
 
     if (uomEnhancedCount > 0) {
       console.log(`[PARSER V2] Enhanced ${uomEnhancedCount} items with UOM detection`);
+    }
+  }
+
+  // Step 5.9: SANITY CHECK - Verify total isn't suspiciously low compared to line items
+  // This catches cases where GROUP TOTAL or SUBTOTAL was picked instead of INVOICE TOTAL
+  if (bestResult.lineItems && bestResult.lineItems.length > 0 && bestResult.totals) {
+    const lineItemsSum = bestResult.lineItems.reduce((sum, item) => {
+      return sum + (item.lineTotalCents || item.totalCents || 0);
+    }, 0);
+    const currentTotal = bestResult.totals.totalCents || 0;
+
+    // If total is less than 50% of line items sum, it's likely wrong
+    if (lineItemsSum > 10000 && currentTotal > 0 && currentTotal < lineItemsSum * 0.5) {
+      console.log(`[PARSER V2] ⚠️ SANITY CHECK FAILED: Total $${(currentTotal/100).toFixed(2)} is less than 50% of line items sum $${(lineItemsSum/100).toFixed(2)}`);
+
+      // Search raw text for INVOICE TOTAL or TOTAL USD more aggressively
+      const upperText = fullText.toUpperCase();
+
+      // Priority 1: Look for INVOICE TOTAL with value
+      let betterTotal = 0;
+      const invoiceTotalPatterns = [
+        /INVOICE\s+TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
+        /INVOICE\s*\n\s*TOTAL[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
+        /TOTAL\s+USD[\s:]*\$?([\d,]+\.?\d{0,2})/gi,
+        /TOTAL\s+USD\s*\n\s*\$?([\d,]+\.?\d{0,2})/gi,
+      ];
+
+      for (const pattern of invoiceTotalPatterns) {
+        const matches = [...fullText.matchAll(pattern)];
+        for (const match of matches) {
+          const cents = parseMoney(match[1]);
+          // Accept if it's larger than current total and makes sense with line items
+          if (cents > currentTotal && cents >= lineItemsSum * 0.8 && cents <= lineItemsSum * 1.5) {
+            betterTotal = cents;
+            console.log(`[PARSER V2] ✓ Found better total via pattern: $${(cents/100).toFixed(2)}`);
+            break;
+          }
+        }
+        if (betterTotal > 0) break;
+      }
+
+      // Priority 2: If no pattern match, use computed sum + tax (if available)
+      if (betterTotal === 0) {
+        const taxCents = bestResult.totals.taxCents || 0;
+        const computedTotal = lineItemsSum + taxCents;
+        // Use computed if it's reasonable
+        if (computedTotal > currentTotal * 2) {
+          betterTotal = computedTotal;
+          console.log(`[PARSER V2] ✓ Using computed total (items + tax): $${(betterTotal/100).toFixed(2)}`);
+        }
+      }
+
+      // Apply the fix
+      if (betterTotal > 0) {
+        console.log(`[PARSER V2] ✓ SANITY CHECK FIX: Replacing $${(currentTotal/100).toFixed(2)} with $${(betterTotal/100).toFixed(2)}`);
+        bestResult.totals.totalCents = betterTotal;
+        bestResult.totals.sanityCheckCorrected = true;
+        bestResult.totals.originalTotalCents = currentTotal;
+      }
     }
   }
 
