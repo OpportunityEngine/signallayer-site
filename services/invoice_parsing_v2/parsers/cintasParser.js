@@ -362,6 +362,28 @@ function extractTotals(text, lines) {
   // 1) Labels and amounts on same line: "SUBTOTAL 1867.42"
   // 2) Stacked: "SUBTOTAL TAX TOTAL USD" then "1227.60 0.00 1227.60"
 
+  // ===== PRE-SCAN: Find TOTAL USD on SAME LINE (most reliable) =====
+  // This ensures we find "TOTAL USD 1998.14" format when it exists
+  // IMPORTANT: Use [ \t]+ instead of \s+ to avoid matching across newlines
+  let preScannedTotalUsd = 0;
+  const totalUsdPatterns = [
+    /TOTAL[ \t]+USD[ \t]*:?[ \t]*\$?([\d,]+\.?\d{2})(?:[ \t]|$)/gi,  // "TOTAL USD 1998.14" or "TOTAL USD: 1998.14"
+    /TOTAL[ \t]+USD[ \t]+([\d,]+\.?\d{2})(?:[ \t]|$)/gi,             // "TOTAL USD  1998.14" with multiple spaces
+  ];
+
+  for (const pattern of totalUsdPatterns) {
+    const matches = [...text.matchAll(pattern)];
+    if (matches.length > 0) {
+      // Take the LAST match (usually the final invoice total, not section totals)
+      const lastMatch = matches[matches.length - 1];
+      const value = parseMoney(lastMatch[1]);
+      if (value > 0 && value > preScannedTotalUsd) {
+        preScannedTotalUsd = value;
+        console.log(`[CINTAS TOTALS] PRE-SCAN found TOTAL USD: $${(value/100).toFixed(2)}`);
+      }
+    }
+  }
+
   // CRITICAL: Prioritize TOTAL USD over generic TOTAL (to avoid picking up SUBTOTAL)
   // ENHANCED: Handle split-line formats where "TOTAL USD" and value are separated by whitespace/newline
   const totalPatterns = [
@@ -733,6 +755,26 @@ function extractTotals(text, lines) {
         totals.subtotalCents = value;
         totals.debug.subtotalLine = baseIdx + i;
       }
+    }
+  }
+
+  // ===== FINAL SANITY CHECK: Use pre-scanned TOTAL USD if available =====
+  // This ensures we never accidentally use SUBTOTAL as the total
+  if (preScannedTotalUsd > 0) {
+    // If totalCents is 0, use pre-scanned value
+    if (totals.totalCents === 0) {
+      console.log(`[CINTAS TOTALS] Using pre-scanned TOTAL USD: $${(preScannedTotalUsd/100).toFixed(2)} (no total found otherwise)`);
+      totals.totalCents = preScannedTotalUsd;
+    }
+    // If totalCents equals subtotalCents, we likely picked SUBTOTAL - use pre-scanned instead
+    else if (totals.totalCents === totals.subtotalCents && preScannedTotalUsd > totals.subtotalCents) {
+      console.log(`[CINTAS TOTALS] Correcting: total ($${(totals.totalCents/100).toFixed(2)}) equals subtotal - using pre-scanned TOTAL USD: $${(preScannedTotalUsd/100).toFixed(2)}`);
+      totals.totalCents = preScannedTotalUsd;
+    }
+    // If pre-scanned is larger and more than subtotal, it's likely the correct total
+    else if (preScannedTotalUsd > totals.totalCents && preScannedTotalUsd > totals.subtotalCents) {
+      console.log(`[CINTAS TOTALS] Correcting: found larger TOTAL USD: $${(preScannedTotalUsd/100).toFixed(2)} (was $${(totals.totalCents/100).toFixed(2)})`);
+      totals.totalCents = preScannedTotalUsd;
     }
   }
 

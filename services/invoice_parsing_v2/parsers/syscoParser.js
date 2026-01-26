@@ -72,6 +72,14 @@ function parseSyscoLineItem(line) {
   if (/SHOP\s+OUR|WWW\./i.test(trimmed)) return null;
   if (/^\*+[A-Z]+\*+$/.test(trimmed)) return null;  // Like ****DAIRY**** or ****MEAT****
 
+  // Skip address lines - these should NEVER be parsed as line items
+  // Common patterns: "POCOMOKE CITY, MD 21851", "33300 PEACH ORCHARD ROAD", etc.
+  if (/^\d{3,5}\s+[A-Z]+.*(?:ROAD|RD|STREET|ST|AVENUE|AVE|DRIVE|DR|LANE|LN|WAY|BLVD|HIGHWAY|HWY|PKWY|CT|PL)\b/i.test(trimmed)) return null;  // Street address
+  if (/^[A-Z][A-Za-z\s]+,?\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/i.test(trimmed)) return null;  // City, State ZIP
+  if (/POCOMOKE|CITY.*STATE|STATE.*ZIP|\d{5}-\d{4}/i.test(trimmed)) return null;  // Address fragments
+  if (/^[A-Z][A-Za-z]+\s+CITY\b/i.test(trimmed)) return null;  // "City Name CITY" pattern
+  if (/,\s*[A-Z]{2}\s+\d{5}/i.test(trimmed)) return null;  // ", MD 21851" pattern anywhere
+
   // =====================================================
   // PATTERN 1: Full Sysco format with TWO codes before prices
   // [Category] [Qty] [Unit] [Size] [Description] [SKU] [ItemCode] [UnitPrice] [ExtPrice]
