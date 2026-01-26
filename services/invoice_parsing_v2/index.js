@@ -284,9 +284,27 @@ function parseInvoiceText(rawText, options = {}) {
         return false;
       }
 
-      // FILTER 6: Reject items where description contains TOTAL (likely totals row, not item)
+      // FILTER 6: Reject items where description contains TOTAL or SUBTOTAL (likely totals row, not item)
       if (/\bTOTAL\b/i.test(desc) && !/TOTAL\s*CASE/i.test(desc)) {
         console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - contains TOTAL`);
+        return false;
+      }
+      if (/\bSUBTOTAL\b/i.test(desc)) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - contains SUBTOTAL`);
+        return false;
+      }
+
+      // FILTER 6b: Reject items where description is just "$" or very short meaningless text
+      // These are remnants of totals rows where only the currency symbol was captured
+      const trimmedDesc = desc.trim();
+      if (trimmedDesc === '$' || trimmedDesc === '' || trimmedDesc.length <= 2) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - too short/just currency symbol`);
+        return false;
+      }
+
+      // FILTER 6c: Reject items that are just "TAX" or "SALES TAX" (tax lines, not items)
+      if (/^(SALES\s*)?TAX$/i.test(trimmedDesc)) {
+        console.log(`[PARSER V2] Filtering garbage item: "${item.description?.slice(0, 50)}" - tax line`);
         return false;
       }
 
