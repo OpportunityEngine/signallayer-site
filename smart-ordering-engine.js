@@ -144,6 +144,16 @@ class SmartOrderingEngine {
 
       // ============ BUSINESS INTELLIGENCE ============
       allInsights.push(...this.analyzeBudgetPacing(userId));
+
+      // ============ ADVANCED INTELLIGENCE ============
+      allInsights.push(...this.detectPriceVolatility(userId));
+      allInsights.push(...this.detectVendorDependency(userId));
+      allInsights.push(...this.detectNewItems(userId));
+      allInsights.push(...this.detectRushOrders(userId));
+      allInsights.push(...this.detectCostCreep(userId));
+      allInsights.push(...this.detectSpendConcentration(userId));
+      allInsights.push(...this.detectDuplicateItems(userId));
+      allInsights.push(...this.analyzeOrderTiming(userId));
       allInsights.push(...this.forecastUsage(userId));
 
       const elapsed = Date.now() - startTime;
@@ -1334,6 +1344,585 @@ class SmartOrderingEngine {
       }
     } catch (error) {
       console.error('[SmartOrdering] Usage forecast error:', error.message);
+    }
+
+    return insights;
+  }
+
+  // ================================================================
+  // ADVANCED INTELLIGENCE INSIGHTS (8 New Types)
+  // ================================================================
+
+  /**
+   * Detect price volatility - items with unstable/unpredictable pricing
+   * High variance = supply chain issues or inconsistent vendor pricing
+   */
+  detectPriceVolatility(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const volatileItems = database.prepare(`
+        WITH price_stats AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            COUNT(*) as order_count,
+            AVG(ii.unit_price_cents) as avg_price,
+            MIN(ii.unit_price_cents) as min_price,
+            MAX(ii.unit_price_cents) as max_price,
+            SUM(ii.total_cents) as total_spend
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku
+          HAVING order_count >= 4
+        )
+        SELECT *,
+          (max_price - min_price) * 1.0 / avg_price as price_range_pct,
+          (max_price - min_price) as price_swing_cents
+        FROM price_stats
+        WHERE (max_price - min_price) * 1.0 / avg_price > 0.15
+        ORDER BY price_range_pct DESC
+        LIMIT 3
+      `).all(userId);
+
+      for (const item of volatileItems) {
+        const rangePct = Math.round(item.price_range_pct * 100);
+        const avgPrice = item.avg_price / 100;
+
+        insights.push({
+          insight_type: 'price_volatility',
+          sku: item.sku,
+          description: item.description,
+          vendor_name: item.vendor_name,
+          title: `🎢 ${this.truncate(item.description || item.sku, 22)}: ${rangePct}% price swings`,
+          detail: `Price varies from $${(item.min_price / 100).toFixed(2)} to $${(item.max_price / 100).toFixed(2)} ` +
+                  `(avg $${avgPrice.toFixed(2)}). Consider locking in a contract price or finding a more stable supplier.`,
+          urgency: rangePct > 30 ? 'high' : 'medium',
+          estimated_value_cents: Math.round(item.price_swing_cents * 0.5), // Potential savings from stability
+          confidence_score: Math.min(85, 50 + item.order_count * 5),
+          reasoning: {
+            min_price_cents: item.min_price,
+            max_price_cents: item.max_price,
+            avg_price_cents: Math.round(item.avg_price),
+            price_range_percent: rangePct,
+            order_count: item.order_count
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Price volatility detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Detect vendor dependency - too much spend concentrated with one vendor
+   * Supply chain risk if >60% of spend is with single vendor
+   */
+  detectVendorDependency(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const excludedVendors = this.config.excludedVendors || [];
+    const exclusionClauses = excludedVendors
+      .map(v => `AND LOWER(vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+      .join(' ');
+
+    try {
+      const vendorSpend = database.prepare(`
+        SELECT
+          vendor_name,
+          SUM(invoice_total_cents) as vendor_spend,
+          COUNT(*) as invoice_count
+        FROM ingestion_runs
+        WHERE user_id = ?
+          AND status = 'completed'
+          AND vendor_name IS NOT NULL AND vendor_name != 'Unknown Vendor'
+          AND created_at >= date('now', '-90 days')
+          ${exclusionClauses}
+        GROUP BY vendor_name
+        ORDER BY vendor_spend DESC
+      `).all(userId);
+
+      if (vendorSpend.length < 2) return insights;
+
+      const totalSpend = vendorSpend.reduce((sum, v) => sum + v.vendor_spend, 0);
+      const topVendor = vendorSpend[0];
+      const topVendorPct = (topVendor.vendor_spend / totalSpend) * 100;
+
+      if (topVendorPct >= 60 && totalSpend > 100000) { // >60% and >$1000 total
+        const secondVendor = vendorSpend[1];
+        const secondPct = secondVendor ? Math.round((secondVendor.vendor_spend / totalSpend) * 100) : 0;
+
+        insights.push({
+          insight_type: 'vendor_dependency',
+          vendor_name: topVendor.vendor_name,
+          title: `⚠️ ${Math.round(topVendorPct)}% of spend with ${this.truncate(topVendor.vendor_name, 20)}`,
+          detail: `Heavy reliance on one vendor creates supply chain risk. ` +
+                  `If ${topVendor.vendor_name} has issues, it could disrupt ${Math.round(topVendorPct)}% of your operations. ` +
+                  `Consider diversifying to reduce risk.`,
+          urgency: topVendorPct >= 75 ? 'high' : 'medium',
+          estimated_value_cents: 0, // Risk mitigation, not direct savings
+          confidence_score: 90,
+          reasoning: {
+            top_vendor: topVendor.vendor_name,
+            top_vendor_spend_cents: topVendor.vendor_spend,
+            top_vendor_percent: Math.round(topVendorPct),
+            second_vendor: secondVendor?.vendor_name,
+            second_vendor_percent: secondPct,
+            total_spend_cents: totalSpend,
+            vendor_count: vendorSpend.length
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Vendor dependency detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Detect new items - flag SKUs that appeared for the first time recently
+   * Helps catch unauthorized purchases or track new product additions
+   */
+  detectNewItems(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const newItems = database.prepare(`
+        WITH first_appearance AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            MIN(ir.created_at) as first_ordered,
+            SUM(ii.total_cents) as total_spend,
+            SUM(ii.quantity) as total_qty,
+            COUNT(*) as order_count
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            ${vendorExclusion}
+          GROUP BY ii.sku
+        )
+        SELECT *,
+          CAST(julianday('now') - julianday(first_ordered) AS INTEGER) as days_since_first
+        FROM first_appearance
+        WHERE julianday('now') - julianday(first_ordered) <= 14
+          AND total_spend > 500
+        ORDER BY total_spend DESC
+        LIMIT 5
+      `).all(userId);
+
+      for (const item of newItems) {
+        insights.push({
+          insight_type: 'new_item',
+          sku: item.sku,
+          description: item.description,
+          vendor_name: item.vendor_name,
+          title: `🆕 New item: ${this.truncate(item.description || item.sku, 28)}`,
+          detail: `First ordered ${item.days_since_first} days ago from ${item.vendor_name}. ` +
+                  `Total spend: $${(item.total_spend / 100).toFixed(2)} (${item.order_count} order${item.order_count > 1 ? 's' : ''}). ` +
+                  `Verify this is an approved purchase.`,
+          urgency: item.total_spend > 5000 ? 'high' : 'low',
+          estimated_value_cents: item.total_spend,
+          confidence_score: 95,
+          reasoning: {
+            first_ordered: item.first_ordered,
+            days_since_first: item.days_since_first,
+            total_spend_cents: item.total_spend,
+            order_count: item.order_count,
+            total_qty: Math.round(item.total_qty)
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] New item detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Detect rush orders - pattern of frequent small orders (expensive behavior)
+   * Multiple small orders in short time = rush fees, extra delivery costs
+   */
+  detectRushOrders(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const excludedVendors = this.config.excludedVendors || [];
+    const exclusionClauses = excludedVendors
+      .map(v => `AND LOWER(vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+      .join(' ');
+
+    try {
+      const rushPatterns = database.prepare(`
+        WITH daily_orders AS (
+          SELECT
+            DATE(created_at) as order_date,
+            vendor_name,
+            COUNT(*) as orders_that_day,
+            SUM(invoice_total_cents) as daily_spend
+          FROM ingestion_runs
+          WHERE user_id = ?
+            AND status = 'completed'
+            AND vendor_name IS NOT NULL AND vendor_name != 'Unknown Vendor'
+            AND created_at >= date('now', '-30 days')
+            ${exclusionClauses}
+          GROUP BY DATE(created_at), vendor_name
+        )
+        SELECT
+          vendor_name,
+          COUNT(*) as multi_order_days,
+          SUM(orders_that_day) as total_orders,
+          AVG(daily_spend) as avg_daily_spend
+        FROM daily_orders
+        WHERE orders_that_day >= 2
+        GROUP BY vendor_name
+        HAVING multi_order_days >= 2
+        ORDER BY multi_order_days DESC
+        LIMIT 3
+      `).all(userId);
+
+      for (const pattern of rushPatterns) {
+        const estimatedExtraCost = pattern.multi_order_days * 1500; // ~$15 per extra order
+
+        insights.push({
+          insight_type: 'rush_orders',
+          vendor_name: pattern.vendor_name,
+          title: `🚨 Multiple same-day orders to ${this.truncate(pattern.vendor_name, 18)}`,
+          detail: `You placed ${pattern.total_orders} orders across ${pattern.multi_order_days} days with multiple orders each. ` +
+                  `This costs ~$${(estimatedExtraCost / 100).toFixed(0)} extra in processing/delivery. ` +
+                  `Plan ahead to consolidate.`,
+          urgency: pattern.multi_order_days >= 4 ? 'high' : 'medium',
+          estimated_value_cents: estimatedExtraCost,
+          confidence_score: 85,
+          reasoning: {
+            vendor: pattern.vendor_name,
+            multi_order_days: pattern.multi_order_days,
+            total_orders: pattern.total_orders,
+            avg_daily_spend_cents: Math.round(pattern.avg_daily_spend)
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Rush order detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Detect cost creep - per-unit costs slowly increasing over time
+   * Subtle increases that go unnoticed but add up significantly
+   */
+  detectCostCreep(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const costTrends = database.prepare(`
+        WITH monthly_prices AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            strftime('%Y-%m', ir.created_at) as month,
+            AVG(ii.unit_price_cents) as avg_price,
+            SUM(ii.quantity) as monthly_qty
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku, strftime('%Y-%m', ir.created_at)
+        ),
+        sku_trends AS (
+          SELECT
+            sku,
+            description,
+            vendor_name,
+            COUNT(*) as months_tracked,
+            MIN(CASE WHEN month = (SELECT MIN(month) FROM monthly_prices mp2 WHERE mp2.sku = monthly_prices.sku) THEN avg_price END) as first_price,
+            MAX(CASE WHEN month = (SELECT MAX(month) FROM monthly_prices mp3 WHERE mp3.sku = monthly_prices.sku) THEN avg_price END) as last_price,
+            AVG(monthly_qty) as avg_monthly_qty
+          FROM monthly_prices
+          GROUP BY sku
+          HAVING months_tracked >= 2
+        )
+        SELECT *,
+          (last_price - first_price) * 1.0 / first_price as price_increase_pct,
+          (last_price - first_price) as price_increase_cents
+        FROM sku_trends
+        WHERE last_price > first_price
+          AND (last_price - first_price) * 1.0 / first_price > 0.05
+          AND avg_monthly_qty > 1
+        ORDER BY (last_price - first_price) * avg_monthly_qty DESC
+        LIMIT 3
+      `).all(userId);
+
+      for (const item of costTrends) {
+        const increasePct = Math.round(item.price_increase_pct * 100);
+        const monthlyImpact = Math.round(item.price_increase_cents * item.avg_monthly_qty);
+
+        insights.push({
+          insight_type: 'cost_creep',
+          sku: item.sku,
+          description: item.description,
+          vendor_name: item.vendor_name,
+          title: `📈 ${this.truncate(item.description || item.sku, 22)}: +${increasePct}% cost creep`,
+          detail: `Unit price rose from $${(item.first_price / 100).toFixed(2)} to $${(item.last_price / 100).toFixed(2)} ` +
+                  `over ${item.months_tracked} months. That's ~$${(monthlyImpact / 100).toFixed(0)}/month extra. ` +
+                  `Negotiate or find alternatives.`,
+          urgency: increasePct > 15 ? 'high' : 'medium',
+          estimated_value_cents: monthlyImpact * 3, // 3-month impact
+          confidence_score: Math.min(85, 55 + item.months_tracked * 10),
+          reasoning: {
+            first_price_cents: Math.round(item.first_price),
+            last_price_cents: Math.round(item.last_price),
+            increase_percent: increasePct,
+            months_tracked: item.months_tracked,
+            monthly_qty: Math.round(item.avg_monthly_qty),
+            monthly_impact_cents: monthlyImpact
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Cost creep detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Detect spend concentration - too much spend in one category
+   * Helps identify areas to focus cost reduction efforts
+   */
+  detectSpendConcentration(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const categorySpend = database.prepare(`
+        SELECT
+          ii.category,
+          SUM(ii.total_cents) as category_spend,
+          COUNT(DISTINCT ii.sku) as unique_items,
+          COUNT(*) as line_count
+        FROM invoice_items ii
+        JOIN ingestion_runs ir ON ii.run_id = ir.id
+        WHERE ir.user_id = ?
+          AND ir.status = 'completed'
+          AND ii.category IS NOT NULL AND ii.category != '' AND ii.category != 'general'
+          AND ir.created_at >= date('now', '-30 days')
+          ${vendorExclusion}
+        GROUP BY ii.category
+        ORDER BY category_spend DESC
+      `).all(userId);
+
+      if (categorySpend.length < 2) return insights;
+
+      const totalSpend = categorySpend.reduce((sum, c) => sum + c.category_spend, 0);
+      const topCategory = categorySpend[0];
+      const topCategoryPct = (topCategory.category_spend / totalSpend) * 100;
+
+      if (topCategoryPct >= 50 && totalSpend > 50000) { // >50% in one category and >$500 total
+        const potentialSavings = Math.round(topCategory.category_spend * 0.05); // 5% potential negotiation
+
+        insights.push({
+          insight_type: 'spend_concentration',
+          title: `🎯 ${Math.round(topCategoryPct)}% of spend in ${topCategory.category}`,
+          detail: `$${(topCategory.category_spend / 100).toLocaleString()} spent on ${topCategory.category} ` +
+                  `(${topCategory.unique_items} items). This category is your biggest cost driver. ` +
+                  `Even 5% savings here = $${(potentialSavings / 100).toFixed(0)}.`,
+          urgency: topCategoryPct >= 65 ? 'high' : 'medium',
+          estimated_value_cents: potentialSavings,
+          confidence_score: 80,
+          reasoning: {
+            top_category: topCategory.category,
+            category_spend_cents: topCategory.category_spend,
+            category_percent: Math.round(topCategoryPct),
+            unique_items: topCategory.unique_items,
+            total_spend_cents: totalSpend,
+            category_count: categorySpend.length
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Spend concentration detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Detect duplicate items - potentially same item under different SKUs
+   * Uses description similarity and price proximity
+   */
+  detectDuplicateItems(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      // Get items with similar descriptions from different vendors
+      const potentialDupes = database.prepare(`
+        WITH item_summary AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            AVG(ii.unit_price_cents) as avg_price,
+            SUM(ii.quantity) as total_qty,
+            COUNT(*) as order_count
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.description IS NOT NULL AND LENGTH(ii.description) > 10
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku
+          HAVING order_count >= 2
+        )
+        SELECT
+          a.sku as sku_a,
+          a.description as desc_a,
+          a.vendor_name as vendor_a,
+          a.avg_price as price_a,
+          b.sku as sku_b,
+          b.description as desc_b,
+          b.vendor_name as vendor_b,
+          b.avg_price as price_b,
+          ABS(a.avg_price - b.avg_price) as price_diff
+        FROM item_summary a
+        JOIN item_summary b ON a.sku < b.sku
+        WHERE a.vendor_name != b.vendor_name
+          AND (
+            LOWER(SUBSTR(a.description, 1, 15)) = LOWER(SUBSTR(b.description, 1, 15))
+            OR ABS(a.avg_price - b.avg_price) < a.avg_price * 0.1
+          )
+          AND ABS(a.avg_price - b.avg_price) / MAX(a.avg_price, b.avg_price) < 0.25
+        ORDER BY price_diff ASC
+        LIMIT 3
+      `).all(userId);
+
+      for (const dupe of potentialDupes) {
+        const priceDiff = Math.round(dupe.price_diff);
+        const cheaperVendor = dupe.price_a < dupe.price_b ? dupe.vendor_a : dupe.vendor_b;
+        const cheaperPrice = Math.min(dupe.price_a, dupe.price_b);
+        const moreExpensivePrice = Math.max(dupe.price_a, dupe.price_b);
+
+        insights.push({
+          insight_type: 'duplicate_item',
+          title: `🔀 Possible duplicate: "${this.truncate(dupe.desc_a, 18)}"`,
+          detail: `Similar items from different vendors: ${dupe.vendor_a} ($${(dupe.price_a / 100).toFixed(2)}) vs ` +
+                  `${dupe.vendor_b} ($${(dupe.price_b / 100).toFixed(2)}). ` +
+                  `${cheaperVendor} is ${Math.round((priceDiff / moreExpensivePrice) * 100)}% cheaper.`,
+          urgency: priceDiff > 200 ? 'medium' : 'low',
+          estimated_value_cents: priceDiff * 10, // Assume 10 units
+          confidence_score: 65,
+          reasoning: {
+            item_a: { sku: dupe.sku_a, description: dupe.desc_a, vendor: dupe.vendor_a, price_cents: Math.round(dupe.price_a) },
+            item_b: { sku: dupe.sku_b, description: dupe.desc_b, vendor: dupe.vendor_b, price_cents: Math.round(dupe.price_b) },
+            price_diff_cents: priceDiff,
+            cheaper_vendor: cheaperVendor
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Duplicate item detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Analyze order timing - identify best days to order based on pricing
+   * Some vendors may have better prices on certain days
+   */
+  analyzeOrderTiming(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const excludedVendors = this.config.excludedVendors || [];
+    const exclusionClauses = excludedVendors
+      .map(v => `AND LOWER(vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+      .join(' ');
+
+    try {
+      const timingData = database.prepare(`
+        WITH daily_pricing AS (
+          SELECT
+            strftime('%w', created_at) as day_of_week,
+            COUNT(*) as order_count,
+            SUM(invoice_total_cents) as total_spend,
+            AVG(invoice_total_cents) as avg_order_value
+          FROM ingestion_runs
+          WHERE user_id = ?
+            AND status = 'completed'
+            AND created_at >= date('now', '-90 days')
+            ${exclusionClauses}
+          GROUP BY strftime('%w', created_at)
+          HAVING order_count >= 3
+        )
+        SELECT *,
+          avg_order_value - (SELECT AVG(avg_order_value) FROM daily_pricing) as vs_average
+        FROM daily_pricing
+        ORDER BY avg_order_value ASC
+      `).all(userId);
+
+      if (timingData.length < 3) return insights;
+
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const avgOfAverages = timingData.reduce((sum, d) => sum + d.avg_order_value, 0) / timingData.length;
+      const cheapestDay = timingData[0];
+      const mostExpensiveDay = timingData[timingData.length - 1];
+
+      const savingsPercent = ((mostExpensiveDay.avg_order_value - cheapestDay.avg_order_value) / avgOfAverages) * 100;
+
+      if (savingsPercent > 10) {
+        insights.push({
+          insight_type: 'order_timing',
+          title: `⏰ ${dayNames[cheapestDay.day_of_week]}s have ${Math.round(savingsPercent)}% lower order values`,
+          detail: `Orders on ${dayNames[cheapestDay.day_of_week]} average $${(cheapestDay.avg_order_value / 100).toFixed(0)} vs ` +
+                  `$${(mostExpensiveDay.avg_order_value / 100).toFixed(0)} on ${dayNames[mostExpensiveDay.day_of_week]}. ` +
+                  `Schedule regular orders for ${dayNames[cheapestDay.day_of_week]}s when possible.`,
+          urgency: savingsPercent > 20 ? 'medium' : 'low',
+          estimated_value_cents: Math.round((mostExpensiveDay.avg_order_value - cheapestDay.avg_order_value) * 4), // 4 orders/month
+          confidence_score: Math.min(75, 40 + timingData.reduce((sum, d) => sum + d.order_count, 0)),
+          reasoning: {
+            best_day: dayNames[cheapestDay.day_of_week],
+            best_day_avg_cents: Math.round(cheapestDay.avg_order_value),
+            worst_day: dayNames[mostExpensiveDay.day_of_week],
+            worst_day_avg_cents: Math.round(mostExpensiveDay.avg_order_value),
+            savings_percent: Math.round(savingsPercent),
+            data_points: timingData.reduce((sum, d) => sum + d.order_count, 0)
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Order timing analysis error:', error.message);
     }
 
     return insights;
