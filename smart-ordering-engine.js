@@ -70,6 +70,14 @@ class SmartOrderingEngine {
       // Inactive item threshold
       inactiveItemDays: 60,               // Item not ordered in 60 days
 
+      // Excluded vendors (not inventory - rental services, etc.)
+      // These vendors are excluded from inventory/ordering insights
+      excludedVendors: [
+        'cintas',           // Uniform rental service
+        'unifirst',         // Uniform rental service
+        'aramark uniform',  // Uniform rental service
+      ],
+
       // US Holidays for seasonal prep (month-day format)
       holidays: {
         'new_years': { month: 1, day: 1, prepDays: 7, name: "New Year's" },
@@ -89,6 +97,20 @@ class SmartOrderingEngine {
         'new_years_eve': { month: 12, day: 31, prepDays: 7, name: "New Year's Eve" }
       }
     };
+  }
+
+  /**
+   * Build SQL clause to exclude non-inventory vendors (uniform rentals, etc.)
+   * @param {string} tableAlias - The alias for ingestion_runs table (e.g., 'ir')
+   * @returns {string} SQL clause like "AND LOWER(ir.vendor_name) NOT LIKE '%cintas%'"
+   */
+  getVendorExclusionClause(tableAlias = 'ir') {
+    if (!this.config.excludedVendors || this.config.excludedVendors.length === 0) {
+      return '';
+    }
+    return this.config.excludedVendors
+      .map(v => `AND LOWER(${tableAlias}.vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+      .join(' ');
   }
 
   /**
@@ -146,6 +168,7 @@ class SmartOrderingEngine {
   analyzeReorderPatterns(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const orderHistory = database.prepare(`
@@ -162,6 +185,7 @@ class SmartOrderingEngine {
           AND ir.status = 'completed'
           AND ii.sku IS NOT NULL AND ii.sku != ''
           AND ir.created_at >= date('now', '-' || ? || ' days')
+          ${vendorExclusion}
         GROUP BY ii.sku, DATE(ir.created_at)
         ORDER BY ii.sku, ir.created_at
       `).all(userId, this.config.analysisWindowDays);
@@ -247,6 +271,11 @@ class SmartOrderingEngine {
   analyzeDayOfWeekPatterns(userId) {
     const database = db.getDatabase();
     const insights = [];
+    // Get vendor exclusion patterns for direct query
+    const excludedVendors = this.config.excludedVendors || [];
+    const exclusionClauses = excludedVendors
+      .map(v => `AND LOWER(vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+      .join(' ');
 
     try {
       // Get day-of-week distribution
@@ -259,6 +288,7 @@ class SmartOrderingEngine {
         WHERE user_id = ?
           AND status = 'completed'
           AND created_at >= date('now', '-60 days')
+          ${exclusionClauses}
         GROUP BY strftime('%w', created_at)
         ORDER BY order_count DESC
       `).all(userId);
@@ -310,6 +340,7 @@ class SmartOrderingEngine {
   analyzeSeasonalDemand(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const today = new Date();
@@ -335,6 +366,7 @@ class SmartOrderingEngine {
               AND ir.status = 'completed'
               AND ir.created_at >= date('now', '-1 year', '-' || ? || ' days')
               AND ir.created_at <= date('now', '-1 year', '+' || ? || ' days')
+              ${vendorExclusion}
             GROUP BY ir.vendor_name
             ORDER BY total_spend_cents DESC
             LIMIT 3
@@ -399,6 +431,7 @@ class SmartOrderingEngine {
   detectPriceAnomalies(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const priceAnomalies = database.prepare(`
@@ -421,6 +454,7 @@ class SmartOrderingEngine {
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ii.unit_price_cents > 0
             AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
         )
         SELECT
           sku,
@@ -475,6 +509,7 @@ class SmartOrderingEngine {
   detectPriceDrops(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const priceDrops = database.prepare(`
@@ -493,6 +528,7 @@ class SmartOrderingEngine {
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ii.unit_price_cents > 0
             AND ir.created_at >= date('now', '-14 days')
+            ${vendorExclusion}
         ),
         historical_prices AS (
           SELECT
@@ -507,6 +543,7 @@ class SmartOrderingEngine {
             AND ii.unit_price_cents > 0
             AND ir.created_at >= date('now', '-90 days')
             AND ir.created_at < date('now', '-14 days')
+            ${vendorExclusion}
           GROUP BY ii.sku
           HAVING order_count >= 2
         )
@@ -566,6 +603,7 @@ class SmartOrderingEngine {
   compareVendorPrices(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const vendorComparisons = database.prepare(`
@@ -584,6 +622,7 @@ class SmartOrderingEngine {
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ii.unit_price_cents > 0
             AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
           GROUP BY ii.sku, ir.vendor_name
           HAVING order_count >= 2
         ),
@@ -651,6 +690,7 @@ class SmartOrderingEngine {
   analyzeCategorySpending(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const categoryTrends = database.prepare(`
@@ -666,6 +706,7 @@ class SmartOrderingEngine {
             AND ir.status = 'completed'
             AND ii.category IS NOT NULL AND ii.category != '' AND ii.category != 'general'
             AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
           GROUP BY ii.category, strftime('%Y-%m', ir.created_at)
         ),
         category_trends AS (
@@ -737,6 +778,7 @@ class SmartOrderingEngine {
   detectBulkOpportunities(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const frequentOrders = database.prepare(`
@@ -756,6 +798,7 @@ class SmartOrderingEngine {
           AND ir.status = 'completed'
           AND ii.sku IS NOT NULL AND ii.sku != ''
           AND ir.created_at >= date('now', '-' || ? || ' days')
+          ${vendorExclusion}
         GROUP BY ii.sku
         HAVING order_count >= ?
       `).all(userId, this.config.analysisWindowDays, this.config.minOrdersForBulkAnalysis);
@@ -809,8 +852,15 @@ class SmartOrderingEngine {
   detectVendorConsolidation(userId) {
     const database = db.getDatabase();
     const insights = [];
+    // Get vendor exclusion patterns for direct query
+    const excludedVendors = this.config.excludedVendors || [];
 
     try {
+      // Build exclusion clause for direct ingestion_runs query
+      const exclusionClauses = excludedVendors
+        .map(v => `AND LOWER(vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+        .join(' ');
+
       const vendorOrders = database.prepare(`
         SELECT
           vendor_name,
@@ -823,6 +873,7 @@ class SmartOrderingEngine {
           AND status = 'completed'
           AND vendor_name IS NOT NULL AND vendor_name != 'Unknown Vendor'
           AND created_at >= date('now', '-30 days')
+          ${exclusionClauses}
         GROUP BY vendor_name
         HAVING order_days >= 3
         ORDER BY order_days DESC
@@ -875,6 +926,7 @@ class SmartOrderingEngine {
   detectUsageChanges(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const usageChanges = database.prepare(`
@@ -892,6 +944,7 @@ class SmartOrderingEngine {
             AND ir.status = 'completed'
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ir.created_at >= date('now', '-30 days')
+            ${vendorExclusion}
           GROUP BY ii.sku
         ),
         prior AS (
@@ -906,6 +959,7 @@ class SmartOrderingEngine {
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ir.created_at >= date('now', '-60 days')
             AND ir.created_at < date('now', '-30 days')
+            ${vendorExclusion}
           GROUP BY ii.sku
         )
         SELECT
@@ -975,6 +1029,7 @@ class SmartOrderingEngine {
   detectOverOrdering(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       // Look for items where ordering quantity is growing faster than a sustainable rate
@@ -993,6 +1048,7 @@ class SmartOrderingEngine {
             AND ir.status = 'completed'
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
           GROUP BY ii.sku, strftime('%Y-%m', ir.created_at)
         ),
         sku_trends AS (
@@ -1052,6 +1108,7 @@ class SmartOrderingEngine {
   detectInactiveItems(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const inactiveItems = database.prepare(`
@@ -1070,6 +1127,7 @@ class SmartOrderingEngine {
             AND ir.status = 'completed'
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ir.created_at >= date('now', '-180 days')
+            ${vendorExclusion}
           GROUP BY ii.sku
           HAVING total_orders >= 3
         )
@@ -1117,6 +1175,11 @@ class SmartOrderingEngine {
   analyzeBudgetPacing(userId) {
     const database = db.getDatabase();
     const insights = [];
+    // Get vendor exclusion patterns for direct query
+    const excludedVendors = this.config.excludedVendors || [];
+    const exclusionClauses = excludedVendors
+      .map(v => `AND LOWER(vendor_name) NOT LIKE '%${v.toLowerCase()}%'`)
+      .join(' ');
 
     try {
       const budgetPacing = database.prepare(`
@@ -1128,6 +1191,7 @@ class SmartOrderingEngine {
           WHERE user_id = ?
             AND status = 'completed'
             AND created_at >= date('now', '-90 days')
+            ${exclusionClauses}
           GROUP BY strftime('%Y-%m', created_at)
         ),
         current_month AS (
@@ -1138,6 +1202,7 @@ class SmartOrderingEngine {
           WHERE user_id = ?
             AND status = 'completed'
             AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
+            ${exclusionClauses}
         )
         SELECT
           cm.mtd_total,
@@ -1185,6 +1250,7 @@ class SmartOrderingEngine {
   forecastUsage(userId) {
     const database = db.getDatabase();
     const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
 
     try {
       const trendingItems = database.prepare(`
@@ -1202,6 +1268,7 @@ class SmartOrderingEngine {
             AND ir.status = 'completed'
             AND ii.sku IS NOT NULL AND ii.sku != ''
             AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
           GROUP BY ii.sku, strftime('%Y-%m', ir.created_at)
         ),
         sku_trends AS (
