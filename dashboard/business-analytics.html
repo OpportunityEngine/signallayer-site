@@ -3253,7 +3253,246 @@
 
     function refreshRecommendations() {
       showToast('Refreshing recommendations...', 'info');
-      // TODO: Load actual recommendations when API is available
+      loadSmartOrderingInsights();
+    }
+
+    // ===== SMART ORDERING AI INSIGHTS =====
+    async function loadSmartOrderingInsights() {
+      try {
+        const response = await fetch('/api/bi/smart-ordering?limit=20', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          renderSmartOrderingInsights(result.data, result.summary);
+        } else {
+          renderSmartOrderingEmptyState();
+        }
+      } catch (error) {
+        console.error('[Smart Ordering] Failed to load insights:', error);
+        renderSmartOrderingEmptyState();
+      }
+    }
+
+    function renderSmartOrderingInsights(insights, summary) {
+      // Update stat tiles
+      const savingsEl = document.getElementById('recommendationsSavings');
+      const countEl = document.getElementById('recommendationsCount');
+      const executedEl = document.getElementById('recommendationsExecuted');
+      const accuracyEl = document.getElementById('recommendationsAccuracy');
+
+      if (summary) {
+        // Potential Savings (from all insights with estimated_value_cents)
+        const totalSavings = summary.total_potential_savings_cents || 0;
+        if (savingsEl) savingsEl.textContent = `$${(totalSavings / 100).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+
+        // Active Recommendations
+        if (countEl) countEl.textContent = summary.total_insights || insights.length;
+
+        // Executed This Month (tracked in localStorage for now)
+        const executedThisMonth = getExecutedRecommendationsCount();
+        if (executedEl) executedEl.textContent = executedThisMonth;
+
+        // Accuracy Score (average confidence of insights)
+        const avgConfidence = insights.length > 0
+          ? Math.round(insights.reduce((sum, i) => sum + (i.confidence_score || 75), 0) / insights.length)
+          : 0;
+        if (accuracyEl) accuracyEl.textContent = avgConfidence > 0 ? `${avgConfidence}%` : '--';
+      }
+
+      // Render insights list
+      const listEl = document.getElementById('recommendationsList');
+      if (!listEl) return;
+
+      if (!insights || insights.length === 0) {
+        renderSmartOrderingEmptyState();
+        return;
+      }
+
+      const insightIcons = {
+        // TIMING & REORDERING
+        'reorder_prediction': '🔄',
+        'day_pattern': '📅',
+        'seasonal_demand': '🎉',
+        // PRICING & COST
+        'price_anomaly': '⚠️',
+        'price_drop': '💰',
+        'vendor_comparison': '🔍',
+        'category_trend': '📊',
+        // ORDERING OPTIMIZATION
+        'bulk_consolidation': '📦',
+        'vendor_consolidation': '🤝',
+        // INVENTORY & WASTE
+        'low_stock_risk': '⚡',
+        'over_ordering': '🗑️',
+        'inactive_item': '❓',
+        'usage_forecast': '📈',
+        // BUSINESS INTELLIGENCE
+        'budget_pacing': '💸'
+      };
+
+      const urgencyColors = {
+        'critical': { bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+        'high': { bg: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
+        'medium': { bg: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' },
+        'low': { bg: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
+        'info': { bg: 'rgba(100, 116, 139, 0.15)', color: '#64748b', border: 'rgba(100, 116, 139, 0.3)' }
+      };
+
+      const categoryLabels = {
+        'reorder_prediction': 'Reorder',
+        'day_pattern': 'Timing',
+        'seasonal_demand': 'Seasonal',
+        'price_anomaly': 'Price Alert',
+        'price_drop': 'Price Drop',
+        'vendor_comparison': 'Compare',
+        'category_trend': 'Trending',
+        'bulk_consolidation': 'Bulk Save',
+        'vendor_consolidation': 'Consolidate',
+        'low_stock_risk': 'Low Stock',
+        'over_ordering': 'Over Order',
+        'inactive_item': 'Inactive',
+        'usage_forecast': 'Forecast',
+        'budget_pacing': 'Budget'
+      };
+
+      listEl.innerHTML = insights.slice(0, 10).map(insight => {
+        const icon = insightIcons[insight.insight_type] || '💡';
+        const urgency = urgencyColors[insight.urgency] || urgencyColors.info;
+        const category = categoryLabels[insight.insight_type] || insight.insight_type;
+        const savingsText = insight.estimated_value_cents > 0
+          ? `<span style="color: #22c55e; font-weight: 600;">Save $${(insight.estimated_value_cents / 100).toFixed(0)}</span>`
+          : '';
+        const qtyText = insight.suggested_quantity
+          ? `<span style="color: var(--muted2); font-size: 11px;">Suggested qty: ${insight.suggested_quantity}</span>`
+          : '';
+        const confidenceText = insight.confidence_score
+          ? `<span style="color: var(--muted2); font-size: 11px;">${insight.confidence_score}% confidence</span>`
+          : '';
+
+        return `
+          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: var(--panel2); border-radius: 10px; border: 1px solid ${urgency.border}; transition: all 0.2s;" class="recommendation-card">
+            <div style="font-size: 24px; flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: ${urgency.bg}; border-radius: 10px;">
+              ${icon}
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text);">${escapeHtml(insight.title)}</span>
+                <span style="font-size: 10px; padding: 2px 8px; border-radius: 20px; background: ${urgency.bg}; color: ${urgency.color}; text-transform: uppercase; letter-spacing: 0.5px;">${category}</span>
+              </div>
+              <div style="font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px;">${escapeHtml(insight.detail)}</div>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                ${savingsText}
+                ${qtyText}
+                ${confidenceText}
+              </div>
+            </div>
+            <div style="flex-shrink: 0; display: flex; gap: 6px;">
+              <button onclick="markRecommendationExecuted('${insight.insight_type}', '${escapeHtml(insight.sku || '')}')" style="padding: 6px 12px; font-size: 11px; background: var(--green); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Mark as executed">✓</button>
+              <button onclick="dismissRecommendation('${insight.insight_type}', '${escapeHtml(insight.sku || '')}')" style="padding: 6px 12px; font-size: 11px; background: var(--panel); color: var(--muted); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Dismiss">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Update status badge
+      const statusEl = document.getElementById('recommendationsStatus');
+      if (statusEl) {
+        const highPriority = insights.filter(i => i.urgency === 'critical' || i.urgency === 'high').length;
+        if (highPriority > 0) {
+          statusEl.textContent = `${highPriority} High Priority`;
+          statusEl.style.background = 'rgba(245, 158, 11, 0.15)';
+          statusEl.style.color = '#f59e0b';
+        } else {
+          statusEl.textContent = 'AI-Powered';
+          statusEl.style.background = 'rgba(6, 182, 212, 0.15)';
+          statusEl.style.color = '#06b6d4';
+        }
+      }
+    }
+
+    function renderSmartOrderingEmptyState() {
+      const listEl = document.getElementById('recommendationsList');
+      if (listEl) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <div style="font-size: 48px; margin-bottom: 16px;">🤖</div>
+            <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text);">No recommendations yet</div>
+            <div style="font-size: 13px; color: var(--muted2); max-width: 300px; margin: 0 auto;">Upload more invoices to receive AI-powered cost-saving recommendations based on your spending patterns.</div>
+          </div>
+        `;
+      }
+
+      // Reset stat tiles
+      const savingsEl = document.getElementById('recommendationsSavings');
+      const countEl = document.getElementById('recommendationsCount');
+      const accuracyEl = document.getElementById('recommendationsAccuracy');
+      if (savingsEl) savingsEl.textContent = '$0';
+      if (countEl) countEl.textContent = '0';
+      if (accuracyEl) accuracyEl.textContent = '--';
+    }
+
+    // Track executed recommendations in localStorage
+    function getExecutedRecommendationsCount() {
+      try {
+        const stored = localStorage.getItem('executedRecommendations');
+        if (!stored) return 0;
+        const data = JSON.parse(stored);
+        // Count only this month's executions
+        const now = new Date();
+        const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return (data[thisMonth] || []).length;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function markRecommendationExecuted(type, sku) {
+      try {
+        const stored = localStorage.getItem('executedRecommendations');
+        const data = stored ? JSON.parse(stored) : {};
+        const now = new Date();
+        const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        if (!data[thisMonth]) data[thisMonth] = [];
+        data[thisMonth].push({ type, sku, executedAt: now.toISOString() });
+        localStorage.setItem('executedRecommendations', JSON.stringify(data));
+
+        // Update display
+        const executedEl = document.getElementById('recommendationsExecuted');
+        if (executedEl) executedEl.textContent = getExecutedRecommendationsCount();
+
+        showToast('Recommendation marked as executed!', 'success');
+        loadSmartOrderingInsights(); // Refresh to remove from list
+      } catch (e) {
+        console.error('Failed to mark recommendation:', e);
+      }
+    }
+
+    function dismissRecommendation(type, sku) {
+      try {
+        const stored = localStorage.getItem('dismissedRecommendations');
+        const data = stored ? JSON.parse(stored) : [];
+        data.push({ type, sku, dismissedAt: new Date().toISOString() });
+        localStorage.setItem('dismissedRecommendations', JSON.stringify(data));
+
+        showToast('Recommendation dismissed', 'info');
+        loadSmartOrderingInsights(); // Refresh
+      } catch (e) {
+        console.error('Failed to dismiss recommendation:', e);
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // ===== OAUTH FUNCTIONS =====
@@ -3605,6 +3844,7 @@
     // Initialize
     loadAnalytics();
     loadEmailAutopilotData();
+    loadSmartOrderingInsights();
   </script>
 </body>
 </html>
