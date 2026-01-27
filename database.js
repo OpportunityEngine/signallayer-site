@@ -221,6 +221,10 @@ function initDatabase() {
         console.log('✅ Migration: Added sku column to invoice_items');
       }
 
+      // Add indexes for Smart Ordering analytics (SKU-based queries)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_invoice_items_sku ON invoice_items(sku)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_invoice_items_run_id ON invoice_items(run_id)`);
+
       // Check if inventory_usage needs migration (convert from period-based to daily)
       const usageTableInfo = db.prepare("PRAGMA table_info(inventory_usage)").all();
       const hasDateColumn = usageTableInfo.some(col => col.name === 'date');

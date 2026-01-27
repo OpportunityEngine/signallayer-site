@@ -3933,17 +3933,41 @@
       }
     }
 
-    // AI Insight type icons
+    // AI Insight type icons - comprehensive set for all insight categories
     function getAIInsightIcon(type) {
       const icons = {
+        // Original opportunity types
         'price_increase': '📈',
         'bulk_discount': '📦',
-        'vendor_consolidation': '🤝',
         'quantity_drift': '📊',
         'new_fee': '💰',
         'duplicate_charge': '⚠️',
         'contract_renewal': '📋',
-        'market_opportunity': '🎯'
+        'market_opportunity': '🎯',
+
+        // TIMING & REORDERING
+        'reorder_prediction': '🔄',
+        'day_pattern': '📅',
+        'seasonal_demand': '🎉',
+
+        // PRICING & COST
+        'price_anomaly': '⚠️',
+        'price_drop': '💰',
+        'vendor_comparison': '🔍',
+        'category_trend': '📊',
+
+        // ORDERING OPTIMIZATION
+        'bulk_consolidation': '📦',
+        'vendor_consolidation': '🤝',
+
+        // INVENTORY & WASTE
+        'low_stock_risk': '⚡',
+        'over_ordering': '🗑️',
+        'inactive_item': '❓',
+        'usage_forecast': '📈',
+
+        // BUSINESS INTELLIGENCE
+        'budget_pacing': '💸'
       };
       return icons[type] || '💡';
     }
@@ -3966,52 +3990,77 @@
       const savingsEl = document.getElementById('aiInsightsSavings');
 
       try {
-        // Fetch opportunities (which represent detected insights)
-        const response = await fetch(`${API_BASE}/api/bi/opportunities?status=new&limit=5`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          }
-        });
-
         let insights = [];
         let totalPotentialSavings = 0;
 
-        if (response.ok) {
-          const result = await response.json();
+        // Fetch all insight sources in parallel
+        const [opportunitiesRes, alertsRes, smartOrderingRes] = await Promise.all([
+          fetch(`${API_BASE}/api/bi/opportunities?status=new&limit=3`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          }).catch(() => null),
+          fetch(`${API_BASE}/api/bi/price-alerts?limit=2`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          }).catch(() => null),
+          fetch(`${API_BASE}/api/bi/smart-ordering?limit=3`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+          }).catch(() => null)
+        ]);
+
+        // Process opportunities
+        if (opportunitiesRes?.ok) {
+          const result = await opportunitiesRes.json();
           if (result.success && result.data) {
-            insights = result.data;
-            totalPotentialSavings = insights.reduce((sum, ins) => sum + (ins.estimated_value_cents || 0), 0);
+            insights.push(...result.data.map(opp => ({ ...opp, source: 'opportunity' })));
           }
         }
 
-        // Also fetch price alerts for additional insights
-        try {
-          const alertsResponse = await fetch(`${API_BASE}/api/bi/price-alerts?limit=3`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-            }
-          });
-
-          if (alertsResponse.ok) {
-            const alertsResult = await alertsResponse.json();
-            if (alertsResult.success && alertsResult.data) {
-              // Convert price alerts to insight format
-              const priceAlerts = alertsResult.data.slice(0, 3).map(alert => ({
-                id: 'alert_' + alert.id,
-                title: `Price change detected: ${alert.description || alert.item_name}`,
-                description: `${alert.vendor_name}: ${alert.change_type === 'increase' ? 'Price increased' : 'Price decreased'} by ${alert.change_percent?.toFixed(1) || 0}%`,
-                opportunity_type: 'price_increase',
-                urgency: alert.change_percent > 10 ? 'high' : 'medium',
-                estimated_value_cents: alert.annual_impact_cents || 0,
-                vendor_name: alert.vendor_name
-              }));
-              insights = [...insights, ...priceAlerts].slice(0, 5);
-              totalPotentialSavings = insights.reduce((sum, ins) => sum + (ins.estimated_value_cents || 0), 0);
-            }
+        // Process price alerts
+        if (alertsRes?.ok) {
+          const alertsResult = await alertsRes.json();
+          if (alertsResult.success && alertsResult.data) {
+            const priceAlerts = alertsResult.data.slice(0, 2).map(alert => ({
+              id: 'alert_' + alert.id,
+              title: `Price change detected: ${alert.description || alert.item_name}`,
+              description: `${alert.vendor_name}: ${alert.change_type === 'increase' ? 'Price increased' : 'Price decreased'} by ${alert.change_percent?.toFixed(1) || 0}%`,
+              opportunity_type: 'price_increase',
+              urgency: alert.change_percent > 10 ? 'high' : 'medium',
+              estimated_value_cents: alert.annual_impact_cents || 0,
+              vendor_name: alert.vendor_name,
+              source: 'price_alert'
+            }));
+            insights.push(...priceAlerts);
           }
-        } catch (e) {
-          console.log('[AI Insights] No price alerts available');
         }
+
+        // Process smart ordering insights (NEW)
+        if (smartOrderingRes?.ok) {
+          const orderingResult = await smartOrderingRes.json();
+          if (orderingResult.success && orderingResult.data) {
+            const orderingInsights = orderingResult.data.map(insight => ({
+              id: 'ordering_' + insight.sku + '_' + insight.insight_type,
+              title: insight.title,
+              description: insight.detail,
+              opportunity_type: insight.insight_type,
+              urgency: insight.urgency,
+              estimated_value_cents: insight.estimated_value_cents || 0,
+              vendor_name: insight.vendor_name,
+              suggested_quantity: insight.suggested_quantity,
+              confidence_score: insight.confidence_score,
+              source: 'smart_ordering'
+            }));
+            insights.push(...orderingInsights);
+            // Add bulk consolidation savings to total
+            totalPotentialSavings += orderingResult.summary?.total_potential_savings_cents || 0;
+          }
+        }
+
+        // Sort by urgency and limit to 5
+        const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        insights.sort((a, b) => (urgencyOrder[a.urgency] || 4) - (urgencyOrder[b.urgency] || 4));
+        insights = insights.slice(0, 5);
+
+        // Calculate total potential savings
+        totalPotentialSavings += insights.reduce((sum, ins) => sum + (ins.estimated_value_cents || 0), 0);
 
         // Update header badges
         if (countEl) countEl.textContent = `${insights.length} Insight${insights.length !== 1 ? 's' : ''}`;
@@ -4023,7 +4072,7 @@
             <div style="text-align: center; padding: 32px; color: rgba(255,255,255,0.5);">
               <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
               <div style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 4px;">All Caught Up!</div>
-              <div style="font-size: 12px;">Upload invoices to get AI-powered insights about your spending patterns.</div>
+              <div style="font-size: 12px;">Upload invoices to get AI-powered ordering insights.</div>
             </div>
           `;
           return;
@@ -4032,17 +4081,31 @@
         container.innerHTML = insights.map(insight => {
           const colors = getUrgencyColor(insight.urgency);
           const icon = getAIInsightIcon(insight.opportunity_type);
-          const savings = insight.estimated_value_cents > 0
-            ? `<span style="color: #22c55e; font-weight: 600;">$${(insight.estimated_value_cents / 100).toLocaleString()}</span> potential savings`
-            : '';
+
+          // Customize savings text based on insight type
+          let savingsText = '';
+          if (insight.estimated_value_cents > 0) {
+            const label = insight.source === 'smart_ordering' && insight.opportunity_type === 'bulk_consolidation'
+              ? 'potential savings'
+              : insight.source === 'smart_ordering'
+                ? 'estimated value'
+                : 'potential savings';
+            savingsText = `<span style="color: #22c55e; font-weight: 600;">$${(insight.estimated_value_cents / 100).toLocaleString()}</span> ${label}`;
+          }
+
+          // Add suggested quantity badge for ordering insights
+          let quantityHint = '';
+          if (insight.suggested_quantity && insight.source === 'smart_ordering') {
+            quantityHint = `<span style="background: rgba(6, 182, 212, 0.15); color: #06b6d4; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px;">Suggest: ${insight.suggested_quantity} units</span>`;
+          }
 
           return `
             <div style="background: ${colors.bg}; padding: 14px 16px; border-radius: 10px; border: 1px solid ${colors.border}; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
               <div style="font-size: 22px; flex-shrink: 0; margin-top: 2px;">${icon}</div>
               <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 600; color: #ffffff; font-size: 13px; margin-bottom: 4px; line-height: 1.4;">${escapeHtml(insight.title || 'Insight detected')}</div>
+                <div style="font-weight: 600; color: #ffffff; font-size: 13px; margin-bottom: 4px; line-height: 1.4;">${escapeHtml(insight.title || 'Insight detected')}${quantityHint}</div>
                 <div style="font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.5;">${escapeHtml(insight.description || '')}</div>
-                ${savings ? `<div style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.5);">💰 ${savings}</div>` : ''}
+                ${savingsText ? `<div style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.5);">💰 ${savingsText}</div>` : ''}
               </div>
               ${insight.urgency === 'critical' || insight.urgency === 'high' ? `
                 <span style="background: ${colors.bg}; color: ${colors.text}; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; flex-shrink: 0;">${insight.urgency}</span>
@@ -4051,7 +4114,7 @@
           `;
         }).join('');
 
-        console.log('[AI Insights] Loaded', insights.length, 'insights');
+        console.log('[AI Insights] Loaded', insights.length, 'insights (including smart ordering)');
 
       } catch (error) {
         console.error('[AI Insights] Failed to load:', error);

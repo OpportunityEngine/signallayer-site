@@ -1908,4 +1908,100 @@ router.get('/inventory/export-po', (req, res) => {
   }
 });
 
+// =====================================================
+// SMART ORDERING ENDPOINTS
+// =====================================================
+
+const SmartOrderingEngine = require('./smart-ordering-engine');
+const smartOrderingEngine = new SmartOrderingEngine();
+
+// GET /api/bi/smart-ordering - Get smart ordering insights
+router.get('/smart-ordering', async (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { type, limit = 10, urgency } = req.query;
+
+    // Generate insights
+    const allInsights = await smartOrderingEngine.generateInsights(user.id);
+
+    // Filter by type if specified
+    let filtered = allInsights;
+    if (type) {
+      filtered = filtered.filter(i => i.insight_type === type);
+    }
+    if (urgency) {
+      filtered = filtered.filter(i => i.urgency === urgency);
+    }
+
+    // Sort by urgency then confidence
+    const urgencyOrder = { high: 0, medium: 1, low: 2 };
+    filtered.sort((a, b) => {
+      const urgencyDiff = (urgencyOrder[a.urgency] || 3) - (urgencyOrder[b.urgency] || 3);
+      if (urgencyDiff !== 0) return urgencyDiff;
+      return (b.confidence_score || 0) - (a.confidence_score || 0);
+    });
+
+    // Apply limit
+    const limited = filtered.slice(0, parseInt(limit));
+
+    // Calculate summary stats
+    const summary = {
+      total_insights: allInsights.length,
+      by_type: {
+        reorder_prediction: allInsights.filter(i => i.insight_type === 'reorder_prediction').length,
+        bulk_consolidation: allInsights.filter(i => i.insight_type === 'bulk_consolidation').length,
+        usage_forecast: allInsights.filter(i => i.insight_type === 'usage_forecast').length,
+        low_stock_risk: allInsights.filter(i => i.insight_type === 'low_stock_risk').length
+      },
+      by_urgency: {
+        high: allInsights.filter(i => i.urgency === 'high').length,
+        medium: allInsights.filter(i => i.urgency === 'medium').length,
+        low: allInsights.filter(i => i.urgency === 'low').length
+      },
+      total_potential_savings_cents: allInsights
+        .filter(i => i.insight_type === 'bulk_consolidation')
+        .reduce((sum, i) => sum + (i.estimated_value_cents || 0), 0)
+    };
+
+    res.json({
+      success: true,
+      data: limited,
+      summary,
+      generated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[BI] Smart ordering error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/smart-ordering/summary - Quick summary for dashboard widgets
+router.get('/smart-ordering/summary', async (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const insights = await smartOrderingEngine.generateInsights(user.id);
+
+    const summary = {
+      reorder_alerts: insights.filter(i =>
+        i.insight_type === 'reorder_prediction' && i.urgency !== 'low'
+      ).length,
+      bulk_opportunities: insights.filter(i =>
+        i.insight_type === 'bulk_consolidation'
+      ).length,
+      potential_savings_cents: insights
+        .filter(i => i.insight_type === 'bulk_consolidation')
+        .reduce((sum, i) => sum + (i.estimated_value_cents || 0), 0),
+      usage_alerts: insights.filter(i =>
+        i.insight_type === 'low_stock_risk' || i.insight_type === 'usage_forecast'
+      ).length,
+      high_priority_count: insights.filter(i => i.urgency === 'high').length
+    };
+
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('[BI] Smart ordering summary error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
