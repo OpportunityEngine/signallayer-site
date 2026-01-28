@@ -20,6 +20,33 @@ const { extractRightAnchoredPrices, extractLeftAnchoredQuantity, detectHeaderRow
  * Universal invoice patterns that work across many vendors
  */
 const UNIVERSAL_PATTERNS = [
+  // ===== SAP/ERP TABULAR FORMATS (Buckeye, industrial suppliers) =====
+  // Format: [LineNo] [SKU] [Description] [Price] [Currency] [Qty] [Unit] [Total]
+  // Example: 000010 50015000 BLUE AP 79.27 USD 1 EA 79.27
+  {
+    name: 'sap-line-sku-desc-price-qty-total',
+    regex: /^0{3,}\d{2,3}\s+(\d{6,10})\s+(.{3,}?)\s+([\d,]+\.\d{2})\s*(?:USD|EUR|CAD)?\s+(\d{1,4})\s*(?:EA|CS|BX|PK|GL|LB|UN|PC)?\s+([\d,]+\.\d{2})\s*$/i,
+    extract: (m) => ({
+      sku: m[1],
+      description: m[2].trim(),
+      unitPriceCents: parseMoney(m[3]),
+      qty: parseInt(m[4]),
+      lineTotalCents: parseMoney(m[5])
+    })
+  },
+  // Simplified SAP format without explicit currency/unit
+  // Example: 000010 50015000 BLUE AP 79.27 1 79.27
+  {
+    name: 'sap-line-sku-desc-price-qty-total-simple',
+    regex: /^0{3,}\d{2,3}\s+(\d{6,10})\s+(.{3,}?)\s+([\d,]+\.\d{2})\s+(\d{1,4})\s+([\d,]+\.\d{2})\s*$/,
+    extract: (m) => ({
+      sku: m[1],
+      description: m[2].trim(),
+      unitPriceCents: parseMoney(m[3]),
+      qty: parseInt(m[4]),
+      lineTotalCents: parseMoney(m[5])
+    })
+  },
   // [Qty] [Description] [Unit Price] [Extended]
   {
     name: 'qty-desc-price-ext',
@@ -61,6 +88,61 @@ const UNIVERSAL_PATTERNS = [
     name: 'tab-delimited',
     regex: /^([^\t]+)\t([^\t]+)\t(\d+)\t\$?([\d,]+\.?\d*)\t\$?([\d,]+\.\d{2})$/,
     extract: (m) => ({ sku: m[1].trim(), description: m[2].trim(), qty: parseInt(m[3]), unitPriceCents: parseMoney(m[4]), lineTotalCents: parseMoney(m[5]) })
+  },
+  // ===== CLEANING/JANITORIAL SUPPLY FORMATS =====
+  // Format: Description ending with price and qty unit
+  // Example: BLUE AP 79.27 1 EA
+  {
+    name: 'desc-price-qty-unit',
+    regex: /^(.{3,}?)\s+([\d,]+\.\d{2})\s+(\d{1,3})\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL)\s*$/i,
+    extract: (m) => ({
+      description: m[1].trim(),
+      unitPriceCents: parseMoney(m[2]),
+      qty: parseInt(m[3]),
+      lineTotalCents: parseMoney(m[2]) * parseInt(m[3])
+    })
+  },
+  // Format with SKU prefix: [SKU] Description [Unit] [Qty] [Price] [Total]
+  // Example: 50015000 BLUE AP EA 1 79.27 79.27
+  {
+    name: 'sku-desc-unit-qty-price-total',
+    regex: /^(\d{6,10})\s+(.{3,}?)\s+(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL)\s+(\d{1,3})\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\s*$/i,
+    extract: (m) => ({
+      sku: m[1],
+      description: m[2].trim(),
+      qty: parseInt(m[3]),
+      unitPriceCents: parseMoney(m[4]),
+      lineTotalCents: parseMoney(m[5])
+    })
+  },
+  // Generic: Extract any line with at least description + price pattern
+  // Handles messy PDF extraction where structure is unclear
+  {
+    name: 'desc-with-trailing-price',
+    regex: /^([A-Z][A-Z0-9\s\-\/&]+?)\s+([\d,]+\.\d{2})\s*$/i,
+    extract: (m) => ({
+      description: m[1].trim().replace(/\s+/g, ' '),
+      qty: 1,
+      unitPriceCents: parseMoney(m[2]),
+      lineTotalCents: parseMoney(m[2])
+    })
+  },
+  // Two prices at end (unit price and total)
+  // Example: PRODUCT NAME 5.99 11.98
+  {
+    name: 'desc-two-prices',
+    regex: /^([A-Z][A-Z0-9\s\-\/&]+?)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\s*$/i,
+    extract: (m) => {
+      const unitPrice = parseMoney(m[2]);
+      const lineTotal = parseMoney(m[3]);
+      const inferredQty = unitPrice > 0 ? Math.round(lineTotal / unitPrice) : 1;
+      return {
+        description: m[1].trim().replace(/\s+/g, ' '),
+        qty: (inferredQty >= 1 && inferredQty <= 100) ? inferredQty : 1,
+        unitPriceCents: unitPrice,
+        lineTotalCents: lineTotal
+      };
+    }
   }
 ];
 

@@ -452,11 +452,347 @@ function extractGenericAdjustments(text, lines) {
 }
 
 /**
+ * Reconstruct multi-line SAP tabular data
+ * PDF extraction often splits columns across multiple lines:
+ *   000010
+ *   50015000
+ *   BLUE AP
+ *   79.27 USD
+ *   1 EA
+ *   79.27
+ *
+ * This function groups lines by SAP line numbers and reconstructs them
+ */
+function reconstructSAPMultilineItems(lines) {
+  const reconstructed = [];
+  let currentGroup = [];
+  let currentLineNumber = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Check if this is a new SAP line number
+    const lineNumMatch = line.match(/^(0{3,}\d{2,3})(?:\s|$)/);
+    if (lineNumMatch) {
+      // Save previous group
+      if (currentGroup.length > 0 && currentLineNumber) {
+        reconstructed.push({
+          lineNumber: currentLineNumber,
+          parts: currentGroup,
+          combined: currentGroup.join(' ')
+        });
+      }
+      // Start new group
+      currentLineNumber = lineNumMatch[1];
+      currentGroup = [line.replace(lineNumMatch[0], '').trim()].filter(p => p);
+    } else if (currentLineNumber) {
+      // Skip obvious non-item lines
+      if (/^(ITEM|MATERIAL|DESCRIPTION|QTY|PRICE|AMOUNT|PAGE|\*+|=+|-+)/i.test(line)) continue;
+      if (/^(SUB)?TOTAL/i.test(line)) continue;
+
+      // Add to current group (if it contains useful data)
+      if (line.length > 0 && !/^\s*$/.test(line)) {
+        currentGroup.push(line);
+      }
+    }
+
+    // Check if we should close the group (next line is a new item or totals section)
+    const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+    if (currentGroup.length > 0 && (
+      /^0{3,}\d{2,3}(?:\s|$)/.test(nextLine) ||
+      /^(SUB)?TOTAL/i.test(nextLine) ||
+      /^(NET\s+VALUE|INVOICE\s+TOTAL)/i.test(nextLine)
+    )) {
+      if (currentLineNumber) {
+        reconstructed.push({
+          lineNumber: currentLineNumber,
+          parts: currentGroup,
+          combined: currentGroup.join(' ')
+        });
+      }
+      currentGroup = [];
+      currentLineNumber = null;
+    }
+  }
+
+  // Don't forget the last group
+  if (currentGroup.length > 0 && currentLineNumber) {
+    reconstructed.push({
+      lineNumber: currentLineNumber,
+      parts: currentGroup,
+      combined: currentGroup.join(' ')
+    });
+  }
+
+  console.log(`[SAP RECONSTRUCT] Found ${reconstructed.length} potential item groups from ${lines.length} lines`);
+  return reconstructed;
+}
+
+/**
+ * Parse a reconstructed SAP item group into structured line item
+ */
+function parseSAPItemGroup(group) {
+  const combined = group.combined;
+  if (!combined || combined.length < 3) return null;
+
+  // Extract SKU (6-10 digit number, usually first)
+  const skuMatch = combined.match(/\b(\d{6,10})\b/);
+  const sku = skuMatch ? skuMatch[1] : null;
+
+  // Extract all prices (decimal numbers)
+  const priceMatches = [...combined.matchAll(/([\d,]+\.\d{2})/g)].map(m => parseMoney(m[1]));
+
+  if (priceMatches.length === 0) return null;
+
+  // Line total is typically the last price
+  const lineTotalCents = priceMatches[priceMatches.length - 1];
+  // Unit price is second to last, or same as total
+  const unitPriceCents = priceMatches.length >= 2 ? priceMatches[priceMatches.length - 2] : lineTotalCents;
+
+  // Extract quantity - look for pattern like "1 EA", "2 CS", etc.
+  let qty = 1;
+  const qtyMatch = combined.match(/\b(\d{1,3})\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL|GALLON|EACH)\b/i);
+  if (qtyMatch) {
+    qty = parseInt(qtyMatch[1], 10);
+  } else if (unitPriceCents > 0 && lineTotalCents > unitPriceCents) {
+    // Infer qty from prices
+    const inferredQty = Math.round(lineTotalCents / unitPriceCents);
+    if (inferredQty >= 1 && inferredQty <= 100 && Math.abs(inferredQty * unitPriceCents - lineTotalCents) <= 10) {
+      qty = inferredQty;
+    }
+  }
+
+  // Build description by removing known fields
+  let description = combined
+    .replace(/\b\d{6,10}\b/g, '')                                    // Remove SKU
+    .replace(/[\d,]+\.\d{2}/g, '')                                   // Remove prices
+    .replace(/\b\d{1,3}\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL|GALLON|EACH)\b/gi, '')  // Remove qty+unit
+    .replace(/\b(?:USD|EUR|CAD)\b/gi, '')                            // Remove currency
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // If description is too short, try individual parts
+  if (description.length < 3 && group.parts.length > 0) {
+    // Find the longest text part that looks like a product name
+    for (const part of group.parts) {
+      const cleanPart = part
+        .replace(/\b\d+\b/g, '')
+        .replace(/\b(?:USD|EUR|CAD|EA|CS|BX|PK|GL|LB|UN|PC|GAL)\b/gi, '')
+        .trim();
+      if (cleanPart.length > description.length && /[a-zA-Z]/.test(cleanPart)) {
+        description = cleanPart;
+      }
+    }
+  }
+
+  if (description.length < 2 || lineTotalCents <= 0 || lineTotalCents > 2000000) {
+    return null;
+  }
+
+  return {
+    type: 'item',
+    sku: sku,
+    description: description,
+    qty: qty,
+    unitPriceCents: unitPriceCents,
+    lineTotalCents: lineTotalCents,
+    raw: combined
+  };
+}
+
+/**
+ * Extract line items using SAP/ERP tabular format
+ * Handles formats like: 000010 50015000 BLUE AP 79.27 USD 1 EA 79.27
+ * Also handles formats with inconsistent spacing from PDF extraction
+ * AND handles multi-line extraction where columns are on separate lines
+ */
+function extractSAPTabularLineItems(text, lines) {
+  const items = [];
+
+  // ===== STRATEGY A: Strict regex patterns =====
+  // Pattern for SAP-style line items:
+  // [LineNo (000010)] [SKU (8 digits)] [Description] ... [Price] [Currency?] [Qty] [Unit?] [Total]
+  const sapLinePattern = /^(0{3,}\d{2,3})\s+(\d{6,10})\s+(.+?)\s+([\d,]+\.\d{2})\s*(?:USD|EUR|CAD)?\s+(\d{1,4})\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL|GALLON)?\s+([\d,]+\.\d{2})\s*$/i;
+
+  // Fallback: Just line number, description with embedded price info
+  const sapFallbackPattern = /^(0{3,}\d{2,3})\s+(\d{6,10})?\s*(.+?)\s+([\d,]+\.\d{2})\s*$/;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+
+    // Skip header lines
+    if (/^(ITEM|MATERIAL|DESCRIPTION|QTY|PRICE|AMOUNT)/i.test(trimmedLine)) continue;
+    if (/^(SUB)?TOTAL/i.test(trimmedLine)) continue;
+
+    // Try SAP pattern first
+    let match = trimmedLine.match(sapLinePattern);
+    if (match) {
+      const sku = match[2];
+      const description = match[3].trim();
+      const unitPriceCents = parseMoney(match[4]);
+      const qty = parseInt(match[5], 10);
+      const lineTotalCents = parseMoney(match[6]);
+
+      if (description.length >= 2 && lineTotalCents > 0) {
+        items.push({
+          type: 'item',
+          sku: sku,
+          description: description,
+          qty: qty,
+          unitPriceCents: unitPriceCents,
+          lineTotalCents: lineTotalCents,
+          raw: trimmedLine
+        });
+        continue;
+      }
+    }
+
+    // Try fallback pattern (simpler format)
+    match = trimmedLine.match(sapFallbackPattern);
+    if (match) {
+      const sku = match[2] || null;
+      let description = match[3].trim();
+      const lineTotalCents = parseMoney(match[4]);
+
+      // Try to extract qty and unit price from description
+      let qty = 1;
+      let unitPriceCents = lineTotalCents;
+
+      // Look for qty pattern in description: "PRODUCT NAME 1 EA" or "PRODUCT 2"
+      const qtyMatch = description.match(/\s+(\d{1,3})\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL)?\s*$/i);
+      if (qtyMatch) {
+        const potentialQty = parseInt(qtyMatch[1], 10);
+        if (potentialQty >= 1 && potentialQty <= 999) {
+          qty = potentialQty;
+          description = description.replace(qtyMatch[0], '').trim();
+          unitPriceCents = Math.round(lineTotalCents / qty);
+        }
+      }
+
+      if (description.length >= 2 && lineTotalCents > 0) {
+        items.push({
+          type: 'item',
+          sku: sku,
+          description: description,
+          qty: qty,
+          unitPriceCents: unitPriceCents,
+          lineTotalCents: lineTotalCents,
+          raw: trimmedLine
+        });
+      }
+    }
+  }
+
+  // ===== STRATEGY B: Heuristic extraction for lines starting with SAP line numbers =====
+  // If strict patterns didn't find enough items, try heuristic approach
+  if (items.length < 2) {
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // Look for lines starting with SAP line numbers (000010, 000020, etc.)
+      if (!/^0{3,}\d{2,3}\b/.test(trimmedLine)) continue;
+
+      // Skip if we already extracted this line
+      if (items.some(item => item.raw === trimmedLine)) continue;
+
+      // Skip headers and totals
+      if (/^(ITEM|MATERIAL|DESCRIPTION|QTY|PRICE|AMOUNT|TOTAL)/i.test(trimmedLine)) continue;
+
+      // Extract all decimal numbers (potential prices)
+      const priceMatches = [...trimmedLine.matchAll(/([\d,]+\.\d{2})/g)];
+      if (priceMatches.length < 1) continue;
+
+      // Extract all integers (potential SKU, qty)
+      const intMatches = [...trimmedLine.matchAll(/\b(\d{6,10})\b/g)]; // SKUs are 6-10 digits
+      const sku = intMatches.length > 0 ? intMatches[0][1] : null;
+
+      // The last decimal is usually the line total
+      const lineTotalCents = parseMoney(priceMatches[priceMatches.length - 1][1]);
+      // Second to last (if exists) is usually unit price
+      const unitPriceCents = priceMatches.length >= 2
+        ? parseMoney(priceMatches[priceMatches.length - 2][1])
+        : lineTotalCents;
+
+      // Find qty - look for small integers near unit markers (EA, CS, etc.)
+      let qty = 1;
+      const qtyMatch = trimmedLine.match(/\b(\d{1,3})\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL|GALLON)\b/i);
+      if (qtyMatch) {
+        qty = parseInt(qtyMatch[1], 10);
+      } else {
+        // Infer qty from prices if they make sense
+        if (unitPriceCents > 0 && lineTotalCents > 0 && lineTotalCents >= unitPriceCents) {
+          const inferredQty = Math.round(lineTotalCents / unitPriceCents);
+          if (inferredQty >= 1 && inferredQty <= 999 && Math.abs(inferredQty * unitPriceCents - lineTotalCents) <= 5) {
+            qty = inferredQty;
+          }
+        }
+      }
+
+      // Extract description - remove line number, SKU, prices, qty/units
+      let description = trimmedLine
+        .replace(/^0{3,}\d{2,3}\s*/, '')  // Remove line number
+        .replace(/\b\d{6,10}\b/g, '')     // Remove SKU
+        .replace(/[\d,]+\.\d{2}/g, '')    // Remove prices
+        .replace(/\b\d{1,3}\s*(?:EA|CS|BX|PK|GL|LB|UN|PC|GAL|GALLON)\b/gi, '')  // Remove qty+unit
+        .replace(/\b(?:USD|EUR|CAD)\b/gi, '')  // Remove currency
+        .replace(/\s+/g, ' ')              // Normalize whitespace
+        .trim();
+
+      if (description.length >= 2 && lineTotalCents > 0 && lineTotalCents < 2000000) {
+        items.push({
+          type: 'item',
+          sku: sku,
+          description: description,
+          qty: qty,
+          unitPriceCents: unitPriceCents,
+          lineTotalCents: lineTotalCents,
+          raw: trimmedLine
+        });
+        console.log(`[SAP HEURISTIC] Extracted: "${description}" qty=${qty} @${unitPriceCents}¢ = ${lineTotalCents}¢`);
+      }
+    }
+  }
+
+  // ===== STRATEGY C: Multi-line reconstruction =====
+  // PDF extraction sometimes puts each column on a separate line
+  // Try to reconstruct items from grouped lines
+  if (items.length < 2) {
+    console.log(`[SAP EXTRACT] Strategies A & B found ${items.length} items, trying multi-line reconstruction...`);
+    const reconstructed = reconstructSAPMultilineItems(lines);
+
+    for (const group of reconstructed) {
+      // Skip if we already have this item
+      if (items.some(item => item.raw && group.combined.includes(item.raw))) continue;
+
+      const parsedItem = parseSAPItemGroup(group);
+      if (parsedItem) {
+        items.push(parsedItem);
+        console.log(`[SAP MULTILINE] Extracted: "${parsedItem.description}" qty=${parsedItem.qty} = ${parsedItem.lineTotalCents}¢`);
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
  * Extract line items from generic invoice using table detection
  */
 function extractGenericLineItems(text, lines) {
   const items = [];
 
+  // ===== STRATEGY 1: Try SAP/ERP tabular format first =====
+  // This handles Buckeye, industrial suppliers with format: 000010 50015000 PRODUCT 79.27 USD 1 EA 79.27
+  const sapItems = extractSAPTabularLineItems(text, lines);
+  if (sapItems.length >= 2) {
+    console.log(`[GENERIC LINE ITEMS] Found ${sapItems.length} items using SAP tabular extraction`);
+    return sapItems;
+  }
+
+  // ===== STRATEGY 2: Traditional table header detection =====
   // Find table header
   let tableStartIdx = -1;
   for (let i = 0; i < lines.length; i++) {

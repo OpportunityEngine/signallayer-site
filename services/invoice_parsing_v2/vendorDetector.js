@@ -87,6 +87,44 @@ const VENDOR_PATTERNS = {
       { regex: /UNI-?FIRST/i, score: 90 }
     ],
     name: 'UniFirst'
+  },
+
+  buckeye: {
+    patterns: [
+      // ===== HIGH CONFIDENCE (90+) =====
+      { regex: /BUCKEYE\s+CLEANING\s+CENTER/i, score: 99 },
+      { regex: /BUCKEYE\s+CLEAN/i, score: 95 },
+      { regex: /\bBUCKEYE\b.*(?:JANITORIAL|SANIT|SUPPLY|CHEMICAL)/i, score: 92 },
+      { regex: /www\.buckeyeclean/i, score: 95 },
+
+      // ===== MEDIUM CONFIDENCE (70-89) =====
+      { regex: /\bBUCKEYE\b/i, score: 75 },  // Word "BUCKEYE" alone
+
+      // ===== PRODUCT PATTERNS (60-74) =====
+      // Buckeye-specific products (cleaning/janitorial chemicals)
+      { regex: /BLUE\s+AP\b/i, score: 70 },  // Buckeye Blue AP cleaner
+      { regex: /LEMON\s+QUAT/i, score: 72 },  // Buckeye Lemon Quat disinfectant
+      { regex: /ECO\s+(?:E\d+|NEUTRAL)/i, score: 68 },  // Buckeye Eco products
+      { regex: /GRIP\s+(?:N\s+)?RIP/i, score: 70 },  // Buckeye Grip N Rip
+
+      // ===== INVOICE FORMAT PATTERNS =====
+      // Buckeye uses SAP-style format with 6-digit line numbers (000010, 000020)
+      { regex: /^0000\d{2}\s+\d{8}\s+[A-Z]/gm, score: 72, minMatches: 2 },
+      // Currency format with USD label
+      { regex: /\d+\.\d{2}\s+USD/gi, score: 65, minMatches: 2 }
+    ],
+    name: 'Buckeye Cleaning Center'
+  },
+
+  // Generic janitorial/cleaning supply vendors
+  janitorial: {
+    patterns: [
+      { regex: /JANITORIAL\s+SUPPLY/i, score: 70 },
+      { regex: /CLEANING\s+SUPPLY/i, score: 70 },
+      { regex: /SANIT(?:ARY|ATION)\s+SUPPLY/i, score: 70 },
+      { regex: /CHEMICAL\s+(?:SUPPLY|DISTRIBUTOR)/i, score: 65 }
+    ],
+    name: 'Janitorial Supply Vendor'
   }
 };
 
