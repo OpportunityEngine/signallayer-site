@@ -4059,7 +4059,7 @@
         // Process price alerts
         if (alertsRes?.ok) {
           const alertsResult = await alertsRes.json();
-          if (alertsResult.success && alertsResult.data) {
+          if (alertsResult.success && alertsResult.data && Array.isArray(alertsResult.data)) {
             const priceAlerts = alertsResult.data.slice(0, 2).map(alert => ({
               id: 'alert_' + alert.id,
               title: `Price change detected: ${alert.description || alert.item_name}`,
@@ -5303,36 +5303,49 @@
         }
       } catch (error) {
         console.error('Failed to load inventory dashboard:', error);
-        document.getElementById('inventoryRecommendations').innerHTML = `
-          <div style="text-align: center; padding: 32px; color: var(--muted2);">
-            <p>Unable to load inventory data.</p>
-          </div>
-        `;
+        const invRecEl = document.getElementById('inventoryRecommendations');
+        if (invRecEl) {
+          invRecEl.innerHTML = `
+            <div style="text-align: center; padding: 32px; color: var(--muted2);">
+              <p>Unable to load inventory data.</p>
+            </div>
+          `;
+        }
       }
     }
 
     function renderInventoryStats(data) {
       const stats = data.stats || {};
 
-      document.getElementById('invTotalItems').textContent = stats.total_items || 0;
-      document.getElementById('invTotalValue').textContent = '$' + (stats.total_value_dollars || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
-      document.getElementById('invLowStock').textContent = stats.low_stock_count || 0;
+      const totalItemsEl = document.getElementById('invTotalItems');
+      const totalValueEl = document.getElementById('invTotalValue');
+      const lowStockEl = document.getElementById('invLowStock');
+      const healthScoreEl = document.getElementById('invHealthScore');
+
+      if (totalItemsEl) totalItemsEl.textContent = stats.total_items || 0;
+      if (totalValueEl) totalValueEl.textContent = '$' + (stats.total_value_dollars || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+      if (lowStockEl) lowStockEl.textContent = stats.low_stock_count || 0;
 
       // Health score
       const healthScore = data.healthScore || {};
-      document.getElementById('invHealthScore').textContent = healthScore.grade || '-';
+      if (healthScoreEl) healthScoreEl.textContent = healthScore.grade || '-';
 
       // Update badge colors based on values
-      const lowStockEl = document.getElementById('invLowStock');
-      if ((stats.low_stock_count || 0) > 0) {
-        lowStockEl.style.color = '#ef4444';
-      } else {
-        lowStockEl.style.color = '#10b981';
+      if (lowStockEl) {
+        if ((stats.low_stock_count || 0) > 0) {
+          lowStockEl.style.color = '#ef4444';
+        } else {
+          lowStockEl.style.color = '#10b981';
+        }
       }
     }
 
     function renderInventoryRecommendations(recommendations) {
       const container = document.getElementById('inventoryRecommendations');
+      const criticalBadgeEl = document.getElementById('invCriticalBadge');
+      const savingsBadgeEl = document.getElementById('invSavingsBadge');
+
+      if (!container) return; // Element doesn't exist, skip rendering
 
       if (!recommendations || recommendations.length === 0) {
         container.innerHTML = `
@@ -5342,8 +5355,8 @@
             <p style="margin: 0;">No recommendations at this time. Your inventory is well-managed.</p>
           </div>
         `;
-        document.getElementById('invCriticalBadge').textContent = '0 Critical';
-        document.getElementById('invSavingsBadge').textContent = '$0 Savings';
+        if (criticalBadgeEl) criticalBadgeEl.textContent = '0 Critical';
+        if (savingsBadgeEl) savingsBadgeEl.textContent = '$0 Savings';
         return;
       }
 
@@ -5351,8 +5364,8 @@
       const criticalCount = recommendations.filter(r => r.priority === 'critical').length;
       const totalSavings = recommendations.reduce((sum, r) => sum + (r.potential_savings_cents || 0), 0);
 
-      document.getElementById('invCriticalBadge').textContent = `${criticalCount} Critical`;
-      document.getElementById('invSavingsBadge').textContent = '$' + (totalSavings / 100).toLocaleString();
+      if (criticalBadgeEl) criticalBadgeEl.textContent = `${criticalCount} Critical`;
+      if (savingsBadgeEl) savingsBadgeEl.textContent = '$' + (totalSavings / 100).toLocaleString();
 
       // Show top 5 recommendations
       const topRecs = recommendations.slice(0, 5);
@@ -5388,6 +5401,7 @@
 
     function renderStockoutAlerts(alerts) {
       const container = document.getElementById('stockoutAlerts');
+      if (!container) return; // Element doesn't exist, skip rendering
 
       if (!alerts || alerts.length === 0) {
         container.innerHTML = `
