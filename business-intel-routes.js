@@ -2004,4 +2004,79 @@ router.get('/smart-ordering/summary', async (req, res) => {
   }
 });
 
+// GET /api/bi/smart-ordering/tonight - Time-sensitive insights for today
+router.get('/smart-ordering/tonight', async (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { limit = 10 } = req.query;
+
+    // Get tonight-relevant insights
+    const insights = await smartOrderingEngine.getTonightInsights(user.id);
+    const limited = insights.slice(0, parseInt(limit));
+
+    // Calculate summary
+    const summary = {
+      total_insights: insights.length,
+      high_priority: insights.filter(i => i.urgency === 'high').length,
+      total_action_value_cents: insights.reduce((sum, i) => sum + (i.estimated_value_cents || 0), 0),
+      by_type: insights.reduce((acc, i) => {
+        acc[i.insight_type] = (acc[i.insight_type] || 0) + 1;
+        return acc;
+      }, {})
+    };
+
+    res.json({
+      success: true,
+      data: limited,
+      summary,
+      view: 'tonight',
+      generated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[BI] Tonight insights error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/smart-ordering/this-week - Week planning insights
+router.get('/smart-ordering/this-week', async (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { limit = 15 } = req.query;
+
+    // Get this-week-relevant insights
+    const insights = await smartOrderingEngine.getThisWeekInsights(user.id);
+    const limited = insights.slice(0, parseInt(limit));
+
+    // Calculate summary
+    const summary = {
+      total_insights: insights.length,
+      high_priority: insights.filter(i => i.urgency === 'high').length,
+      medium_priority: insights.filter(i => i.urgency === 'medium').length,
+      total_potential_savings_cents: insights.reduce((sum, i) => sum + (i.estimated_value_cents || 0), 0),
+      by_type: insights.reduce((acc, i) => {
+        acc[i.insight_type] = (acc[i.insight_type] || 0) + 1;
+        return acc;
+      }, {}),
+      categories: {
+        pricing: insights.filter(i => ['margin_erosion', 'pricing_recommendation', 'cogs_spike_alert'].includes(i.insight_type)).length,
+        vendor: insights.filter(i => ['vendor_alternative_found', 'supplier_reliability', 'vendor_consolidation'].includes(i.insight_type)).length,
+        demand: insights.filter(i => ['seasonal_demand', 'demand_forecast_7day'].includes(i.insight_type)).length,
+        ordering: insights.filter(i => ['bulk_consolidation', 'budget_pacing'].includes(i.insight_type)).length
+      }
+    };
+
+    res.json({
+      success: true,
+      data: limited,
+      summary,
+      view: 'this_week',
+      generated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[BI] This week insights error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

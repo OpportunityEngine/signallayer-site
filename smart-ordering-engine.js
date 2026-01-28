@@ -188,6 +188,12 @@ class SmartOrderingEngine {
       allInsights.push(...this.detectEmergencyPatterns(userId));
       allInsights.push(...this.analyzeTotalCostOfOwnership(userId));
 
+      // ============ MARKET INTELLIGENCE (New) ============
+      allInsights.push(...this.detectCOGSSpikeAlerts(userId));
+      allInsights.push(...this.forecastWeeklyDemand(userId));
+      allInsights.push(...this.findVendorAlternatives(userId));
+      allInsights.push(...this.generatePricingRecommendations(userId));
+
       const elapsed = Date.now() - startTime;
       console.log(`[SmartOrdering] Generated ${allInsights.length} insights for user ${userId} in ${elapsed}ms`);
 
@@ -3925,6 +3931,447 @@ class SmartOrderingEngine {
     }
 
     return insights.slice(0, 3); // Limit to top 3
+  }
+
+  // ================================================================
+  // MARKET INTELLIGENCE - Enhanced Event & Demand Insights
+  // ================================================================
+
+  /**
+   * Detect significant COGS increases requiring immediate attention
+   * More urgent than margin_erosion - focuses on recent spikes
+   */
+  detectCOGSSpikeAlerts(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      // Find SKUs with significant price increases in last 14 days vs prior 60-day baseline
+      const cogsSpikes = database.prepare(`
+        WITH recent_prices AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            AVG(ii.unit_price_cents) as recent_avg,
+            SUM(ii.quantity) as recent_qty,
+            COUNT(*) as recent_orders
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ir.created_at >= date('now', '-14 days')
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            ${vendorExclusion}
+          GROUP BY ii.sku
+        ),
+        baseline_prices AS (
+          SELECT
+            ii.sku,
+            AVG(ii.unit_price_cents) as baseline_avg,
+            COUNT(*) as baseline_orders
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ir.created_at BETWEEN date('now', '-90 days') AND date('now', '-14 days')
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            ${vendorExclusion}
+          GROUP BY ii.sku
+          HAVING baseline_orders >= 2
+        )
+        SELECT
+          r.sku, r.description, r.vendor_name,
+          r.recent_avg, r.recent_qty, r.recent_orders,
+          b.baseline_avg, b.baseline_orders,
+          ROUND((r.recent_avg - b.baseline_avg) * 100.0 / b.baseline_avg, 1) as pct_increase
+        FROM recent_prices r
+        JOIN baseline_prices b ON r.sku = b.sku
+        WHERE r.recent_avg > b.baseline_avg * 1.12  -- 12%+ increase
+        ORDER BY (r.recent_avg - b.baseline_avg) * r.recent_qty DESC
+        LIMIT 5
+      `).all(userId, userId);
+
+      for (const item of cogsSpikes) {
+        const costIncrease = Math.round((item.recent_avg - item.baseline_avg) * item.recent_qty);
+        const urgency = item.pct_increase > 25 ? 'high' : item.pct_increase > 15 ? 'medium' : 'low';
+
+        insights.push({
+          insight_type: 'cogs_spike_alert',
+          sku: item.sku,
+          description: item.description,
+          vendor_name: item.vendor_name,
+          title: `📈 COGS Alert: ${this.truncate(item.description || item.sku, 22)} +${Math.round(item.pct_increase)}%`,
+          detail: `Cost jumped from $${(item.baseline_avg / 100).toFixed(2)} to $${(item.recent_avg / 100).toFixed(2)} per unit ` +
+                  `(+${Math.round(item.pct_increase)}%). Recent orders: ${item.recent_orders}. ` +
+                  `Impact: ~$${(costIncrease / 100).toFixed(0)} extra this period. ` +
+                  `Action: Review menu pricing, find alternatives, or contact ${item.vendor_name}.`,
+          urgency,
+          estimated_value_cents: costIncrease,
+          confidence_score: Math.min(90, 55 + item.baseline_orders * 3 + item.recent_orders * 5),
+          reasoning: {
+            sku: item.sku,
+            baseline_price_cents: Math.round(item.baseline_avg),
+            recent_price_cents: Math.round(item.recent_avg),
+            price_increase_pct: item.pct_increase,
+            recent_quantity: item.recent_qty,
+            cost_impact_cents: costIncrease,
+            baseline_data_points: item.baseline_orders
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] COGS spike detection error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Weekly Demand Forecast - Predict next 7 days based on patterns
+   * Combines day-of-week patterns with upcoming holidays
+   */
+  forecastWeeklyDemand(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      // Get day-of-week spending patterns
+      const weeklyPattern = database.prepare(`
+        SELECT
+          strftime('%w', created_at) as day_of_week,
+          AVG(invoice_total_cents) as avg_daily_spend,
+          COUNT(*) as order_count
+        FROM ingestion_runs
+        WHERE user_id = ?
+          AND status = 'completed'
+          AND created_at >= date('now', '-60 days')
+          ${vendorExclusion}
+        GROUP BY strftime('%w', created_at)
+        HAVING order_count >= 3
+      `).all(userId);
+
+      if (weeklyPattern.length < 4) return insights; // Need enough data
+
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const today = new Date();
+      const currentDayOfWeek = today.getDay();
+
+      // Calculate overall average
+      const overallAvg = weeklyPattern.reduce((sum, d) => sum + d.avg_daily_spend, 0) / weeklyPattern.length;
+
+      // Build 7-day forecast
+      const forecast = [];
+      for (let i = 0; i < 7; i++) {
+        const targetDay = (currentDayOfWeek + i) % 7;
+        const dayData = weeklyPattern.find(d => parseInt(d.day_of_week) === targetDay);
+        const predictedSpend = dayData ? dayData.avg_daily_spend : overallAvg;
+        const vsAverage = ((predictedSpend - overallAvg) / overallAvg) * 100;
+
+        forecast.push({
+          day: dayNames[targetDay],
+          daysFromNow: i,
+          predictedSpend: Math.round(predictedSpend),
+          vsAveragePct: Math.round(vsAverage)
+        });
+      }
+
+      // Find peak and low days in forecast
+      const peakDay = forecast.reduce((max, d) => d.predictedSpend > max.predictedSpend ? d : max, forecast[0]);
+      const lowDay = forecast.reduce((min, d) => d.predictedSpend < min.predictedSpend ? d : min, forecast[0]);
+
+      // Check for upcoming holidays
+      const upcomingHolidays = [];
+      for (const [key, holiday] of Object.entries(this.config.holidays)) {
+        const daysUntil = this.daysUntilDate(today.getMonth() + 1, today.getDate(), holiday.month, holiday.day);
+        if (daysUntil >= 0 && daysUntil <= 14) {
+          upcomingHolidays.push({ name: holiday.name, daysUntil });
+        }
+      }
+
+      // Generate forecast insight
+      const weekTotal = forecast.reduce((sum, d) => sum + d.predictedSpend, 0);
+      let holidayNote = '';
+      if (upcomingHolidays.length > 0) {
+        holidayNote = ` ${upcomingHolidays[0].name} in ${upcomingHolidays[0].daysUntil} days may increase demand.`;
+      }
+
+      insights.push({
+        insight_type: 'demand_forecast_7day',
+        title: `📊 Next 7 Days: ~$${(weekTotal / 100).toLocaleString()} projected spend`,
+        detail: `Peak: ${peakDay.day} (+${peakDay.vsAveragePct}% vs avg). ` +
+                `Low: ${lowDay.day} (${lowDay.vsAveragePct}% vs avg). ` +
+                `Plan staffing and prep accordingly.${holidayNote}`,
+        urgency: upcomingHolidays.length > 0 ? 'medium' : 'low',
+        estimated_value_cents: weekTotal,
+        confidence_score: Math.min(80, 45 + weeklyPattern.reduce((sum, d) => sum + d.order_count, 0) / 2),
+        reasoning: {
+          forecast_days: forecast,
+          week_total_cents: weekTotal,
+          peak_day: peakDay.day,
+          peak_day_spend_cents: peakDay.predictedSpend,
+          low_day: lowDay.day,
+          low_day_spend_cents: lowDay.predictedSpend,
+          upcoming_holidays: upcomingHolidays,
+          data_points: weeklyPattern.reduce((sum, d) => sum + d.order_count, 0)
+        }
+      });
+
+    } catch (error) {
+      console.error('[SmartOrdering] Weekly demand forecast error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Find vendor alternatives - explicit recommendations to switch vendors
+   * Builds on TCO analysis but more actionable
+   */
+  findVendorAlternatives(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      // Find SKUs purchased from multiple vendors with significant price differences
+      const alternatives = database.prepare(`
+        WITH vendor_prices AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            AVG(ii.unit_price_cents) as avg_price,
+            SUM(ii.quantity) as total_qty,
+            SUM(ii.total_cents) as total_spend,
+            COUNT(*) as order_count,
+            MAX(ir.created_at) as last_order
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku, ir.vendor_name
+          HAVING order_count >= 2
+        )
+        SELECT
+          vp1.sku, vp1.description,
+          vp1.vendor_name as current_vendor,
+          vp1.avg_price as current_price,
+          vp1.total_qty as current_qty,
+          vp1.total_spend,
+          vp2.vendor_name as alt_vendor,
+          vp2.avg_price as alt_price,
+          ROUND((vp1.avg_price - vp2.avg_price) * 100.0 / vp1.avg_price, 1) as savings_pct
+        FROM vendor_prices vp1
+        JOIN vendor_prices vp2 ON vp1.sku = vp2.sku
+        WHERE vp1.vendor_name != vp2.vendor_name
+          AND vp2.avg_price < vp1.avg_price * 0.88  -- At least 12% cheaper
+          AND vp1.total_spend > 5000  -- Meaningful spend
+          AND vp1.last_order >= date('now', '-30 days')  -- Recently purchased
+        ORDER BY (vp1.avg_price - vp2.avg_price) * vp1.total_qty DESC
+        LIMIT 3
+      `).all(userId);
+
+      for (const item of alternatives) {
+        const monthlySavings = Math.round((item.current_price - item.alt_price) * item.current_qty / 3);
+
+        insights.push({
+          insight_type: 'vendor_alternative_found',
+          sku: item.sku,
+          description: item.description,
+          vendor_name: item.current_vendor,
+          title: `🔄 Switch vendors: Save ${Math.round(item.savings_pct)}% on ${this.truncate(item.description || item.sku, 18)}`,
+          detail: `${item.alt_vendor} offers this at $${(item.alt_price / 100).toFixed(2)}/unit vs ` +
+                  `${item.current_vendor} at $${(item.current_price / 100).toFixed(2)}/unit. ` +
+                  `Potential savings: ~$${(monthlySavings / 100).toFixed(0)}/month. ` +
+                  `Verify quality is comparable before switching.`,
+          urgency: item.savings_pct > 20 ? 'high' : 'medium',
+          estimated_value_cents: monthlySavings * 3, // Quarterly projection
+          confidence_score: 80,
+          reasoning: {
+            sku: item.sku,
+            current_vendor: item.current_vendor,
+            current_price_cents: Math.round(item.current_price),
+            alternative_vendor: item.alt_vendor,
+            alternative_price_cents: Math.round(item.alt_price),
+            savings_percent: item.savings_pct,
+            monthly_savings_cents: monthlySavings,
+            recent_quantity: item.current_qty
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Vendor alternatives error:', error.message);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Pricing Recommendation - Suggest menu/selling price adjustments
+   * Based on COGS changes to maintain margins
+   */
+  generatePricingRecommendations(userId) {
+    const database = db.getDatabase();
+    const insights = [];
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      // Find high-volume items with significant cost increases
+      const pricingCandidates = database.prepare(`
+        WITH cost_changes AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            AVG(CASE WHEN ir.created_at >= date('now', '-30 days') THEN ii.unit_price_cents END) as recent_cost,
+            AVG(CASE WHEN ir.created_at < date('now', '-30 days') THEN ii.unit_price_cents END) as old_cost,
+            SUM(ii.quantity) as total_qty,
+            SUM(ii.total_cents) as total_spend,
+            COUNT(*) as order_count
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku
+          HAVING order_count >= 4 AND total_spend > 10000
+        )
+        SELECT *,
+          ROUND((recent_cost - old_cost) * 100.0 / old_cost, 1) as cost_change_pct
+        FROM cost_changes
+        WHERE recent_cost IS NOT NULL AND old_cost IS NOT NULL
+          AND recent_cost > old_cost * 1.08  -- 8%+ increase
+        ORDER BY total_spend DESC
+        LIMIT 3
+      `).all(userId);
+
+      for (const item of pricingCandidates) {
+        // Assume 30% food cost target for restaurants
+        const targetFoodCostPct = 30;
+        const suggestedSellingPrice = Math.round(item.recent_cost / (targetFoodCostPct / 100));
+        const priceIncrease = Math.round(item.recent_cost - item.old_cost);
+
+        insights.push({
+          insight_type: 'pricing_recommendation',
+          sku: item.sku,
+          description: item.description,
+          vendor_name: item.vendor_name,
+          title: `💰 Review pricing: ${this.truncate(item.description || item.sku, 22)}`,
+          detail: `Cost increased ${Math.round(item.cost_change_pct)}% (to $${(item.recent_cost / 100).toFixed(2)}/unit). ` +
+                  `To maintain 30% food cost, menu price should be ~$${(suggestedSellingPrice / 100).toFixed(2)}. ` +
+                  `Consider a ${Math.min(5, Math.round(item.cost_change_pct / 2))}% price increase or portion adjustment.`,
+          urgency: item.cost_change_pct > 15 ? 'high' : 'medium',
+          estimated_value_cents: priceIncrease * Math.round(item.total_qty / 3),
+          confidence_score: 75,
+          reasoning: {
+            sku: item.sku,
+            old_cost_cents: Math.round(item.old_cost),
+            new_cost_cents: Math.round(item.recent_cost),
+            cost_increase_pct: item.cost_change_pct,
+            suggested_selling_price_cents: suggestedSellingPrice,
+            target_food_cost_pct: targetFoodCostPct,
+            monthly_volume: Math.round(item.total_qty / 3)
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[SmartOrdering] Pricing recommendations error:', error.message);
+    }
+
+    return insights;
+  }
+
+  // ================================================================
+  // TONIGHT / THIS WEEK AGGREGATION VIEWS
+  // ================================================================
+
+  /**
+   * Get insights most relevant for TODAY/TONIGHT
+   * Filters and prioritizes time-sensitive insights
+   */
+  getTonightInsights(userId) {
+    // Get all insights first
+    const allInsights = this.generateInsights(userId);
+
+    // Filter for today-relevant insight types
+    const todayRelevantTypes = [
+      'reorder_prediction',      // Need to reorder today
+      'seasonal_demand',         // Holiday prep
+      'day_pattern',             // Today is ordering day
+      'low_stock',               // Stock alerts
+      'waste_risk',              // Potential spoilage today
+      'cogs_spike_alert',        // Recent cost spikes
+      'event_demand_spike',      // Event-driven demand
+      'demand_forecast_7day'     // Weekly outlook
+    ];
+
+    const tonightInsights = allInsights.filter(insight => {
+      // Include if it's a today-relevant type
+      if (todayRelevantTypes.includes(insight.insight_type)) return true;
+
+      // Include high urgency items regardless of type
+      if (insight.urgency === 'high') return true;
+
+      // Include if reasoning mentions "today" or time-sensitive language
+      if (insight.reasoning?.days_until <= 1) return true;
+      if (insight.reasoning?.days_until_next <= 1) return true;
+
+      return false;
+    });
+
+    // Sort by urgency
+    return this.sortInsights(tonightInsights);
+  }
+
+  /**
+   * Get insights relevant for THIS WEEK planning
+   * Focuses on pricing, vendor optimization, and weekly prep
+   */
+  getThisWeekInsights(userId) {
+    const allInsights = this.generateInsights(userId);
+
+    // Filter for week-planning insight types
+    const weekRelevantTypes = [
+      'seasonal_demand',         // Upcoming holidays
+      'margin_erosion',          // Review pricing
+      'pricing_recommendation',  // Price adjustments
+      'vendor_alternative_found',// Vendor switches
+      'supplier_reliability',    // Vendor issues
+      'bulk_consolidation',      // Ordering efficiency
+      'vendor_consolidation',    // Vendor efficiency
+      'budget_pacing',           // Budget tracking
+      'demand_forecast_7day',    // Weekly forecast
+      'cogs_spike_alert',        // Cost alerts
+      'contract_opportunity',    // Contract reviews
+      'payment_optimization'     // Payment terms
+    ];
+
+    const weekInsights = allInsights.filter(insight => {
+      // Include if it's a week-planning type
+      if (weekRelevantTypes.includes(insight.insight_type)) return true;
+
+      // Include medium+ urgency items
+      if (insight.urgency === 'high' || insight.urgency === 'medium') return true;
+
+      // Include if has significant savings potential
+      if (insight.estimated_value_cents > 5000) return true;
+
+      return false;
+    });
+
+    return this.sortInsights(weekInsights);
   }
 
   // ================================================================
