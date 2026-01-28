@@ -466,6 +466,117 @@ function initDatabase() {
       }
     }
 
+    // Initialize parsing jobs queue table (for background PDF processing)
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS parsing_jobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          job_id TEXT UNIQUE NOT NULL,
+          user_id INTEGER NOT NULL,
+          status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+          file_path TEXT NOT NULL,
+          file_name TEXT,
+          file_size INTEGER,
+          options TEXT,
+          result TEXT,
+          error_message TEXT,
+          priority INTEGER DEFAULT 0,
+          retries INTEGER DEFAULT 0,
+          max_retries INTEGER DEFAULT 3,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          started_at DATETIME,
+          completed_at DATETIME,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_parsing_jobs_status ON parsing_jobs(status, priority DESC, created_at ASC);
+        CREATE INDEX IF NOT EXISTS idx_parsing_jobs_user ON parsing_jobs(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_parsing_jobs_job_id ON parsing_jobs(job_id);
+      `);
+      console.log('✅ Parsing jobs queue table created');
+    } catch (jobsError) {
+      if (!jobsError.message.includes('already exists')) {
+        console.log('⚠️  Parsing jobs table may already exist (safe to ignore)');
+      }
+    }
+
+    // Initialize parse reviews table (for human correction workflow)
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS parse_reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_id INTEGER NOT NULL,
+          original_result TEXT,
+          corrected_result TEXT,
+          reviewer_user_id INTEGER,
+          status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'corrected', 'dismissed')),
+          confidence_score INTEGER,
+          review_reasons TEXT,
+          review_severity TEXT CHECK(review_severity IN ('low', 'medium', 'high')),
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          reviewed_at DATETIME,
+          FOREIGN KEY (run_id) REFERENCES ingestion_runs(id),
+          FOREIGN KEY (reviewer_user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_parse_reviews_status ON parse_reviews(status, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_parse_reviews_run ON parse_reviews(run_id);
+
+        CREATE TABLE IF NOT EXISTS correction_patterns (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          vendor_name TEXT,
+          pattern_type TEXT,
+          raw_pattern TEXT,
+          correct_interpretation TEXT,
+          confidence_boost INTEGER DEFAULT 5,
+          times_applied INTEGER DEFAULT 0,
+          created_from_review_id INTEGER,
+          created_by_user_id INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (created_from_review_id) REFERENCES parse_reviews(id),
+          FOREIGN KEY (created_by_user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_correction_patterns_vendor ON correction_patterns(vendor_name, pattern_type);
+      `);
+      console.log('✅ Parse reviews and correction patterns tables created');
+    } catch (reviewsError) {
+      if (!reviewsError.message.includes('already exists')) {
+        console.log('⚠️  Parse reviews tables may already exist (safe to ignore)');
+      }
+    }
+
+    // Initialize SKU mappings table (for canonical SKU normalization)
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sku_mappings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          canonical_sku TEXT NOT NULL,
+          vendor_name TEXT NOT NULL,
+          vendor_sku TEXT NOT NULL,
+          product_name TEXT,
+          product_category TEXT,
+          standard_uom TEXT,
+          case_size INTEGER,
+          unit_weight_lbs REAL,
+          conversion_factor REAL DEFAULT 1.0,
+          times_matched INTEGER DEFAULT 0,
+          last_matched_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, vendor_name, vendor_sku),
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sku_mappings_lookup ON sku_mappings(user_id, vendor_name, vendor_sku);
+        CREATE INDEX IF NOT EXISTS idx_sku_mappings_canonical ON sku_mappings(canonical_sku);
+        CREATE INDEX IF NOT EXISTS idx_sku_mappings_product ON sku_mappings(product_name);
+      `);
+      console.log('✅ SKU mappings table created');
+    } catch (skuError) {
+      if (!skuError.message.includes('already exists')) {
+        console.log('⚠️  SKU mappings table may already exist (safe to ignore)');
+      }
+    }
+
     // Migration: Add user_id guardrails (prevent NULL user_id on ingestion_runs)
     try {
       // Check if migration is needed by checking for NULL user_id values

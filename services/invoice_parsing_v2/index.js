@@ -34,6 +34,10 @@ const { isLayoutExtractionAvailable, extractWithLayout, getLayoutQuality } = req
 const { detectUOM, enhanceLineItemWithUOM, PRODUCT_CATEGORY_HINTS } = require('./unitOfMeasure');
 const { validateAndCorrectTotals } = require('./totalsValidator');
 const { extractCore, validateParserTotals } = require('./coreExtractor');
+const { ensureFullDocumentScan, validateInvoiceTotal, checkNeedsReview } = require('./documentScanner');
+const { arbitrateTotals, findBestTotal } = require('./totalArbitration');
+const { extractAllMetadata, mergeMetadata } = require('./metadataExtractor');
+const { buildEvidencePackage, formatEvidenceForPDF } = require('./evidenceExtractor');
 
 /**
  * Main parsing function
@@ -574,20 +578,37 @@ function parseInvoiceText(rawText, options = {}) {
 
   console.log(`[PARSER V2] FINAL vendor: key=${finalVendorKey}, name=${finalVendorName}`);
 
+  // Step 6.5: UNIVERSAL METADATA EXTRACTION
+  // Run vendor-agnostic extraction for reliable invoice number, date, location
+  const universalMetadata = extractAllMetadata(fullText, { vendorKey: finalVendorKey });
+  console.log(`[PARSER V2] Universal metadata: invoiceNumber=${universalMetadata.invoiceNumber?.value || 'N/A'}, date=${universalMetadata.invoiceDate?.value || 'N/A'}`);
+
+  // Merge with parser-extracted metadata (universal extraction takes precedence if higher confidence)
+  const parserMetadata = {
+    invoiceNumber: bestResult.header?.invoiceNumber ? { value: bestResult.header.invoiceNumber, confidence: 70 } : null,
+    invoiceDate: bestResult.header?.invoiceDate ? { value: bestResult.header.invoiceDate, confidence: 70 } : null
+  };
+  const finalMetadata = mergeMetadata(parserMetadata, universalMetadata);
+
   const result = {
     success: true,
     vendorKey: finalVendorKey,
     vendorName: finalVendorName,
     parserVersion: bestResult.parserVersion || '2.0.0',
 
-    // Header/metadata
-    invoiceNumber: bestResult.header?.invoiceNumber || null,
-    invoiceDate: bestResult.header?.invoiceDate || null,
-    customerName: bestResult.header?.customerName || null,
-    accountNumber: bestResult.header?.accountNumber || null,
+    // Header/metadata (enhanced with universal extraction)
+    invoiceNumber: finalMetadata.invoiceNumber?.value || bestResult.header?.invoiceNumber || null,
+    invoiceDate: finalMetadata.invoiceDate?.value || bestResult.header?.invoiceDate || null,
+    poNumber: finalMetadata.poNumber?.value || bestResult.header?.poNumber || null,
+    customerName: finalMetadata.customer?.name || bestResult.header?.customerName || null,
+    accountNumber: finalMetadata.customer?.accountNumber || bestResult.header?.accountNumber || null,
     soldTo: bestResult.header?.soldTo || null,
     billTo: bestResult.header?.billTo || null,
-    shipTo: bestResult.header?.shipTo || null,
+    shipTo: finalMetadata.location?.fullAddress || bestResult.header?.shipTo || null,
+    deliveryDate: finalMetadata.deliveryDate?.value || null,
+    dueDate: finalMetadata.dueDate?.value || null,
+    paymentTerms: finalMetadata.terms?.value || null,
+    salesRep: finalMetadata.salesRep?.value || null,
 
     // Totals - CRITICAL: Use authoritative (printed) total
     totals: {
@@ -666,9 +687,79 @@ function parseInvoiceText(rawText, options = {}) {
         reason: printedTotalReconcile.reconciliation.reason,
         warnings: printedTotalReconcile.reconciliation.warnings,
         syntheticAdjustment: printedTotalReconcile.synthetic_adjustment
+      },
+      // Universal metadata extraction details
+      universalMetadata: {
+        invoiceNumber: finalMetadata.invoiceNumber,
+        invoiceDate: finalMetadata.invoiceDate,
+        poNumber: finalMetadata.poNumber,
+        location: finalMetadata.location,
+        customer: finalMetadata.customer,
+        deliveryDate: finalMetadata.deliveryDate,
+        dueDate: finalMetadata.dueDate
       }
     } : undefined
   };
+
+  // Step 7.5: GUARDRAIL - Ensure full document was scanned
+  // This catches cases where parsers stopped early at subtotals
+  const guardrailCheck = ensureFullDocumentScan(fullText, bestResult);
+  if (guardrailCheck.guardrail?.applied) {
+    console.log(`[PARSER V2] GUARDRAIL APPLIED: ${guardrailCheck.guardrail.message}`);
+
+    // Merge any additional items found by the guardrail
+    if (guardrailCheck.lineItems && guardrailCheck.lineItems.length > result.lineItems.length) {
+      const additionalItems = guardrailCheck.lineItems.slice(result.lineItems.length);
+      console.log(`[PARSER V2] GUARDRAIL: Adding ${additionalItems.length} missed items`);
+
+      result.lineItems = result.lineItems.concat(additionalItems.map((item, idx) => ({
+        lineNumber: result.lineItems.length + idx + 1,
+        sku: item.sku || null,
+        description: item.description || '',
+        quantity: item.qty || item.quantity || 1,
+        unitPriceCents: item.unitPriceCents || 0,
+        lineTotalCents: item.lineTotalCents || 0,
+        taxable: false,
+        category: 'item',
+        mathValidated: false,
+        mathCorrected: false,
+        source: 'guardrail_extended_scan'
+      })));
+    }
+
+    // Update totals if guardrail found better ones
+    if (guardrailCheck.totals && guardrailCheck.totals.totalCents > result.totals.totalCents) {
+      console.log(`[PARSER V2] GUARDRAIL: Updating total from $${(result.totals.totalCents/100).toFixed(2)} to $${(guardrailCheck.totals.totalCents/100).toFixed(2)}`);
+      result.totals.totalCents = guardrailCheck.totals.totalCents;
+      result.totals.guardrailCorrected = true;
+    }
+  }
+
+  // Add guardrail info to result
+  result.guardrail = guardrailCheck.guardrail || { applied: false, message: 'Full document scanned' };
+
+  // Step 7.55: TOTAL ARBITRATION - Universal total finder with bottom-bias
+  // Scans entire document to find the TRUE invoice total, not group/section totals
+  try {
+    const arbitrationResult = arbitrateTotals(result, fullText);
+
+    if (arbitrationResult.arbitration?.shouldOverride) {
+      console.log(`[PARSER V2] ARBITRATION: Overriding total $${(result.totals?.totalCents/100 || 0).toFixed(2)} -> $${(arbitrationResult.totals.totalCents/100).toFixed(2)}`);
+      result.totals = arbitrationResult.totals;
+    }
+
+    // Always add arbitration info for debugging
+    result.arbitration = arbitrationResult.arbitration;
+  } catch (arbError) {
+    console.warn('[PARSER V2] Arbitration error (non-fatal):', arbError.message);
+    result.arbitration = { ran: false, error: arbError.message };
+  }
+
+  // Step 7.6: Check if result needs human review
+  const reviewCheck = checkNeedsReview(result);
+  result.needsReview = reviewCheck.needsReview;
+  result.reviewReasons = reviewCheck.reasons;
+  result.reviewSeverity = reviewCheck.severity;
 
   // Step 8: Store successful pattern for future use
   if (result.success && result.confidence?.score >= 60) {
@@ -737,10 +828,69 @@ function quickValidate(rawText) {
   };
 }
 
+/**
+ * Parse invoice and build evidence package for Proof Pack exports
+ * Returns both the parse result AND a complete evidence package
+ *
+ * @param {string} rawText - Raw invoice text
+ * @param {Object} options - Parsing options
+ * @param {Object} options.priceHistory - Historical prices for comparison { sku: { previousPrice, prices[] } }
+ * @returns {Object} { parseResult, evidence }
+ */
+function parseWithEvidence(rawText, options = {}) {
+  // Parse the invoice
+  const parseResult = parseInvoiceText(rawText, { ...options, debug: true });
+
+  // Build evidence package
+  const evidence = buildEvidencePackage(rawText, parseResult, {
+    priceHistory: options.priceHistory || {}
+  });
+
+  return {
+    parseResult,
+    evidence,
+    // Convenience: formatted evidence ready for PDF export
+    pdfEvidence: formatEvidenceForPDF(evidence)
+  };
+}
+
+/**
+ * Extract metadata only (without full parsing)
+ * Useful for quick previews or metadata-only queries
+ */
+function extractMetadataOnly(rawText, options = {}) {
+  const { normalizeInvoiceText } = require('./utils');
+  const { detectVendor } = require('./vendorDetector');
+
+  const normalizedText = normalizeInvoiceText(rawText);
+  const vendorInfo = detectVendor(normalizedText);
+
+  const metadata = extractAllMetadata(normalizedText, {
+    vendorKey: vendorInfo.vendorKey
+  });
+
+  return {
+    vendor: vendorInfo,
+    invoiceNumber: metadata.invoiceNumber?.value || null,
+    invoiceDate: metadata.invoiceDate?.value || null,
+    poNumber: metadata.poNumber?.value || null,
+    customer: metadata.customer?.name || null,
+    location: metadata.location?.fullAddress || null,
+    deliveryDate: metadata.deliveryDate?.value || null,
+    dueDate: metadata.dueDate?.value || null,
+    confidence: {
+      invoiceNumber: metadata.invoiceNumber?.confidence || 0,
+      invoiceDate: metadata.invoiceDate?.confidence || 0
+    }
+  };
+}
+
 // Export everything
 module.exports = {
   // Main API
   parseInvoiceText,
+  parseWithEvidence,      // For Proof Pack exports
+  extractMetadataOnly,    // Quick metadata extraction
   convertToV1Format,
   quickValidate,
 
@@ -789,5 +939,15 @@ module.exports = {
   parseUSFoodsInvoice,
   parseGenericInvoice,
   parseInvoiceEnhanced,
-  parseAdaptive
+  parseAdaptive,
+
+  // Evidence and metadata extraction (for Proof Packs)
+  buildEvidencePackage,
+  formatEvidenceForPDF,
+  extractAllMetadata,
+  mergeMetadata,
+
+  // Total arbitration (universal total finder)
+  arbitrateTotals,
+  findBestTotal
 };

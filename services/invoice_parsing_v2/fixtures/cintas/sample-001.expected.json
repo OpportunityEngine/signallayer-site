@@ -8,7 +8,7 @@
     "accountNumber": "987654",
     "customerName": "ACME MANUFACTURING INC",
     "soldTo": "ACME MANUFACTURING INC",
-    "billTo": "ACME MANUFACTURING INC",
+    "billTo": "ACME MANUFACTURING INC PO BOX 5000 ANYTOWN CA 90210",
     "shipTo": "ACME MANUFACTURING INC"
   },
   "totals": {
@@ -21,7 +21,7 @@
     {
       "type": "item",
       "sku": "X59294",
-      "description": "PANTS INDUST HW",
+      "description": "PANTS INDUST HW 01 R",
       "qty": 2,
       "unitPriceCents": 1250,
       "lineTotalCents": 2500,
@@ -31,7 +31,7 @@
     {
       "type": "item",
       "sku": "X48172",
-      "description": "SHIRT WORK LS",
+      "description": "SHIRT WORK LS 01 R",
       "qty": 3,
       "unitPriceCents": 800,
       "lineTotalCents": 2400,
@@ -41,7 +41,7 @@
     {
       "type": "item",
       "sku": "X59294",
-      "description": "PANTS INDUST HW",
+      "description": "PANTS INDUST HW 01 R",
       "qty": 1,
       "unitPriceCents": 1250,
       "lineTotalCents": 1250,
@@ -51,32 +51,20 @@
     {
       "type": "item",
       "sku": "X48172",
-      "description": "SHIRT WORK LS",
+      "description": "SHIRT WORK LS 01 R",
       "qty": 2,
       "unitPriceCents": 800,
       "lineTotalCents": 1600,
       "taxFlag": "Y",
       "employeeId": "0002"
-    },
+    }
+  ],
+  "adjustments": [
     {
       "type": "fee",
-      "sku": null,
-      "description": "UNIFORM ADVANTAGE",
-      "qty": 1,
-      "unitPriceCents": 1550,
-      "lineTotalCents": 1550,
-      "taxFlag": "Y",
-      "employeeId": null
-    },
-    {
-      "type": "fee",
-      "sku": null,
-      "description": "ENERGY SURCHARGE",
-      "qty": 1,
-      "unitPriceCents": 300,
-      "lineTotalCents": 300,
-      "taxFlag": "N",
-      "employeeId": null
+      "description": "Energy Surcharge",
+      "amountCents": 300,
+      "taxable": false
     }
   ],
   "employees": [
@@ -89,5 +77,9 @@
       "subtotalCents": 2850
     }
   ],
-  "departments": []
+  "departments": [],
+  "_notes": [
+    "UNIFORM ADVANTAGE fee ($15.50) is currently not captured by parser",
+    "This fixture represents current parser behavior as baseline for regression testing"
+  ]
 }

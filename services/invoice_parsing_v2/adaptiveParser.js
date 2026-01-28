@@ -94,19 +94,28 @@ function parseWithHeaderGuide(text) {
   }
 
   const items = [];
+  const foundTotals = [];      // Track totals but don't stop
   const columnPositions = headerInfo.columns.map(c => ({
     name: c.column,
     start: c.position,
     end: c.endPosition
   }));
+  let lastParsedLineIndex = headerInfo.lineIndex;
 
-  // Parse lines after header
+  // Parse lines after header - scan ENTIRE document, don't stop at subtotals
   for (let i = headerInfo.lineIndex + 1; i < lines.length; i++) {
+    lastParsedLineIndex = i;
     const line = lines[i];
     if (!line.trim() || shouldSkipLine(line)) continue;
 
-    // Stop at totals
-    if (/^(SUB)?TOTAL\s/i.test(line.trim())) break;
+    // Track totals but DON'T break - continue scanning for more items
+    if (/^(SUB)?TOTAL\s/i.test(line.trim())) {
+      const totalMatch = line.match(/[\d,]+\.?\d*/);
+      if (totalMatch) {
+        foundTotals.push({ line: i, label: line.trim().split(/\s/)[0], value: totalMatch[0] });
+      }
+      continue; // Don't break - there may be more items after this subtotal
+    }
 
     const item = parseLineWithColumns(line, columnPositions);
     if (item && item.lineTotalCents > 0) {
@@ -118,7 +127,13 @@ function parseWithHeaderGuide(text) {
     success: items.length > 0,
     strategy: 'header-guided',
     items,
-    headerInfo
+    headerInfo,
+    scanInfo: {
+      totalLines: lines.length,
+      lastParsedLineIndex,
+      foundTotals,
+      fullDocumentScanned: lastParsedLineIndex >= lines.length - 1
+    }
   };
 }
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-01-26T06:19:33.778Z",
+  "lastUpdated": "2026-01-28T03:01:14.093Z",
   "vendorPatterns": {
     "sysco": [
       {
@@ -91,6 +91,24 @@
         "createdAt": "2026-01-25T21:52:21.563Z",
         "successCount": 4,
         "lastUsed": "2026-01-25T23:04:47.257Z"
+      },
+      {
+        "fingerprint": "8b5dcb73b6f0",
+        "vendor": "sysco",
+        "strategy": "unknown",
+        "confidence": 100,
+        "itemCount": 2,
+        "totalCents": 51300,
+        "features": [
+          "hdr:price",
+          "hdr:qty",
+          "lines:10",
+          "prices:5",
+          "vendor:sysco"
+        ],
+        "createdAt": "2026-01-28T03:01:14.077Z",
+        "successCount": 2,
+        "lastUsed": "2026-01-28T03:01:14.093Z"
       }
     ],
     "cintas": [
@@ -126,8 +144,8 @@
           "vendor:cintas"
         ],
         "createdAt": "2026-01-25T23:10:58.658Z",
-        "successCount": 2,
-        "lastUsed": "2026-01-25T23:11:12.456Z"
+        "successCount": 16,
+        "lastUsed": "2026-01-28T03:00:50.415Z"
       }
     ],
     "generic": [
@@ -181,6 +199,21 @@
         "createdAt": "2026-01-26T06:19:33.778Z",
         "successCount": 1,
         "lastUsed": "2026-01-26T06:19:33.778Z"
+      },
+      {
+        "fingerprint": "dd04ffbd10fa",
+        "vendor": "generic",
+        "strategy": "unknown",
+        "confidence": 100,
+        "itemCount": 0,
+        "totalCents": 1000,
+        "features": [
+          "lines:0",
+          "prices:0"
+        ],
+        "createdAt": "2026-01-28T02:06:11.330Z",
+        "successCount": 13,
+        "lastUsed": "2026-01-28T03:00:50.433Z"
       }
     ]
   },
@@ -230,11 +263,21 @@
       "vendor": "generic",
       "strategy": "unknown",
       "confidence": 100
+    },
+    "dd04ffbd10fa": {
+      "vendor": "generic",
+      "strategy": "unknown",
+      "confidence": 100
+    },
+    "8b5dcb73b6f0": {
+      "vendor": "sysco",
+      "strategy": "unknown",
+      "confidence": 100
     }
   },
   "stats": {
-    "totalParses": 34,
-    "successfulParses": 32,
-    "patternsLearned": 10
+    "totalParses": 63,
+    "successfulParses": 61,
+    "patternsLearned": 12
   }
 }

@@ -405,9 +405,13 @@ function parseInvoiceEnhanced(text, options = {}) {
 
   // Parse line items
   const rawItems = [];
+  const foundTotals = [];      // Track all INVOICE TOTAL lines found
+  const foundSubtotals = [];   // Track all SUBTOTAL lines found
   let itemSectionStarted = false;
+  let lastParsedLineIndex = 0; // Track how far we scanned
 
   for (let i = 0; i < lines.length; i++) {
+    lastParsedLineIndex = i;   // Update last parsed line
     const line = lines[i];
 
     // Detect item section start
@@ -422,9 +426,24 @@ function parseInvoiceEnhanced(text, options = {}) {
       }
     }
 
-    // Stop at totals section
-    if (/^INVOICE\s+TOTAL/i.test(line.trim())) break;
-    if (/^SUBTOTAL\s*[\d$]/i.test(line.trim()) && !/GROUP/i.test(line)) break;
+    // Track totals but DON'T stop - continue scanning entire document
+    // This ensures we don't miss items after subtotals in multi-section invoices
+    if (/^INVOICE\s+TOTAL/i.test(line.trim())) {
+      const totalMatch = line.match(/[\d,]+\.?\d*/);
+      if (totalMatch) {
+        foundTotals.push({ line: i, label: 'INVOICE TOTAL', value: totalMatch[0] });
+      }
+      // Don't break - continue scanning for more items
+      continue;
+    }
+    if (/^SUBTOTAL\s*[\d$]/i.test(line.trim()) && !/GROUP/i.test(line)) {
+      const subtotalMatch = line.match(/[\d,]+\.?\d*/);
+      if (subtotalMatch) {
+        foundSubtotals.push({ line: i, label: 'SUBTOTAL', value: subtotalMatch[0] });
+      }
+      // Don't break - continue scanning for more items after this subtotal
+      continue;
+    }
 
     if (itemSectionStarted || options.parseAllLines) {
       const parsed = parseLineItemMultiStrategy(line, { structure, vendor: options.vendor });
@@ -480,6 +499,15 @@ function parseInvoiceEnhanced(text, options = {}) {
       rawItemCount: rawItems.length,
       validatedItemCount: validatedItems.length,
       mathCorrectedCount: validatedItems.filter(i => i.mathCorrected).length
+    },
+    // Full-document scan tracking (guardrail data)
+    scanInfo: {
+      totalLines: lines.length,
+      lastParsedLineIndex,
+      scanCompleteness: Math.round((lastParsedLineIndex / lines.length) * 100),
+      foundTotals,
+      foundSubtotals,
+      fullDocumentScanned: lastParsedLineIndex >= lines.length - 1
     }
   };
 }

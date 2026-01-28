@@ -1,0 +1,104 @@
+name: Invoice Parsing Accuracy Gate
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'services/invoice_parsing_v2/**'
+      - 'test/parsing-accuracy.test.js'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/invoice_parsing_v2/**'
+      - 'test/parsing-accuracy.test.js'
+  workflow_dispatch:
+
+jobs:
+  parsing-accuracy:
+    name: Parsing Accuracy Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run parsing accuracy tests
+        id: tests
+        run: |
+          npm test -- --grep "Invoice Parsing Accuracy" --reporter spec 2>&1 | tee test-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Check for regressions
+        if: failure()
+        run: |
+          echo "::error::PARSING ACCURACY REGRESSION DETECTED"
+          echo ""
+          echo "One or more invoice parsing fixtures failed validation."
+          echo "This indicates a regression in parsing accuracy."
+          echo ""
+          echo "To fix:"
+          echo "1. Review the test output above to see which fixtures failed"
+          echo "2. Check if your changes affected the parsing logic"
+          echo "3. If the change is intentional, update the fixture's expected.json"
+          echo ""
+          grep -A 20 "FIXTURE MISMATCH" test-output.txt || true
+          exit 1
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parsing-test-results
+          path: test-output.txt
+          retention-days: 7
+
+  lint-fixtures:
+    name: Validate Fixture Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Validate fixture JSON files
+        run: |
+          echo "Validating fixture JSON files..."
+          find services/invoice_parsing_v2/fixtures -name "*.expected.json" -type f | while read file; do
+            echo "Checking: $file"
+            node -e "JSON.parse(require('fs').readFileSync('$file', 'utf8'))" || {
+              echo "::error file=$file::Invalid JSON in fixture file"
+              exit 1
+            }
+          done
+          echo "All fixture files are valid JSON"
+
+      - name: Check fixture pairs
+        run: |
+          echo "Checking for orphaned fixtures..."
+          find services/invoice_parsing_v2/fixtures -name "*.txt" -type f | while read txtfile; do
+            jsonfile="${txtfile%.txt}.expected.json"
+            if [ ! -f "$jsonfile" ]; then
+              echo "::warning file=$txtfile::Missing expected.json for fixture"
+            fi
+          done
+          find services/invoice_parsing_v2/fixtures -name "*.expected.json" -type f | while read jsonfile; do
+            txtfile="${jsonfile%.expected.json}.txt"
+            if [ ! -f "$txtfile" ]; then
+              echo "::warning file=$jsonfile::Missing .txt file for expected.json"
+            fi
+          done
+          echo "Fixture validation complete"

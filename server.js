@@ -141,6 +141,9 @@ const { checkTrialAccess, incrementInvoiceUsage } = require('./trial-middleware'
 const InventoryIntelligence = require('./inventory-intelligence');  // Inventory tracking & price intelligence
 const universalInvoiceProcessor = require('./universal-invoice-processor');  // Universal invoice processing (PDF, images, OCR)
 const invoiceImagePipeline = require('./services/invoice_image_pipeline');  // v2 phone photo OCR pipeline
+const jobProcessor = require('./services/job-processor');  // Background job processor for PDF/OCR
+const jobQueue = require('./services/job-queue');  // Job queue management
+const reviewService = require('./services/review-service');  // Human correction workflow
 
 // Initialize inventory intelligence for auto-processing
 const inventoryIntelligence = new InventoryIntelligence();
@@ -1785,6 +1788,182 @@ const cogsRoutes = require('./cogs-coding-routes');
 app.use('/api/cogs', requireAuth, cogsRoutes);
 console.log('✅ COGS Coding routes registered at /api/cogs (auth required)');
 
+// Job Queue API routes (background PDF/OCR processing)
+// Protected by auth middleware
+
+// Get job status
+app.get('/api/jobs/:jobId', requireAuth, (req, res) => {
+  try {
+    const job = jobQueue.getJob(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    // Only allow users to see their own jobs (unless admin)
+    if (job.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    res.json(job);
+  } catch (error) {
+    console.error('[JOBS API] Error getting job:', error);
+    res.status(500).json({ error: 'Failed to get job' });
+  }
+});
+
+// List user's jobs
+app.get('/api/jobs', requireAuth, (req, res) => {
+  try {
+    const status = req.query.status;
+    const limit = parseInt(req.query.limit) || 50;
+    const jobs = jobQueue.getJobsByUser(req.user.id, { status, limit });
+    res.json({ jobs });
+  } catch (error) {
+    console.error('[JOBS API] Error listing jobs:', error);
+    res.status(500).json({ error: 'Failed to list jobs' });
+  }
+});
+
+// Get queue statistics (admin only)
+app.get('/api/jobs/stats', requireAuth, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  try {
+    const stats = jobQueue.getQueueStats();
+    const processorStatus = jobProcessor.getStatus();
+    res.json({ stats, processor: processorStatus });
+  } catch (error) {
+    console.error('[JOBS API] Error getting stats:', error);
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
+
+console.log('✅ Job Queue routes registered at /api/jobs (auth required)');
+
+// Human Correction Workflow API routes
+// For reviewing and correcting low-confidence invoice parses
+
+// Get pending reviews
+app.get('/api/reviews/pending', requireAuth, (req, res) => {
+  try {
+    const severity = req.query.severity;
+    const limit = parseInt(req.query.limit) || 50;
+    // Managers/admins see all, others see only their own
+    const userId = ['admin', 'manager'].includes(req.user.role) ? null : req.user.id;
+    const reviews = reviewService.getPendingReviews({ severity, limit, userId });
+    res.json({ reviews });
+  } catch (error) {
+    console.error('[REVIEWS API] Error getting pending reviews:', error);
+    res.status(500).json({ error: 'Failed to get pending reviews' });
+  }
+});
+
+// Get review statistics (admin/manager only)
+app.get('/api/reviews/stats', requireAuth, (req, res) => {
+  if (!['admin', 'manager'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Admin or manager access required' });
+  }
+  try {
+    const stats = reviewService.getReviewStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('[REVIEWS API] Error getting stats:', error);
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
+
+// Get a specific review
+app.get('/api/reviews/:reviewId', requireAuth, (req, res) => {
+  try {
+    const review = reviewService.getReview(parseInt(req.params.reviewId));
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    // Check access
+    if (!['admin', 'manager'].includes(req.user.role) && review.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    res.json(review);
+  } catch (error) {
+    console.error('[REVIEWS API] Error getting review:', error);
+    res.status(500).json({ error: 'Failed to get review' });
+  }
+});
+
+// Get review by run ID
+app.get('/api/reviews/run/:runId', requireAuth, (req, res) => {
+  try {
+    const review = reviewService.getReviewByRunId(parseInt(req.params.runId));
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found for this run' });
+    }
+    res.json(review);
+  } catch (error) {
+    console.error('[REVIEWS API] Error getting review by run:', error);
+    res.status(500).json({ error: 'Failed to get review' });
+  }
+});
+
+// Approve a review as-is
+app.post('/api/reviews/:reviewId/approve', requireAuth, (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.reviewId);
+    const notes = req.body.notes || null;
+    const updated = reviewService.approveReview(reviewId, req.user.id, notes);
+    res.json({ success: true, review: updated });
+  } catch (error) {
+    console.error('[REVIEWS API] Error approving review:', error);
+    res.status(500).json({ error: 'Failed to approve review' });
+  }
+});
+
+// Submit corrections for a review
+app.post('/api/reviews/:reviewId/correct', requireAuth, (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.reviewId);
+    const corrections = req.body.corrections;
+    const notes = req.body.notes || null;
+
+    if (!corrections) {
+      return res.status(400).json({ error: 'Corrections required' });
+    }
+
+    const updated = reviewService.submitCorrections(reviewId, req.user.id, corrections, notes);
+    res.json({ success: true, review: updated });
+  } catch (error) {
+    console.error('[REVIEWS API] Error submitting corrections:', error);
+    res.status(500).json({ error: 'Failed to submit corrections' });
+  }
+});
+
+// Dismiss a review
+app.post('/api/reviews/:reviewId/dismiss', requireAuth, (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.reviewId);
+    const notes = req.body.notes || 'Dismissed without correction';
+    const updated = reviewService.dismissReview(reviewId, req.user.id, notes);
+    res.json({ success: true, review: updated });
+  } catch (error) {
+    console.error('[REVIEWS API] Error dismissing review:', error);
+    res.status(500).json({ error: 'Failed to dismiss review' });
+  }
+});
+
+// Get correction patterns for a vendor (admin/manager only)
+app.get('/api/reviews/patterns/:vendorName', requireAuth, (req, res) => {
+  if (!['admin', 'manager'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Admin or manager access required' });
+  }
+  try {
+    const patterns = reviewService.getCorrectionPatterns(req.params.vendorName);
+    res.json({ patterns });
+  } catch (error) {
+    console.error('[REVIEWS API] Error getting patterns:', error);
+    res.status(500).json({ error: 'Failed to get patterns' });
+  }
+});
+
+console.log('✅ Review Workflow routes registered at /api/reviews (auth required)');
+
 // Request logging middleware for better monitoring and real-time analytics
 app.use((req, res, next) => {
   const start = Date.now();
@@ -3404,6 +3583,19 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
         }
       }
 
+      // ===== HUMAN REVIEW INTEGRATION =====
+      // Flag low-confidence parses for human review
+      if (parsedInvoice && reviewService.needsReview(parsedInvoice)) {
+        try {
+          const review = reviewService.createReview(internalRunId, parsedInvoice);
+          console.log(`[REVIEW] Created review #${review.id} for run ${run_id} (confidence: ${review.confidenceScore}%, severity: ${review.reviewSeverity})`);
+          revenueRadarData.needs_review = true;
+          revenueRadarData.review_id = review.id;
+        } catch (reviewError) {
+          console.warn('[REVIEW] Failed to create review:', reviewError.message);
+        }
+      }
+
       // Detect opportunities from invoice data
       const opportunityData = detectOpportunityFromInvoice(canonical, userId, internalRunId);
 
@@ -4898,6 +5090,31 @@ const server = app.listen(PORT, async () => {
   // Ensure default admin user exists on startup
   const ensureAdmin = require('./scripts/ensure-admin');
   await ensureAdmin();
+
+  // Initialize background job processor
+  try {
+    const database = db.getDatabase();
+    jobQueue.init(database);
+    jobProcessor.init({
+      db: database,
+      processor: universalInvoiceProcessor,
+      pollInterval: 2000
+    });
+    // Start the job processor in background mode
+    jobProcessor.start();
+    console.log('✅ Background job processor started');
+  } catch (jobErr) {
+    console.error('⚠️  Failed to start job processor:', jobErr.message);
+  }
+
+  // Initialize review service for human correction workflow
+  try {
+    const database = db.getDatabase();
+    reviewService.init(database);
+    console.log('✅ Review service initialized');
+  } catch (reviewErr) {
+    console.error('⚠️  Failed to initialize review service:', reviewErr.message);
+  }
 
   console.log('='.repeat(60));
   console.log('Available Endpoints:');

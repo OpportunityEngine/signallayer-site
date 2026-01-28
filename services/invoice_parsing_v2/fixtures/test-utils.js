@@ -66,10 +66,27 @@ function assertParseMatch(result, expected, options = {}) {
   const errors = [];
 
   // Compare header fields
+  // Note: Parser V2 returns flat structure, not nested header object
   if (expected.header) {
+    const headerFieldMapping = {
+      invoiceNumber: 'invoiceNumber',
+      invoiceDate: 'invoiceDate',
+      accountNumber: 'accountNumber',
+      customerName: 'customerName',
+      soldTo: 'soldTo',
+      billTo: 'billTo',
+      shipTo: 'shipTo',
+      vendorName: 'vendorName'
+    };
+
     for (const [key, expectedValue] of Object.entries(expected.header)) {
-      if (expectedValue !== null && result.header[key] !== expectedValue) {
-        errors.push(`header.${key}: expected "${expectedValue}", got "${result.header[key]}"`);
+      if (expectedValue === null) continue;
+
+      // Check both flat structure and nested header
+      const actualValue = result[key] || (result.header && result.header[key]);
+
+      if (actualValue !== expectedValue) {
+        errors.push(`header.${key}: expected "${expectedValue}", got "${actualValue}"`);
       }
     }
   }
@@ -108,9 +125,12 @@ function assertParseMatch(result, expected, options = {}) {
         }
       }
 
-      // Compare qty
-      if (exp.qty !== undefined && actual.qty !== exp.qty) {
-        errors.push(`lineItems[${i}].qty: expected ${exp.qty}, got ${actual.qty}`);
+      // Compare qty (parser may use 'qty' or 'quantity')
+      if (exp.qty !== undefined) {
+        const actualQty = actual.qty !== undefined ? actual.qty : actual.quantity;
+        if (actualQty !== exp.qty) {
+          errors.push(`lineItems[${i}].qty: expected ${exp.qty}, got ${actualQty}`);
+        }
       }
 
       // Compare prices with tolerance
@@ -196,11 +216,12 @@ function validateMath(result, options = {}) {
   if (result.lineItems) {
     for (let i = 0; i < result.lineItems.length; i++) {
       const item = result.lineItems[i];
-      const expectedLineTotal = item.qty * item.unitPriceCents;
+      const qty = item.qty !== undefined ? item.qty : item.quantity;
+      const expectedLineTotal = qty * item.unitPriceCents;
       const diff = Math.abs(item.lineTotalCents - expectedLineTotal);
       if (diff > centsTolerance) {
         errors.push(
-          `lineItems[${i}]: qty (${item.qty}) * unitPrice (${item.unitPriceCents}) = ${expectedLineTotal}, but lineTotal is ${item.lineTotalCents}`
+          `lineItems[${i}]: qty (${qty}) * unitPrice (${item.unitPriceCents}) = ${expectedLineTotal}, but lineTotal is ${item.lineTotalCents}`
         );
       }
     }
@@ -237,22 +258,27 @@ function generateReport(result, expected = null) {
   lines.push('');
 
   lines.push('--- Header ---');
-  lines.push(`Invoice #: ${result.header.invoiceNumber || 'N/A'}`);
-  lines.push(`Date: ${result.header.invoiceDate || 'N/A'}`);
-  lines.push(`Customer: ${result.header.customerName || 'N/A'}`);
+  // Support both flat and nested header structure
+  const header = result.header || result;
+  lines.push(`Invoice #: ${header.invoiceNumber || 'N/A'}`);
+  lines.push(`Date: ${header.invoiceDate || 'N/A'}`);
+  lines.push(`Customer: ${header.customerName || 'N/A'}`);
   lines.push('');
 
   lines.push('--- Line Items ---');
-  lines.push(`Count: ${result.lineItems.length}`);
-  for (const item of result.lineItems) {
-    lines.push(`  - ${item.description}: ${item.qty} x ${formatCents(item.unitPriceCents)} = ${formatCents(item.lineTotalCents)}`);
+  const lineItems = result.lineItems || [];
+  lines.push(`Count: ${lineItems.length}`);
+  for (const item of lineItems) {
+    const qty = item.qty !== undefined ? item.qty : item.quantity;
+    lines.push(`  - ${item.description}: ${qty} x ${formatCents(item.unitPriceCents)} = ${formatCents(item.lineTotalCents)}`);
   }
   lines.push('');
 
   lines.push('--- Totals ---');
-  lines.push(`Subtotal: ${formatCents(result.totals.subtotalCents)}`);
-  lines.push(`Tax: ${formatCents(result.totals.taxCents)}`);
-  lines.push(`Total: ${formatCents(result.totals.totalCents)}`);
+  const totals = result.totals || {};
+  lines.push(`Subtotal: ${formatCents(totals.subtotalCents || 0)}`);
+  lines.push(`Tax: ${formatCents(totals.taxCents || 0)}`);
+  lines.push(`Total: ${formatCents(totals.totalCents || 0)}`);
   lines.push('');
 
   // Math validation

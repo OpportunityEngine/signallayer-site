@@ -1401,7 +1401,10 @@ function parseSyscoInvoice(normalizedText, options = {}) {
   totals = validateParserTotals(totals, normalizedText, 'sysco');
 
   const lineItems = [];
+  const syscoFoundTotals = [];      // Track all INVOICE TOTAL lines found
+  const syscoFoundSubtotals = [];   // Track all SUBTOTAL lines found
   let inItemSection = false;
+  let lastParsedLineIndex = 0;      // Track how far we scanned
 
   // =====================================================================
   // COMPREHENSIVE LINE ITEM DIAGNOSTICS
@@ -1479,6 +1482,7 @@ function parseSyscoInvoice(normalizedText, options = {}) {
   console.log(`[SYSCO PARSE] === END MIDDLE SECTION ===`);
 
   for (let i = 0; i < lines.length; i++) {
+    lastParsedLineIndex = i;  // Track full document scan progress
     const line = lines[i];
     const trimmedLine = line.trim();
 
@@ -1512,14 +1516,23 @@ function parseSyscoInvoice(normalizedText, options = {}) {
     }
 
     if (inItemSection) {
-      // Stop at totals section
+      // Track totals but DON'T stop - continue scanning entire document
+      // This ensures we don't miss items in multi-section invoices
       if (/^INVOICE\s+TOTAL/i.test(line.trim())) {
-        console.log(`[SYSCO PARSE] Stopped at INVOICE TOTAL line ${i}`);
-        break;
+        const totalMatch = line.match(/[\d,]+\.?\d*/);
+        console.log(`[SYSCO PARSE] Found INVOICE TOTAL at line ${i} - continuing scan`);
+        if (totalMatch) {
+          syscoFoundTotals.push({ line: i, label: 'INVOICE TOTAL', value: totalMatch[0] });
+        }
+        continue; // Don't break - continue scanning
       }
       if (/^SUBTOTAL\s*[\d$]/i.test(line.trim()) && !/GROUP/i.test(line)) {
-        console.log(`[SYSCO PARSE] Stopped at SUBTOTAL line ${i}`);
-        break;
+        const subtotalMatch = line.match(/[\d,]+\.?\d*/);
+        console.log(`[SYSCO PARSE] Found SUBTOTAL at line ${i} - continuing scan`);
+        if (subtotalMatch) {
+          syscoFoundSubtotals.push({ line: i, label: 'SUBTOTAL', value: subtotalMatch[0] });
+        }
+        continue; // Don't break - there may be more items after this subtotal
       }
 
       const item = parseSyscoLineItem(line);
@@ -1690,6 +1703,15 @@ function parseSyscoInvoice(normalizedText, options = {}) {
         hasSyntheticDelta: !!syntheticDelta
       },
       totalsCandidates: totals.candidates || []
+    },
+    // Full-document scan tracking (guardrail data)
+    scanInfo: {
+      totalLines: lines.length,
+      lastParsedLineIndex,
+      scanCompleteness: Math.round((lastParsedLineIndex / lines.length) * 100),
+      foundTotals: syscoFoundTotals,
+      foundSubtotals: syscoFoundSubtotals,
+      fullDocumentScanned: lastParsedLineIndex >= lines.length - 1
     }
   };
 }
