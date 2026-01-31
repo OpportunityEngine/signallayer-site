@@ -4388,7 +4388,8 @@ class SmartOrderingEngine {
    */
   calculateVendorScorecard(userId, vendorName = null) {
     const database = db.getDatabase();
-    const vendorExclusion = this.getVendorExclusionClause('ir');
+    // Don't exclude any vendors for vendor analysis - show ALL vendors
+    const vendorExclusion = '';
 
     try {
       const vendorFilter = vendorName ? "AND ir.vendor_name = ?" : "";
@@ -4652,7 +4653,8 @@ class SmartOrderingEngine {
    */
   getSkuPriceComparison(userId, minVendors = 2) {
     const database = db.getDatabase();
-    const vendorExclusion = this.getVendorExclusionClause('ir');
+    // Don't exclude any vendors for vendor analysis - show ALL vendors
+    const vendorExclusion = '';
 
     try {
       const comparison = database.prepare(`
@@ -4720,7 +4722,8 @@ class SmartOrderingEngine {
    */
   analyzeVendorPareto(userId) {
     const database = db.getDatabase();
-    const vendorExclusion = this.getVendorExclusionClause('ir');
+    // Don't exclude any vendors for vendor analysis - show ALL vendors
+    const vendorExclusion = '';
 
     try {
       const vendors = database.prepare(`
@@ -4806,7 +4809,8 @@ class SmartOrderingEngine {
    */
   identifySingleSourceItems(userId) {
     const database = db.getDatabase();
-    const vendorExclusion = this.getVendorExclusionClause('ir');
+    // Don't exclude any vendors for vendor analysis - show ALL vendors
+    const vendorExclusion = '';
 
     try {
       const singleSource = database.prepare(`
