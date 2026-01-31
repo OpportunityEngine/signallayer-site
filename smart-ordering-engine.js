@@ -4412,10 +4412,10 @@ class SmartOrderingEngine {
           GROUP BY ir.vendor_name
         ),
         total_spend AS (
-          SELECT SUM(invoice_total_cents) as total
-          FROM ingestion_runs
-          WHERE user_id = ? AND status = 'completed'
-            AND created_at >= date('now', '-90 days')
+          SELECT SUM(ir.invoice_total_cents) as total
+          FROM ingestion_runs ir
+          WHERE ir.user_id = ? AND ir.status = 'completed'
+            AND ir.created_at >= date('now', '-90 days')
             ${vendorExclusion}
         ),
         price_volatility AS (
