@@ -4397,14 +4397,16 @@ class SmartOrderingEngine {
         WITH vendor_spend AS (
           SELECT
             ir.vendor_name,
-            COUNT(DISTINCT ir.id) as invoice_count,
+            COUNT(ir.id) as invoice_count,
             SUM(ir.invoice_total_cents) as total_spend,
             AVG(ir.invoice_total_cents) as avg_invoice,
             MIN(ir.created_at) as first_order,
             MAX(ir.created_at) as last_order,
-            COUNT(DISTINCT ii.sku) as unique_skus
+            (SELECT COUNT(DISTINCT ii.sku) FROM invoice_items ii
+             JOIN ingestion_runs ir2 ON ii.run_id = ir2.id
+             WHERE ir2.vendor_name = ir.vendor_name AND ir2.user_id = ir.user_id
+             AND ir2.status = 'completed') as unique_skus
           FROM ingestion_runs ir
-          LEFT JOIN invoice_items ii ON ir.id = ii.run_id
           WHERE ir.user_id = ? AND ir.status = 'completed'
             AND ir.created_at >= date('now', '-90 days')
             ${vendorExclusion}
