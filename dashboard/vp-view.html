@@ -2135,14 +2135,27 @@
       50% { transform: scale(1.05); }
     }
 
+    /* 5-column grid for Row 1 */
+    .quick-actions-grid-5 {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    @media (max-width: 1200px) {
+      .quick-actions-grid-5 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
     @media (max-width: 900px) {
-      .quick-actions-grid {
+      .quick-actions-grid,
+      .quick-actions-grid-5 {
         grid-template-columns: repeat(2, 1fr);
       }
     }
 
     @media (max-width: 500px) {
-      .quick-actions-grid {
+      .quick-actions-grid,
+      .quick-actions-grid-5 {
         grid-template-columns: 1fr;
       }
     }
@@ -3148,7 +3161,7 @@
       </div>
 
       <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
-      <div class="quick-actions-grid" style="grid-template-columns: repeat(5, 1fr);">
+      <div class="quick-actions-grid quick-actions-grid-5">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-label">Inventory</span>
           <span class="tile-value" id="tileInventoryCount">Loading...</span>
