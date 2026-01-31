@@ -494,12 +494,13 @@ async function processInvoiceForCOGS(userId, runId, lineItems) {
     for (const item of lineItems) {
       const sku = item.sku || item.item_code || '';
       const productName = item.raw_description || item.description || '';
-      const unitPrice = item.unit_price?.amount || 0;
-      const totalPrice = item.total_price?.amount || 0;
+      // CRITICAL: canonical amounts are in DOLLARS, database expects CENTS
+      const unitPriceCents = Math.round((item.unit_price?.amount || 0) * 100);
+      const totalPriceCents = Math.round((item.total_price?.amount || 0) * 100);
 
       if (sku || productName) {
         try {
-          learningStmt.run(userId, sku || productName.substring(0, 50), productName, unitPrice, totalPrice);
+          learningStmt.run(userId, sku || productName.substring(0, 50), productName, unitPriceCents, totalPriceCents);
         } catch (e) {
           // Ignore learning queue errors
         }
@@ -548,8 +549,9 @@ async function processInvoiceForCOGS(userId, runId, lineItems) {
     const sku = item.sku || item.item_code || '';
     const productName = item.raw_description || item.description || '';
     const quantity = item.quantity || 1;
-    const unitPrice = item.unit_price?.amount || 0;
-    const totalPrice = item.total_price?.amount || (unitPrice * quantity);
+    // CRITICAL: canonical amounts are in DOLLARS, convert to CENTS for database
+    const unitPriceCents = Math.round((item.unit_price?.amount || 0) * 100);
+    const totalPriceCents = Math.round((item.total_price?.amount || 0) * 100) || (unitPriceCents * quantity);
 
     const searchKey = sku || productName;
     if (!searchKey) continue;
@@ -599,15 +601,15 @@ async function processInvoiceForCOGS(userId, runId, lineItems) {
           sku,
           productName,
           quantity,
-          unitPrice,
-          totalPrice,
+          unitPriceCents,
+          totalPriceCents,
           matchedMapping.id
         );
 
         // Update price history if we have a unit price
-        if (unitPrice > 0) {
-          updatePriceHistory.run(userId, sku || productName.substring(0, 100), productName, unitPrice, runId);
-          updateMappingPrice.run(unitPrice, matchedMapping.id);
+        if (unitPriceCents > 0) {
+          updatePriceHistory.run(userId, sku || productName.substring(0, 100), productName, unitPriceCents, runId);
+          updateMappingPrice.run(unitPriceCents, matchedMapping.id);
         }
 
         matchedCount++;
@@ -617,7 +619,7 @@ async function processInvoiceForCOGS(userId, runId, lineItems) {
     } else {
       // Queue for manual categorization
       try {
-        learningStmt.run(userId, sku || productName.substring(0, 50), productName, unitPrice, totalPrice);
+        learningStmt.run(userId, sku || productName.substring(0, 50), productName, unitPriceCents, totalPriceCents);
         unmatchedCount++;
       } catch (e) {
         // Ignore learning queue errors
@@ -3566,13 +3568,18 @@ app.post("/ingest", requireAuth, checkTrialAccess, async (req, res) => {
 
         for (const item of canonical.line_items) {
           try {
+            // CRITICAL: canonical amounts are in DOLLARS, database expects CENTS
+            // Convert dollars to cents by multiplying by 100
+            const unitPriceCents = Math.round((item.unit_price?.amount || 0) * 100);
+            const totalCents = Math.round((item.total_price?.amount || 0) * 100);
+
             itemStmt.run(
               internalRunId,
               item.sku || null,
               item.raw_description || item.description || '',
               item.quantity || 0,
-              item.unit_price?.amount || 0,
-              item.total_price?.amount || 0,
+              unitPriceCents,
+              totalCents,
               item.category || null
             );
           } catch (itemError) {

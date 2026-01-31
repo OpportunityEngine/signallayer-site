@@ -240,18 +240,59 @@ function parseItemRow(line) {
   // Remove tax flag for number extraction
   let workLine = taxFlag ? line.slice(0, line.lastIndexOf(taxMatch[0])) : line;
 
+  // First, identify SKU position to exclude SKU numbers from price extraction
+  // Cintas SKUs: X#####, PREM-#####, or other alphanumeric patterns
+  const skuPatterns = [
+    /\b(X\d{4,6})\b/gi,           // X73478, X59294
+    /\b(PREM-\d{4,6})\b/gi,       // PREM-03634 (pants sizes)
+    /\b([A-Z]{2,4}-\d{4,6})\b/gi, // Other prefix-number SKUs
+  ];
+
+  // Find all SKU positions to exclude their numbers
+  const skuRanges = [];
+  for (const pattern of skuPatterns) {
+    let skuMatch;
+    while ((skuMatch = pattern.exec(workLine)) !== null) {
+      skuRanges.push({
+        start: skuMatch.index,
+        end: skuMatch.index + skuMatch[0].length
+      });
+    }
+  }
+
+  // Helper to check if a position is within a SKU
+  const isWithinSku = (pos) => skuRanges.some(r => pos >= r.start && pos < r.end);
+
   // Extract numbers from the line (from right to left: lineTotal, unitPrice, qty, ...)
+  // CRITICAL: Only extract numbers that look like prices (have decimals) or small quantities
   const numbers = [];
   const numPattern = /(\d[\d,]*\.?\d*)/g;
   let match;
   while ((match = numPattern.exec(workLine)) !== null) {
-    const num = parseFloat(match[1].replace(/,/g, ''));
+    // Skip numbers that are part of a SKU
+    if (isWithinSku(match.index)) {
+      continue;
+    }
+
+    const raw = match[1];
+    const num = parseFloat(raw.replace(/,/g, ''));
+
     if (Number.isFinite(num)) {
-      numbers.push({
-        value: num,
-        index: match.index,
-        raw: match[1]
-      });
+      // Check if this looks like a price (has decimal) or a reasonable qty/price
+      const hasDecimal = raw.includes('.');
+      const isReasonablePrice = hasDecimal && num < 10000; // Prices under $10k with decimal
+      const isReasonableQty = !hasDecimal && num >= 1 && num <= 999; // Qty 1-999
+      const isSmallAmount = num < 100; // Small numbers are usually qty or freq codes
+
+      // Only include if it looks like a valid price or quantity
+      if (isReasonablePrice || isReasonableQty || isSmallAmount) {
+        numbers.push({
+          value: num,
+          index: match.index,
+          raw: raw,
+          hasDecimal: hasDecimal
+        });
+      }
     }
   }
 
@@ -281,13 +322,36 @@ function parseItemRow(line) {
     };
   }
 
-  // For regular item rows, we need at least 3 numbers (qty, unitPrice, lineTotal)
-  // Sometimes 4 if there's a freq code
+  // For regular item rows, we need at least 2 numbers (unitPrice, lineTotal)
   if (numbers.length < 2) return null;
 
-  // Work backwards from the rightmost numbers
-  const lineTotal = numbers[numbers.length - 1].value;
-  const unitPrice = numbers.length >= 2 ? numbers[numbers.length - 2].value : lineTotal;
+  // CRITICAL: Prefer numbers WITH decimals as prices (more reliable than whole numbers)
+  // Filter to find the best candidates for lineTotal and unitPrice
+  const priceNumbers = numbers.filter(n => n.hasDecimal);
+  const qtyNumbers = numbers.filter(n => !n.hasDecimal && n.value >= 1 && n.value <= 999);
+
+  // Work backwards from the rightmost DECIMAL numbers for prices
+  let lineTotal, unitPrice;
+  if (priceNumbers.length >= 2) {
+    // Best case: we have at least 2 decimal numbers (unitPrice and lineTotal)
+    lineTotal = priceNumbers[priceNumbers.length - 1].value;
+    unitPrice = priceNumbers[priceNumbers.length - 2].value;
+  } else if (priceNumbers.length === 1) {
+    // Only one decimal number - use it for both (qty=1 item)
+    lineTotal = priceNumbers[0].value;
+    unitPrice = lineTotal;
+  } else {
+    // No decimal numbers - fall back to rightmost numbers but be cautious
+    // Only use if they look like reasonable prices (under $500)
+    const reasonableNumbers = numbers.filter(n => n.value < 500);
+    if (reasonableNumbers.length >= 2) {
+      lineTotal = reasonableNumbers[reasonableNumbers.length - 1].value;
+      unitPrice = reasonableNumbers[reasonableNumbers.length - 2].value;
+    } else {
+      // Can't determine reliable prices - skip this line
+      return null;
+    }
+  }
 
   // Qty might be right before unitPrice, or might be implied as 1
   let qty = 1;
