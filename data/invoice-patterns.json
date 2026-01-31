@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-01-28T03:01:14.093Z",
+  "lastUpdated": "2026-01-31T01:04:30.283Z",
   "vendorPatterns": {
     "sysco": [
       {
@@ -144,8 +144,8 @@
           "vendor:cintas"
         ],
         "createdAt": "2026-01-25T23:10:58.658Z",
-        "successCount": 16,
-        "lastUsed": "2026-01-28T03:00:50.415Z"
+        "successCount": 23,
+        "lastUsed": "2026-01-31T01:04:30.268Z"
       }
     ],
     "generic": [
@@ -212,8 +212,8 @@
           "prices:0"
         ],
         "createdAt": "2026-01-28T02:06:11.330Z",
-        "successCount": 13,
-        "lastUsed": "2026-01-28T03:00:50.433Z"
+        "successCount": 18,
+        "lastUsed": "2026-01-31T01:04:30.283Z"
       }
     ]
   },
@@ -276,8 +276,8 @@
     }
   },
   "stats": {
-    "totalParses": 63,
-    "successfulParses": 61,
+    "totalParses": 75,
+    "successfulParses": 73,
     "patternsLearned": 12
   }
 }

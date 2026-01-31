@@ -11,10 +11,13 @@
  * - Mixed: ABC-123-DEF, 12-34567-89
  */
 
-// Individual SKU pattern components
+// Individual SKU pattern components - EXPANDED for maximum coverage
 const SKU_PATTERNS = {
   // Pure digits (5-10 digits) - most common
   DIGITS_ONLY: /\d{5,10}/,
+
+  // Short numeric codes (4 digits) - common in small vendors
+  DIGITS_SHORT: /\d{4}/,
 
   // UPC with dashes: 34730-48591-00, 12345-67890-12
   UPC_DASHED: /\d{4,6}-\d{4,6}-\d{2}/,
@@ -25,11 +28,17 @@ const SKU_PATTERNS = {
   // Alphanumeric starting with letter: X59294, ABC12345
   ALPHA_PREFIX: /[A-Z]{1,3}\d{4,8}/i,
 
-  // Alphanumeric with dashes: ABC-123-DEF, X-12345
-  ALPHA_DASHED: /[A-Z]{1,4}-\d{3,8}(?:-[A-Z0-9]{1,4})?/i,
+  // Short alphanumeric: A123, AB12, ABC1
+  ALPHA_SHORT: /[A-Z]{1,3}\d{2,4}/i,
+
+  // Alphanumeric with dashes: ABC-123-DEF, X-12345, F-20145
+  ALPHA_DASHED: /[A-Z]{1,4}-\d{2,8}(?:-[A-Z0-9]{1,4})?/i,
 
   // Digits with single dash: 12-34567, 123-4567
   DIGITS_DASHED: /\d{2,4}-\d{4,8}/,
+
+  // Multi-part dashed: 123-456-78, 12-3456-789
+  MULTI_DASHED: /\d{2,4}-\d{3,5}-\d{2,4}/,
 
   // Digits with periods: 123.456.789
   DIGITS_DOTTED: /\d{2,4}\.\d{2,4}(?:\.\d{2,4})?/,
@@ -39,20 +48,41 @@ const SKU_PATTERNS = {
 
   // Vendor-specific: Sysco 7-digit codes
   SYSCO_ITEM: /\d{7}/,
+
+  // US Foods format: 6-7 digits
+  USFOODS_ITEM: /\d{6,7}/,
+
+  // Mixed alphanumeric with slashes: ABC/123, 12/345
+  SLASH_FORMAT: /[A-Z0-9]{2,5}\/[A-Z0-9]{2,5}/i,
+
+  // Trailing letter codes: 12345A, 67890B
+  DIGITS_ALPHA_SUFFIX: /\d{4,8}[A-Z]{1,2}/i,
+
+  // Leading zeros common in ERP systems: 0001234, 00012345
+  ERP_LEADING_ZEROS: /0{2,}\d{3,7}/,
+
+  // Buckeye/Chemical format: BCC-XXXX or BC-XXXX
+  CHEMICAL_FORMAT: /[A-Z]{2,4}-\d{3,6}/i,
 };
 
 /**
  * Universal SKU regex that matches most common formats
  * Use this in line item patterns to capture SKUs flexibly
+ * EXPANDED for maximum vendor coverage
  */
 const UNIVERSAL_SKU_PATTERN = new RegExp(
   '(' +
-  '\\d{4,6}-\\d{4,6}-\\d{2}|' +     // UPC dashed: 34730-48591-00
-  '\\d{5,7}-\\d{5,7}-\\d{2,4}|' +   // UPC dashed long
-  '[A-Z]{1,3}\\d{4,8}|' +            // Alpha prefix: X59294
-  '[A-Z]{1,4}-\\d{3,8}(?:-[A-Z0-9]{1,4})?|' + // Alpha dashed
-  '\\d{2,4}-\\d{4,8}|' +             // Digits dashed
-  '\\d{5,10}' +                       // Pure digits (last - most greedy)
+  '\\d{4,6}-\\d{4,6}-\\d{2}|' +            // UPC dashed: 34730-48591-00
+  '\\d{5,7}-\\d{5,7}-\\d{2,4}|' +          // UPC dashed long
+  '\\d{2,4}-\\d{3,5}-\\d{2,4}|' +          // Multi-part dashed: 123-456-78
+  '[A-Z]{1,4}-\\d{2,8}(?:-[A-Z0-9]{1,4})?|' + // Alpha dashed: ABC-123, F-20145
+  '[A-Z]{1,3}\\d{4,8}|' +                   // Alpha prefix long: X59294
+  '[A-Z]{1,3}\\d{2,4}|' +                   // Alpha prefix short: A123
+  '\\d{4,8}[A-Z]{1,2}|' +                   // Digits with alpha suffix: 12345A
+  '[A-Z0-9]{2,5}\\/[A-Z0-9]{2,5}|' +       // Slash format: ABC/123
+  '0{2,}\\d{3,7}|' +                        // ERP leading zeros: 0001234
+  '\\d{2,4}-\\d{4,8}|' +                    // Digits dashed: 12-34567
+  '\\d{4,10}' +                             // Pure digits (last - most greedy)
   ')',
   'i'
 );

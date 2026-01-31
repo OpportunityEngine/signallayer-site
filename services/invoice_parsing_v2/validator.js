@@ -242,6 +242,7 @@ function validatePrintedTotal(result, rawText) {
 
 /**
  * Validate items sum reconciliation
+ * CRITICAL: Heavily penalize when we have a total but no line items
  */
 function validateItemsSum(result) {
   const validation = {
@@ -254,9 +255,17 @@ function validateItemsSum(result) {
 
   const maxScore = SCORING_WEIGHTS.itemsSumReconcile;
   const lineItems = result.lineItems || [];
+  const hasTotal = (result.totals?.totalCents || 0) > 0;
 
   if (lineItems.length === 0) {
-    validation.warnings.push('no_line_items: No line items extracted');
+    // CRITICAL FIX: If we found a total but NO line items, this is a major failure
+    // The confidence score should reflect that we're missing critical data
+    if (hasTotal) {
+      validation.issues.push('critical_no_items: Found invoice total but extracted 0 line items - likely extraction failure');
+      validation.score = -15; // Negative score to heavily penalize overall confidence
+    } else {
+      validation.warnings.push('no_line_items: No line items extracted');
+    }
     return validation;
   }
 

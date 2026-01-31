@@ -1788,6 +1788,12 @@ const cogsRoutes = require('./cogs-coding-routes');
 app.use('/api/cogs', requireAuth, cogsRoutes);
 console.log('✅ COGS Coding routes registered at /api/cogs (auth required)');
 
+// Mobile Photo Ingest routes (optimized phone camera uploads)
+// Protected by auth middleware to ensure req.user is populated
+const mobilePhotoRoutes = require('./mobile-photo-routes');
+app.use('/api/ingest', requireAuth, mobilePhotoRoutes);
+console.log('✅ Mobile Photo Ingest routes registered at /api/ingest/photo (auth required)');
+
 // Job Queue API routes (background PDF/OCR processing)
 // Protected by auth middleware
 

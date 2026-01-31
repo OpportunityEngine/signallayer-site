@@ -665,6 +665,332 @@
       margin-top: 4px;
     }
 
+    /* Mobile camera option highlight */
+    .mobile-camera-option {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(245, 158, 11, 0.05) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.25);
+    }
+
+    .mobile-camera-option:hover {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
+      border-color: rgba(251, 191, 36, 0.4);
+    }
+
+    .mobile-camera-option .upload-option-icon {
+      animation: cameraPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes cameraPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Mobile-specific enhancements */
+    @media (max-width: 768px) {
+      .mobile-camera-option {
+        order: -1;
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%);
+      }
+
+      .upload-options {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-camera-option .upload-option-title {
+        font-size: 18px;
+      }
+
+      .mobile-camera-option .upload-option-icon {
+        font-size: 36px;
+      }
+    }
+
+    /* ============ PHOTO PREVIEW MODAL (Banking App Style) ============ */
+    .photo-preview-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 1000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .photo-preview-modal.active {
+      display: flex;
+    }
+
+    .preview-header {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .preview-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .preview-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-image-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      max-height: 60vh;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #111;
+    }
+
+    .preview-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Quality overlay on image */
+    .quality-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+    }
+
+    .quality-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .quality-status.good { color: #22c55e; }
+    .quality-status.warning { color: #fbbf24; }
+    .quality-status.poor { color: #ef4444; }
+
+    .quality-status-icon {
+      font-size: 18px;
+    }
+
+    /* Quality checklist */
+    .quality-checklist {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 20px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .checklist-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .checklist-items {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 400px) {
+      .checklist-items {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+
+    .checklist-item.pass {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .checklist-item.fail {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .checklist-item.warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+    }
+
+    .checklist-item.checking {
+      color: #64748b;
+    }
+
+    .checklist-icon {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .checklist-icon.spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .checklist-label {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .checklist-detail {
+      font-size: 11px;
+      opacity: 0.7;
+      text-align: right;
+    }
+
+    /* Quality score bar */
+    .quality-score-bar {
+      position: relative;
+      height: 32px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .quality-score-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%);
+      transition: width 0.5s ease;
+      border-radius: 8px;
+    }
+
+    .quality-score-text {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      z-index: 1;
+    }
+
+    /* Guidance message */
+    .guidance-message {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .guidance-message.active {
+      display: block;
+    }
+
+    .guidance-message.improve {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+
+    .guidance-message.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    .guidance-message.success {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+
+    /* Preview actions */
+    .preview-actions {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .preview-btn {
+      flex: 1;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .preview-btn.retake {
+      background: rgba(100, 116, 139, 0.3);
+      border: 1px solid rgba(100, 116, 139, 0.5);
+      color: #e2e8f0;
+    }
+
+    .preview-btn.submit {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: #fff;
+    }
+
+    .preview-btn.submit:disabled {
+      background: rgba(100, 116, 139, 0.3);
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .preview-btn.submit.warning-state {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #000;
+    }
+
     /* Low confidence warning card */
     .low-confidence-card {
       background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(185, 28, 28, 0.1) 100%);
@@ -746,17 +1072,18 @@
           <div class="upload-option-title">From Computer</div>
           <div class="upload-option-desc">Browse local files</div>
         </div>
+        <div class="upload-option mobile-camera-option" onclick="triggerCameraCapture()">
+          <div class="upload-option-icon">📸</div>
+          <div class="upload-option-title">Snap Photo</div>
+          <div class="upload-option-desc">Use phone camera</div>
+        </div>
         <div class="upload-option" onclick="showAlert('info', 'Email import coming soon!')">
           <div class="upload-option-icon">📧</div>
           <div class="upload-option-title">From Email</div>
           <div class="upload-option-desc">Connect inbox</div>
         </div>
-        <div class="upload-option" onclick="showAlert('info', 'Cloud import coming soon!')">
-          <div class="upload-option-icon">☁️</div>
-          <div class="upload-option-title">From Cloud</div>
-          <div class="upload-option-desc">Google Drive, Dropbox</div>
-        </div>
       </div>
+      <input type="file" id="cameraInput" class="file-input" accept="image/*" capture="environment" onchange="handleCameraCapture(event)">
 
       <!-- Optional Form Fields -->
       <div class="form-section">
@@ -887,6 +1214,72 @@
       <div id="recentUploadsList">
         <!-- Will be populated dynamically -->
       </div>
+    </div>
+  </div>
+
+  <!-- Photo Preview Modal (Banking App Style) -->
+  <div class="photo-preview-modal" id="photoPreviewModal">
+    <div class="preview-header">
+      <span class="preview-title">Review Your Photo</span>
+      <button class="preview-close" onclick="closePhotoPreview()">&times;</button>
+    </div>
+
+    <div class="preview-image-container">
+      <img id="modalPreviewImage" class="preview-image" src="" alt="Invoice preview">
+      <div class="quality-overlay">
+        <div class="quality-status" id="qualityStatus">
+          <span class="quality-status-icon" id="qualityStatusIcon">&#8987;</span>
+          <span id="qualityStatusText">Analyzing photo...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="quality-checklist">
+      <div class="checklist-title">Photo Quality Check</div>
+      <div class="quality-score-bar" id="qualityScoreBar">
+        <div class="quality-score-fill" id="qualityScoreFill" style="width: 0%"></div>
+        <span class="quality-score-text" id="qualityScoreText">Analyzing...</span>
+      </div>
+      <div class="checklist-items">
+        <div class="checklist-item checking" id="checkBrightness">
+          <span class="checklist-icon spinner">&#8987;</span>
+          <span class="checklist-label">Lighting</span>
+          <span class="checklist-detail" id="checkBrightnessDetail">Checking...</span>
+        </div>
+        <div class="checklist-item checking" id="checkGlare">
+          <span class="checklist-icon spinner">&#8987;</span>
+          <span class="checklist-label">Glare</span>
+          <span class="checklist-detail" id="checkGlareDetail">Checking...</span>
+        </div>
+        <div class="checklist-item checking" id="checkFocus">
+          <span class="checklist-icon spinner">&#8987;</span>
+          <span class="checklist-label">Focus</span>
+          <span class="checklist-detail" id="checkFocusDetail">Checking...</span>
+        </div>
+        <div class="checklist-item checking" id="checkSize">
+          <span class="checklist-icon spinner">&#8987;</span>
+          <span class="checklist-label">Resolution</span>
+          <span class="checklist-detail" id="checkSizeDetail">Checking...</span>
+        </div>
+        <div class="checklist-item checking" id="checkDocument">
+          <span class="checklist-icon spinner">&#8987;</span>
+          <span class="checklist-label">Document</span>
+          <span class="checklist-detail" id="checkDocumentDetail">Checking...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="guidance-message" id="guidanceMessage">
+      <!-- Dynamic guidance -->
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-btn retake" onclick="retakePhoto()">
+        &#128247; Retake
+      </button>
+      <button class="preview-btn submit" id="submitPhotoBtn" disabled onclick="submitPhoto()">
+        &#10003; Process Invoice
+      </button>
     </div>
   </div>
 
@@ -1427,6 +1820,827 @@
       const container = document.getElementById('alertContainer');
       container.innerHTML = `<div class="alert ${type}">${message}</div>`;
       setTimeout(() => container.innerHTML = '', 4000);
+    }
+
+    // ============ MOBILE CAMERA CAPTURE ============
+
+    // Trigger camera capture (uses device camera on mobile)
+    function triggerCameraCapture() {
+      document.getElementById('cameraInput').click();
+    }
+
+    // ============ PHOTO QUALITY ANALYSIS (Banking App Style) ============
+
+    // Store current photo file for preview/submit
+    let currentPhotoFile = null;
+    let currentPhotoQuality = null;
+
+    // Handle camera capture - show preview with quality check first
+    async function handleCameraCapture(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validate it's an image
+      if (!file.type.startsWith('image/')) {
+        showAlert('error', 'Please capture a photo of the invoice');
+        return;
+      }
+
+      // Store file and show preview with quality analysis
+      currentPhotoFile = file;
+      await showPhotoPreview(file);
+    }
+
+    // Show photo preview modal and analyze quality
+    async function showPhotoPreview(file) {
+      const modal = document.getElementById('photoPreviewModal');
+      const previewImg = document.getElementById('modalPreviewImage');
+
+      // Reset checklist items to "checking" state
+      resetChecklist();
+
+      // Show modal
+      modal.classList.add('active');
+
+      // Load image preview
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        previewImg.src = e.target.result;
+
+        // Wait for image to load, then analyze
+        previewImg.onload = async () => {
+          await analyzePhotoQuality(previewImg, file);
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset all checklist items to "checking" state
+    function resetChecklist() {
+      const items = ['checkBrightness', 'checkGlare', 'checkFocus', 'checkSize', 'checkDocument'];
+      items.forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'checklist-item checking';
+        el.querySelector('.checklist-icon').textContent = '\u23F3'; // hourglass
+        el.querySelector('.checklist-icon').classList.add('spinner');
+        const detail = document.getElementById(id + 'Detail');
+        if (detail) detail.textContent = 'Checking...';
+      });
+
+      // Reset quality score bar
+      document.getElementById('qualityScoreFill').style.width = '0%';
+      document.getElementById('qualityScoreText').textContent = 'Analyzing...';
+
+      // Reset quality status
+      const statusEl = document.getElementById('qualityStatus');
+      statusEl.className = 'quality-status';
+      document.getElementById('qualityStatusIcon').textContent = '\u23F3';
+      document.getElementById('qualityStatusText').textContent = 'Analyzing photo...';
+
+      // Hide guidance and disable submit
+      document.getElementById('guidanceMessage').classList.remove('active');
+      document.getElementById('submitPhotoBtn').disabled = true;
+      document.getElementById('submitPhotoBtn').classList.remove('warning-state');
+    }
+
+    // Analyze photo quality using canvas analysis
+    async function analyzePhotoQuality(imgElement, file) {
+      const quality = {
+        brightness: { score: 0, status: 'checking', message: '' },
+        glare: { score: 0, status: 'checking', message: '' },
+        focus: { score: 0, status: 'checking', message: '' },
+        resolution: { score: 0, status: 'checking', message: '' },
+        document: { score: 0, status: 'checking', message: '' },
+        overall: 0
+      };
+
+      try {
+        // Create canvas for image analysis
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const maxAnalysisSize = 800; // Resize for faster analysis
+
+        // Scale down if needed
+        let width = imgElement.naturalWidth;
+        let height = imgElement.naturalHeight;
+        if (width > maxAnalysisSize || height > maxAnalysisSize) {
+          const scale = maxAnalysisSize / Math.max(width, height);
+          width = Math.floor(width * scale);
+          height = Math.floor(height * scale);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(imgElement, 0, 0, width, height);
+
+        // Get image data for analysis
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Simulate async checks with small delays for smooth UX
+        await delay(150);
+
+        // 1. Check Resolution first (instant check)
+        const origWidth = imgElement.naturalWidth;
+        const origHeight = imgElement.naturalHeight;
+        const megapixels = (origWidth * origHeight) / 1000000;
+
+        if (megapixels >= 2 && origWidth >= 1000 && origHeight >= 1000) {
+          quality.resolution = { score: 1, status: 'pass', message: `${origWidth}x${origHeight}` };
+        } else if (megapixels >= 0.5 && origWidth >= 600 && origHeight >= 600) {
+          quality.resolution = { score: 0.6, status: 'warning', message: `${origWidth}x${origHeight}` };
+        } else {
+          quality.resolution = { score: 0.2, status: 'fail', message: `${origWidth}x${origHeight}` };
+        }
+        updateChecklistItem('checkSize', quality.resolution);
+        await delay(120);
+
+        // 2. Check Brightness
+        const brightnessResult = analyzeBrightness(data);
+        quality.brightness = brightnessResult;
+        updateChecklistItem('checkBrightness', quality.brightness);
+        await delay(120);
+
+        // 3. Check Glare (hotspots that blow out detail)
+        const glareResult = analyzeGlare(data, width, height);
+        quality.glare = glareResult;
+        updateChecklistItem('checkGlare', quality.glare);
+        await delay(120);
+
+        // 4. Check Focus (blur detection via Laplacian variance)
+        const focusResult = analyzeBlur(ctx, width, height);
+        quality.focus = focusResult;
+        updateChecklistItem('checkFocus', quality.focus);
+        await delay(120);
+
+        // 5. Check Document Detection (contrast and edge density)
+        const documentResult = analyzeDocumentPresence(data, width, height);
+        quality.document = documentResult;
+        updateChecklistItem('checkDocument', quality.document);
+        await delay(80);
+
+        // Calculate overall score (weighted average)
+        const weights = { brightness: 0.2, glare: 0.15, focus: 0.3, resolution: 0.15, document: 0.2 };
+        quality.overall = (
+          quality.brightness.score * weights.brightness +
+          quality.glare.score * weights.glare +
+          quality.focus.score * weights.focus +
+          quality.resolution.score * weights.resolution +
+          quality.document.score * weights.document
+        );
+
+        // Update quality score bar
+        updateQualityScoreBar(quality.overall);
+
+        // Store quality results
+        currentPhotoQuality = quality;
+
+        // Update overall status and guidance
+        updateOverallStatus(quality);
+
+      } catch (err) {
+        console.error('Photo quality analysis error:', err);
+        // On error, allow submission with warning
+        quality.overall = 0.5;
+        currentPhotoQuality = quality;
+        updateQualityScoreBar(0.5);
+        document.getElementById('qualityStatusText').textContent = 'Analysis incomplete';
+        document.getElementById('submitPhotoBtn').disabled = false;
+        document.getElementById('submitPhotoBtn').classList.add('warning-state');
+        document.getElementById('submitPhotoBtn').innerHTML = '\u26A0 Try Anyway';
+      }
+    }
+
+    // Update the quality score bar display
+    function updateQualityScoreBar(score) {
+      const percent = Math.round(score * 100);
+      const fill = document.getElementById('qualityScoreFill');
+      const text = document.getElementById('qualityScoreText');
+
+      fill.style.width = percent + '%';
+
+      let label = 'Poor';
+      if (score >= 0.8) label = 'Excellent';
+      else if (score >= 0.6) label = 'Good';
+      else if (score >= 0.4) label = 'Fair';
+
+      text.textContent = `${percent}% - ${label}`;
+    }
+
+    // Analyze brightness from pixel data
+    function analyzeBrightness(data) {
+      let totalBrightness = 0;
+      const pixelCount = data.length / 4;
+
+      for (let i = 0; i < data.length; i += 4) {
+        // Calculate perceived brightness using luminance formula
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        totalBrightness += (0.299 * r + 0.587 * g + 0.114 * b);
+      }
+
+      const avgBrightness = totalBrightness / pixelCount;
+      const normalizedBrightness = avgBrightness / 255; // 0-1 scale
+
+      // Ideal brightness is around 0.4-0.7
+      if (normalizedBrightness >= 0.35 && normalizedBrightness <= 0.75) {
+        return { score: 1, status: 'pass', message: 'Good' };
+      } else if (normalizedBrightness < 0.2) {
+        return { score: 0.2, status: 'fail', message: 'Too dark' };
+      } else if (normalizedBrightness > 0.85) {
+        return { score: 0.3, status: 'fail', message: 'Too bright' };
+      } else if (normalizedBrightness < 0.35) {
+        return { score: 0.5, status: 'warning', message: 'A bit dark' };
+      } else {
+        return { score: 0.6, status: 'warning', message: 'A bit bright' };
+      }
+    }
+
+    // Analyze glare - detects bright hotspots that blow out detail
+    function analyzeGlare(data, width, height) {
+      // Glare shows up as concentrated areas of very high brightness (>240)
+      // surrounded by normal brightness areas
+      let veryBrightPixels = 0;
+      let totalPixels = data.length / 4;
+      let glareRegions = 0;
+
+      // Also track brightness variance to detect uniform overexposure vs glare spots
+      let brightnesses = [];
+
+      // Sample for performance
+      const sampleStep = 4;
+      for (let i = 0; i < data.length; i += sampleStep * 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        brightnesses.push(brightness);
+
+        // Very bright pixel (potential glare)
+        if (brightness > 245) {
+          veryBrightPixels++;
+        }
+      }
+
+      const sampledPixels = brightnesses.length;
+      const veryBrightRatio = veryBrightPixels / sampledPixels;
+
+      // Calculate brightness variance to distinguish glare from overexposure
+      const avgBrightness = brightnesses.reduce((a, b) => a + b, 0) / sampledPixels;
+      const variance = brightnesses.reduce((sum, b) => sum + Math.pow(b - avgBrightness, 2), 0) / sampledPixels;
+      const stdDev = Math.sqrt(variance);
+
+      // High variance + bright spots = glare
+      // Low variance + bright = overexposure (handled by brightness check)
+      const hasGlarePattern = veryBrightRatio > 0.02 && stdDev > 40;
+
+      if (veryBrightRatio < 0.01) {
+        return { score: 1, status: 'pass', message: 'None' };
+      } else if (veryBrightRatio < 0.03 && !hasGlarePattern) {
+        return { score: 0.8, status: 'pass', message: 'Minimal' };
+      } else if (veryBrightRatio < 0.08) {
+        return { score: 0.5, status: 'warning', message: 'Some glare' };
+      } else if (veryBrightRatio < 0.15) {
+        return { score: 0.3, status: 'warning', message: 'Moderate glare' };
+      } else {
+        return { score: 0.15, status: 'fail', message: 'Heavy glare' };
+      }
+    }
+
+    // Analyze blur using Laplacian variance (edge detection)
+    function analyzeBlur(ctx, width, height) {
+      // Get grayscale values
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+
+      // Convert to grayscale array
+      const gray = new Float32Array(width * height);
+      for (let i = 0; i < data.length; i += 4) {
+        gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      }
+
+      // Apply Laplacian kernel and calculate variance
+      let sum = 0;
+      let sumSq = 0;
+      let count = 0;
+
+      // Laplacian kernel: [0, 1, 0], [1, -4, 1], [0, 1, 0]
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const idx = y * width + x;
+          const laplacian = (
+            gray[idx - width] +     // top
+            gray[idx - 1] +         // left
+            -4 * gray[idx] +        // center
+            gray[idx + 1] +         // right
+            gray[idx + width]       // bottom
+          );
+
+          sum += laplacian;
+          sumSq += laplacian * laplacian;
+          count++;
+        }
+      }
+
+      const mean = sum / count;
+      const variance = (sumSq / count) - (mean * mean);
+
+      // Higher variance = sharper image
+      // Thresholds calibrated for typical phone camera images
+      if (variance > 500) {
+        return { score: 1, status: 'pass', message: 'Sharp' };
+      } else if (variance > 200) {
+        return { score: 0.7, status: 'warning', message: 'Soft' };
+      } else if (variance > 100) {
+        return { score: 0.4, status: 'warning', message: 'Very soft' };
+      } else {
+        return { score: 0.2, status: 'fail', message: 'Blurry' };
+      }
+    }
+
+    // Analyze if a document is present (contrast, text-like regions)
+    function analyzeDocumentPresence(data, width, height) {
+      // Check for good contrast (document vs background)
+      let minBrightness = 255;
+      let maxBrightness = 0;
+      let edgeCount = 0;
+
+      // Sample pixels for contrast
+      for (let i = 0; i < data.length; i += 16) { // Sample every 4th pixel
+        const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        minBrightness = Math.min(minBrightness, brightness);
+        maxBrightness = Math.max(maxBrightness, brightness);
+      }
+
+      const contrast = maxBrightness - minBrightness;
+
+      // Check for text-like edges (horizontal gradients)
+      const sampleSize = Math.min(100, height - 2);
+      for (let y = 1; y < sampleSize; y += 2) {
+        for (let x = 1; x < width - 1; x += 4) {
+          const idx = (y * width + x) * 4;
+          const prevIdx = (y * width + x - 1) * 4;
+          const nextIdx = (y * width + x + 1) * 4;
+
+          const current = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          const prev = 0.299 * data[prevIdx] + 0.587 * data[prevIdx + 1] + 0.114 * data[prevIdx + 2];
+          const next = 0.299 * data[nextIdx] + 0.587 * data[nextIdx + 1] + 0.114 * data[nextIdx + 2];
+
+          // Strong horizontal edge (text-like)
+          if (Math.abs(current - prev) > 30 || Math.abs(current - next) > 30) {
+            edgeCount++;
+          }
+        }
+      }
+
+      const edgeDensity = edgeCount / (sampleSize * width / 8);
+
+      // Good document has high contrast and moderate edge density
+      if (contrast > 150 && edgeDensity > 0.1) {
+        return { score: 1, status: 'pass', message: 'Detected' };
+      } else if (contrast > 100 && edgeDensity > 0.05) {
+        return { score: 0.7, status: 'warning', message: 'Partial' };
+      } else if (contrast > 60) {
+        return { score: 0.4, status: 'warning', message: 'Low contrast' };
+      } else {
+        return { score: 0.2, status: 'fail', message: 'Not found' };
+      }
+    }
+
+    // Update a single checklist item with icon and detail text
+    function updateChecklistItem(elementId, result) {
+      const el = document.getElementById(elementId);
+      const icon = el.querySelector('.checklist-icon');
+      const detail = document.getElementById(elementId + 'Detail');
+
+      icon.classList.remove('spinner');
+
+      if (result.status === 'pass') {
+        el.className = 'checklist-item pass';
+        icon.textContent = '\u2713'; // checkmark
+      } else if (result.status === 'warning') {
+        el.className = 'checklist-item warning';
+        icon.textContent = '\u26A0'; // warning triangle
+      } else {
+        el.className = 'checklist-item fail';
+        icon.textContent = '\u2717'; // X mark
+      }
+
+      // Update detail text with result message
+      if (detail && result.message) {
+        detail.textContent = result.message;
+      }
+    }
+
+    // Update overall status and show guidance
+    function updateOverallStatus(quality) {
+      const statusEl = document.getElementById('qualityStatus');
+      const statusIcon = document.getElementById('qualityStatusIcon');
+      const statusText = document.getElementById('qualityStatusText');
+      const guidanceEl = document.getElementById('guidanceMessage');
+      const submitBtn = document.getElementById('submitPhotoBtn');
+
+      // Count fails and warnings across all quality metrics
+      const allMetrics = [quality.brightness, quality.glare, quality.focus, quality.resolution, quality.document];
+      const failCount = allMetrics.filter(q => q.status === 'fail').length;
+      const warningCount = allMetrics.filter(q => q.status === 'warning').length;
+
+      let guidance = [];
+
+      if (quality.overall >= 0.7 && failCount === 0) {
+        // Good quality - ready to process
+        statusEl.className = 'quality-status good';
+        statusIcon.textContent = '\u2713';
+        statusText.textContent = 'Photo looks great!';
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('warning-state');
+        submitBtn.innerHTML = '\u2713 Process Invoice';
+
+        // Show positive reinforcement or hide guidance
+        if (warningCount === 0) {
+          guidanceEl.className = 'guidance-message success active';
+          guidanceEl.innerHTML = '\u2705 Ready for accurate extraction!';
+        } else {
+          guidanceEl.classList.remove('active');
+        }
+
+      } else if (failCount >= 2 || quality.overall < 0.35) {
+        // Poor quality - strongly encourage retake
+        statusEl.className = 'quality-status poor';
+        statusIcon.textContent = '\u2717';
+        statusText.textContent = 'Photo quality needs improvement';
+
+        // Build specific, actionable guidance
+        if (quality.brightness.status === 'fail') {
+          if (quality.brightness.message === 'Too dark') {
+            guidance.push('Move to a brighter area or turn on a light');
+          } else {
+            guidance.push('Move away from direct light sources');
+          }
+        }
+        if (quality.glare.status === 'fail') {
+          guidance.push('Tilt your phone to avoid reflections');
+        }
+        if (quality.focus.status === 'fail') {
+          guidance.push('Hold steady and tap screen to focus');
+        }
+        if (quality.resolution.status === 'fail') {
+          guidance.push('Move closer to capture more detail');
+        }
+        if (quality.document.status === 'fail') {
+          guidance.push('Ensure the full invoice is visible');
+        }
+
+        guidanceEl.className = 'guidance-message error active';
+        guidanceEl.innerHTML = '\uD83D\uDCF7 ' + (guidance.length > 0
+          ? guidance.slice(0, 3).join('. ') + '.'
+          : 'Please retake for better results.');
+
+        // Still allow submission but make it clear it's not recommended
+        submitBtn.disabled = false;
+        submitBtn.classList.add('warning-state');
+        submitBtn.innerHTML = '\u26A0 Process Anyway';
+
+      } else if (failCount === 1 || quality.overall < 0.55) {
+        // Marginal quality - can proceed but warn
+        statusEl.className = 'quality-status warning';
+        statusIcon.textContent = '\u26A0';
+        statusText.textContent = 'Photo may need a retake';
+
+        // Build guidance for the issues
+        if (quality.brightness.status === 'fail' || quality.brightness.status === 'warning') {
+          guidance.push(quality.brightness.message.includes('dark')
+            ? 'Better lighting would help'
+            : 'Less bright light recommended');
+        }
+        if (quality.glare.status === 'fail' || quality.glare.status === 'warning') {
+          guidance.push('Reduce glare by changing angle');
+        }
+        if (quality.focus.status === 'fail' || quality.focus.status === 'warning') {
+          guidance.push('Tap to focus for sharper text');
+        }
+        if (quality.document.status === 'fail' || quality.document.status === 'warning') {
+          guidance.push('Make sure text is clearly visible');
+        }
+
+        guidanceEl.className = 'guidance-message improve active';
+        guidanceEl.innerHTML = '\uD83D\uDCA1 ' + guidance.slice(0, 2).join('. ') + '.';
+
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('warning-state');
+        submitBtn.innerHTML = '\u2713 Process Invoice';
+
+      } else {
+        // Acceptable quality - proceed normally
+        statusEl.className = 'quality-status good';
+        statusIcon.textContent = '\u2713';
+        statusText.textContent = 'Photo quality is good';
+
+        // Optional tips for improvement
+        if (warningCount > 0) {
+          if (quality.focus.status === 'warning') {
+            guidance.push('Sharper focus helps accuracy');
+          }
+          if (quality.glare.status === 'warning') {
+            guidance.push('Reducing glare improves results');
+          }
+
+          if (guidance.length > 0) {
+            guidanceEl.className = 'guidance-message improve active';
+            guidanceEl.innerHTML = '\uD83D\uDCA1 Tip: ' + guidance[0] + '.';
+          } else {
+            guidanceEl.classList.remove('active');
+          }
+        } else {
+          guidanceEl.classList.remove('active');
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('warning-state');
+        submitBtn.innerHTML = '\u2713 Process Invoice';
+      }
+    }
+
+    // Close photo preview modal
+    function closePhotoPreview() {
+      document.getElementById('photoPreviewModal').classList.remove('active');
+      currentPhotoFile = null;
+      currentPhotoQuality = null;
+      document.getElementById('cameraInput').value = '';
+    }
+
+    // Retake photo - close modal and trigger camera again
+    function retakePhoto() {
+      closePhotoPreview();
+      setTimeout(() => {
+        triggerCameraCapture();
+      }, 100);
+    }
+
+    // Submit photo for processing
+    async function submitPhoto() {
+      if (!currentPhotoFile) {
+        showAlert('error', 'No photo to submit');
+        return;
+      }
+
+      closePhotoPreview();
+      await uploadMobilePhoto(currentPhotoFile);
+    }
+
+    // Utility: delay function
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Upload photo using optimized mobile endpoint
+    async function uploadMobilePhoto(file) {
+      const progressEl = document.getElementById('uploadProgress');
+      progressEl.classList.add('active');
+      document.getElementById('progressFilename').textContent = file.name || 'Photo';
+      document.getElementById('dropZone').classList.add('uploading');
+
+      let progressInterval = null;
+
+      try {
+        updateProgress(10, 'Preparing photo...');
+
+        // Create FormData for multipart upload (more efficient than base64)
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('source', 'mobile_camera');
+
+        // Add optional metadata
+        const vendorName = document.getElementById('vendorName').value;
+        if (vendorName) {
+          formData.append('vendor', vendorName);
+        }
+
+        // Start progress animation
+        let progress = 20;
+        const progressMessages = [
+          'Uploading photo...',
+          'Optimizing image...',
+          'Running OCR extraction...',
+          'Detecting invoice data...',
+          'Analyzing line items...',
+          'Calculating totals...'
+        ];
+        let msgIndex = 0;
+
+        progressInterval = setInterval(() => {
+          progress += Math.random() * 6;
+          if (progress > 85) progress = 85;
+          updateProgress(progress, progressMessages[msgIndex % progressMessages.length]);
+          msgIndex++;
+        }, 700);
+
+        console.log('[MobileUpload] Sending to /api/ingest/photo endpoint...');
+
+        // Use the optimized mobile photo endpoint
+        const response = await fetch('/api/ingest/photo', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (progressInterval) clearInterval(progressInterval);
+
+        console.log('[MobileUpload] Response received, status:', response.status);
+        updateProgress(90, 'Processing results...');
+
+        if (!response.ok) {
+          let errorMessage = 'Photo upload failed';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || `Server error (${response.status})`;
+          } catch (e) {
+            errorMessage = `Server error (${response.status})`;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log('[MobileUpload] Successfully processed:', result);
+
+        updateProgress(100, 'Processing complete!');
+
+        setTimeout(() => {
+          showMobileResults(file.name || 'Photo', result);
+        }, 500);
+
+      } catch (error) {
+        if (progressInterval) clearInterval(progressInterval);
+        console.error('[MobileUpload] Error:', error);
+
+        showAlert('error', error.message || 'Failed to process photo');
+        resetProgress();
+      }
+    }
+
+    // Show results from mobile photo upload
+    function showMobileResults(filename, result) {
+      resetProgress();
+      console.log('[MobileResults] Full response:', result);
+
+      const confidence = result.confidence?.overall || 0;
+      const warnings = result.warnings || [];
+      const isLowConfidence = confidence < 0.4 || !result.ok;
+
+      // If low confidence, show the low confidence card
+      if (isLowConfidence) {
+        showMobileLowConfidenceCard(filename, result, confidence, warnings);
+        return;
+      }
+
+      // Normal success flow
+      document.getElementById('resultsCard').classList.add('active');
+      document.getElementById('resultsFilename').textContent = filename;
+
+      // Update confidence indicator
+      const confPercent = Math.round(confidence * 100);
+      let confClass = confidence >= 0.8 ? 'high' : confidence >= 0.5 ? 'medium' : 'low';
+
+      document.getElementById('successConfidence').style.display = 'flex';
+      document.getElementById('confBarSuccess').style.width = confPercent + '%';
+      document.getElementById('confBarSuccess').className = 'confidence-bar ' + confClass;
+      document.getElementById('confPercentSuccess').textContent = confPercent + '%';
+      document.getElementById('confPercentSuccess').style.color =
+        confClass === 'high' ? '#22c55e' : confClass === 'medium' ? '#fbbf24' : '#ef4444';
+      document.getElementById('confLabelSuccess').className = 'confidence-label ' + confClass;
+
+      // Update title based on confidence
+      if (confidence >= 0.8) {
+        document.getElementById('resultsTitle').textContent = 'Invoice Processed Successfully!';
+        document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+      } else if (confidence >= 0.5) {
+        document.getElementById('resultsTitle').textContent = 'Invoice Processed - Please Verify';
+        document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
+      } else {
+        document.getElementById('resultsTitle').textContent = 'Invoice Processed - Manual Review Recommended';
+        document.getElementById('resultsIcon').style.background = 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)';
+      }
+
+      // Extract data from mobile response format
+      const extracted = result.extracted || {};
+      const totals = extracted.totals || {};
+      const items = extracted.lineItems?.length || 0;
+
+      // Get total value
+      let total = totals.total || totals.invoiceTotal || totals.amountDue || 0;
+      if (typeof total === 'number' && total > 100) {
+        total = total / 100; // Convert cents to dollars if needed
+      }
+
+      // Populate stats
+      document.getElementById('statItems').textContent = items;
+      document.getElementById('statTotal').textContent = '$' + (total || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      document.getElementById('statOpportunities').textContent = '0';
+      document.getElementById('statSavings').textContent = '$0.00';
+
+      // Show extracted info
+      const oppList = document.getElementById('opportunitiesList');
+      let infoHTML = '<div class="opportunities-title">Extracted Data</div>';
+
+      if (extracted.vendor) {
+        infoHTML += `<div class="opportunity-item">
+          <div class="opportunity-info">
+            <div class="opportunity-type">Vendor</div>
+            <div class="opportunity-desc">${escapeHtml(extracted.vendor)}</div>
+          </div>
+        </div>`;
+      }
+
+      if (extracted.invoiceNumber) {
+        infoHTML += `<div class="opportunity-item">
+          <div class="opportunity-info">
+            <div class="opportunity-type">Invoice #</div>
+            <div class="opportunity-desc">${escapeHtml(extracted.invoiceNumber)}</div>
+          </div>
+        </div>`;
+      }
+
+      if (items > 0) {
+        infoHTML += `<p style="color: #64748b; font-size: 14px; margin-top: 16px;">
+          Successfully extracted ${items} line items. View full details in the dashboard.
+        </p>`;
+      } else {
+        infoHTML += `<p style="color: #f59e0b; font-size: 14px; margin-top: 16px;">
+          Invoice total extracted but no line items detected. You can add items manually in the dashboard.
+        </p>`;
+      }
+
+      if (warnings.length > 0) {
+        infoHTML += `<p style="color: #64748b; font-size: 12px; margin-top: 8px;">
+          Note: ${warnings.slice(0, 2).join('. ')}
+        </p>`;
+      }
+
+      oppList.innerHTML = infoHTML;
+      loadRecentUploads();
+    }
+
+    function showMobileLowConfidenceCard(filename, result, confidence, warnings) {
+      document.getElementById('lowConfidenceCard').classList.add('active');
+
+      const confPercent = Math.round(confidence * 100);
+      document.getElementById('lowConfBar').style.width = confPercent + '%';
+      document.getElementById('lowConfPercent').textContent = confPercent + '%';
+
+      // Determine subtitle
+      let subtitle = 'The photo quality may be too low for accurate extraction';
+      if (warnings.some(w => w.includes('blurry') || w.includes('blur'))) {
+        subtitle = 'The photo appears to be blurry or out of focus';
+      } else if (warnings.some(w => w.includes('glare'))) {
+        subtitle = 'Glare was detected in the photo';
+      } else if (warnings.some(w => w.includes('dark'))) {
+        subtitle = 'The photo is too dark';
+      } else if (warnings.some(w => w.includes('text'))) {
+        subtitle = 'Could not detect invoice text in the photo';
+      }
+      document.getElementById('lowConfSubtitle').textContent = subtitle;
+
+      // Build tips
+      const tipsList = document.getElementById('ocrTipsList');
+      const tips = [
+        'Hold your phone steady and ensure the invoice is in focus',
+        'Take the photo in a well-lit area without glare',
+        'Make sure the entire invoice is visible in frame',
+        'Position phone directly above the invoice'
+      ];
+      tipsList.innerHTML = tips.map(tip => `<li>${tip}</li>`).join('');
+
+      // Show quality metrics if available
+      if (result.quality) {
+        const q = result.quality;
+        document.getElementById('qualityMetrics').style.display = 'grid';
+
+        const focusScore = 1 - (q.blurScore || 0);
+        setQualityMetric('qmBlur', focusScore);
+
+        const glareScore = 1 - (q.glareScore || 0);
+        setQualityMetric('qmGlare', glareScore);
+
+        const brightnessScore = 1 - Math.abs((q.brightness || 0.5) - 0.5) * 2;
+        setQualityMetric('qmBrightness', brightnessScore);
+
+        setQualityMetric('qmOcr', result.confidence?.ocr || 0);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     // Initial load

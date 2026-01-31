@@ -307,16 +307,122 @@ async function preprocessImageForOCR(imageBuffer, options = {}) {
 }
 
 /**
+ * Detect and correct image skew using edge detection heuristics
+ * Returns the estimated skew angle in degrees
+ */
+async function detectAndCorrectSkew(imageBuffer, sharpLib) {
+  try {
+    // Get image metadata
+    const metadata = await sharpLib(imageBuffer).metadata();
+    const { width, height } = metadata;
+
+    // Create a smaller version for analysis (faster processing)
+    const analysisWidth = Math.min(800, width);
+    const analysisHeight = Math.round(height * (analysisWidth / width));
+
+    // Extract raw pixel data for edge analysis
+    const { data, info } = await sharpLib(imageBuffer)
+      .resize(analysisWidth, analysisHeight)
+      .grayscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Simple horizontal line detection via row variance analysis
+    // Skewed documents will have uneven brightness patterns across rows
+    const rowBrightness = [];
+    for (let y = 0; y < info.height; y++) {
+      let rowSum = 0;
+      for (let x = 0; x < info.width; x++) {
+        rowSum += data[y * info.width + x];
+      }
+      rowBrightness.push(rowSum / info.width);
+    }
+
+    // Calculate variance in row brightness
+    const mean = rowBrightness.reduce((a, b) => a + b, 0) / rowBrightness.length;
+    const variance = rowBrightness.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / rowBrightness.length;
+
+    // Low variance suggests uniform text lines (no skew needed)
+    // High variance might indicate skew or poor image quality
+    const needsCorrection = variance > 500;
+
+    if (needsCorrection) {
+      console.log(`[SkewDetection] High variance detected (${variance.toFixed(0)}), applying rotation correction`);
+
+      // Try small rotations and see which produces more uniform row patterns
+      const testAngles = [-3, -2, -1, 0, 1, 2, 3];
+      let bestAngle = 0;
+      let lowestVariance = variance;
+
+      for (const angle of testAngles) {
+        if (angle === 0) continue;
+
+        try {
+          const rotated = await sharpLib(imageBuffer)
+            .rotate(angle, { background: { r: 255, g: 255, b: 255 } })
+            .resize(analysisWidth, analysisHeight)
+            .grayscale()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          // Recalculate variance
+          const testRowBrightness = [];
+          for (let y = 0; y < rotated.info.height; y++) {
+            let rowSum = 0;
+            for (let x = 0; x < rotated.info.width; x++) {
+              rowSum += rotated.data[y * rotated.info.width + x];
+            }
+            testRowBrightness.push(rowSum / rotated.info.width);
+          }
+
+          const testMean = testRowBrightness.reduce((a, b) => a + b, 0) / testRowBrightness.length;
+          const testVariance = testRowBrightness.reduce((sum, val) => sum + Math.pow(val - testMean, 2), 0) / testRowBrightness.length;
+
+          if (testVariance < lowestVariance) {
+            lowestVariance = testVariance;
+            bestAngle = angle;
+          }
+        } catch (e) {
+          // Skip this angle on error
+        }
+      }
+
+      if (bestAngle !== 0) {
+        console.log(`[SkewDetection] Best rotation angle: ${bestAngle}°`);
+        return { angle: bestAngle, corrected: true };
+      }
+    }
+
+    return { angle: 0, corrected: false };
+  } catch (err) {
+    console.error('[SkewDetection] Error:', err.message);
+    return { angle: 0, corrected: false };
+  }
+}
+
+/**
  * Advanced preprocessing for difficult images
  * Used when first pass OCR has low confidence
+ * ENHANCED: Now includes skew detection and correction
  */
 async function advancedImagePreprocessing(imageBuffer) {
   const sharpLib = getSharp();
   if (!sharpLib) return imageBuffer;
 
   try {
-    const outputBuffer = await sharpLib(imageBuffer)
-      .rotate() // Auto-rotate
+    // First, detect and correct skew
+    const skewResult = await detectAndCorrectSkew(imageBuffer, sharpLib);
+
+    let image = sharpLib(imageBuffer);
+
+    // Apply skew correction if needed
+    if (skewResult.corrected && skewResult.angle !== 0) {
+      image = image.rotate(skewResult.angle, { background: { r: 255, g: 255, b: 255 } });
+    } else {
+      image = image.rotate(); // Auto-rotate based on EXIF
+    }
+
+    const outputBuffer = await image
       .grayscale()
       .normalize()
       .linear(1.3, -30) // Increase contrast more aggressively

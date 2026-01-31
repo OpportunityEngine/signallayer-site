@@ -34,15 +34,49 @@ const ADJUSTMENT_TYPES = {
 
   fee: {
     patterns: [
+      // Fuel and delivery
       { regex: /FUEL\s*(?:SUR)?CHARGE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Fuel Surcharge' },
       { regex: /DELIVERY\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Delivery Fee' },
+      { regex: /DROP\s*(?:SIZE)?\s*(?:FEE|CHARGE|ADJ)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Drop Size Fee' },
+
+      // Service and handling
       { regex: /SERVICE\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Service Fee' },
       { regex: /HANDLING\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Handling Fee' },
       { regex: /PROCESSING\s*FEE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Processing Fee' },
+      { regex: /ADMIN(?:ISTRATIVE)?\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Administrative Fee' },
+
+      // Environmental and safety (including COVID-era fees)
       { regex: /ENVIRONMENTAL\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Environmental Fee' },
+      { regex: /PPE\s*(?:FEE|CHARGE|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'PPE Fee' },
+      { regex: /SANITIZ(?:ATION|ING)\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Sanitization Fee' },
+      { regex: /COVID\s*(?:FEE|SURCHARGE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'COVID Surcharge' },
+      { regex: /SAFETY\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Safety Fee' },
+      { regex: /COMPLIANCE\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Compliance Fee' },
+
+      // Timing-related
       { regex: /RESTOCKING\s*FEE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Restocking Fee' },
       { regex: /LATE\s*FEE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Late Fee' },
       { regex: /RUSH\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Rush Fee' },
+      { regex: /EXPEDITE[D]?\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Expedite Fee' },
+      { regex: /AFTER\s*HOURS\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'After Hours Fee' },
+      { regex: /WEEKEND\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Weekend Fee' },
+
+      // Seasonal and market-based
+      { regex: /SUMMER\s*SURCHARGE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Summer Surcharge' },
+      { regex: /WINTER\s*SURCHARGE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Winter Surcharge' },
+      { regex: /SEASONAL\s*(?:FEE|SURCHARGE|ADJ)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Seasonal Adjustment' },
+      { regex: /MARKET\s*(?:PRICE)?\s*(?:ADJ|ADJUSTMENT)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Market Adjustment' },
+      { regex: /INFLATION\s*(?:ADJ|SURCHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Inflation Adjustment' },
+
+      // Small order and minimum
+      { regex: /SMALL\s*ORDER\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Small Order Fee' },
+      { regex: /MINIMUM\s*ORDER\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Minimum Order Fee' },
+      { regex: /BELOW\s*MINIMUM\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Below Minimum Fee' },
+
+      // Miscellaneous
+      { regex: /MISC(?:ELLANEOUS)?\s*(?:FEE|CHARGE)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Miscellaneous Fee' },
+      { regex: /OTHER\s*(?:FEE|CHARGE|CHARGES)[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Other Charges' },
+      { regex: /CONVENIENCE\s*FEE[:\s]*\$?([\d,]+\.?\d*)/gi, label: 'Convenience Fee' },
     ],
     sign: 1,
     category: 'fee'
@@ -62,14 +96,39 @@ const ADJUSTMENT_TYPES = {
 
   discount: {
     patterns: [
+      // General discounts
       { regex: /DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Discount' },
       { regex: /PROMO(?:TIONAL)?\s*(?:CODE|DISCOUNT)?[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Promotional Discount' },
+      { regex: /SAVINGS[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Savings' },
+      { regex: /COUPON[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Coupon' },
+
+      // Volume and quantity discounts
       { regex: /VOLUME\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Volume Discount' },
+      { regex: /QUANTITY\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Quantity Discount' },
+      { regex: /BULK\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Bulk Discount' },
+      { regex: /CASE\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Case Discount' },
+
+      // Payment-based discounts
       { regex: /EARLY\s*PAY(?:MENT)?\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Early Payment Discount' },
+      { regex: /PROMPT\s*PAY(?:MENT)?\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Prompt Payment Discount' },
+      { regex: /CASH\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Cash Discount' },
+      { regex: /(\d+)\/(\d+)\s*NET\s*\d+[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Payment Terms Discount' }, // 2/10 NET 30
+
+      // Customer-based discounts
       { regex: /TRADE\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Trade Discount' },
       { regex: /LOYALTY\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Loyalty Discount' },
-      { regex: /COUPON[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Coupon' },
-      { regex: /SAVINGS[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Savings' },
+      { regex: /MEMBER(?:SHIP)?\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Membership Discount' },
+      { regex: /CUSTOMER\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Customer Discount' },
+      { regex: /PREFERRED\s*(?:CUSTOMER)?\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Preferred Discount' },
+
+      // Contract and special discounts
+      { regex: /CONTRACT\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Contract Discount' },
+      { regex: /SPECIAL\s*(?:PRICE|PRICING|DISCOUNT)[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Special Discount' },
+      { regex: /VENDOR\s*DISCOUNT[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Vendor Discount' },
+      { regex: /MANUFACTURER\s*(?:REBATE|DISCOUNT)[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Manufacturer Discount' },
+
+      // Percentage displays (informational)
+      { regex: /(\d+(?:\.\d+)?)\s*%\s*(?:OFF|DISCOUNT)[:\s]*[-]?\$?([\d,]+\.?\d*)/gi, label: 'Percentage Discount' },
     ],
     sign: -1, // Negative (reduces total)
     category: 'discount'

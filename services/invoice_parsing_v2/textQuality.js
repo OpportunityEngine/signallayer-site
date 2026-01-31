@@ -7,20 +7,53 @@
 
 /**
  * Common OCR errors and their corrections
+ * Expanded dictionary for maximum OCR accuracy
  */
 const OCR_CORRECTIONS = {
-  // Number/letter confusion
-  '0': ['O', 'o'],
-  '1': ['l', 'I', '|'],
+  // Number/letter confusion (context-independent)
+  '0': ['O', 'o', 'Q', 'D'],
+  '1': ['l', 'I', '|', 'i', '!'],
+  '2': ['Z', 'z'],
+  '3': ['E'],
+  '4': ['A'],
   '5': ['S', 's'],
-  '8': ['B'],
-  // Common word errors in invoices
-  'QUANTITY': ['OUANTITY', 'QUANTITV'],
-  'DESCRIPTION': ['DESCR1PTION', 'DESCRIPT1ON'],
-  'TOTAL': ['T0TAL', 'TQTAL'],
-  'SUBTOTAL': ['SUBT0TAL', 'SUBTQTAL'],
-  'INVOICE': ['INV0ICE', '1NVOICE'],
-  'PRICE': ['PR1CE', 'PRIC3']
+  '6': ['G', 'b'],
+  '7': ['T', '?', '/'],
+  '8': ['B', '&'],
+  '9': ['g', 'q'],
+
+  // Common word errors in invoices (comprehensive)
+  'QUANTITY': ['OUANTITY', 'QUANTITV', 'OUANT1TY', 'QUANT1TY', 'QUANTlTY', 'QUAN71TY'],
+  'DESCRIPTION': ['DESCR1PTION', 'DESCRIPT1ON', 'DESCRlPTION', 'DESCR|PTION', 'OESCRIPTION'],
+  'TOTAL': ['T0TAL', 'TQTAL', 'FOTAL', 'TOIAL', 'TOTAI', 'TOT4L', '7OTAL', 'TOTA1'],
+  'SUBTOTAL': ['SUBT0TAL', 'SUBTQTAL', 'SUBFOTAL', 'SUB7OTAL', 'SUBTOIAL', 'SUBTOTA1'],
+  'INVOICE': ['INV0ICE', '1NVOICE', 'lNVOICE', 'INVO1CE', '|NVOICE', 'INVQICE', 'INV01CE'],
+  'PRICE': ['PR1CE', 'PRIC3', 'PRlCE', 'PR|CE', 'PRIGE'],
+  'AMOUNT': ['AM0UNT', 'AMQUNT', 'AMOUN7', 'AMDUNT', 'AMOUNF'],
+  'BALANCE': ['BAIANCE', 'BA1ANCE', 'BAL4NCE', 'BALANGE'],
+  'PAYMENT': ['PAYMEN7', 'PAYMENI', 'PAYMENF'],
+  'ACCOUNT': ['ACC0UNT', 'ACCQUNT', 'ACCDUNT'],
+  'NUMBER': ['NUMB3R', 'NUM8ER', 'NUMRER'],
+  'ORDER': ['0RDER', 'QRDER', 'DRDER'],
+  'ITEM': ['1TEM', 'IIEM', '|TEM'],
+  'UNIT': ['UN1T', 'UNII', 'UN|T'],
+  'EACH': ['3ACH', 'EAGH'],
+  'CASE': ['C4SE', 'GASE'],
+  'DATE': ['D4TE', 'DAIE', 'DA7E'],
+  'DUE': ['DU3', 'OUE'],
+
+  // Vendor names (critical for detection)
+  'SYSCO': ['SYSC0', 'SYSCQ', '5YSCO', 'SY5CO', 'SYSGO'],
+  'CINTAS': ['C1NTAS', 'ClNTAS', 'GINTAS', 'C|NTAS'],
+  'ARAMARK': ['ARAM4RK', 'ARAMARX', 'ARARMARK'],
+  'GRAINGER': ['GRA1NGER', 'GRAlNGER', 'GRAINGFR'],
+
+  // Abbreviations
+  'LBS': ['L8S', 'LB5'],
+  'OZS': ['0ZS', 'QZS'],
+  'GAL': ['G4L', 'GAI'],
+  'QTY': ['0TY', 'QIY', 'Q7Y'],
+  'USD': ['U5D', 'USO']
 };
 
 /**
@@ -290,13 +323,15 @@ function detectOCRSource(text) {
 }
 
 /**
- * Merge multi-line items that were split by OCR
+ * Merge multi-line items that were split by OCR or PDF extraction
+ * ENHANCED: Better detection of continuation lines and columnar data
  * @param {Array<string>} lines - Array of text lines
  * @returns {Array<string>} Merged lines
  */
 function mergeMultiLineItems(lines) {
   const merged = [];
   let buffer = '';
+  let bufferHasPrice = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -304,44 +339,160 @@ function mergeMultiLineItems(lines) {
       if (buffer) {
         merged.push(buffer);
         buffer = '';
+        bufferHasPrice = false;
       }
       continue;
     }
 
-    // Check if this line looks like a continuation
+    // Detect line characteristics
+    const startsWithNumber = /^\d/.test(line);
+    const startsWithSAPLineNumber = /^0{3,}\d{2,3}\b/.test(line);
+    const startsWithCategoryCode = /^[CFPD]\s+\d/i.test(line);
+    const startsWithSKU = /^(\d{5,10}|[A-Z]{1,3}\d{4,8})\b/i.test(line);
+    const endsWithPrice = /\$?[\d,]+\.\d{2}\s*[YN]?\s*$/i.test(line);
+    const hasPrice = /\$?[\d,]+\.\d{2}/.test(line);
+    const isOnlyPrice = /^\$?[\d,]+\.\d{2}\s*$/.test(line);
+    const isOnlyNumber = /^[\d,]+\s*$/.test(line);
+    const isShortText = line.length < 40 && !hasPrice;
+
+    // Detect if this looks like a new item (not a continuation)
+    const isNewItem =
+      startsWithSAPLineNumber ||
+      startsWithCategoryCode ||
+      (startsWithSKU && line.length > 10) ||
+      (startsWithNumber && line.length > 20 && hasPrice);
+
+    // Detect if this is a continuation line
     const isContinuation =
-      !line.match(/^\d/) &&  // Doesn't start with number
-      !line.match(/^[CFPD]\s+\d/i) &&  // Doesn't start with category code
-      !line.match(/\$?[\d,]+\.\d{2}\s*$/);  // Doesn't end with price
+      !isNewItem &&
+      !isOnlyPrice &&
+      buffer &&
+      (
+        // Description continuation (text only, no price yet in buffer)
+        (isShortText && !bufferHasPrice) ||
+        // Columnar data - price on separate line
+        (isOnlyPrice && !bufferHasPrice) ||
+        // Quantity/unit on separate line
+        (isOnlyNumber && !bufferHasPrice) ||
+        // Multi-word description split across lines
+        (!startsWithNumber && !hasPrice && line.length < 50)
+      );
 
-    const endsWithPrice = /\$?[\d,]+\.\d{2}\s*$/.test(line);
-    const startsWithCode = /^(\d{5,8}|[CFPD]\s+\d)/i.test(line);
-
-    if (buffer && isContinuation && !startsWithCode) {
+    if (isContinuation) {
       // This is a continuation of the previous line
       buffer += ' ' + line;
+      if (hasPrice) bufferHasPrice = true;
     } else {
-      // This is a new item
+      // This is a new item - save buffer and start fresh
       if (buffer) {
         merged.push(buffer);
       }
       buffer = line;
+      bufferHasPrice = hasPrice;
     }
 
-    // If line ends with price, it's complete
+    // If line ends with price, the item is complete
     if (endsWithPrice) {
       if (buffer) {
         merged.push(buffer);
         buffer = '';
+        bufferHasPrice = false;
       }
     }
   }
 
+  // Don't forget the last buffer
   if (buffer) {
     merged.push(buffer);
   }
 
   return merged;
+}
+
+/**
+ * Reconstruct items from columnar PDF extraction
+ * Handles cases where each column is on a separate line:
+ *   000010
+ *   50015000
+ *   BLUE AP
+ *   79.27
+ *   USD
+ *   1
+ *   EA
+ *   79.27
+ * @param {Array<string>} lines - Array of text lines
+ * @returns {Array<Object>} Reconstructed item groups
+ */
+function reconstructColumnarItems(lines) {
+  const groups = [];
+  let currentGroup = { lines: [], combined: '' };
+  let inItemSection = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Detect SAP line number start (000010, 000020, etc.)
+    const isSAPLineNumber = /^0{3,}\d{2,3}$/.test(line);
+
+    if (isSAPLineNumber) {
+      // Save previous group if it has content
+      if (currentGroup.lines.length > 0) {
+        currentGroup.combined = currentGroup.lines.join(' ').trim();
+        if (currentGroup.combined.length > 5) {
+          groups.push(currentGroup);
+        }
+      }
+      // Start new group
+      currentGroup = { lines: [line], combined: '' };
+      inItemSection = true;
+      continue;
+    }
+
+    if (inItemSection) {
+      // Check if this ends the item (another SAP line number or section header)
+      const isHeaderLine = /^(ITEM|DESCRIPTION|QTY|QUANTITY|PRICE|AMOUNT|TOTAL)/i.test(line);
+      const isTotalsLine = /^(SUB)?TOTAL/i.test(line) || /^INVOICE\s*TOTAL/i.test(line);
+
+      if (isHeaderLine || isTotalsLine) {
+        // End current group
+        if (currentGroup.lines.length > 0) {
+          currentGroup.combined = currentGroup.lines.join(' ').trim();
+          if (currentGroup.combined.length > 5) {
+            groups.push(currentGroup);
+          }
+        }
+        currentGroup = { lines: [], combined: '' };
+        inItemSection = false;
+        continue;
+      }
+
+      // Add to current group
+      currentGroup.lines.push(line);
+
+      // Check if we have a complete item (has at least description and price)
+      const combined = currentGroup.lines.join(' ');
+      const hasDescription = /[A-Za-z]{3,}/.test(combined);
+      const hasPricePattern = /[\d,]+\.\d{2}.*[\d,]+\.\d{2}/.test(combined); // Two prices (unit + total)
+
+      if (hasDescription && hasPricePattern && currentGroup.lines.length >= 4) {
+        currentGroup.combined = combined.trim();
+        groups.push(currentGroup);
+        currentGroup = { lines: [], combined: '' };
+        inItemSection = false;
+      }
+    }
+  }
+
+  // Don't forget the last group
+  if (currentGroup.lines.length > 0) {
+    currentGroup.combined = currentGroup.lines.join(' ').trim();
+    if (currentGroup.combined.length > 5 && /[A-Za-z]{2,}/.test(currentGroup.combined)) {
+      groups.push(currentGroup);
+    }
+  }
+
+  return groups;
 }
 
 /**
@@ -417,8 +568,10 @@ module.exports = {
   cleanText,
   detectOCRSource,
   mergeMultiLineItems,
+  reconstructColumnarItems,
   normalizeUnit,
   extractPackSize,
+  OCR_CORRECTIONS,
   GARBAGE_PATTERNS,
   VALID_CONTENT_PATTERNS
 };
