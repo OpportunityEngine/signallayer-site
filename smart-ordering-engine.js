@@ -4375,6 +4375,661 @@ class SmartOrderingEngine {
   }
 
   // ================================================================
+  // VENDOR ANALYSIS METHODS
+  // ================================================================
+
+  /**
+   * Calculate comprehensive vendor scorecard
+   * Returns composite score (0-100) based on:
+   * - Price competitiveness (40%)
+   * - Price stability (25%)
+   * - Order consistency (20%)
+   * - Value/coverage (15%)
+   */
+  calculateVendorScorecard(userId, vendorName = null) {
+    const database = db.getDatabase();
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const vendorFilter = vendorName ? "AND ir.vendor_name = ?" : "";
+
+      const query = `
+        WITH vendor_spend AS (
+          SELECT
+            ir.vendor_name,
+            COUNT(DISTINCT ir.id) as invoice_count,
+            SUM(ir.invoice_total_cents) as total_spend,
+            AVG(ir.invoice_total_cents) as avg_invoice,
+            MIN(ir.created_at) as first_order,
+            MAX(ir.created_at) as last_order,
+            COUNT(DISTINCT ii.sku) as unique_skus
+          FROM ingestion_runs ir
+          LEFT JOIN invoice_items ii ON ir.id = ii.run_id
+          WHERE ir.user_id = ? AND ir.status = 'completed'
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+            ${vendorFilter}
+          GROUP BY ir.vendor_name
+        ),
+        total_spend AS (
+          SELECT SUM(invoice_total_cents) as total
+          FROM ingestion_runs
+          WHERE user_id = ? AND status = 'completed'
+            AND created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+        ),
+        price_volatility AS (
+          SELECT ir.vendor_name,
+            AVG(ii.unit_price_cents) as avg_price,
+            CASE WHEN AVG(ii.unit_price_cents) > 0
+              THEN (AVG(ii.unit_price_cents * ii.unit_price_cents) -
+                    AVG(ii.unit_price_cents) * AVG(ii.unit_price_cents)) /
+                   AVG(ii.unit_price_cents)
+              ELSE 0 END as price_variance
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ? AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ir.vendor_name
+        )
+        SELECT
+          vs.*,
+          ts.total as all_vendors_total,
+          ROUND(vs.total_spend * 100.0 / NULLIF(ts.total, 0), 1) as spend_pct,
+          pv.price_variance,
+          CAST(julianday('now') - julianday(vs.last_order) AS INTEGER) as days_since_order
+        FROM vendor_spend vs
+        CROSS JOIN total_spend ts
+        LEFT JOIN price_volatility pv ON vs.vendor_name = pv.vendor_name
+        ORDER BY vs.total_spend DESC
+      `;
+
+      const params = vendorName
+        ? [userId, vendorName, userId, userId]
+        : [userId, userId, userId];
+
+      const vendors = database.prepare(query).all(...params);
+
+      // Get real price competitiveness data - compare SKUs across vendors
+      const priceCompetitiveness = database.prepare(`
+        WITH vendor_sku_prices AS (
+          SELECT
+            ii.sku,
+            ir.vendor_name,
+            AVG(ii.unit_price_cents) as avg_price
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku, ir.vendor_name
+        ),
+        sku_min_prices AS (
+          SELECT sku, MIN(avg_price) as min_price
+          FROM vendor_sku_prices
+          GROUP BY sku
+          HAVING COUNT(DISTINCT vendor_name) >= 2
+        )
+        SELECT
+          vsp.vendor_name,
+          COUNT(*) as comparable_skus,
+          SUM(CASE WHEN vsp.avg_price = smp.min_price THEN 1 ELSE 0 END) as cheapest_count,
+          AVG(CASE WHEN smp.min_price > 0 THEN (vsp.avg_price - smp.min_price) / smp.min_price * 100 ELSE 0 END) as avg_premium_pct
+        FROM vendor_sku_prices vsp
+        JOIN sku_min_prices smp ON vsp.sku = smp.sku
+        GROUP BY vsp.vendor_name
+      `).all(userId);
+
+      const priceMap = {};
+      priceCompetitiveness.forEach(p => {
+        priceMap[p.vendor_name] = {
+          comparable_skus: p.comparable_skus,
+          cheapest_count: p.cheapest_count,
+          cheapest_pct: p.comparable_skus > 0 ? (p.cheapest_count / p.comparable_skus * 100) : 0,
+          avg_premium_pct: p.avg_premium_pct || 0
+        };
+      });
+
+      // Get price trend direction (recent vs baseline)
+      const priceTrends = database.prepare(`
+        WITH recent AS (
+          SELECT ir.vendor_name, AVG(ii.unit_price_cents) as recent_avg
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ? AND ir.status = 'completed'
+            AND ir.created_at >= date('now', '-30 days')
+            AND ii.unit_price_cents > 0
+            ${vendorExclusion}
+          GROUP BY ir.vendor_name
+        ),
+        baseline AS (
+          SELECT ir.vendor_name, AVG(ii.unit_price_cents) as baseline_avg
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ? AND ir.status = 'completed'
+            AND ir.created_at BETWEEN date('now', '-90 days') AND date('now', '-30 days')
+            AND ii.unit_price_cents > 0
+            ${vendorExclusion}
+          GROUP BY ir.vendor_name
+        )
+        SELECT
+          r.vendor_name,
+          r.recent_avg,
+          b.baseline_avg,
+          CASE WHEN b.baseline_avg > 0
+            THEN (r.recent_avg - b.baseline_avg) / b.baseline_avg * 100
+            ELSE 0 END as price_change_pct
+        FROM recent r
+        LEFT JOIN baseline b ON r.vendor_name = b.vendor_name
+      `).all(userId, userId);
+
+      const trendMap = {};
+      priceTrends.forEach(t => {
+        trendMap[t.vendor_name] = {
+          price_change_pct: t.price_change_pct || 0,
+          trend_direction: t.price_change_pct > 3 ? 'increasing' : t.price_change_pct < -3 ? 'decreasing' : 'stable'
+        };
+      });
+
+      // Calculate scores for each vendor
+      return vendors.map(v => {
+        const priceData = priceMap[v.vendor_name] || { cheapest_pct: 50, avg_premium_pct: 0 };
+        const trendData = trendMap[v.vendor_name] || { price_change_pct: 0, trend_direction: 'stable' };
+
+        // REAL Price score: based on how often they're cheapest and their avg premium
+        // If they're cheapest 80%+ of time = 95 score, 0% = 50 score
+        // Penalize for avg premium: -1 point per 2% premium
+        let priceScore = 50 + (priceData.cheapest_pct * 0.5);
+        priceScore -= Math.min(20, priceData.avg_premium_pct / 2);
+        // Penalize for recent price increases
+        if (trendData.price_change_pct > 5) priceScore -= 10;
+        if (trendData.price_change_pct > 10) priceScore -= 10;
+        priceScore = Math.max(20, Math.min(100, priceScore));
+
+        // Stability score: lower variance = higher score
+        const stabilityScore = Math.max(0, Math.min(100, 100 - (v.price_variance || 0) * 10));
+
+        // Consistency score: regular orders = higher score
+        const orderFrequency = v.invoice_count / 3; // Orders per month
+        const consistencyScore = Math.min(100, orderFrequency * 20);
+
+        // Value score: more SKUs and higher spend = higher score
+        const valueScore = Math.min(100, (v.unique_skus || 0) * 5 + v.invoice_count * 3);
+
+        // Composite score (weighted)
+        const overallScore = Math.round(
+          priceScore * 0.40 +
+          stabilityScore * 0.25 +
+          consistencyScore * 0.20 +
+          valueScore * 0.15
+        );
+
+        return {
+          vendor_name: v.vendor_name,
+          overall_score: overallScore,
+          price_score: Math.round(priceScore),
+          stability_score: Math.round(stabilityScore),
+          consistency_score: Math.round(consistencyScore),
+          value_score: Math.round(valueScore),
+          total_spend_cents: v.total_spend || 0,
+          spend_pct: v.spend_pct || 0,
+          invoice_count: v.invoice_count || 0,
+          unique_skus: v.unique_skus || 0,
+          avg_invoice_cents: Math.round(v.avg_invoice || 0),
+          first_order: v.first_order,
+          last_order: v.last_order,
+          days_since_order: v.days_since_order || 0,
+          // Price competitiveness details
+          price_competitiveness: {
+            comparable_skus: priceData.comparable_skus || 0,
+            cheapest_count: priceData.cheapest_count || 0,
+            cheapest_pct: Math.round(priceData.cheapest_pct || 0),
+            avg_premium_pct: Math.round((priceData.avg_premium_pct || 0) * 10) / 10
+          },
+          // Price trend details
+          price_trend: {
+            change_pct: Math.round((trendData.price_change_pct || 0) * 10) / 10,
+            direction: trendData.trend_direction || 'stable'
+          }
+        };
+      });
+    } catch (error) {
+      console.error('[SmartOrdering] Vendor scorecard error:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get vendor price trends for charting
+   */
+  getVendorPriceTrends(userId, vendorName, days = 90) {
+    const database = db.getDatabase();
+
+    try {
+      const trends = database.prepare(`
+        SELECT
+          date(ir.created_at) as order_date,
+          COUNT(DISTINCT ir.id) as order_count,
+          SUM(ir.invoice_total_cents) as daily_spend,
+          AVG(ii.unit_price_cents) as avg_item_price,
+          COUNT(ii.id) as item_count
+        FROM ingestion_runs ir
+        LEFT JOIN invoice_items ii ON ir.id = ii.run_id
+        WHERE ir.user_id = ?
+          AND ir.vendor_name = ?
+          AND ir.status = 'completed'
+          AND ir.created_at >= date('now', '-' || ? || ' days')
+        GROUP BY date(ir.created_at)
+        ORDER BY order_date
+      `).all(userId, vendorName, days);
+
+      return {
+        vendor_name: vendorName,
+        days: days,
+        data_points: trends.length,
+        trends: trends.map(t => ({
+          date: t.order_date,
+          spend_cents: t.daily_spend || 0,
+          avg_price_cents: Math.round(t.avg_item_price || 0),
+          orders: t.order_count,
+          items: t.item_count
+        }))
+      };
+    } catch (error) {
+      console.error('[SmartOrdering] Vendor price trends error:', error.message);
+      return { vendor_name: vendorName, days, data_points: 0, trends: [] };
+    }
+  }
+
+  /**
+   * Compare SKU prices across vendors
+   */
+  getSkuPriceComparison(userId, minVendors = 2) {
+    const database = db.getDatabase();
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const comparison = database.prepare(`
+        WITH vendor_sku_prices AS (
+          SELECT
+            ii.sku,
+            ii.description,
+            ir.vendor_name,
+            AVG(ii.unit_price_cents) as avg_price,
+            MIN(ii.unit_price_cents) as min_price,
+            MAX(ii.unit_price_cents) as max_price,
+            COUNT(*) as purchase_count,
+            MAX(ir.created_at) as last_purchased
+          FROM invoice_items ii
+          JOIN ingestion_runs ir ON ii.run_id = ir.id
+          WHERE ir.user_id = ?
+            AND ir.status = 'completed'
+            AND ii.sku IS NOT NULL AND ii.sku != ''
+            AND ii.unit_price_cents > 0
+            AND ir.created_at >= date('now', '-90 days')
+            ${vendorExclusion}
+          GROUP BY ii.sku, ir.vendor_name
+          HAVING purchase_count >= 2
+        )
+        SELECT
+          sku,
+          MAX(description) as description,
+          COUNT(DISTINCT vendor_name) as vendor_count,
+          MIN(avg_price) as cheapest_price,
+          MAX(avg_price) as highest_price,
+          GROUP_CONCAT(vendor_name || ':' || CAST(ROUND(avg_price) AS INTEGER), '|') as vendor_prices,
+          ROUND((MAX(avg_price) - MIN(avg_price)) * 100.0 / NULLIF(MAX(avg_price), 0), 1) as price_spread_pct
+        FROM vendor_sku_prices
+        GROUP BY sku
+        HAVING vendor_count >= ?
+        ORDER BY price_spread_pct DESC
+        LIMIT 50
+      `).all(userId, minVendors);
+
+      return comparison.map(c => {
+        const vendorPrices = (c.vendor_prices || '').split('|').filter(Boolean).map(vp => {
+          const [name, price] = vp.split(':');
+          return { vendor: name, price_cents: parseInt(price) || 0 };
+        }).sort((a, b) => a.price_cents - b.price_cents);
+
+        return {
+          sku: c.sku,
+          description: c.description,
+          vendor_count: c.vendor_count,
+          cheapest_cents: Math.round(c.cheapest_price || 0),
+          highest_cents: Math.round(c.highest_price || 0),
+          spread_pct: c.price_spread_pct || 0,
+          potential_savings_cents: Math.round((c.highest_price || 0) - (c.cheapest_price || 0)),
+          vendors: vendorPrices
+        };
+      });
+    } catch (error) {
+      console.error('[SmartOrdering] SKU price comparison error:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Pareto analysis - which vendors represent 80% of spend
+   */
+  analyzeVendorPareto(userId) {
+    const database = db.getDatabase();
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const vendors = database.prepare(`
+        SELECT
+          vendor_name,
+          SUM(invoice_total_cents) as total_spend,
+          COUNT(*) as invoice_count
+        FROM ingestion_runs
+        WHERE user_id = ? AND status = 'completed'
+          AND created_at >= date('now', '-90 days')
+          ${vendorExclusion}
+        GROUP BY vendor_name
+        ORDER BY total_spend DESC
+      `).all(userId);
+
+      const totalSpend = vendors.reduce((sum, v) => sum + (v.total_spend || 0), 0);
+
+      if (totalSpend === 0) {
+        return {
+          total_spend_cents: 0,
+          vendor_count: 0,
+          pareto_80_vendors: [],
+          pareto_80_count: 0,
+          concentration_hhi: 0,
+          concentration_risk: 'low',
+          vendors: []
+        };
+      }
+
+      let cumulative = 0;
+      let pareto80Vendors = [];
+
+      const paretoData = vendors.map((v, idx) => {
+        cumulative += (v.total_spend || 0);
+        const cumulativePct = (cumulative / totalSpend) * 100;
+        const spendPct = ((v.total_spend || 0) / totalSpend) * 100;
+
+        if (cumulativePct <= 80 || pareto80Vendors.length === 0) {
+          pareto80Vendors.push(v.vendor_name);
+        }
+
+        return {
+          rank: idx + 1,
+          vendor_name: v.vendor_name,
+          spend_cents: v.total_spend || 0,
+          spend_pct: Math.round(spendPct * 10) / 10,
+          cumulative_pct: Math.round(cumulativePct * 10) / 10,
+          invoice_count: v.invoice_count || 0
+        };
+      });
+
+      // Calculate Herfindahl-Hirschman Index (HHI) for concentration
+      const hhi = vendors.reduce((sum, v) => {
+        const share = ((v.total_spend || 0) / totalSpend) * 100;
+        return sum + (share * share);
+      }, 0);
+
+      return {
+        total_spend_cents: totalSpend,
+        vendor_count: vendors.length,
+        pareto_80_vendors: pareto80Vendors,
+        pareto_80_count: pareto80Vendors.length,
+        concentration_hhi: Math.round(hhi),
+        concentration_risk: hhi > 2500 ? 'high' : hhi > 1500 ? 'medium' : 'low',
+        vendors: paretoData
+      };
+    } catch (error) {
+      console.error('[SmartOrdering] Vendor pareto error:', error.message);
+      return {
+        total_spend_cents: 0,
+        vendor_count: 0,
+        pareto_80_vendors: [],
+        pareto_80_count: 0,
+        concentration_hhi: 0,
+        concentration_risk: 'low',
+        vendors: []
+      };
+    }
+  }
+
+  /**
+   * Identify single-source items (supply chain risk)
+   */
+  identifySingleSourceItems(userId) {
+    const database = db.getDatabase();
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const singleSource = database.prepare(`
+        SELECT
+          ii.sku,
+          MAX(ii.description) as description,
+          MAX(ir.vendor_name) as vendor_name,
+          COUNT(*) as purchase_count,
+          SUM(ii.total_cents) as total_spend,
+          AVG(ii.unit_price_cents) as avg_price
+        FROM invoice_items ii
+        JOIN ingestion_runs ir ON ii.run_id = ir.id
+        WHERE ir.user_id = ?
+          AND ir.status = 'completed'
+          AND ii.sku IS NOT NULL AND ii.sku != ''
+          AND ir.created_at >= date('now', '-90 days')
+          ${vendorExclusion}
+        GROUP BY ii.sku
+        HAVING COUNT(DISTINCT ir.vendor_name) = 1
+          AND purchase_count >= 3
+        ORDER BY total_spend DESC
+        LIMIT 20
+      `).all(userId);
+
+      return {
+        single_source_count: singleSource.length,
+        items: singleSource.map(s => ({
+          sku: s.sku,
+          description: s.description,
+          sole_vendor: s.vendor_name,
+          purchase_count: s.purchase_count || 0,
+          total_spend_cents: s.total_spend || 0,
+          avg_price_cents: Math.round(s.avg_price || 0),
+          risk_level: (s.total_spend || 0) > 100000 ? 'high' : (s.total_spend || 0) > 25000 ? 'medium' : 'low'
+        }))
+      };
+    } catch (error) {
+      console.error('[SmartOrdering] Single source items error:', error.message);
+      return { single_source_count: 0, items: [] };
+    }
+  }
+
+  /**
+   * Generate negotiation brief for a vendor
+   */
+  generateNegotiationBrief(userId, vendorName) {
+    try {
+      const scorecards = this.calculateVendorScorecard(userId, vendorName);
+      const scorecard = scorecards[0] || null;
+      const priceTrends = this.getVendorPriceTrends(userId, vendorName, 180);
+      const skuComparison = this.getSkuPriceComparison(userId, 2);
+
+      // Find items where this vendor is more expensive
+      const overpriced = skuComparison.filter(s => {
+        const vendorPrice = s.vendors.find(v => v.vendor === vendorName);
+        return vendorPrice &&
+               vendorPrice.price_cents === s.highest_cents &&
+               s.spread_pct > 10;
+      });
+
+      // Calculate leverage points
+      const leverage = {
+        total_spend: scorecard?.total_spend_cents || 0,
+        order_frequency: scorecard?.invoice_count || 0,
+        relationship_months: scorecard?.first_order
+          ? Math.round((new Date() - new Date(scorecard.first_order)) / (1000 * 60 * 60 * 24 * 30))
+          : 0,
+        overpriced_items: overpriced.length,
+        potential_savings: overpriced.reduce((sum, i) => sum + (i.potential_savings_cents || 0), 0)
+      };
+
+      const talkingPoints = [];
+
+      if (leverage.total_spend > 500000) {
+        talkingPoints.push(`You've spent $${(leverage.total_spend / 100).toLocaleString()} with us in 90 days`);
+      }
+      if (leverage.relationship_months > 12) {
+        talkingPoints.push(`We've been a loyal customer for ${leverage.relationship_months} months`);
+      }
+      if (leverage.overpriced_items > 0) {
+        talkingPoints.push(`${leverage.overpriced_items} items are cheaper at other vendors - let's review pricing`);
+      }
+      if (leverage.potential_savings > 0) {
+        talkingPoints.push(`We've identified $${(leverage.potential_savings / 100).toFixed(0)} in potential savings`);
+      }
+
+      return {
+        vendor_name: vendorName,
+        scorecard,
+        leverage,
+        overpriced_items: overpriced.slice(0, 10),
+        talking_points: talkingPoints,
+        price_trends: priceTrends
+      };
+    } catch (error) {
+      console.error('[SmartOrdering] Negotiation brief error:', error.message);
+      return {
+        vendor_name: vendorName,
+        scorecard: null,
+        leverage: { total_spend: 0, order_frequency: 0, relationship_months: 0, overpriced_items: 0, potential_savings: 0 },
+        overpriced_items: [],
+        talking_points: [],
+        price_trends: { vendor_name: vendorName, days: 180, data_points: 0, trends: [] }
+      };
+    }
+  }
+
+  /**
+   * Analyze vendor performance by category
+   * Shows which vendor is best for each product category
+   */
+  analyzeVendorByCategory(userId) {
+    const database = db.getDatabase();
+    const vendorExclusion = this.getVendorExclusionClause('ir');
+
+    try {
+      const categoryAnalysis = database.prepare(`
+        SELECT
+          COALESCE(ii.category, 'Uncategorized') as category,
+          ir.vendor_name,
+          COUNT(DISTINCT ii.sku) as sku_count,
+          SUM(ii.total_cents) as category_spend,
+          AVG(ii.unit_price_cents) as avg_price,
+          COUNT(DISTINCT ir.id) as invoice_count
+        FROM invoice_items ii
+        JOIN ingestion_runs ir ON ii.run_id = ir.id
+        WHERE ir.user_id = ?
+          AND ir.status = 'completed'
+          AND ir.created_at >= date('now', '-90 days')
+          ${vendorExclusion}
+        GROUP BY ii.category, ir.vendor_name
+        ORDER BY ii.category, category_spend DESC
+      `).all(userId);
+
+      // Group by category and find best vendor for each
+      const categories = {};
+      categoryAnalysis.forEach(row => {
+        const cat = row.category || 'Uncategorized';
+        if (!categories[cat]) {
+          categories[cat] = {
+            category: cat,
+            total_spend: 0,
+            vendors: []
+          };
+        }
+        categories[cat].total_spend += row.category_spend || 0;
+        categories[cat].vendors.push({
+          vendor_name: row.vendor_name,
+          spend_cents: row.category_spend || 0,
+          sku_count: row.sku_count || 0,
+          avg_price_cents: Math.round(row.avg_price || 0),
+          invoice_count: row.invoice_count || 0
+        });
+      });
+
+      // Add best vendor and vendor count to each category
+      return Object.values(categories).map(cat => {
+        const sortedVendors = cat.vendors.sort((a, b) => b.spend_cents - a.spend_cents);
+        const topVendor = sortedVendors[0];
+
+        return {
+          category: cat.category,
+          total_spend_cents: cat.total_spend,
+          vendor_count: sortedVendors.length,
+          top_vendor: topVendor?.vendor_name,
+          top_vendor_spend_cents: topVendor?.spend_cents || 0,
+          top_vendor_pct: cat.total_spend > 0
+            ? Math.round((topVendor?.spend_cents || 0) / cat.total_spend * 100)
+            : 0,
+          vendors: sortedVendors.slice(0, 5) // Top 5 vendors per category
+        };
+      }).sort((a, b) => b.total_spend_cents - a.total_spend_cents);
+    } catch (error) {
+      console.error('[SmartOrdering] Category analysis error:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get vendor's top items by spend
+   */
+  getVendorTopItems(userId, vendorName, limit = 20) {
+    const database = db.getDatabase();
+
+    try {
+      const items = database.prepare(`
+        SELECT
+          ii.sku,
+          ii.description,
+          ii.category,
+          SUM(ii.total_cents) as total_spend,
+          SUM(ii.quantity) as total_quantity,
+          AVG(ii.unit_price_cents) as avg_price,
+          COUNT(*) as purchase_count,
+          MIN(ir.created_at) as first_purchased,
+          MAX(ir.created_at) as last_purchased
+        FROM invoice_items ii
+        JOIN ingestion_runs ir ON ii.run_id = ir.id
+        WHERE ir.user_id = ?
+          AND ir.vendor_name = ?
+          AND ir.status = 'completed'
+          AND ir.created_at >= date('now', '-90 days')
+        GROUP BY ii.sku
+        ORDER BY total_spend DESC
+        LIMIT ?
+      `).all(userId, vendorName, limit);
+
+      return items.map(i => ({
+        sku: i.sku,
+        description: i.description,
+        category: i.category,
+        total_spend_cents: i.total_spend || 0,
+        total_quantity: i.total_quantity || 0,
+        avg_price_cents: Math.round(i.avg_price || 0),
+        purchase_count: i.purchase_count || 0,
+        first_purchased: i.first_purchased,
+        last_purchased: i.last_purchased
+      }));
+    } catch (error) {
+      console.error('[SmartOrdering] Vendor top items error:', error.message);
+      return [];
+    }
+  }
+
+  // ================================================================
   // HELPER METHODS
   // ================================================================
 

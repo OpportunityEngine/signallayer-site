@@ -2079,4 +2079,257 @@ router.get('/smart-ordering/this-week', async (req, res) => {
   }
 });
 
+// =====================================================
+// VENDOR ANALYSIS ENDPOINTS
+// =====================================================
+
+// GET /api/bi/vendors - Comprehensive vendor scorecard list
+router.get('/vendors', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { sort = 'spend', order = 'desc', limit = 50 } = req.query;
+
+    let vendors = smartOrderingEngine.calculateVendorScorecard(user.id);
+
+    // Sort by requested field
+    const sortKey = {
+      'spend': 'total_spend_cents',
+      'score': 'overall_score',
+      'price': 'price_score',
+      'name': 'vendor_name',
+      'invoices': 'invoice_count',
+      'trend': 'price_trend.change_pct'
+    }[sort] || 'total_spend_cents';
+
+    vendors.sort((a, b) => {
+      let aVal = sortKey.includes('.') ? a.price_trend?.change_pct : a[sortKey];
+      let bVal = sortKey.includes('.') ? b.price_trend?.change_pct : b[sortKey];
+      if (typeof aVal === 'string') {
+        return order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return order === 'asc' ? (aVal || 0) - (bVal || 0) : (bVal || 0) - (aVal || 0);
+    });
+
+    // Calculate summary metrics
+    const totalSpend = vendors.reduce((sum, v) => sum + (v.total_spend_cents || 0), 0);
+    const avgScore = vendors.length > 0
+      ? Math.round(vendors.reduce((sum, v) => sum + v.overall_score, 0) / vendors.length)
+      : 0;
+    const totalSavingsPotential = vendors.reduce((sum, v) => {
+      const premium = v.price_competitiveness?.avg_premium_pct || 0;
+      return sum + Math.round(v.total_spend_cents * premium / 100);
+    }, 0);
+    const increasingPrices = vendors.filter(v => v.price_trend?.direction === 'increasing').length;
+    const decreasingPrices = vendors.filter(v => v.price_trend?.direction === 'decreasing').length;
+
+    res.json({
+      success: true,
+      data: vendors.slice(0, parseInt(limit)),
+      count: vendors.length,
+      summary: {
+        total_vendors: vendors.length,
+        total_spend_cents: totalSpend,
+        avg_vendor_score: avgScore,
+        savings_potential_cents: totalSavingsPotential,
+        price_trends: {
+          increasing: increasingPrices,
+          stable: vendors.length - increasingPrices - decreasingPrices,
+          decreasing: decreasingPrices
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[BI] Vendor scorecard error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/compare - SKU price comparison across vendors
+router.get('/vendors/compare', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const { min_vendors = 2 } = req.query;
+
+    const comparison = smartOrderingEngine.getSkuPriceComparison(user.id, parseInt(min_vendors));
+
+    // Calculate savings potential
+    const totalSavings = comparison.reduce((sum, c) => sum + (c.potential_savings_cents || 0), 0);
+
+    res.json({
+      success: true,
+      data: comparison,
+      count: comparison.length,
+      summary: {
+        comparable_skus: comparison.length,
+        total_savings_potential_cents: totalSavings,
+        avg_spread_pct: comparison.length > 0
+          ? Math.round(comparison.reduce((sum, c) => sum + c.spread_pct, 0) / comparison.length * 10) / 10
+          : 0
+      }
+    });
+  } catch (error) {
+    console.error('[BI] Vendor compare error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/spend-analysis - Pareto & concentration analysis
+router.get('/vendors/spend-analysis', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const analysis = smartOrderingEngine.analyzeVendorPareto(user.id);
+
+    res.json({
+      success: true,
+      data: analysis
+    });
+  } catch (error) {
+    console.error('[BI] Spend analysis error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/risk-assessment - Supply chain risk
+router.get('/vendors/risk-assessment', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const singleSource = smartOrderingEngine.identifySingleSourceItems(user.id);
+    const pareto = smartOrderingEngine.analyzeVendorPareto(user.id);
+
+    // Calculate overall risk score (0-100)
+    let riskScore = 0;
+    if (pareto.concentration_risk === 'high') riskScore += 40;
+    else if (pareto.concentration_risk === 'medium') riskScore += 20;
+    if (singleSource.single_source_count > 10) riskScore += 30;
+    else if (singleSource.single_source_count > 5) riskScore += 15;
+    if (pareto.vendors[0]?.spend_pct > 50) riskScore += 20;
+    else if (pareto.vendors[0]?.spend_pct > 35) riskScore += 10;
+
+    const riskLevel = riskScore >= 60 ? 'high' : riskScore >= 30 ? 'medium' : 'low';
+
+    res.json({
+      success: true,
+      data: {
+        overall_risk_score: Math.min(100, riskScore),
+        overall_risk_level: riskLevel,
+        concentration: {
+          risk: pareto.concentration_risk,
+          hhi: pareto.concentration_hhi,
+          top_vendor: pareto.vendors[0]?.vendor_name,
+          top_vendor_pct: pareto.vendors[0]?.spend_pct || 0,
+          pareto_80_count: pareto.pareto_80_count,
+          pareto_80_vendors: pareto.pareto_80_vendors
+        },
+        single_source: singleSource,
+        recommendations: [
+          riskScore >= 60 ? 'Critical: Diversify your vendor base to reduce supply chain risk' : null,
+          pareto.vendors[0]?.spend_pct > 50 ? `Consider alternatives to ${pareto.vendors[0].vendor_name} (${pareto.vendors[0].spend_pct}% of spend)` : null,
+          singleSource.single_source_count > 5 ? `${singleSource.single_source_count} items only available from one vendor - find backup suppliers` : null
+        ].filter(Boolean)
+      }
+    });
+  } catch (error) {
+    console.error('[BI] Risk assessment error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/categories - Category-level vendor analysis
+router.get('/vendors/categories', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const categories = smartOrderingEngine.analyzeVendorByCategory(user.id);
+
+    res.json({
+      success: true,
+      data: categories,
+      count: categories.length
+    });
+  } catch (error) {
+    console.error('[BI] Category analysis error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/:name - Individual vendor deep-dive
+router.get('/vendors/:name', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const vendorName = decodeURIComponent(req.params.name);
+
+    const scorecards = smartOrderingEngine.calculateVendorScorecard(user.id, vendorName);
+    const scorecard = scorecards[0];
+
+    if (!scorecard) {
+      return res.status(404).json({ success: false, error: 'Vendor not found' });
+    }
+
+    const priceTrends = smartOrderingEngine.getVendorPriceTrends(user.id, vendorName, 90);
+    const topItems = smartOrderingEngine.getVendorTopItems(user.id, vendorName, 20);
+
+    res.json({
+      success: true,
+      data: {
+        scorecard,
+        price_trends: priceTrends,
+        top_items: topItems
+      }
+    });
+  } catch (error) {
+    console.error('[BI] Vendor detail error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/:name/price-history - Price trends for charts
+router.get('/vendors/:name/price-history', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const vendorName = decodeURIComponent(req.params.name);
+    const days = parseInt(req.query.days) || 90;
+
+    const trends = smartOrderingEngine.getVendorPriceTrends(user.id, vendorName, days);
+
+    res.json({ success: true, data: trends });
+  } catch (error) {
+    console.error('[BI] Price history error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/:name/items - Vendor's top items
+router.get('/vendors/:name/items', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const vendorName = decodeURIComponent(req.params.name);
+    const limit = parseInt(req.query.limit) || 50;
+
+    const items = smartOrderingEngine.getVendorTopItems(user.id, vendorName, limit);
+
+    res.json({
+      success: true,
+      data: items,
+      count: items.length
+    });
+  } catch (error) {
+    console.error('[BI] Vendor items error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bi/vendors/:name/negotiation-brief - Negotiation prep data
+router.get('/vendors/:name/negotiation-brief', (req, res) => {
+  try {
+    const user = getUserContext(req);
+    const vendorName = decodeURIComponent(req.params.name);
+
+    const brief = smartOrderingEngine.generateNegotiationBrief(user.id, vendorName);
+
+    res.json({ success: true, data: brief });
+  } catch (error) {
+    console.error('[BI] Negotiation brief error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

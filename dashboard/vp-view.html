@@ -3148,7 +3148,7 @@
       </div>
 
       <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
-      <div class="quick-actions-grid" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="quick-actions-grid" style="grid-template-columns: repeat(5, 1fr);">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-label">Inventory</span>
           <span class="tile-value" id="tileInventoryCount">Loading...</span>
@@ -3157,6 +3157,11 @@
           <span class="tile-label">Analytics</span>
           <span class="tile-value" id="tileSavingsFound">Loading...</span>
           <span class="tile-subtitle">Invoice insights & trends</span>
+        </a>
+        <a href="vendor-analysis.html" class="quick-action-tile" style="border-color: rgba(139, 92, 246, 0.3);">
+          <span class="tile-label">Vendor Analysis</span>
+          <span class="tile-value" id="tileVendorScore" style="color: #8b5cf6;">--</span>
+          <span class="tile-subtitle">Pricing & risk intel</span>
         </a>
         <div class="quick-action-tile intent" id="intentSignalsTile" onclick="openIntentSignalsModal()">
           <span class="tile-label">Intent Signals</span>

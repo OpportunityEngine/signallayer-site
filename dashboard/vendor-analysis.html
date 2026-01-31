@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendor Analysis - Revenue Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --panel: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      --panel2: rgba(15, 23, 42, 0.6);
+      --border: rgba(251, 191, 36, 0.15);
+      --border-gold: rgba(251, 191, 36, 0.3);
+      --text: #e2e8f0;
+      --text-bright: #ffffff;
+      --muted: #94a3b8;
+      --muted2: #64748b;
+      --gold: #fbbf24;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --cyan: #06b6d4;
+      --orange: #f97316;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      text-decoration: none;
+      margin-bottom: 20px;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #fbbf24; }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .subtitle { color: #94a3b8; font-size: 14px; }
+
+    /* Tile Card */
+    .tile-card {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .tile-card:hover {
+      border-color: rgba(251, 191, 36, 0.3);
+      box-shadow: 0 8px 32px rgba(251, 191, 36, 0.08);
+    }
+    .tile-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .tile-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tile-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      text-transform: uppercase;
+    }
+    .tile-badge.risk-high { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .tile-badge.risk-medium { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+    .tile-badge.risk-low { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .tile-body { padding: 16px 20px; }
+
+    /* Hero Stats Row */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .hero-stat {
+      background: linear-gradient(135deg, rgba(17, 21, 37, 0.8) 0%, rgba(15, 19, 32, 0.9) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+    }
+    .hero-stat.highlight {
+      border-color: rgba(251, 191, 36, 0.4);
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(15, 19, 32, 0.9) 100%);
+    }
+    .hero-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .hero-stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .hero-stat-value.green { color: #22c55e; }
+    .hero-stat-value.red { color: #ef4444; }
+    .hero-stat-value.gold { color: #fbbf24; }
+    .hero-stat-value.blue { color: #3b82f6; }
+    .hero-stat-change {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .hero-stat-change.up { color: #22c55e; }
+    .hero-stat-change.down { color: #ef4444; }
+    .hero-stat-change.neutral { color: #64748b; }
+    .hero-stat-icon {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 24px;
+      opacity: 0.6;
+    }
+
+    /* Grid Layouts */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 24px; }
+    .full-width { margin-bottom: 24px; }
+
+    /* Chart Containers */
+    .chart-container { position: relative; height: 250px; }
+    .chart-container-small { position: relative; height: 180px; }
+
+    /* Vendor Table */
+    .vendor-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .vendor-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s;
+    }
+    .vendor-table th:hover { color: #fbbf24; }
+    .vendor-table th.sorted { color: #fbbf24; }
+    .vendor-table th.sorted::after { content: ' \u25BC'; font-size: 8px; }
+    .vendor-table th.sorted.asc::after { content: ' \u25B2'; }
+    .vendor-table td {
+      padding: 14px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+    .vendor-table tr {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .vendor-table tr:hover { background: rgba(251, 191, 36, 0.05); }
+    .vendor-table tr.selected { background: rgba(251, 191, 36, 0.1); }
+
+    .vendor-name {
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vendor-rank {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .vendor-rank.top-3 { background: rgba(251, 191, 36, 0.3); }
+
+    /* Score Bar */
+    .score-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .score-bar-fill {
+      width: 60px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .score-bar-inner {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    .score-bar-inner.high { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .score-bar-inner.medium { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .score-bar-inner.low { background: linear-gradient(90deg, #ef4444, #dc2626); }
+    .score-value {
+      font-weight: 700;
+      min-width: 28px;
+    }
+    .score-value.high { color: #22c55e; }
+    .score-value.medium { color: #fbbf24; }
+    .score-value.low { color: #ef4444; }
+
+    /* Price Trend Indicator */
+    .trend-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .trend-indicator.up { color: #ef4444; }
+    .trend-indicator.down { color: #22c55e; }
+    .trend-indicator.stable { color: #64748b; }
+
+    /* Risk Gauge */
+    .risk-gauge {
+      text-align: center;
+      padding: 20px;
+    }
+    .risk-gauge-value {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .risk-gauge-value.high { color: #ef4444; }
+    .risk-gauge-value.medium { color: #f97316; }
+    .risk-gauge-value.low { color: #22c55e; }
+    .risk-gauge-label {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .risk-meter {
+      height: 12px;
+      background: linear-gradient(90deg, #22c55e 0%, #fbbf24 50%, #ef4444 100%);
+      border-radius: 6px;
+      position: relative;
+      margin-bottom: 8px;
+    }
+    .risk-meter-pointer {
+      position: absolute;
+      top: -4px;
+      width: 4px;
+      height: 20px;
+      background: #ffffff;
+      border-radius: 2px;
+      transform: translateX(-50%);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Comparison Table */
+    .comparison-row {
+      display: grid;
+      grid-template-columns: 1fr 80px repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .comparison-row:hover { background: rgba(251, 191, 36, 0.05); }
+    .comparison-sku {
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .comparison-desc {
+      font-size: 11px;
+      color: #64748b;
+    }
+    .comparison-spread {
+      font-weight: 700;
+    }
+    .comparison-spread.high { color: #ef4444; }
+    .comparison-spread.medium { color: #f97316; }
+    .comparison-spread.low { color: #22c55e; }
+    .comparison-vendor-price {
+      text-align: center;
+      font-size: 12px;
+    }
+    .comparison-vendor-price.cheapest {
+      color: #22c55e;
+      font-weight: 700;
+    }
+    .comparison-vendor-price.expensive {
+      color: #ef4444;
+    }
+
+    /* Negotiation Panel */
+    .negotiation-panel {
+      background: rgba(6, 182, 212, 0.05);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .negotiation-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .negotiation-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #06b6d4;
+    }
+    .talking-point {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(6, 182, 212, 0.08);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .talking-point-icon {
+      color: #06b6d4;
+      flex-shrink: 0;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .empty-state-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #94a3b8;
+    }
+    .empty-state-desc {
+      font-size: 13px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .hero-stats { grid-template-columns: repeat(3, 1fr); }
+      .grid-2, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .hero-stats { grid-template-columns: 1fr 1fr; }
+      .vendor-table { font-size: 12px; }
+      .vendor-table th, .vendor-table td { padding: 10px 8px; }
+    }
+
+    /* Tabs */
+    .tab-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+    .tab-btn.active {
+      background: rgba(251, 191, 36, 0.15);
+      border-color: rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="vp-view.html" class="back-link">← Back to Dashboard</a>
+
+    <div class="page-header">
+      <div>
+        <h1>Vendor Analysis</h1>
+        <p class="subtitle">Comprehensive vendor intelligence and price comparison</p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="refreshData()" style="padding: 10px 20px; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; color: #fbbf24; font-weight: 600; cursor: pointer;">
+          Refresh Data
+        </button>
+      </div>
+    </div>
+
+    <!-- Hero Stats -->
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-icon">🏪</div>
+        <div class="hero-stat-label">Active Vendors</div>
+        <div class="hero-stat-value" id="stat-vendor-count">--</div>
+        <div class="hero-stat-change neutral" id="stat-vendor-trend">Loading...</div>
+      </div>
+      <div class="hero-stat highlight">
+        <div class="hero-stat-icon">💰</div>
+        <div class="hero-stat-label">90-Day Spend</div>
+        <div class="hero-stat-value gold" id="stat-total-spend">--</div>
+        <div class="hero-stat-change neutral" id="stat-spend-trend">Last 90 days</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-icon">📊</div>
+        <div class="hero-stat-label">Avg Vendor Score</div>
+        <div class="hero-stat-value" id="stat-avg-score">--</div>
+        <div class="hero-stat-change neutral">Composite score</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-icon">💡</div>
+        <div class="hero-stat-label">Savings Potential</div>
+        <div class="hero-stat-value green" id="stat-savings">--</div>
+        <div class="hero-stat-change neutral" id="stat-savings-trend">If optimized</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-icon">⚠️</div>
+        <div class="hero-stat-label">Risk Items</div>
+        <div class="hero-stat-value" id="stat-risk-items">--</div>
+        <div class="hero-stat-change neutral">Single-source SKUs</div>
+      </div>
+    </div>
+
+    <!-- Row 1: Vendor Table + Risk Gauge -->
+    <div class="grid-2-1">
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">🏆 Vendor Scorecard</div>
+          <div class="tile-badge" id="vendor-count-badge">0 vendors</div>
+        </div>
+        <div class="tile-body" style="padding: 0; max-height: 420px; overflow-y: auto;">
+          <table class="vendor-table" id="vendor-table">
+            <thead>
+              <tr>
+                <th data-sort="rank" style="width: 50px;">#</th>
+                <th data-sort="vendor_name">Vendor</th>
+                <th data-sort="overall_score">Score</th>
+                <th data-sort="total_spend_cents">Spend</th>
+                <th data-sort="price_score">Price</th>
+                <th data-sort="trend">Trend</th>
+              </tr>
+            </thead>
+            <tbody id="vendor-table-body">
+              <tr><td colspan="6" class="empty-state">Loading vendors...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">🎯 Concentration Risk</div>
+          <div class="tile-badge" id="risk-badge">--</div>
+        </div>
+        <div class="tile-body">
+          <div class="risk-gauge">
+            <div class="risk-gauge-value" id="risk-score">--</div>
+            <div class="risk-gauge-label" id="risk-label">Loading...</div>
+            <div class="risk-meter">
+              <div class="risk-meter-pointer" id="risk-pointer" style="left: 50%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b;">
+              <span>Low</span>
+              <span>Medium</span>
+              <span>High</span>
+            </div>
+          </div>
+          <div style="margin-top: 20px; font-size: 12px; color: #94a3b8;">
+            <div style="margin-bottom: 8px;"><strong>Top Vendor:</strong> <span id="top-vendor-name">--</span></div>
+            <div style="margin-bottom: 8px;"><strong>Top Vendor %:</strong> <span id="top-vendor-pct">--</span></div>
+            <div><strong>80% Spend Vendors:</strong> <span id="pareto-count">--</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Pareto Chart + Price Trends -->
+    <div class="grid-2">
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">📊 Spend Distribution (Pareto)</div>
+          <div class="tile-badge">80/20 Analysis</div>
+        </div>
+        <div class="tile-body">
+          <div class="chart-container">
+            <canvas id="pareto-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">📈 Price Trends</div>
+          <div class="tile-badge" id="selected-vendor-badge">Select a vendor</div>
+        </div>
+        <div class="tile-body">
+          <div class="chart-container">
+            <canvas id="trend-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Price Comparison -->
+    <div class="tile-card full-width">
+      <div class="tile-header">
+        <div class="tile-title">🔄 SKU Price Comparison</div>
+        <div class="tile-badge" id="comparison-count-badge">0 comparable SKUs</div>
+      </div>
+      <div class="tile-body">
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="filterComparison('all')">All</button>
+          <button class="tab-btn" onclick="filterComparison('high')">High Spread (20%+)</button>
+          <button class="tab-btn" onclick="filterComparison('medium')">Medium (10-20%)</button>
+        </div>
+        <div id="comparison-list" style="max-height: 350px; overflow-y: auto;">
+          <div class="empty-state">
+            <div class="empty-state-icon">📦</div>
+            <div class="empty-state-title">Loading comparison data...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Single Source Risk + Category Analysis -->
+    <div class="grid-2">
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">⚠️ Single-Source Risk</div>
+          <div class="tile-badge" id="single-source-badge">0 items</div>
+        </div>
+        <div class="tile-body" style="max-height: 300px; overflow-y: auto;">
+          <div id="single-source-list">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tile-card">
+        <div class="tile-header">
+          <div class="tile-title">📁 Category Breakdown</div>
+          <div class="tile-badge">By vendor</div>
+        </div>
+        <div class="tile-body" style="max-height: 300px; overflow-y: auto;">
+          <div id="category-list">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Negotiation Panel (hidden by default) -->
+    <div class="tile-card full-width" id="negotiation-section" style="display: none;">
+      <div class="tile-header">
+        <div class="tile-title">🤝 Negotiation Brief</div>
+        <div class="tile-badge" id="negotiation-vendor-badge">--</div>
+      </div>
+      <div class="tile-body" id="negotiation-content">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auth
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = 'login.html';
+    }
+
+    // State
+    let vendorData = [];
+    let comparisonData = [];
+    let selectedVendor = null;
+    let currentSort = { field: 'total_spend_cents', order: 'desc' };
+    let comparisonFilter = 'all';
+
+    // Charts
+    let paretoChart = null;
+    let trendChart = null;
+
+    // Format helpers
+    const formatCurrency = (cents) => {
+      if (!cents && cents !== 0) return '--';
+      return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    };
+
+    const formatCurrencyShort = (cents) => {
+      if (!cents && cents !== 0) return '--';
+      const dollars = cents / 100;
+      if (dollars >= 1000000) return '$' + (dollars / 1000000).toFixed(1) + 'M';
+      if (dollars >= 1000) return '$' + (dollars / 1000).toFixed(1) + 'k';
+      return '$' + dollars.toFixed(0);
+    };
+
+    const getScoreClass = (score) => {
+      if (score >= 70) return 'high';
+      if (score >= 50) return 'medium';
+      return 'low';
+    };
+
+    // API calls
+    async function fetchVendors() {
+      try {
+        const res = await fetch(`/api/bi/vendors?sort=${currentSort.field}&order=${currentSort.order}&limit=100`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          vendorData = json.data;
+          renderVendorTable();
+          updateHeroStats(json.summary);
+        }
+      } catch (e) {
+        console.error('Fetch vendors error:', e);
+      }
+    }
+
+    async function fetchSpendAnalysis() {
+      try {
+        const res = await fetch('/api/bi/vendors/spend-analysis', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          renderParetoChart(json.data);
+          updateRiskGauge(json.data);
+        }
+      } catch (e) {
+        console.error('Fetch spend analysis error:', e);
+      }
+    }
+
+    async function fetchComparison() {
+      try {
+        const res = await fetch('/api/bi/vendors/compare', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          comparisonData = json.data;
+          renderComparisonList();
+          document.getElementById('comparison-count-badge').textContent = `${json.count} comparable SKUs`;
+        }
+      } catch (e) {
+        console.error('Fetch comparison error:', e);
+      }
+    }
+
+    async function fetchRiskAssessment() {
+      try {
+        const res = await fetch('/api/bi/vendors/risk-assessment', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          renderSingleSourceList(json.data.single_source);
+          document.getElementById('stat-risk-items').textContent = json.data.single_source.single_source_count;
+          document.getElementById('single-source-badge').textContent = `${json.data.single_source.single_source_count} items`;
+        }
+      } catch (e) {
+        console.error('Fetch risk error:', e);
+      }
+    }
+
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/bi/vendors/categories', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          renderCategoryList(json.data);
+        }
+      } catch (e) {
+        console.error('Fetch categories error:', e);
+      }
+    }
+
+    async function fetchVendorDetail(vendorName) {
+      try {
+        const res = await fetch(`/api/bi/vendors/${encodeURIComponent(vendorName)}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          renderTrendChart(json.data.price_trends);
+          document.getElementById('selected-vendor-badge').textContent = vendorName;
+        }
+      } catch (e) {
+        console.error('Fetch vendor detail error:', e);
+      }
+    }
+
+    async function fetchNegotiationBrief(vendorName) {
+      try {
+        const res = await fetch(`/api/bi/vendors/${encodeURIComponent(vendorName)}/negotiation-brief`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          renderNegotiationPanel(json.data);
+        }
+      } catch (e) {
+        console.error('Fetch negotiation brief error:', e);
+      }
+    }
+
+    // Render functions
+    function updateHeroStats(summary) {
+      document.getElementById('stat-vendor-count').textContent = summary.total_vendors;
+      document.getElementById('stat-total-spend').textContent = formatCurrencyShort(summary.total_spend_cents);
+      document.getElementById('stat-avg-score').textContent = summary.avg_vendor_score;
+      document.getElementById('stat-savings').textContent = formatCurrencyShort(summary.savings_potential_cents);
+      document.getElementById('vendor-count-badge').textContent = `${summary.total_vendors} vendors`;
+
+      const avgScore = summary.avg_vendor_score;
+      const scoreEl = document.getElementById('stat-avg-score');
+      scoreEl.className = 'hero-stat-value ' + getScoreClass(avgScore);
+
+      const trends = summary.price_trends;
+      const trendText = `${trends.increasing} ↑ | ${trends.stable} → | ${trends.decreasing} ↓`;
+      document.getElementById('stat-vendor-trend').textContent = trendText;
+    }
+
+    function renderVendorTable() {
+      const tbody = document.getElementById('vendor-table-body');
+
+      if (!vendorData.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+          <div class="empty-state-icon">🏪</div>
+          <div class="empty-state-title">No vendors found</div>
+          <div class="empty-state-desc">Upload invoices to see vendor analysis</div>
+        </div></td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = vendorData.map((v, idx) => {
+        const rank = idx + 1;
+        const scoreClass = getScoreClass(v.overall_score);
+        const trendDir = v.price_trend?.direction || 'stable';
+        const trendPct = v.price_trend?.change_pct || 0;
+        const trendIcon = trendDir === 'increasing' ? '↑' : trendDir === 'decreasing' ? '↓' : '→';
+        const isSelected = selectedVendor === v.vendor_name;
+
+        return `
+          <tr onclick="selectVendor('${v.vendor_name.replace(/'/g, "\\'")}')" class="${isSelected ? 'selected' : ''}">
+            <td><div class="vendor-rank ${rank <= 3 ? 'top-3' : ''}">${rank}</div></td>
+            <td><div class="vendor-name">${v.vendor_name}</div></td>
+            <td>
+              <div class="score-bar">
+                <div class="score-bar-fill"><div class="score-bar-inner ${scoreClass}" style="width: ${v.overall_score}%;"></div></div>
+                <span class="score-value ${scoreClass}">${v.overall_score}</span>
+              </div>
+            </td>
+            <td style="font-weight: 600;">${formatCurrency(v.total_spend_cents)}</td>
+            <td>
+              <div class="score-bar">
+                <div class="score-bar-fill"><div class="score-bar-inner ${getScoreClass(v.price_score)}" style="width: ${v.price_score}%;"></div></div>
+                <span class="score-value ${getScoreClass(v.price_score)}">${v.price_score}</span>
+              </div>
+            </td>
+            <td>
+              <div class="trend-indicator ${trendDir}">
+                ${trendIcon} ${Math.abs(trendPct).toFixed(1)}%
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateRiskGauge(data) {
+      const hhi = data.concentration_hhi;
+      const risk = data.concentration_risk;
+      const riskPct = Math.min(100, (hhi / 50)); // HHI 5000 = 100%
+
+      const scoreEl = document.getElementById('risk-score');
+      const labelEl = document.getElementById('risk-label');
+      const badgeEl = document.getElementById('risk-badge');
+      const pointerEl = document.getElementById('risk-pointer');
+
+      scoreEl.textContent = Math.round(riskPct);
+      scoreEl.className = 'risk-gauge-value ' + risk;
+
+      labelEl.textContent = risk.toUpperCase() + ' RISK';
+      labelEl.style.color = risk === 'high' ? '#ef4444' : risk === 'medium' ? '#f97316' : '#22c55e';
+
+      badgeEl.textContent = risk.toUpperCase();
+      badgeEl.className = 'tile-badge risk-' + risk;
+
+      pointerEl.style.left = riskPct + '%';
+
+      document.getElementById('top-vendor-name').textContent = data.vendors[0]?.vendor_name || '--';
+      document.getElementById('top-vendor-pct').textContent = (data.vendors[0]?.spend_pct || 0).toFixed(1) + '%';
+      document.getElementById('pareto-count').textContent = data.pareto_80_count + ' of ' + data.vendor_count;
+    }
+
+    function renderParetoChart(data) {
+      const ctx = document.getElementById('pareto-chart').getContext('2d');
+
+      if (paretoChart) paretoChart.destroy();
+
+      const labels = data.vendors.slice(0, 10).map(v => v.vendor_name.length > 12 ? v.vendor_name.substring(0, 12) + '...' : v.vendor_name);
+      const spendData = data.vendors.slice(0, 10).map(v => v.spend_cents / 100);
+      const cumulativeData = data.vendors.slice(0, 10).map(v => v.cumulative_pct);
+
+      paretoChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Spend',
+              data: spendData,
+              backgroundColor: 'rgba(251, 191, 36, 0.6)',
+              borderColor: '#fbbf24',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Cumulative %',
+              data: cumulativeData,
+              type: 'line',
+              borderColor: '#06b6d4',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              tension: 0.3,
+              pointRadius: 3,
+              pointBackgroundColor: '#06b6d4',
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#ffffff',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderWidth: 1,
+              callbacks: {
+                label: (ctx) => {
+                  if (ctx.dataset.label === 'Spend') {
+                    return 'Spend: $' + ctx.raw.toLocaleString();
+                  }
+                  return 'Cumulative: ' + ctx.raw.toFixed(1) + '%';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', font: { size: 10 } }
+            },
+            y: {
+              position: 'left',
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#64748b',
+                callback: (v) => '$' + (v >= 1000 ? (v/1000) + 'k' : v)
+              }
+            },
+            y1: {
+              position: 'right',
+              min: 0,
+              max: 100,
+              grid: { display: false },
+              ticks: {
+                color: '#06b6d4',
+                callback: (v) => v + '%'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTrendChart(trends) {
+      const ctx = document.getElementById('trend-chart').getContext('2d');
+
+      if (trendChart) trendChart.destroy();
+
+      if (!trends || !trends.trends || trends.trends.length === 0) {
+        trendChart = new Chart(ctx, {
+          type: 'line',
+          data: { labels: [], datasets: [] },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+      }
+
+      const labels = trends.trends.map(t => {
+        const d = new Date(t.date);
+        return (d.getMonth() + 1) + '/' + d.getDate();
+      });
+      const spendData = trends.trends.map(t => t.spend_cents / 100);
+
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Daily Spend',
+            data: spendData,
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251, 191, 36, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#fbbf24'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              callbacks: {
+                label: (ctx) => 'Spend: $' + ctx.raw.toLocaleString()
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', maxTicksLimit: 8 }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#64748b',
+                callback: (v) => '$' + (v >= 1000 ? (v/1000) + 'k' : v)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderComparisonList() {
+      const container = document.getElementById('comparison-list');
+      let filtered = comparisonData;
+
+      if (comparisonFilter === 'high') {
+        filtered = comparisonData.filter(c => c.spread_pct >= 20);
+      } else if (comparisonFilter === 'medium') {
+        filtered = comparisonData.filter(c => c.spread_pct >= 10 && c.spread_pct < 20);
+      }
+
+      if (!filtered.length) {
+        container.innerHTML = `<div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <div class="empty-state-title">No comparison data</div>
+          <div class="empty-state-desc">No SKUs with significant price differences found</div>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.slice(0, 30).map(c => {
+        const spreadClass = c.spread_pct >= 20 ? 'high' : c.spread_pct >= 10 ? 'medium' : 'low';
+        const vendorCells = c.vendors.slice(0, 4).map((v, idx) => {
+          const isFirst = idx === 0;
+          const isLast = idx === c.vendors.length - 1 && c.vendors.length > 1;
+          const cls = isFirst ? 'cheapest' : isLast ? 'expensive' : '';
+          return `<div class="comparison-vendor-price ${cls}">${v.vendor}<br>${formatCurrency(v.price_cents)}</div>`;
+        }).join('');
+
+        return `
+          <div class="comparison-row">
+            <div>
+              <div class="comparison-sku">${c.sku || 'Unknown'}</div>
+              <div class="comparison-desc">${(c.description || '').substring(0, 40)}</div>
+            </div>
+            <div class="comparison-spread ${spreadClass}">${c.spread_pct.toFixed(1)}%</div>
+            ${vendorCells}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSingleSourceList(data) {
+      const container = document.getElementById('single-source-list');
+
+      if (!data.items || !data.items.length) {
+        container.innerHTML = `<div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <div class="empty-state-title">No single-source risks</div>
+          <div class="empty-state-desc">All items have backup vendors</div>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = data.items.slice(0, 15).map(item => {
+        const riskColor = item.risk_level === 'high' ? '#ef4444' : item.risk_level === 'medium' ? '#f97316' : '#22c55e';
+        return `
+          <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; margin-bottom: 6px; border-left: 3px solid ${riskColor};">
+            <div>
+              <div style="font-weight: 600; color: #ffffff; font-size: 13px;">${item.sku || 'Unknown'}</div>
+              <div style="font-size: 11px; color: #64748b;">${(item.description || '').substring(0, 35)} | ${item.sole_vendor}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 700; font-size: 13px;">${formatCurrency(item.total_spend_cents)}</div>
+              <div style="font-size: 10px; color: ${riskColor}; text-transform: uppercase;">${item.risk_level} risk</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCategoryList(categories) {
+      const container = document.getElementById('category-list');
+
+      if (!categories.length) {
+        container.innerHTML = `<div class="empty-state">
+          <div class="empty-state-icon">📁</div>
+          <div class="empty-state-title">No categories found</div>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = categories.slice(0, 10).map(cat => {
+        return `
+          <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; margin-bottom: 6px;">
+            <div>
+              <div style="font-weight: 600; color: #ffffff; font-size: 13px;">${cat.category}</div>
+              <div style="font-size: 11px; color: #64748b;">Top: ${cat.top_vendor} (${cat.top_vendor_pct}%) | ${cat.vendor_count} vendors</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 700; font-size: 13px;">${formatCurrency(cat.total_spend_cents)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderNegotiationPanel(data) {
+      const section = document.getElementById('negotiation-section');
+      const content = document.getElementById('negotiation-content');
+      const badge = document.getElementById('negotiation-vendor-badge');
+
+      section.style.display = 'block';
+      badge.textContent = data.vendor_name;
+
+      const leverageHtml = `
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+          <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px;">
+            <div style="font-size: 20px; font-weight: 700; color: #fbbf24;">${formatCurrencyShort(data.leverage.total_spend)}</div>
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">90-Day Spend</div>
+          </div>
+          <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px;">
+            <div style="font-size: 20px; font-weight: 700; color: #ffffff;">${data.leverage.order_frequency}</div>
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Orders</div>
+          </div>
+          <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px;">
+            <div style="font-size: 20px; font-weight: 700; color: #ffffff;">${data.leverage.relationship_months}</div>
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Months</div>
+          </div>
+          <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px;">
+            <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${formatCurrencyShort(data.leverage.potential_savings)}</div>
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Potential Savings</div>
+          </div>
+        </div>
+      `;
+
+      const talkingPointsHtml = data.talking_points.length ? `
+        <div class="negotiation-panel">
+          <div class="negotiation-header">
+            <span style="font-size: 20px;">💬</span>
+            <span class="negotiation-title">Talking Points</span>
+          </div>
+          ${data.talking_points.map(p => `
+            <div class="talking-point">
+              <span class="talking-point-icon">✓</span>
+              <span>${p}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : '';
+
+      const overpricedHtml = data.overpriced_items.length ? `
+        <div style="margin-top: 16px;">
+          <h4 style="font-size: 14px; margin-bottom: 12px; color: #ef4444;">Items Where They're Overpriced</h4>
+          ${data.overpriced_items.slice(0, 5).map(item => `
+            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; margin-bottom: 6px;">
+              <span style="font-size: 12px;">${item.sku} - ${(item.description || '').substring(0, 30)}</span>
+              <span style="font-size: 12px; color: #ef4444; font-weight: 600;">+${item.spread_pct.toFixed(1)}% spread</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : '';
+
+      content.innerHTML = leverageHtml + talkingPointsHtml + overpricedHtml;
+    }
+
+    // Interactions
+    function selectVendor(vendorName) {
+      selectedVendor = vendorName;
+      renderVendorTable();
+      fetchVendorDetail(vendorName);
+      fetchNegotiationBrief(vendorName);
+    }
+
+    function filterComparison(filter) {
+      comparisonFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderComparisonList();
+    }
+
+    // Table sorting
+    document.querySelectorAll('.vendor-table th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        if (currentSort.field === field) {
+          currentSort.order = currentSort.order === 'desc' ? 'asc' : 'desc';
+        } else {
+          currentSort.field = field;
+          currentSort.order = 'desc';
+        }
+        document.querySelectorAll('.vendor-table th').forEach(t => t.classList.remove('sorted', 'asc'));
+        th.classList.add('sorted');
+        if (currentSort.order === 'asc') th.classList.add('asc');
+        fetchVendors();
+      });
+    });
+
+    // Refresh
+    function refreshData() {
+      selectedVendor = null;
+      document.getElementById('negotiation-section').style.display = 'none';
+      loadAllData();
+    }
+
+    // Load all data
+    async function loadAllData() {
+      await Promise.all([
+        fetchVendors(),
+        fetchSpendAnalysis(),
+        fetchComparison(),
+        fetchRiskAssessment(),
+        fetchCategories()
+      ]);
+    }
+
+    // Init
+    loadAllData();
+  </script>
+</body>
+</html>
