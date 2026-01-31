@@ -632,9 +632,9 @@
 
   <script>
     // Auth
-    const authToken = localStorage.getItem('authToken');
+    const authToken = localStorage.getItem('accessToken');
     if (!authToken) {
-      window.location.href = 'login.html';
+      window.location.href = '/dashboard/login.html';
     }
 
     // State
