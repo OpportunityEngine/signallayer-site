@@ -3125,7 +3125,7 @@
               </div>
             </div>
           </div>
-          <!-- AI Insights Section - Expanded -->
+          <!-- Smart Recommendations Section - Expanded -->
           <div style="margin-top: 18px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.06) 0%, rgba(6, 182, 212, 0.02) 100%); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 12px; overflow: hidden;">
             <!-- Header -->
             <div style="padding: 14px 18px; border-bottom: 1px solid rgba(6, 182, 212, 0.1); display: flex; align-items: center; justify-content: space-between;">
@@ -3136,8 +3136,8 @@
                   </svg>
                 </div>
                 <div>
-                  <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">AI Insights</div>
-                  <div style="font-size: 11px; color: rgba(255,255,255,0.5);">Smart recommendations from your invoice data</div>
+                  <div style="font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">Smart Recommendations</div>
+                  <div style="font-size: 11px; color: rgba(255,255,255,0.5);">Actionable insights from your invoice data</div>
                 </div>
               </div>
               <div style="display: flex; align-items: center; gap: 10px;">
@@ -3149,7 +3149,7 @@
             <div id="aiInsightsList" style="padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto;">
               <div style="text-align: center; padding: 24px; color: rgba(255,255,255,0.5);">
                 <div style="font-size: 28px; margin-bottom: 8px;">🔍</div>
-                <div style="font-size: 13px;">Loading AI insights...</div>
+                <div style="font-size: 13px;">Loading recommendations...</div>
               </div>
             </div>
             <!-- Footer -->
@@ -3161,7 +3161,7 @@
       </div>
 
       <!-- Premium Quick Actions Tiles - Row 1: Core Operations -->
-      <div class="quick-actions-grid quick-actions-grid-5">
+      <div class="quick-actions-grid">
         <a href="inventory.html" class="quick-action-tile">
           <span class="tile-label">Inventory</span>
           <span class="tile-value" id="tileInventoryCount">Loading...</span>
@@ -3170,11 +3170,6 @@
           <span class="tile-label">Analytics</span>
           <span class="tile-value" id="tileSavingsFound">Loading...</span>
           <span class="tile-subtitle">Invoice insights & trends</span>
-        </a>
-        <a href="vendor-analysis.html" class="quick-action-tile" style="border-color: rgba(139, 92, 246, 0.3);">
-          <span class="tile-label">Vendor Analysis</span>
-          <span class="tile-value" id="tileVendorScore" style="color: #8b5cf6;">--</span>
-          <span class="tile-subtitle">Pricing & risk intel</span>
         </a>
         <div class="quick-action-tile intent" id="intentSignalsTile" onclick="openIntentSignalsModal()">
           <span class="tile-label">Intent Signals</span>
